@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: location-car
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/location_car
+    username: postgres
+    password: "0000"
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8082
+
+# ── JWT ────────────────────────────────────────────────────────────────────────
+app:
+  jwt:
+    # 256-bit Base64-encoded secret (change in production!)
+    secret: Y2FycmVudGFsLXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC1zaWduaW5nLTI1NmJpdHM=
+    expiration-ms: 86400000   # 24 h
