@@ -23,4 +23,35 @@ public class CreateVehicleRequest {
 
     /** Defaults to AVAILABLE when omitted — set explicitly for imports. */
     private VehicleStatus statut;
+
+    /** Vehicle category e.g. Economy, SUV, Luxury */
+    @Size(max = 50)
+    private String category;
+
+    /** License plate number */
+    @Size(max = 30)
+    private String plate;
+
+    /** Fuel type: Essence, Diesel, Hybrid, Electric */
+    @Size(max = 20)
+    private String fuel;
+
+    /** Transmission: Manual, Automatic */
+    @Size(max = 20)
+    private String transmission;
+
+    /** Image URL or Base64 data URL for the vehicle */
+    @Size(max = 50000000, message = "Image data too large")
+    private String imageUrl;
+
+    /** GPS device identifier from tracking provider */
+    @Size(max = 100)
+    private String gpsDeviceId;
+
+    /** GPS device IMEI */
+    @Size(max = 50)
+    private String gpsImei;
+
+    /** Enable GPS tracking for this vehicle */
+    private Boolean gpsEnabled;
 }

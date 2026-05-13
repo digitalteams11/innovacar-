@@ -1,25 +1,54 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const http = require('http');
 
 const isDev = process.env.NODE_ENV === 'development';
 
+async function findDevServer() {
+  const ports = [5173, 5174, 5175, 5176, 5177];
+  for (const port of ports) {
+    try {
+      await new Promise((resolve, reject) => {
+        const req = http.get(`http://localhost:${port}`, (res) => {
+          if (res.statusCode === 200 || res.statusCode === 204) {
+            resolve(port);
+          } else {
+            reject(new Error(`Status ${res.statusCode}`));
+          }
+        });
+        req.on('error', reject);
+        req.setTimeout(500, () => reject(new Error('Timeout')));
+      });
+      return port;
+    } catch {
+      // try next port
+    }
+  }
+  return 5173; // fallback
+}
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1400,
+    height: 900,
+    minWidth: 1200,
+    minHeight: 700,
+    title: 'RentCar Desktop',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: false,
     },
   });
 
   if (isDev) {
-    // Connect to Vite dev server
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    findDevServer().then((port) => {
+      mainWindow.loadURL(`http://localhost:${port}`);
+      mainWindow.webContents.openDevTools();
+    });
   } else {
-    // Load production build
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 }

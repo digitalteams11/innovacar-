@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.carrental.service.UserServiceTest
--------------------------------------------------------------------------------
-Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.183 s -- in com.carrental.service.UserServiceTest

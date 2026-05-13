@@ -99,6 +99,14 @@ public class VehicleService {
                 .marque(request.getMarque())
                 .prixJour(request.getPrixJour())
                 .statut(statut)
+                .category(request.getCategory())
+                .plate(request.getPlate())
+                .fuel(request.getFuel())
+                .transmission(request.getTransmission())
+                .imageUrl(request.getImageUrl())
+                .gpsDeviceId(request.getGpsDeviceId())
+                .gpsImei(request.getGpsImei())
+                .gpsEnabled(request.getGpsEnabled() != null ? request.getGpsEnabled() : false)
                 .tenant(tenant)
                 .build());
 
@@ -128,6 +136,42 @@ public class VehicleService {
         }
         if (request.getStatut() != null) {
             vehicle.setStatut(request.getStatut());
+        }
+        if (request.getCategory() != null) {
+            vehicle.setCategory(request.getCategory());
+        }
+        if (request.getPlate() != null) {
+            vehicle.setPlate(request.getPlate());
+        }
+        if (request.getFuel() != null) {
+            vehicle.setFuel(request.getFuel());
+        }
+        if (request.getTransmission() != null) {
+            vehicle.setTransmission(request.getTransmission());
+        }
+        if (request.getImageUrl() != null) {
+            vehicle.setImageUrl(request.getImageUrl());
+        }
+        if (request.getGpsDeviceId() != null) {
+            vehicle.setGpsDeviceId(request.getGpsDeviceId());
+        }
+        if (request.getGpsImei() != null) {
+            vehicle.setGpsImei(request.getGpsImei());
+        }
+        if (request.getGpsEnabled() != null) {
+            vehicle.setGpsEnabled(request.getGpsEnabled());
+        }
+        if (request.getLastLatitude() != null) {
+            vehicle.setLastLatitude(request.getLastLatitude());
+        }
+        if (request.getLastLongitude() != null) {
+            vehicle.setLastLongitude(request.getLastLongitude());
+        }
+        if (request.getLastSpeed() != null) {
+            vehicle.setLastSpeed(request.getLastSpeed());
+        }
+        if (request.getGpsStatus() != null) {
+            vehicle.setGpsStatus(request.getGpsStatus());
         }
 
         Vehicle saved = vehicleRepository.save(vehicle);

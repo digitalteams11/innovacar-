@@ -1,0 +1,30 @@
+{
+  "title": "Bookings & Reservations",
+  "subtitle": "Overview of all current, upcoming and past car rentals.",
+  "export": "Export CSV",
+  "add": "Create Booking",
+  "search": "Search by client name, car, or reservation ID...",
+  "filters": {
+    "all": "All",
+    "confirmed": "Confirmed",
+    "pending": "Pending",
+    "rented": "Rented",
+    "cancelled": "Cancelled"
+  },
+  "table": {
+    "id": "Reservation ID",
+    "client": "Client Details",
+    "vehicle": "Vehicle & Branch",
+    "dates": "Dates & Duration",
+    "status": "Status",
+    "price": "Total Price",
+    "actions": "Actions"
+  },
+  "labels": {
+    "individual": "Individual Client",
+    "location": "Casablanca Airport",
+    "duration": "5 Days Rental",
+    "paid": "Paid",
+    "showing": "SHOWING {{count}} OF {{total}} RESERVATIONS"
+  }
+}

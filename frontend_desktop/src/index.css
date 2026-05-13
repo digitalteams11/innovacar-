@@ -1,9 +1,227 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply font-sans bg-[#f5f5f0] text-[#1e293b] antialiased;
+    scroll-behavior: smooth;
   }
+
+  /* Premium Scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300/50 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400/70;
+  }
+}
+
+@layer components {
+  .animate-fade {
+    animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Premium UI Utils */
+.card-premium {
+  @apply bg-white rounded-2xl border border-[#e8e6e1]/80 shadow-soft p-6;
+}
+
+.glass {
+  @apply bg-white/80 backdrop-blur-2xl border border-white/50;
+}
+
+.icon-box {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center;
+}
+
+/* Dark Mode Overrides */
+@layer base {
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark body {
+    background-color: #0c1220;
+  }
+}
+
+@layer components {
+  /* Page backgrounds */
+  .dark .bg-\[\#f5f5f0\] {
+    background-color: #0c1220;
+  }
+
+  /* Login / full-screen backgrounds */
+  .dark .min-h-screen.bg-slate-50 {
+    background-color: #0c1220;
+  }
+
+  /* Cards and panels */
+  .dark :is(.bg-white, .card-premium) {
+    background-color: rgba(26, 35, 50, 0.7);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .glass {
+    background-color: rgba(26, 35, 50, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .bg-slate-50 {
+    background-color: #1e293b;
+  }
+
+  .dark .bg-\[\#0b1437\] {
+    background-color: #070d1a;
+  }
+
+  /* Text colors */
+  .dark :is(.text-\[\#1e293b\], .text-slate-900) {
+    color: #f1f5f9;
+  }
+
+  .dark .text-slate-800 { color: #e2e8f0; }
+  .dark .text-slate-700 { color: #cbd5e1; }
+  .dark .text-slate-600 { color: #94a3b8; }
+  .dark .text-slate-500 { color: #94a3b8; }
+  .dark .text-slate-400 { color: #94a3b8; }
+  .dark .text-slate-300 { color: #64748b; }
+  .dark .text-\[\#A3AED0\] { color: #94a3b8; }
+  .dark ::placeholder { color: #64748b; }
+
+  /* Borders */
+  .dark :is(.border-slate-50, .border-slate-100, .border-slate-200) {
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .border-gray-100 {
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .border-\[\#e8e6e1\]\/80 {
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Scrollbar */
+  .dark ::-webkit-scrollbar-thumb {
+    background-color: #334155;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background-color: #475569;
+  }
+
+  /* Inputs and selects */
+  .dark input,
+  .dark select,
+  .dark textarea {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .dark input::placeholder,
+  .dark select::placeholder,
+  .dark textarea::placeholder {
+    color: #64748b;
+  }
+
+  .dark input:focus,
+  .dark select:focus,
+  .dark textarea:focus {
+    background-color: #1e293b !important;
+  }
+
+  /* Shadows */
+  .dark .shadow-soft {
+    box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .shadow-elevated {
+    box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Brand colors */
+  .dark .text-brand-500 { color: #829ab1; }
+  .dark .text-brand-600 { color: #9fb3c8; }
+  .dark .bg-brand-50 { background-color: #152a45; }
+  .dark .bg-brand-500 { background-color: #1e3a5f; }
+  .dark .hover\:bg-brand-50:hover { background-color: #152a45; }
+  .dark .hover\:bg-brand-500:hover { background-color: #2a4a73; }
+  .dark .hover\:text-brand-500:hover { color: #9fb3c8; }
+  .dark .ring-brand-100 { --tw-ring-color: rgb(30 58 95 / 0.4); }
+  .dark .focus\:ring-brand-100:focus { --tw-ring-color: rgb(30 58 95 / 0.4); }
+  .dark .border-brand-300 { border-color: #2a4a73; }
+  .dark .focus\:border-brand-300:focus { border-color: #2a4a73; }
+
+  /* Accent / Gold */
+  .dark .text-accent-400 { color: #d4a853; }
+  .dark .text-accent-500 { color: #c9a96e; }
+  .dark .bg-accent-50 { background-color: rgba(212, 168, 83, 0.15); }
+  .dark .bg-accent-300 { background-color: rgba(212, 168, 83, 0.25); }
+
+  /* Success / Warning / Danger badges */
+  .dark .bg-\[\#ecfdf5\] { background-color: rgba(15, 118, 110, 0.2); }
+  .dark .bg-\[\#fffbeb\] { background-color: rgba(180, 83, 9, 0.2); }
+  .dark .bg-\[\#fef2f2\] { background-color: rgba(190, 18, 60, 0.2); }
+  .dark .text-success-500 { color: #34d399; }
+  .dark .text-warning-500 { color: #fbbf24; }
+  .dark .text-danger-500 { color: #f87171; }
+  .dark .bg-success-500 { background-color: #0f766e; }
+  .dark .bg-warning-500 { background-color: #b45309; }
+  .dark .bg-danger-500 { background-color: #be123c; }
+
+  /* Toast */
+  .dark .bg-emerald-500 { background-color: #0f766e; }
+  .dark .bg-rose-500 { background-color: #be123c; }
+
+  /* Primary colors for login */
+  .dark .bg-primary-600 { background-color: #1e3a5f; }
+  .dark .hover\:bg-primary-700:hover { background-color: #152a45; }
+  .dark .text-primary-600 { color: #829ab1; }
+  .dark .ring-primary-100 { --tw-ring-color: rgb(30 58 95 / 0.4); }
+  .dark .focus\:ring-primary-100:focus { --tw-ring-color: rgb(30 58 95 / 0.4); }
+  .dark .border-primary-300 { border-color: #2a4a73; }
+  .dark .focus\:border-primary-300:focus { border-color: #2a4a73; }
+
+  /* Mobile menu overlay */
+  .dark .bg-slate-900\/60 {
+    background-color: rgb(0 0 0 / 0.7);
+  }
+
+  /* Table hover / row states */
+  .dark .hover\:bg-\[\#f5f5f0\]:hover { background-color: #1e293b; }
+  .dark .hover\:bg-slate-50:hover { background-color: #1e293b; }
+  .dark .hover\:bg-white:hover { background-color: #334155; }
+  .dark .hover\:text-white:hover { color: #f1f5f9; }
+
+  .dark .group:hover .group-hover\:text-white { color: #f1f5f9; }
+  .dark .group:hover .group-hover\:bg-brand-50 { background-color: #152a45; }
+
+  .dark .bg-\[\#f5f5f0\]\/80 { background-color: rgb(12 18 32 / 0.8); }
 }

@@ -1,0 +1,56 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "reservations": "Reservations",
+    "vehicles": "Vehicles",
+    "clients": "Clients",
+    "contracts": "Contracts",
+    "payments": "Payments",
+    "invoices": "Invoices",
+    "agency": "Agency",
+    "employees": "Employees",
+    "reports": "Reports",
+    "settings": "Settings",
+    "logout": "Logout",
+    "needHelp": "Need help?",
+    "contactSupport": "Contact support",
+    "contactUs": "Contact Us"
+  },
+  "navbar": {
+    "search": "Search for reservation, vehicle...",
+    "admin": "Admin",
+    "notifications": "Notifications",
+    "messages": "Messages"
+  },
+  "actions": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
+    "save": "Save",
+    "cancel": "Cancel",
+    "export": "Export",
+    "import": "Import",
+    "search": "Search",
+    "filter": "Filter",
+    "next": "Next",
+    "previous": "Previous",
+    "confirm": "Confirm"
+  },
+  "status": {
+    "available": "Available",
+    "rented": "Rented",
+    "maintenance": "Maintenance",
+    "confirmed": "Confirmed",
+    "pending": "Pending",
+    "cancelled": "Cancelled",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "messages": {
+    "success": "Success",
+    "error": "Error",
+    "loading": "Loading...",
+    "noData": "No data available"
+  }
+}

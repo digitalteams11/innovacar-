@@ -21,4 +21,42 @@ public class UpdateVehicleRequest {
     private BigDecimal prixJour;
 
     private VehicleStatus statut;
+
+    @Size(max = 50)
+    private String category;
+
+    @Size(max = 30)
+    private String plate;
+
+    @Size(max = 20)
+    private String fuel;
+
+    @Size(max = 20)
+    private String transmission;
+
+    @Size(max = 50000000, message = "Image data too large")
+    private String imageUrl;
+
+    /** GPS device identifier from tracking provider */
+    @Size(max = 100)
+    private String gpsDeviceId;
+
+    /** GPS device IMEI */
+    @Size(max = 50)
+    private String gpsImei;
+
+    /** Enable GPS tracking for this vehicle */
+    private Boolean gpsEnabled;
+
+    /** Last known latitude */
+    private Double lastLatitude;
+
+    /** Last known longitude */
+    private Double lastLongitude;
+
+    /** Last reported speed */
+    private Double lastSpeed;
+
+    /** Current GPS device status */
+    private com.carrental.entity.GpsDeviceStatus gpsStatus;
 }

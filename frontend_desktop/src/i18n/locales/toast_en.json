@@ -1,0 +1,24 @@
+{
+  "toast": {
+    "success": "{{label}} successfully!",
+    "opened": "{{label}} opened successfully!",
+    "contacted": "Technical support contacted successfully!",
+    "notificationsOpened": "Notifications opened",
+    "messagesOpened": "Messages opened",
+    "profileMenuOpened": "Profile menu opened",
+    "fleetExported": "Fleet exported successfully!",
+    "newVehicleAdded": "New vehicle added successfully!",
+    "filterApplied": "Filter {{filter}} applied",
+    "newClientAdded": "New client added successfully!",
+    "filtersOpened": "Filters opened",
+    "dataExported": "Data exported (CSV)",
+    "newReservationCreated": "New reservation created successfully!",
+    "statementsExported": "Statements exported successfully!",
+    "pageNext": "Next page",
+    "options": "Options opened",
+    "clientProfile": "Client profile",
+    "bookingStarted": "Booking started",
+    "transactionOptions": "Transaction options",
+    "receiptOpened": "Receipt {{id}} opened"
+  }
+}

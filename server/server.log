@@ -1,0 +1,140 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.5)
+
+2026-05-12T17:57:35.129+01:00  INFO 22968 --- [location-car] [           main] com.carrental.LocationCarApplication     : Starting LocationCarApplication v0.0.1-SNAPSHOT using Java 21.0.6 with PID 22968 (C:\Users\amdda\Downloads\location-car\server\target\location-car-0.0.1-SNAPSHOT.jar started by amdda in C:\Users\amdda\Downloads\location-car\server)
+2026-05-12T17:57:35.132+01:00  INFO 22968 --- [location-car] [           main] com.carrental.LocationCarApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-05-12T17:57:37.927+01:00  INFO 22968 --- [location-car] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-12T17:57:38.194+01:00  INFO 22968 --- [location-car] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 241 ms. Found 9 JPA repository interfaces.
+2026-05-12T17:57:40.281+01:00  INFO 22968 --- [location-car] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8082 (http)
+2026-05-12T17:57:40.321+01:00  INFO 22968 --- [location-car] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-12T17:57:40.321+01:00  INFO 22968 --- [location-car] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.20]
+2026-05-12T17:57:40.441+01:00  INFO 22968 --- [location-car] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-05-12T17:57:40.443+01:00  INFO 22968 --- [location-car] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5066 ms
+2026-05-12T17:57:40.874+01:00  INFO 22968 --- [location-car] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-12T17:57:41.117+01:00  INFO 22968 --- [location-car] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.4.Final
+2026-05-12T17:57:41.257+01:00  INFO 22968 --- [location-car] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-05-12T17:57:42.182+01:00  INFO 22968 --- [location-car] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-12T17:57:42.268+01:00  INFO 22968 --- [location-car] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-05-12T17:57:42.880+01:00  INFO 22968 --- [location-car] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@44abdb1f
+2026-05-12T17:57:42.886+01:00  INFO 22968 --- [location-car] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-05-12T17:57:46.239+01:00  INFO 22968 --- [location-car] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-05-12T17:57:46.728+01:00  INFO 22968 --- [location-car] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-12T17:57:48.576+01:00  INFO 22968 --- [location-car] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-05-12T17:57:50.406+01:00  WARN 22968 --- [location-car] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-05-12T17:57:51.169+01:00  INFO 22968 --- [location-car] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@6fcf3192, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@40cb19d5, org.springframework.security.web.context.SecurityContextHolderFilter@3e9053b3, org.springframework.security.web.header.HeaderWriterFilter@5b34e7bd, org.springframework.web.filter.CorsFilter@71d92487, org.springframework.security.web.authentication.logout.LogoutFilter@173a86ad, com.carrental.security.JwtAuthenticationFilter@4a225014, com.carrental.security.SubscriptionFilter@7d836c4a, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@a700311, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@3c832820, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@c9a8e12, org.springframework.security.web.session.SessionManagementFilter@7119d1da, org.springframework.security.web.access.ExceptionTranslationFilter@3d4ea4cf, org.springframework.security.web.access.intercept.AuthorizationFilter@7fda0e30]
+2026-05-12T17:57:51.727+01:00  INFO 22968 --- [location-car] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8082 (http) with context path ''
+2026-05-12T17:57:51.755+01:00  INFO 22968 --- [location-car] [           main] com.carrental.LocationCarApplication     : Started LocationCarApplication in 18.187 seconds (process running for 19.875)
+Hibernate: 
+    select
+        count(*) 
+    from
+        tenants t1_0
+2026-05-12T17:58:55.753+01:00  INFO 22968 --- [location-car] [nio-8082-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-12T17:58:55.755+01:00  INFO 22968 --- [location-car] [nio-8082-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-05-12T17:58:55.764+01:00  INFO 22968 --- [location-car] [nio-8082-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 8 ms
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.image_url,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.image_url,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?

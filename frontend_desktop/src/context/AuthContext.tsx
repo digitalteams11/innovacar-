@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import api from '../api/axios';
 
 interface User {
@@ -12,27 +12,24 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   login: (credentials: any) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
+    if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    setLoading(false);
 
     const handleAuthError = () => {
       logout();
@@ -43,29 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (credentials: any) => {
-    try {
-      const { data } = await api.post('/auth/login', credentials);
-      localStorage.setItem('token', data.accessToken);
-      localStorage.setItem('user', JSON.stringify(data));
-      setToken(data.accessToken);
-      setUser(data);
-      navigate('/');
-    } catch (err: any) {
-      console.error('Login failed:', err.response?.status, err.response?.data);
-      throw err;
-    }
+    const { data } = await api.post('/auth/login', credentials);
+    localStorage.setItem('token', data.accessToken);
+    localStorage.setItem('user', JSON.stringify(data));
+    setUser(data);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setToken(null);
     setUser(null);
-    navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, loading }}>
       {children}
     </AuthContext.Provider>
   );

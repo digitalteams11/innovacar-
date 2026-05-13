@@ -1,0 +1,36 @@
+{
+  "title": "نظرة عامة على لوحة القيادة",
+  "stats": {
+    "reservations": "الحجوزات (هذا الشهر)",
+    "availableVehicles": "المركبات المتاحة",
+    "revenue": "الإيرادات",
+    "activeClients": "العملاء النشطين",
+    "vsLastMonth": "مقارنة بالشهر الماضي"
+  },
+  "charts": {
+    "reservationsOverview": "نظرة عامة على الحجوزات",
+    "revenueOverview": "نظرة عامة على الإيرادات",
+    "distribution": "توزيع الحجوزات",
+    "thisMonth": "هذا الشهر",
+    "lastMonth": "الشهر الماضي",
+    "year": "السنة",
+    "confirmed": "مؤكدة",
+    "pending": "قيد الانتظار",
+    "cancelled": "ملغاة"
+  },
+  "recentBookings": {
+    "title": "الحجوزات الأخيرة",
+    "viewAll": "عرض الكل"
+  },
+  "vehicles": {
+    "title": "المركبات",
+    "viewAll": "عرض الكل",
+    "table": {
+      "vehicle": "المركبة",
+      "category": "الفئة",
+      "plate": "رقم اللوحة",
+      "status": "الحالة",
+      "availability": "التوفر"
+    }
+  }
+}

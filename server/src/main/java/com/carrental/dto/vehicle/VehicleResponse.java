@@ -1,11 +1,13 @@
 package com.carrental.dto.vehicle;
 
+import com.carrental.entity.GpsDeviceStatus;
 import com.carrental.entity.Vehicle;
 import com.carrental.entity.VehicleStatus;
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * Read-only vehicle projection returned by all vehicle endpoints.
@@ -18,7 +20,22 @@ public class VehicleResponse {
     private String        marque;
     private BigDecimal    prixJour;
     private VehicleStatus statut;
+    private String        category;
+    private String        plate;
+    private String        fuel;
+    private String        transmission;
+    private String        imageUrl;
     private Long          tenantId;
+
+    // GPS fields
+    private String        gpsDeviceId;
+    private String        gpsImei;
+    private Double        lastLatitude;
+    private Double        lastLongitude;
+    private LocalDateTime lastGpsUpdate;
+    private GpsDeviceStatus gpsStatus;
+    private Double        lastSpeed;
+    private Boolean       gpsEnabled;
 
     // ── Static factory ───────────────────────────────────────────────────────
 
@@ -28,7 +45,20 @@ public class VehicleResponse {
                 .marque(v.getMarque())
                 .prixJour(v.getPrixJour())
                 .statut(v.getStatut())
+                .category(v.getCategory())
+                .plate(v.getPlate())
+                .fuel(v.getFuel())
+                .transmission(v.getTransmission())
+                .imageUrl(v.getImageUrl())
                 .tenantId(v.getTenant().getId())
+                .gpsDeviceId(v.getGpsDeviceId())
+                .gpsImei(v.getGpsImei())
+                .lastLatitude(v.getLastLatitude())
+                .lastLongitude(v.getLastLongitude())
+                .lastGpsUpdate(v.getLastGpsUpdate())
+                .gpsStatus(v.getGpsStatus())
+                .lastSpeed(v.getLastSpeed())
+                .gpsEnabled(v.getGpsEnabled())
                 .build();
     }
 }

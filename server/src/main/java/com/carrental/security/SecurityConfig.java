@@ -80,6 +80,8 @@ public class SecurityConfig {
             // Route-level access control
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                // Allow CORS preflight requests
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 // Actuator health (optional — safe to expose)
                 .requestMatchers("/actuator/health").permitAll()
                 // Everything else requires a valid JWT

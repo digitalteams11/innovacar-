@@ -1,0 +1,4534 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.5)
+
+2026-05-13T16:53:47.300+01:00  INFO 17288 --- [location-car] [           main] com.carrental.LocationCarApplication     : Starting LocationCarApplication v0.0.1-SNAPSHOT using Java 21.0.6 with PID 17288 (C:\Users\amdda\Downloads\location-car\server\target\location-car-0.0.1-SNAPSHOT.jar started by amdda in C:\Users\amdda\Downloads\location-car\server)
+2026-05-13T16:53:47.309+01:00  INFO 17288 --- [location-car] [           main] com.carrental.LocationCarApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-05-13T16:53:53.750+01:00  INFO 17288 --- [location-car] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-13T16:53:54.839+01:00  INFO 17288 --- [location-car] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 1052 ms. Found 11 JPA repository interfaces.
+2026-05-13T16:53:59.106+01:00  INFO 17288 --- [location-car] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8082 (http)
+2026-05-13T16:53:59.162+01:00  INFO 17288 --- [location-car] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-13T16:53:59.164+01:00  INFO 17288 --- [location-car] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.20]
+2026-05-13T16:53:59.330+01:00  INFO 17288 --- [location-car] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-05-13T16:53:59.333+01:00  INFO 17288 --- [location-car] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 11590 ms
+2026-05-13T16:53:59.869+01:00  INFO 17288 --- [location-car] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-13T16:54:00.216+01:00  INFO 17288 --- [location-car] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.4.Final
+2026-05-13T16:54:00.357+01:00  INFO 17288 --- [location-car] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-05-13T16:54:01.422+01:00  INFO 17288 --- [location-car] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-13T16:54:01.550+01:00  INFO 17288 --- [location-car] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-05-13T16:54:02.546+01:00  INFO 17288 --- [location-car] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@2ec5cc14
+2026-05-13T16:54:02.554+01:00  INFO 17288 --- [location-car] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-05-13T16:54:10.862+01:00  INFO 17288 --- [location-car] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-05-13T16:54:12.037+01:00  INFO 17288 --- [location-car] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-13T16:54:14.803+01:00  INFO 17288 --- [location-car] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-05-13T16:54:16.225+01:00  INFO 17288 --- [location-car] [           main] com.carrental.util.EncryptionUtil        : EncryptionUtil initialized with AES-256 GCM
+2026-05-13T16:54:16.628+01:00  WARN 17288 --- [location-car] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-05-13T16:54:17.496+01:00  INFO 17288 --- [location-car] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@68a0a4ae, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@426753a6, org.springframework.security.web.context.SecurityContextHolderFilter@50cdaf32, org.springframework.security.web.header.HeaderWriterFilter@2acacdf, org.springframework.web.filter.CorsFilter@2692910f, org.springframework.security.web.authentication.logout.LogoutFilter@65ff1e6d, com.carrental.security.JwtAuthenticationFilter@3791160a, com.carrental.security.SubscriptionFilter@1d9cac6e, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@7b900883, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@a555005, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@22816de1, org.springframework.security.web.session.SessionManagementFilter@304d6881, org.springframework.security.web.access.ExceptionTranslationFilter@41737438, org.springframework.security.web.access.intercept.AuthorizationFilter@2411cf8b]
+2026-05-13T16:54:18.260+01:00  INFO 17288 --- [location-car] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8082 (http) with context path ''
+2026-05-13T16:54:18.292+01:00  INFO 17288 --- [location-car] [           main] com.carrental.LocationCarApplication     : Started LocationCarApplication in 32.702 seconds (process running for 36.017)
+Hibernate: 
+    select
+        count(*) 
+    from
+        tenants t1_0
+2026-05-13T16:54:58.062+01:00  INFO 17288 --- [location-car] [nio-8082-exec-4] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-13T16:54:58.062+01:00  INFO 17288 --- [location-car] [nio-8082-exec-4] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-05-13T16:54:58.064+01:00  INFO 17288 --- [location-car] [nio-8082-exec-4] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.gps_enabled
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.gps_enabled
+Hibernate: 
+    select
+        ga1_0.id,
+        ga1_0.alert_type,
+        ga1_0.created_at,
+        ga1_0.latitude,
+        ga1_0.longitude,
+        ga1_0.message,
+        ga1_0.read,
+        ga1_0.severity,
+        ga1_0.speed,
+        ga1_0.tenant_id,
+        ga1_0.vehicle_id,
+        ga1_0.vehicle_name 
+    from
+        gps_alerts ga1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=ga1_0.tenant_id 
+    where
+        t1_0.id=? 
+    order by
+        ga1_0.created_at desc
+Hibernate: 
+    select
+        count(ga1_0.id) 
+    from
+        gps_alerts ga1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=ga1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and not(ga1_0.read)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.gps_enabled
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        ga1_0.id,
+        ga1_0.alert_type,
+        ga1_0.created_at,
+        ga1_0.latitude,
+        ga1_0.longitude,
+        ga1_0.message,
+        ga1_0.read,
+        ga1_0.severity,
+        ga1_0.speed,
+        ga1_0.tenant_id,
+        ga1_0.vehicle_id,
+        ga1_0.vehicle_name 
+    from
+        gps_alerts ga1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=ga1_0.tenant_id 
+    where
+        t1_0.id=? 
+    order by
+        ga1_0.created_at desc
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.gps_enabled
+Hibernate: 
+    select
+        count(ga1_0.id) 
+    from
+        gps_alerts ga1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=ga1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and not(ga1_0.read)
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T16:55:06.567+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-7] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: {"timestamp":1778687705390,"status":404,"error":"Not Found","message":"No message available","path":"/gps-service/rest/api/v1/devices"}
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T16:55:16.370+01:00  INFO 17288 --- [location-car] [nio-8082-exec-9] com.carrental.service.AuthService        : User [id=1] 'admin@test.com' (tenant 1) logged in
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T16:55:27.649+01:00  INFO 17288 --- [location-car] [nio-8082-exec-8] com.carrental.service.AuthService        : User [id=1] 'admin@test.com' (tenant 1) logged in
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+2026-05-13T16:55:47.293+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-6] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: Failed to resolve 'api.iopgps.com' [A(1)]
+Hibernate: 
+    insert 
+    into
+        gps_settings
+        (active_devices, api_key_encrypted, app_id, base_url, connection_status, created_at, device_group_id, enabled, last_error, last_sync_at, provider, tenant_id, updated_at, webhook_url) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-05-13T16:55:47.341+01:00  INFO 17288 --- [location-car] [nio-8082-exec-6] c.carrental.service.GpsSettingsService   : GPS settings saved for tenant [1] provider=IOPGPS status=ERROR
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+2026-05-13T16:56:13.744+01:00  INFO 17288 --- [location-car] [nio-8082-exec-2] c.carrental.service.GpsSettingsService   : GPS settings saved for tenant [1] provider=CUSTOM status=CONNECTED
+Hibernate: 
+    update
+        gps_settings 
+    set
+        active_devices=?,
+        api_key_encrypted=?,
+        app_id=?,
+        base_url=?,
+        connection_status=?,
+        created_at=?,
+        device_group_id=?,
+        enabled=?,
+        last_error=?,
+        last_sync_at=?,
+        provider=?,
+        tenant_id=?,
+        updated_at=?,
+        webhook_url=? 
+    where
+        id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        gs1_0.id,
+        gs1_0.active_devices,
+        gs1_0.api_key_encrypted,
+        gs1_0.app_id,
+        gs1_0.base_url,
+        gs1_0.connection_status,
+        gs1_0.created_at,
+        gs1_0.device_group_id,
+        gs1_0.enabled,
+        gs1_0.last_error,
+        gs1_0.last_sync_at,
+        gs1_0.provider,
+        gs1_0.tenant_id,
+        gs1_0.updated_at,
+        gs1_0.webhook_url 
+    from
+        gps_settings gs1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=gs1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    update
+        gps_settings 
+    set
+        active_devices=?,
+        api_key_encrypted=?,
+        app_id=?,
+        base_url=?,
+        connection_status=?,
+        created_at=?,
+        device_group_id=?,
+        enabled=?,
+        last_error=?,
+        last_sync_at=?,
+        provider=?,
+        tenant_id=?,
+        updated_at=?,
+        webhook_url=? 
+    where
+        id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.gps_enabled
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.gps_enabled
+Hibernate: 
+    select
+        count(ga1_0.id) 
+    from
+        gps_alerts ga1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=ga1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and not(ga1_0.read)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T16:56:20.578+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-4] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: {"timestamp":1778687779480,"status":404,"error":"Not Found","message":"No message available","path":"/gps-service/rest/api/v1/devices"}
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T16:56:43.311+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-7] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Loading</title><link rel="dns-prefetch" href="//staticww.gpscdn.com"><meta name="Keywords" content="IOP GPS"><meta name="Description" content="GPS provides vehicle and cargo tracking managment total solution for your business. GPS enables remote fleet management and cost control easily with lots of powerful features, including real-time tracking, history playback, alarm recording, business dashboard, etc. With its user-friendly interface and advanced capabilities, GPS is the first choice for your business seeking a comprehensive, reliable vehicle tracking management platform."><meta name="Copyright" content="Copyright 2008-<!--inject--> Shanghai Goome industrial co., LTD"><link id="favicon" href="" rel="icon" type="image/x-icon"><link href="//static.hw.gpscdn.com/gpsen_v2/styles/116_7fe5ef1a.css" rel="stylesheet"><link href="//static.hw.gpscdn.com/gpsen_v2/styles/930_df6099c4.css" rel="stylesheet"><link href="//static.hw.gpscdn.com/gpsen_v2/styles/login_0c82a518.css" rel="stylesheet"><link rel="stylesheet/less" href="//static.hw.gpscdn.com/gpsen_v2/static/baseless/color.less"><link rel="stylesheet/less" href="//static.hw.gpscdn.com/gpsen_v2/static/baseless/vars.less"><link href="//at.alicdn.com/t/c/font_3691102_rdoywxtr9uo.css" rel="stylesheet"><link rel="stylesheet" href="//static.hw.gpscdn.com/gpsen_v2/static/baseless/mutiLanguageFlag.css"><script src="//static.hw.gpscdn.com/gpsen/libs/jquery.min.js"></script><script src="//static.hw.gpscdn.com/gpsen_v2/static/js/moment-with-locales.min.js"></script></head><body><script>window.less={async:!0,env:"production"},document.write('<script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/static/js/base64_md5_const_countryflag.min.js?v='+Math.random()+'"><\/script>')</script><script src="//static.hw.gpscdn.com/gpsen/utils/newLess.min.js?v=2.7.0"></script><div id="app"></div><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/116_vendors.015e5f03.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/769.302edbfa.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/254.0a95ce01.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/930_default.ed70b7df.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/login.68cb3f5b.js"></script></body></html>
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T16:58:35.594+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-5] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Loading</title><link rel="dns-prefetch" href="//staticww.gpscdn.com"><meta name="Keywords" content="IOP GPS"><meta name="Description" content="GPS provides vehicle and cargo tracking managment total solution for your business. GPS enables remote fleet management and cost control easily with lots of powerful features, including real-time tracking, history playback, alarm recording, business dashboard, etc. With its user-friendly interface and advanced capabilities, GPS is the first choice for your business seeking a comprehensive, reliable vehicle tracking management platform."><meta name="Copyright" content="Copyright 2008-<!--inject--> Shanghai Goome industrial co., LTD"><link id="favicon" href="" rel="icon" type="image/x-icon"><link href="//static.hw.gpscdn.com/gpsen_v2/styles/116_7fe5ef1a.css" rel="stylesheet"><link href="//static.hw.gpscdn.com/gpsen_v2/styles/930_df6099c4.css" rel="stylesheet"><link href="//static.hw.gpscdn.com/gpsen_v2/styles/login_0c82a518.css" rel="stylesheet"><link rel="stylesheet/less" href="//static.hw.gpscdn.com/gpsen_v2/static/baseless/color.less"><link rel="stylesheet/less" href="//static.hw.gpscdn.com/gpsen_v2/static/baseless/vars.less"><link href="//at.alicdn.com/t/c/font_3691102_rdoywxtr9uo.css" rel="stylesheet"><link rel="stylesheet" href="//static.hw.gpscdn.com/gpsen_v2/static/baseless/mutiLanguageFlag.css"><script src="//static.hw.gpscdn.com/gpsen/libs/jquery.min.js"></script><script src="//static.hw.gpscdn.com/gpsen_v2/static/js/moment-with-locales.min.js"></script></head><body><script>window.less={async:!0,env:"production"},document.write('<script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/static/js/base64_md5_const_countryflag.min.js?v='+Math.random()+'"><\/script>')</script><script src="//static.hw.gpscdn.com/gpsen/utils/newLess.min.js?v=2.7.0"></script><div id="app"></div><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/116_vendors.015e5f03.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/769.302edbfa.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/254.0a95ce01.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/930_default.ed70b7df.js"></script><script type="text/javascript" src="//static.hw.gpscdn.com/gpsen_v2/js/login.68cb3f5b.js"></script></body></html>
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T16:58:56.156+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-3] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: {"timestamp":1778687935047,"status":404,"error":"Not Found","message":"No message available","path":"/gps-service/rest/api/v1/devices"}
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    where
+        u1_0.email=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T17:00:33.940+01:00  INFO 17288 --- [location-car] [nio-8082-exec-1] com.carrental.service.AuthService        : User [id=1] 'admin@test.com' (tenant 1) logged in
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        e1_0.id,
+        e1_0.department,
+        e1_0.email,
+        e1_0.hire_date,
+        e1_0.name,
+        e1_0.phone,
+        e1_0.role,
+        e1_0.status,
+        e1_0.tenant_id 
+    from
+        employees e1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=e1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        e1_0.id,
+        e1_0.department,
+        e1_0.email,
+        e1_0.hire_date,
+        e1_0.name,
+        e1_0.phone,
+        e1_0.role,
+        e1_0.status,
+        e1_0.tenant_id 
+    from
+        employees e1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=e1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        i1_0.id,
+        i1_0.amount,
+        i1_0.client_name,
+        i1_0.due_date,
+        i1_0.invoice_number,
+        i1_0.issue_date,
+        i1_0.status,
+        i1_0.tenant_id 
+    from
+        invoices i1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=i1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        i1_0.id,
+        i1_0.amount,
+        i1_0.client_name,
+        i1_0.due_date,
+        i1_0.invoice_number,
+        i1_0.issue_date,
+        i1_0.status,
+        i1_0.tenant_id 
+    from
+        invoices i1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=i1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.client_name,
+        c1_0.contract_number,
+        c1_0.end_date,
+        c1_0.start_date,
+        c1_0.status,
+        c1_0.tenant_id,
+        c1_0.total_amount,
+        c1_0.vehicle_marque 
+    from
+        contracts c1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=c1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.client_name,
+        c1_0.contract_number,
+        c1_0.end_date,
+        c1_0.start_date,
+        c1_0.status,
+        c1_0.tenant_id,
+        c1_0.total_amount,
+        c1_0.vehicle_marque 
+    from
+        contracts c1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=c1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.address,
+        c1_0.driving_license,
+        c1_0.email,
+        c1_0.name,
+        c1_0.phone,
+        c1_0.tenant_id 
+    from
+        clients c1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=c1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.address,
+        c1_0.driving_license,
+        c1_0.email,
+        c1_0.name,
+        c1_0.phone,
+        c1_0.tenant_id 
+    from
+        clients c1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=c1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        i1_0.id,
+        i1_0.amount,
+        i1_0.client_name,
+        i1_0.due_date,
+        i1_0.invoice_number,
+        i1_0.issue_date,
+        i1_0.status,
+        i1_0.tenant_id 
+    from
+        invoices i1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=i1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        i1_0.id,
+        i1_0.amount,
+        i1_0.client_name,
+        i1_0.due_date,
+        i1_0.invoice_number,
+        i1_0.issue_date,
+        i1_0.status,
+        i1_0.tenant_id 
+    from
+        invoices i1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=i1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        e1_0.id,
+        e1_0.department,
+        e1_0.email,
+        e1_0.hire_date,
+        e1_0.name,
+        e1_0.phone,
+        e1_0.role,
+        e1_0.status,
+        e1_0.tenant_id 
+    from
+        employees e1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=e1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        e1_0.id,
+        e1_0.department,
+        e1_0.email,
+        e1_0.hire_date,
+        e1_0.name,
+        e1_0.phone,
+        e1_0.role,
+        e1_0.status,
+        e1_0.tenant_id 
+    from
+        employees e1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=e1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.date_end,
+        r1_0.date_start,
+        r1_0.tenant_id,
+        r1_0.total_price,
+        r1_0.vehicle_id 
+    from
+        reservations r1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=r1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        count(v1_0.id) 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=? 
+        and v1_0.statut=?
+Hibernate: 
+    select
+        sum(p1_0.amount) 
+    from
+        payments p1_0 
+    where
+        p1_0.tenant_id=? 
+        and p1_0.paid=true
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.category,
+        v1_0.fuel,
+        v1_0.gps_device_id,
+        v1_0.gps_enabled,
+        v1_0.gps_imei,
+        v1_0.gps_status,
+        v1_0.image_url,
+        v1_0.last_gps_update,
+        v1_0.last_latitude,
+        v1_0.last_longitude,
+        v1_0.last_speed,
+        v1_0.marque,
+        v1_0.plate,
+        v1_0.prix_jour,
+        v1_0.statut,
+        v1_0.tenant_id,
+        v1_0.transmission 
+    from
+        vehicles v1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=v1_0.tenant_id 
+    where
+        t1_0.id=?
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T17:02:38.630+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-5] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: {"timestamp":1778688157519,"status":404,"error":"Not Found","message":"No message available","path":"/gps-service/rest/api/v1/devices"}
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T17:04:38.570+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-7] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: {"timestamp":1778688277465,"status":404,"error":"Not Found","message":"No message available","path":"/gps-service/rest/api/v1/devices"}
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T17:04:56.524+01:00 ERROR 17288 --- [location-car] [nio-8082-exec-3] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: {"timestamp":1778688295419,"status":404,"error":"Not Found","message":"No message available","path":"/gps-service/rest/api/v1/devices"}
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.email,
+        u1_0.password,
+        u1_0.role,
+        u1_0.tenant_id 
+    from
+        users u1_0 
+    join
+        tenants t1_0 
+            on t1_0.id=u1_0.tenant_id 
+    where
+        u1_0.email=? 
+        and t1_0.id=?
+Hibernate: 
+    select
+        t1_0.id,
+        t1_0.address,
+        t1_0.city,
+        t1_0.country,
+        t1_0.email,
+        t1_0.name,
+        t1_0.phone,
+        t1_0.subscription_active,
+        t1_0.subscription_end_date,
+        t1_0.tax_id 
+    from
+        tenants t1_0 
+    where
+        t1_0.id=?
+2026-05-13T17:05:19.940+01:00 ERROR 17288 --- [location-car] [io-8082-exec-10] c.carrental.service.GpsProviderService   : GPS provider test error for IOPGPS: API error: {"timestamp":1778688318839,"status":404,"error":"Not Found","message":"No message available","path":"/gps-service/rest/api/v1/devices"}

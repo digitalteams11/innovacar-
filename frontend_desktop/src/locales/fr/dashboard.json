@@ -1,0 +1,36 @@
+{
+  "title": "Aperçu du tableau de bord",
+  "stats": {
+    "reservations": "Réservations (Mois)",
+    "availableVehicles": "Véhicules disponibles",
+    "revenue": "Chiffre d'affaires",
+    "activeClients": "Clients actifs",
+    "vsLastMonth": "vs mois dernier"
+  },
+  "charts": {
+    "reservationsOverview": "Aperçu des réservations",
+    "revenueOverview": "Aperçu des revenus",
+    "distribution": "Répartition des réservations",
+    "thisMonth": "Ce mois",
+    "lastMonth": "Mois dernier",
+    "year": "Année",
+    "confirmed": "Confirmées",
+    "pending": "En attente",
+    "cancelled": "Annulées"
+  },
+  "recentBookings": {
+    "title": "Réservations récentes",
+    "viewAll": "Voir toutes"
+  },
+  "vehicles": {
+    "title": "Véhicules",
+    "viewAll": "Voir tous",
+    "table": {
+      "vehicle": "Véhicule",
+      "category": "Catégorie",
+      "plate": "Immatriculation",
+      "status": "Statut",
+      "availability": "Disponibilité"
+    }
+  }
+}

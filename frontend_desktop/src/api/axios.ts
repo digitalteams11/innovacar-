@@ -1,7 +1,15 @@
 import axios from 'axios';
 
+// Allow overriding the API base URL via localStorage (useful for desktop app users)
+const getBaseURL = () => {
+  const stored = localStorage.getItem('api_base_url');
+  if (stored) return stored;
+  // Default backend URL
+  return 'http://localhost:8082/api';
+};
+
 const api = axios.create({
-  baseURL: 'http://localhost:8082/api',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },

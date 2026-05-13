@@ -3,9 +3,9 @@ spring:
     name: location-car
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/location_car
+    url: jdbc:postgresql://localhost:5432/location-voiture
     username: postgres
-    password: "0000"
+    password: "amddah"
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -18,6 +18,9 @@ spring:
 
 server:
   port: 8082
+  tomcat:
+    max-http-form-post-size: 50MB
+    max-swallow-size: 50MB
 
 # ── JWT ────────────────────────────────────────────────────────────────────────
 app:

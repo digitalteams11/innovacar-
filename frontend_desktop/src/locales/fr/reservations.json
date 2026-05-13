@@ -1,0 +1,30 @@
+{
+  "title": "Réservations & Locations",
+  "subtitle": "Aperçu de toutes les locations de voitures actuelles, à venir et passées.",
+  "export": "Exporter CSV",
+  "add": "Créer une réservation",
+  "search": "Rechercher par nom, voiture ou ID...",
+  "filters": {
+    "all": "Tous",
+    "confirmed": "Confirmées",
+    "pending": "En attente",
+    "rented": "Louées",
+    "cancelled": "Annulées"
+  },
+  "table": {
+    "id": "ID Réservation",
+    "client": "Détails Client",
+    "vehicle": "Véhicule & Agence",
+    "dates": "Dates & Durée",
+    "status": "Statut",
+    "price": "Prix Total",
+    "actions": "Actions"
+  },
+  "labels": {
+    "individual": "Client Individuel",
+    "location": "Aéroport Casablanca",
+    "duration": "5 Jours de location",
+    "paid": "Payé",
+    "showing": "AFFICHAGE DE {{count}} SUR {{total}} RÉSERVATIONS"
+  }
+}

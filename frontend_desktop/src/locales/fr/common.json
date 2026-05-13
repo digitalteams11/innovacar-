@@ -1,0 +1,56 @@
+{
+  "sidebar": {
+    "dashboard": "Tableau de bord",
+    "reservations": "Réservations",
+    "vehicles": "Véhicules",
+    "clients": "Clients",
+    "contracts": "Contrats",
+    "payments": "Paiements",
+    "invoices": "Factures",
+    "agency": "Agence",
+    "employees": "Employés",
+    "reports": "Rapports",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "needHelp": "Besoin d'aide ?",
+    "contactSupport": "Contactez le support",
+    "contactUs": "Nous contacter"
+  },
+  "navbar": {
+    "search": "Rechercher une réservation, un véhicule...",
+    "admin": "Admin",
+    "notifications": "Notifications",
+    "messages": "Messages"
+  },
+  "actions": {
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "view": "Voir",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "export": "Exporter",
+    "import": "Importer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "confirm": "Confirmer"
+  },
+  "status": {
+    "available": "Disponible",
+    "rented": "Loué",
+    "maintenance": "Maintenance",
+    "confirmed": "Confirmée",
+    "pending": "En attente",
+    "cancelled": "Annulée",
+    "completed": "Terminé",
+    "failed": "Échoué"
+  },
+  "messages": {
+    "success": "Succès",
+    "error": "Erreur",
+    "loading": "Chargement...",
+    "noData": "Aucune donnée disponible"
+  }
+}

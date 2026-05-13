@@ -1,0 +1,36 @@
+{
+  "title": "Dashboard Overview",
+  "stats": {
+    "reservations": "Reservations (Month)",
+    "availableVehicles": "Available Vehicles",
+    "revenue": "Revenue",
+    "activeClients": "Active Clients",
+    "vsLastMonth": "vs last month"
+  },
+  "charts": {
+    "reservationsOverview": "Reservations Overview",
+    "revenueOverview": "Revenue Overview",
+    "distribution": "Booking Distribution",
+    "thisMonth": "This Month",
+    "lastMonth": "Last Month",
+    "year": "Year",
+    "confirmed": "Confirmed",
+    "pending": "Pending",
+    "cancelled": "Cancelled"
+  },
+  "recentBookings": {
+    "title": "Recent Bookings",
+    "viewAll": "View All"
+  },
+  "vehicles": {
+    "title": "Vehicles",
+    "viewAll": "View All",
+    "table": {
+      "vehicle": "Vehicle",
+      "category": "Category",
+      "plate": "Plate",
+      "status": "Status",
+      "availability": "Availability"
+    }
+  }
+}

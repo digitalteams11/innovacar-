@@ -28,4 +28,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
     /** Count total vehicles per tenant. */
     long countByTenantId(Long tenantId);
+
+    /** GPS-enabled vehicles for a tenant. */
+    List<Vehicle> findAllByTenantIdAndGpsEnabledTrue(Long tenantId);
+
+    /** Find vehicle by GPS device ID within a tenant. */
+    Optional<Vehicle> findByGpsDeviceIdAndTenantId(String gpsDeviceId, Long tenantId);
 }

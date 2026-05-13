@@ -1,0 +1,28 @@
+{
+  "title": "Parc Automobile",
+  "subtitle": "Gérez votre flotte, la disponibilité et l'état de maintenance.",
+  "export": "Exporter la flotte",
+  "add": "Ajouter un véhicule",
+  "search": "Rechercher par modèle, marque ou plaque...",
+  "filters": {
+    "all": "Tous les véhicules",
+    "available": "Disponibles",
+    "rented": "Loués",
+    "maintenance": "Maintenance"
+  },
+  "table": {
+    "vehicle": "Véhicule",
+    "details": "Détails",
+    "pricing": "Tarification",
+    "status": "Statut",
+    "actions": "Actions"
+  },
+  "labels": {
+    "automatic": "Automatique",
+    "manual": "Manuelle",
+    "petrol": "Essence",
+    "diesel": "Diesel",
+    "perDay": "par jour",
+    "manage": "Gérer"
+  }
+}

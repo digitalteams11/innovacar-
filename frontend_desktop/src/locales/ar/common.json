@@ -1,0 +1,56 @@
+{
+  "sidebar": {
+    "dashboard": "لوحة القيادة",
+    "reservations": "الحجوزات",
+    "vehicles": "المركبات",
+    "clients": "العملاء",
+    "contracts": "العقود",
+    "payments": "المدفوعات",
+    "invoices": "الفواتير",
+    "agency": "الوكالة",
+    "employees": "الموظفين",
+    "reports": "التقارير",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "needHelp": "هل تحتاج لمساعدة؟",
+    "contactSupport": "اتصل بالدعم",
+    "contactUs": "اتصل بنا"
+  },
+  "navbar": {
+    "search": "ابحث عن حجز، مركبة...",
+    "admin": "مسؤول",
+    "notifications": "التنبيهات",
+    "messages": "الرسائل"
+  },
+  "actions": {
+    "add": "إضافة",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "view": "عرض",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "export": "تصدير",
+    "import": "استيراد",
+    "search": "بحث",
+    "filter": "تصفية",
+    "next": "التالي",
+    "previous": "السابق",
+    "confirm": "تأكيد"
+  },
+  "status": {
+    "available": "متاح",
+    "rented": "مؤجر",
+    "maintenance": "صيانة",
+    "confirmed": "مؤكد",
+    "pending": "قيد الانتظار",
+    "cancelled": "ملغي",
+    "completed": "مكتمل",
+    "failed": "فاشل"
+  },
+  "messages": {
+    "success": "تم بنجاح",
+    "error": "خطأ",
+    "loading": "جاري التحميل...",
+    "noData": "لا توجد بيانات متاحة"
+  }
+}

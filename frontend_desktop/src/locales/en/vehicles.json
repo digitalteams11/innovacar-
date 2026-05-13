@@ -1,0 +1,28 @@
+{
+  "title": "Vehicle Fleet",
+  "subtitle": "Manage your rental fleet, availability and maintenance status.",
+  "export": "Export Fleet",
+  "add": "Add Vehicle",
+  "search": "Search by model, brand, or plate...",
+  "filters": {
+    "all": "All Vehicles",
+    "available": "Available",
+    "rented": "Rented",
+    "maintenance": "Maintenance"
+  },
+  "table": {
+    "vehicle": "Vehicle",
+    "details": "Details",
+    "pricing": "Pricing",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "labels": {
+    "automatic": "Automatic",
+    "manual": "Manual",
+    "petrol": "Petrol",
+    "diesel": "Diesel",
+    "perDay": "per day",
+    "manage": "Manage"
+  }
+}

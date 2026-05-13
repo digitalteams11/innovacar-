@@ -1,7 +1,0 @@
-com\carrental\service\PaymentServiceTest.class
-com\carrental\service\ReservationServiceTest.class
-com\carrental\service\UserServiceTest.class
-com\carrental\service\SubscriptionServiceTest.class
-com\carrental\security\JwtTokenProviderTest.class
-com\carrental\service\DashboardServiceTest.class
-com\carrental\service\VehicleServiceTest.class

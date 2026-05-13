@@ -38,6 +38,26 @@ public class Tenant {
     @Column
     private LocalDate subscriptionEndDate;
 
+    /** Agency address */
+    @Column
+    private String address;
+
+    /** Agency phone */
+    @Column
+    private String phone;
+
+    /** Tax ID */
+    @Column(name = "tax_id")
+    private String taxId;
+
+    /** City */
+    @Column
+    private String city;
+
+    /** Country */
+    @Column
+    private String country;
+
     /**
      * Checks if the subscription is currently active and not expired.
      */
