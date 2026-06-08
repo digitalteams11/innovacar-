@@ -1,22 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
-import { 
-  LayoutDashboard, Car, Calendar, Users, CreditCard, 
-  FileText, BarChart3, Settings, LogOut, Search, Bell, 
-  Menu, X, Info, Mail
+import {
+  LayoutDashboard, Car, Calendar, Users, CreditCard,
+  FileText, BarChart3, Settings, LogOut, Search, Bell,
+  X, Info, Mail, MoreHorizontal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
 
 const SidebarItem = ({ to, icon: Icon, label, active }: any) => (
-  <Link 
-    to={to} 
+  <Link
+    to={to}
     className={`flex items-center gap-3 px-4 py-3 mx-3 rounded-xl transition-all duration-200 relative group ${
-      active 
-        ? 'text-white bg-white/8' 
+      active
+        ? 'text-white bg-white/8'
         : 'text-slate-400 hover:text-white hover:bg-white/5'
     }`}
   >
@@ -28,16 +28,39 @@ const SidebarItem = ({ to, icon: Icon, label, active }: any) => (
   </Link>
 );
 
+// Bottom nav item component
+const BottomNavItem = ({ to, icon: Icon, label, active }: any) => (
+  <Link
+    to={to}
+    className={`bottom-nav-item ${active ? 'active' : ''}`}
+  >
+    <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+    <span className="nav-label">{label}</span>
+  </Link>
+);
+
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
 
   const handleAction = (label: string) => {
     showToast(t('toast.success', { action: label }));
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const menuItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
@@ -53,9 +76,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/settings', icon: Settings, label: t('nav.settings') },
   ];
 
+  // Primary items for bottom nav (most used)
+  const primaryNavItems = [
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/reservations', icon: Calendar, label: t('nav.reservations') },
+    { to: '/vehicles', icon: Car, label: t('nav.vehicles') },
+    { to: '/clients', icon: Users, label: t('nav.clients') },
+  ];
+
+  // More menu items (everything else)
+  const moreMenuItems = menuItems.filter(
+    item => !primaryNavItems.some(p => p.to === item.to)
+  );
+
   return (
     <div className="min-h-screen bg-[#f5f5f0] flex">
-      {/* Sidebar Desktop */}
+      {/* ===== DESKTOP SIDEBAR ===== */}
       <aside className="hidden lg:flex flex-col w-[260px] bg-[#0b1437] fixed inset-y-0 z-50 shadow-2xl">
         <div className="p-6 mb-2">
           <div className="flex items-center gap-3">
@@ -71,16 +107,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 overflow-y-auto no-scrollbar py-2 space-y-0.5">
           {menuItems.map((item) => (
-            <SidebarItem 
-              key={item.to} 
-              {...item} 
-              active={location.pathname === item.to} 
+            <SidebarItem
+              key={item.to}
+              {...item}
+              active={location.pathname === item.to}
             />
           ))}
         </nav>
 
         {/* Support Widget */}
-        <div 
+        <div
           onClick={() => handleAction(t('layout.needHelp'))}
           className="p-5 mb-5 mx-4 bg-[#0f1b3d] rounded-2xl relative overflow-hidden group cursor-pointer border border-white/5"
         >
@@ -97,97 +133,171 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* ===== MAIN CONTENT AREA ===== */}
       <div className="flex-1 lg:ml-[260px] flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="h-[76px] px-6 flex items-center justify-between sticky top-0 z-40">
+        <header className="h-[56px] lg:h-[76px] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-40">
           <div className="absolute inset-0 bg-[#f5f5f0]/70 backdrop-blur-2xl border-b border-[#e8e6e1]/60"></div>
-          <div className="relative flex items-center gap-4 w-full">
-            <button 
-              className="lg:hidden p-2.5 text-[#1e293b] bg-white rounded-xl shadow-soft border border-[#e8e6e1]/80" 
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu size={18} />
-            </button>
+          <div className="relative flex items-center gap-3 w-full">
+            {/* Logo on mobile (no hamburger) */}
+            <div className="lg:hidden flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-accent-400 flex items-center justify-center">
+                <Car size={16} className="text-[#0b1437]" strokeWidth={2.5} />
+              </div>
+              <span className="text-sm font-bold text-[#1e293b]">RentCar</span>
+            </div>
             <div className="hidden md:flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl shadow-soft border border-[#e8e6e1]/80 w-[360px] group focus-within:ring-2 ring-brand-100/50 transition-all">
               <Search size={16} className="text-slate-400 group-focus-within:text-brand-500 transition-colors" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder={t('layout.searchPlaceholder')}
                 className="bg-transparent border-none outline-none text-sm font-normal w-full text-[#1e293b] placeholder:text-slate-400"
               />
             </div>
           </div>
 
-          <div className="relative flex items-center gap-3 bg-white p-1.5 px-3 rounded-xl shadow-soft border border-[#e8e6e1]/80">
-            <ThemeToggle />
-            <LanguageSwitcher />
-            <button 
-              onClick={() => handleAction(t('layout.notifications'))}
-              className="relative text-slate-400 hover:text-brand-500 transition-all active:scale-90 p-2 hover:bg-slate-50 rounded-lg"
-            >
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger-500 rounded-full border-2 border-white"></span>
-            </button>
-            <button 
+          <div className="relative flex items-center gap-2 lg:gap-3 bg-white p-1.5 px-2 lg:px-3 rounded-xl shadow-soft border border-[#e8e6e1]/80">
+            <div className="hidden lg:block">
+              <ThemeToggle />
+            </div>
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
+            </div>
+            <div ref={notifRef} className="relative">
+              <button
+                onClick={() => setNotifOpen(!notifOpen)}
+                className="relative text-slate-400 hover:text-brand-500 transition-all active:scale-90 p-2 hover:bg-slate-50 rounded-lg"
+              >
+                <Bell size={18} />
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-elevated border border-[#e8e6e1]/80 z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#e8e6e1]/60 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-[#1e293b]">{t('layout.notifications')}</h3>
+                    <button onClick={() => setNotifOpen(false)} className="text-slate-400 hover:text-[#1e293b] transition-colors">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    <div className="text-center py-6 text-slate-400 text-sm">
+                      <Bell size={24} className="mx-auto mb-2 opacity-30" />
+                      <p>No new notifications</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <button
               onClick={() => handleAction(t('layout.messages'))}
-              className="text-slate-400 hover:text-brand-500 transition-all active:scale-90 p-2 hover:bg-slate-50 rounded-lg"
+              className="hidden sm:flex text-slate-400 hover:text-brand-500 transition-all active:scale-90 p-2 hover:bg-slate-50 rounded-lg"
             >
               <Mail size={18} />
             </button>
-            <div className="h-5 w-px bg-[#e8e6e1] mx-1"></div>
-            <div 
+            <div className="h-5 w-px bg-[#e8e6e1] mx-1 hidden sm:block"></div>
+            <div
               onClick={() => handleAction(t('layout.profileMenu'))}
-              className="flex items-center gap-2.5 cursor-pointer group hover:bg-slate-50/80 p-1.5 pr-2.5 rounded-xl transition-all"
+              className="flex items-center gap-2 cursor-pointer group hover:bg-slate-50/80 p-1 pr-2 rounded-xl transition-all"
             >
-              <img 
-                src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" 
-                alt="Profile" 
+              <img
+                src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100"
+                alt="Profile"
                 className="w-8 h-8 rounded-full object-cover border border-white shadow-sm"
               />
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-semibold text-[#1e293b] group-hover:text-brand-600 transition-colors">Yassine Admin</p>
+                <p className="text-xs font-semibold text-[#1e293b] group-hover:text-brand-600 transition-colors truncate max-w-[120px]">{user?.email || 'Admin'}</p>
                 <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">{t('layout.admin')}</p>
               </div>
             </div>
+            <div className="h-5 w-px bg-[#e8e6e1] mx-1 hidden sm:block"></div>
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 text-slate-400 hover:text-rose-500 transition-all active:scale-90 p-2 hover:bg-rose-50 rounded-lg"
+              title={t('layout.logout')}
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline text-xs font-medium">{t('layout.logout')}</span>
+            </button>
           </div>
         </header>
 
-        {/* Content */}
-        <main className="p-6 pt-2 flex-1">
+        {/* Content - add bottom padding on mobile for bottom nav */}
+        <main className="p-3 sm:p-4 lg:p-6 pt-3 sm:pt-4 flex-1 pb-20 lg:pb-6">
           {children}
         </main>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
+      {/* ===== MOBILE BOTTOM NAVIGATION ===== */}
+      <nav className="bottom-nav lg:hidden flex items-center justify-around px-1">
+        {primaryNavItems.map((item) => (
+          <BottomNavItem
+            key={item.to}
+            {...item}
+            active={location.pathname === item.to}
+          />
+        ))}
+        {/* More button - opens sheet with remaining items */}
+        <button
+          onClick={() => setIsMoreMenuOpen(true)}
+          className={`bottom-nav-item ${isMoreMenuOpen ? 'active' : ''}`}
+        >
+          <MoreHorizontal size={22} />
+          <span className="nav-label">More</span>
+        </button>
+      </nav>
+
+      {/* ===== MOBILE "MORE" MENU SHEET ===== */}
+      {isMoreMenuOpen && (
         <>
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] lg:hidden animate-in fade-in duration-300" onClick={() => setIsMobileMenuOpen(false)}></div>
-          <aside className="fixed inset-y-0 left-0 w-72 bg-[#0b1437] z-[70] lg:hidden flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
-             <div className="p-6 flex justify-between items-center text-white border-b border-white/5">
-                <div className="flex items-center gap-2">
-                   <div className="w-9 h-9 rounded-lg bg-accent-400 flex items-center justify-center">
-                     <Car size={18} className="text-[#0b1437]" />
-                   </div>
-                   <span className="text-lg font-bold tracking-tight">RentCar</span>
-                </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><X size={22} /></button>
-             </div>
-             <nav className="flex-1 py-4 space-y-0.5 overflow-y-auto no-scrollbar">
-                {menuItems.map((item) => (
-                  <SidebarItem key={item.to} {...item} active={location.pathname === item.to} />
-                ))}
-              </nav>
-              <div className="p-6 mt-auto">
-                 <button 
-                  onClick={() => logout()}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 text-white rounded-xl font-semibold text-sm hover:bg-danger-500/90 transition-all duration-300"
-                 >
-                    <LogOut size={18} />
-                    {t('layout.logout')}
-                 </button>
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] lg:hidden"
+            onClick={() => setIsMoreMenuOpen(false)}
+          ></div>
+          <div className="fixed bottom-[68px] left-3 right-3 z-[70] lg:hidden">
+            <div className="bg-white rounded-2xl shadow-elevated border border-[#e8e6e1]/80 overflow-hidden max-h-[55vh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#e8e6e1]/60">
+                <span className="text-sm font-bold text-[#1e293b]">Menu</span>
+                <button
+                  onClick={() => setIsMoreMenuOpen(false)}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X size={16} className="text-slate-400" />
+                </button>
               </div>
-          </aside>
+              {/* Grid of menu items */}
+              <div className="p-3 grid grid-cols-3 gap-2 overflow-y-auto">
+                {moreMenuItems.map((item) => {
+                  const isActive = location.pathname === item.to;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setIsMoreMenuOpen(false)}
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-brand-50 text-brand-500'
+                          : 'bg-[#f5f5f0] text-slate-500 hover:bg-slate-100 hover:text-[#1e293b]'
+                      }`}
+                    >
+                      <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                      <span className="text-[10px] font-medium text-center leading-tight">{item.label}</span>
+                    </Link>
+                  );
+                })}
+                {/* Logout */}
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    logout();
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all"
+                >
+                  <LogOut size={18} />
+                  <span className="text-[10px] font-medium text-center leading-tight">{t('layout.logout')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </>
       )}
     </div>

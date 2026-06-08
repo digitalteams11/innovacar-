@@ -54,7 +54,7 @@ export default function Reports() {
         <p className="text-slate-500 font-normal text-sm mt-0.5">{t('reports.subtitle') || 'Business analytics and insights'}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <div className="card-premium flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center text-white">
             <Car size={22} />
@@ -93,7 +93,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <div className="card-premium">
           <h3 className="text-base font-bold text-[#1e293b] mb-4">Revenue Overview</h3>
           <div className="h-[250px]">

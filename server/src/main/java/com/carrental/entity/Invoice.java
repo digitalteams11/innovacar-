@@ -31,8 +31,12 @@ public class Invoice {
     @Column(name = "invoice_number", nullable = false, unique = true, length = 50)
     private String invoiceNumber;
 
-    @Column(name = "client_name", nullable = false, length = 150)
+    @Column(name = "client_name", length = 150)
     private String clientName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    private Client client;
 
     @Column(name = "issue_date", nullable = false)
     private LocalDate issueDate;

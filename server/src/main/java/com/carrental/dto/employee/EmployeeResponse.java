@@ -23,6 +23,8 @@ public class EmployeeResponse {
     private LocalDate     hireDate;
     private EmployeeStatus status;
     private Long          tenantId;
+    private Long          userId;
+    private Boolean       loginEnabled;
 
     // ── Static factory ───────────────────────────────────────────────────────
 
@@ -37,6 +39,8 @@ public class EmployeeResponse {
                 .hireDate(employee.getHireDate())
                 .status(employee.getStatus())
                 .tenantId(employee.getTenant().getId())
+                .userId(employee.getUser() != null ? employee.getUser().getId() : null)
+                .loginEnabled(employee.getUser() != null ? employee.getUser().getAccountEnabled() : false)
                 .build();
     }
 }

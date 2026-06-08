@@ -3,6 +3,7 @@ package com.carrental.security;
 import com.carrental.entity.User;
 import com.carrental.repository.UserRepository;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +27,10 @@ import java.io.IOException;
  * <p>Multi-tenancy enforcement: the tenantId embedded in the JWT is stored in a
  * thread-local {@link TenantContext} so that downstream service/repository
  * calls can automatically scope queries to the correct tenant.
+ *
+ * <p>Token expiry detection: when an access token is expired, the response
+ * includes a {@code Token-Expired: true} header so the client can trigger
+ * a refresh token flow instead of immediately redirecting to login.
  */
 @Slf4j
 @Component
@@ -43,27 +48,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = extractToken(request);
 
-        if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+        if (StringUtils.hasText(token)) {
             try {
-                Claims claims   = jwtTokenProvider.parseClaims(token);
-                String email    = claims.getSubject();
-                Long   tenantId = claims.get("tenantId", Long.class);
+                if (jwtTokenProvider.validateAccessToken(token)) {
+                    Claims claims   = jwtTokenProvider.parseClaims(token);
+                    String email    = claims.getSubject();
+                    Long   tenantId = claims.get("tenantId", Long.class);
 
-                // Store tenant context for downstream use
-                TenantContext.setCurrentTenantId(tenantId);
+                    // Store tenant context for downstream use
+                    TenantContext.setCurrentTenantId(tenantId);
 
-                // Load user scoped to the tenant extracted from the token
-                User user = userRepository.findByEmailAndTenantId(email, tenantId)
-                        .orElse(null);
+                    // Load user scoped to the tenant extracted from the token
+                    User user = userRepository.findByEmailAndTenantId(email, tenantId)
+                            .orElse(null);
 
-                if (user != null) {
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    user, null, user.getAuthorities());
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    if (user != null) {
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        user, null, user.getAuthorities());
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
                 }
+            } catch (ExpiredJwtException e) {
+                // Token is expired — signal to frontend for refresh
+                response.setHeader("Token-Expired", "true");
+                log.debug("Expired JWT from {}: {}", request.getRequestURI(), e.getMessage());
             } catch (Exception ex) {
                 log.error("Could not set user authentication: {}", ex.getMessage());
             }
@@ -80,9 +91,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     private String extractToken(HttpServletRequest request) {
+        // Check Authorization header first
         String header = request.getHeader("Authorization");
         if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
             return header.substring(7);
+        }
+        // Fallback: check query parameter (needed for SSE EventSource which can't set headers)
+        String param = request.getParameter("token");
+        if (StringUtils.hasText(param)) {
+            return param;
         }
         return null;
     }

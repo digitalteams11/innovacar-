@@ -2,10 +2,14 @@ package com.carrental.service;
 
 import com.carrental.dto.payment.PaymentResponse;
 import com.carrental.entity.Payment;
+import com.carrental.entity.PaymentMethod;
+import com.carrental.entity.PaymentStatus;
+import com.carrental.entity.PaymentType;
 import com.carrental.entity.Reservation;
 import com.carrental.entity.Tenant;
 import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.PaymentRepository;
+import com.carrental.repository.ReservationRepository;
 import com.carrental.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +30,7 @@ import static org.mockito.Mockito.*;
 class PaymentServiceTest {
 
     @Mock private PaymentRepository paymentRepository;
+    @Mock private ReservationRepository reservationRepository;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -45,9 +50,13 @@ class PaymentServiceTest {
 
         payment = Payment.builder()
                 .id(PAYMENT_ID)
+                .paymentNumber("RES-" + RESERVATION_ID)
                 .reservation(reservation)
                 .amount(new BigDecimal("150.00"))
-                .paid(false)
+                .paymentDate(java.time.LocalDateTime.now())
+                .paymentMethod(PaymentMethod.CASH)
+                .status(PaymentStatus.PENDING)
+                .type(PaymentType.RENTAL)
                 .tenant(tenant)
                 .build();
     }
@@ -84,6 +93,9 @@ class PaymentServiceTest {
                 .thenReturn(Optional.of(payment));
                 
         when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(paymentRepository.sumCollectedAmountByTenantIdAndReservationId(TENANT_ID, RESERVATION_ID))
+                .thenReturn(new BigDecimal("150.00"));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(i -> i.getArgument(0));
 
         PaymentResponse response = paymentService.markAsPaid(RESERVATION_ID);
 
@@ -93,7 +105,7 @@ class PaymentServiceTest {
 
     @Test
     void markAsPaid_failsIfAlreadyPaid() {
-        payment.setPaid(true);
+        payment.setStatus(PaymentStatus.PAID);
         when(paymentRepository.findByReservationIdAndTenantId(RESERVATION_ID, TENANT_ID))
                 .thenReturn(Optional.of(payment));
 

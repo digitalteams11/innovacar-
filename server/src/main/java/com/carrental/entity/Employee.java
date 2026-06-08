@@ -30,7 +30,7 @@ public class Employee {
     @Column(nullable = false, length = 150)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String email;
 
     @Column(length = 50)
@@ -48,6 +48,10 @@ public class Employee {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EmployeeStatus status;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true)
+    private User user;
 
     // ── Multi-tenancy link ──────────────────────────────────────────────────
 

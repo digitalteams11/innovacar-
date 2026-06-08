@@ -119,26 +119,26 @@ export default function Contracts() {
 
   return (
     <div className="space-y-5 animate-fade">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-[#1e293b]">{t('contracts.title')}</h1>
           <p className="text-slate-500 font-normal text-sm mt-0.5">{t('contracts.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={exportCSV} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button onClick={exportCSV} className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-xs sm:text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
             <Download size={18} /> {t('contracts.export')}
           </button>
-          <button onClick={openCreate} className="flex items-center gap-2 px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
+          <button onClick={openCreate} className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-xs sm:text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
             <Plus size={18} /> {t('contracts.newContract')}
           </button>
         </div>
       </div>
 
-      <div className="card-premium flex flex-col md:flex-row md:items-center gap-3 p-3">
-        <div className="flex p-1 bg-[#f5f5f0] rounded-xl">
+      <div className="card-premium flex flex-col sm:flex-row sm:items-center gap-3 p-3">
+        <div className="flex p-1 bg-[#f5f5f0] rounded-xl overflow-x-auto no-scrollbar w-full sm:w-auto">
           {tabs.map((tab) => (
             <button key={tab.key} onClick={() => { setActiveTab(tab.key); showToast(t('toast.filterApplied', { action: tab.label })); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 ${activeTab === tab.key ? 'bg-white text-brand-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all active:scale-95 whitespace-nowrap flex-shrink-0 ${activeTab === tab.key ? 'bg-white text-brand-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               {tab.label}
             </button>
           ))}
@@ -218,11 +218,11 @@ export default function Contracts() {
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Contract Number *</label><input type="text" value={form.contractNumber} onChange={(e) => setForm({ ...form, contractNumber: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('contracts.client')} *</label><input type="text" value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('contracts.vehicle')} *</label><input type="text" value={form.vehicleMarque} onChange={(e) => setForm({ ...form, vehicleMarque: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Start Date *</label><input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">End Date *</label><input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('contracts.status')}</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
                 <option value="ACTIVE">{t('contracts.active')}</option><option value="PENDING">{t('contracts.pending')}</option><option value="COMPLETED">{t('contracts.completed')}</option><option value="CANCELLED">{t('contracts.cancelled')}</option>

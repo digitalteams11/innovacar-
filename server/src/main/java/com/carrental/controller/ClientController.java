@@ -61,7 +61,7 @@ public class ClientController {
      * Registers a new client in the caller's tenant. ADMIN-only.
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('CREATE_CLIENT')")
     public ResponseEntity<ClientResponse> createClient(
             @Valid @RequestBody CreateClientRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -75,7 +75,7 @@ public class ClientController {
      * ADMIN-only.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('EDIT_CLIENT')")
     public ResponseEntity<ClientResponse> updateClient(
             @PathVariable Long id,
             @Valid @RequestBody UpdateClientRequest request) {
@@ -88,9 +88,23 @@ public class ClientController {
      * Hard-deletes a client. ADMIN-only.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('DELETE_CLIENT')")
     public ResponseEntity<Void> deleteClient(@PathVariable Long id) {
         clientService.deleteClient(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Returns client balance summary: total rentals, total paid, remaining balance,
+     * open invoices count, active contracts count.
+     */
+    @GetMapping("/{id}/balance")
+    public ResponseEntity<java.util.Map<String, Object>> getClientBalance(@PathVariable Long id) {
+        return ResponseEntity.ok(clientService.getClientBalance(id));
+    }
+
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<java.util.Map<String, Object>> getClientProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(clientService.getClientProfile(id));
     }
 }

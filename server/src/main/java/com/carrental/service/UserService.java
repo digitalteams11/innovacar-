@@ -142,6 +142,23 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
+        // Profile fields
+        if (StringUtils.hasText(request.getFirstName())) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (StringUtils.hasText(request.getLastName())) {
+            user.setLastName(request.getLastName());
+        }
+        if (StringUtils.hasText(request.getPhoneNumber())) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (StringUtils.hasText(request.getJobTitle())) {
+            user.setJobTitle(request.getJobTitle());
+        }
+        if (StringUtils.hasText(request.getAvatarUrl())) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+
         // Role change — only ADMINs can do this; controller layer enforces via @PreAuthorize
         if (request.getRole() != null) {
             user.setRole(request.getRole());
@@ -172,6 +189,30 @@ public class UserService {
         userRepository.delete(user);
         log.info("Admin [id={}] deleted user [id={}] from tenant [{}]",
                 requestingUserId, id, tenantId);
+    }
+
+    // ── Password Change ──────────────────────────────────────────────────────
+
+    @Transactional
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = fetchUserInTenant(userId);
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password changed for user [id={}] in tenant [{}]", userId, TenantContext.getCurrentTenantId());
+    }
+
+    @Transactional
+    public void adminResetPassword(Long userId, String newPassword) {
+        User user = fetchUserInTenant(userId);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Administrator reset password for user [id={}] in tenant [{}]",
+                userId, TenantContext.getCurrentTenantId());
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

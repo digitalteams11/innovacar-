@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Central Spring Security configuration.
@@ -36,6 +37,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final SubscriptionFilter      subscriptionFilter;
     private final UserDetailsServiceImpl  userDetailsService;
+
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.194.1:5174}")
+    private String allowedOrigins;
 
     // ── Password encoder ────────────────────────────────────────────────────
 
@@ -80,6 +84,7 @@ public class SecurityConfig {
             // Route-level access control
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
                 // Allow CORS preflight requests
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 // Actuator health (optional — safe to expose)
@@ -103,7 +108,10 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.addAllowedOriginPattern("*"); // Allow all origins for the Electron client
+        java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .forEach(configuration::addAllowedOrigin);
         configuration.addAllowedMethod("*");        // Allow all HTTP methods
         configuration.addAllowedHeader("*");        // Allow all headers
         configuration.setAllowCredentials(true);    // Allow credentials

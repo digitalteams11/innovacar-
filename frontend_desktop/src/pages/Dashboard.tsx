@@ -59,41 +59,39 @@ export default function Dashboard() {
   const totalVehicles = stats?.totalVehicles || 0;
   const rentedVehicles = stats?.rentedVehicles || 0;
   const totalRevenue = stats?.totalRevenue || 0;
+  const totalClients = stats?.totalClients || 0;
   const availableVehicles = totalVehicles - rentedVehicles;
 
   const revenueData = [
-    { name: 'Jan', revenue: 45000 },
-    { name: 'Feb', revenue: 52000 },
-    { name: 'Mar', revenue: 48000 },
-    { name: 'Apr', revenue: 61000 },
-    { name: 'May', revenue: 55000 },
-    { name: 'Jun', revenue: 67000 },
+    { name: 'This Month', revenue: stats?.monthlyRevenue || 0 },
+    { name: 'Total', revenue: totalRevenue },
   ];
 
-  const reservationData = [
-    { name: 'Mon', count: 12 },
-    { name: 'Tue', count: 18 },
-    { name: 'Wed', count: 15 },
-    { name: 'Thu', count: 22 },
-    { name: 'Fri', count: 30 },
-    { name: 'Sat', count: 25 },
-    { name: 'Sun', count: 14 },
-  ];
+  const reservationData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((name, index) => ({
+    name,
+    count: reservations.filter((res) => new Date(res.dateStart).getDay() === (index + 1) % 7).length,
+  }));
 
   const distributionData = [
-    { name: 'Economy', value: 45 },
-    { name: 'SUV', value: 25 },
-    { name: 'Luxury', value: 15 },
-    { name: 'Compact', value: 15 },
+    { name: t('dashboard.available'), value: availableVehicles },
+    { name: t('dashboard.rented'), value: rentedVehicles },
+    { name: t('dashboard.maintenance'), value: vehicles.filter((vehicle) => vehicle.statut !== 'AVAILABLE' && vehicle.statut !== 'RENTED').length },
+  ].filter((item) => item.value > 0);
+
+  const reservationStatusData = [
+    { name: t('dashboard.confirmed'), count: reservations.filter((res) => res.status === 'CONFIRMED').length },
+    { name: t('dashboard.pending'), count: reservations.filter((res) => res.status === 'PENDING').length },
+    { name: t('dashboard.cancelled'), count: reservations.filter((res) => res.status === 'CANCELLED').length },
   ];
+  const reservationStatusTotal = Math.max(reservationStatusData.reduce((sum, item) => sum + item.count, 0), 1);
 
   return (
     <div className="space-y-5 animate-fade">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard title={t('dashboard.reservationsThisMonth')} value={reservations.length} icon={Calendar} trend="up" trendValue="12.5" iconBg="bg-brand-500" onClick={() => navigate('/reservations')} />
         <KpiCard title={t('dashboard.availableVehicles')} value={availableVehicles} icon={Car} trend="up" trendValue="8.3" iconBg="bg-success-500" onClick={() => navigate('/vehicles')} />
         <KpiCard title={t('dashboard.revenue')} value={`${totalRevenue} DH`} icon={CreditCard} trend="up" trendValue="15.7" iconBg="bg-accent-500" onClick={() => navigate('/payments')} />
-        <KpiCard title={t('dashboard.activeClients')} value="312" icon={Users} trend="up" trendValue="10.1" iconBg="bg-[#1e293b]" onClick={() => navigate('/clients')} />
+        <KpiCard title={t('dashboard.activeClients')} value={totalClients} icon={Users} trend="up" trendValue="0" iconBg="bg-[#1e293b]" onClick={() => navigate('/clients')} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -207,15 +205,15 @@ export default function Dashboard() {
             <div className="space-y-2 mt-2">
                <div className="flex justify-between items-center text-[10px] font-medium hover:bg-[#f5f5f0] p-2 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-500"></div><span className="text-slate-500 tracking-tight">{t('dashboard.confirmed')}</span></div>
-                  <span className="text-[#1e293b]">65% (83)</span>
+                  <span className="text-[#1e293b]">{Math.round((reservationStatusData[0].count / reservationStatusTotal) * 100)}% ({reservationStatusData[0].count})</span>
                </div>
                <div className="flex justify-between items-center text-[10px] font-medium hover:bg-[#f5f5f0] p-2 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-accent-400"></div><span className="text-slate-500 tracking-tight">{t('dashboard.pending')}</span></div>
-                  <span className="text-[#1e293b]">20% (26)</span>
+                  <span className="text-[#1e293b]">{Math.round((reservationStatusData[1].count / reservationStatusTotal) * 100)}% ({reservationStatusData[1].count})</span>
                </div>
                <div className="flex justify-between items-center text-[10px] font-medium hover:bg-[#f5f5f0] p-2 rounded-xl transition-colors cursor-pointer">
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-danger-500"></div><span className="text-slate-500 tracking-tight">{t('dashboard.cancelled')}</span></div>
-                  <span className="text-[#1e293b]">15% (19)</span>
+                  <span className="text-[#1e293b]">{Math.round((reservationStatusData[2].count / reservationStatusTotal) * 100)}% ({reservationStatusData[2].count})</span>
                </div>
             </div>
           </div>

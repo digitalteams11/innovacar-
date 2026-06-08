@@ -3,11 +3,11 @@ package com.carrental.service;
 import com.carrental.dto.invoice.CreateInvoiceRequest;
 import com.carrental.dto.invoice.UpdateInvoiceRequest;
 import com.carrental.dto.invoice.InvoiceResponse;
-import com.carrental.entity.Invoice;
-import com.carrental.entity.InvoiceStatus;
-import com.carrental.entity.Tenant;
+import com.carrental.entity.*;
 import com.carrental.exception.ResourceNotFoundException;
+import com.carrental.repository.ClientRepository;
 import com.carrental.repository.InvoiceRepository;
+import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.TenantRepository;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +37,8 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final TenantRepository  tenantRepository;
+    private final ClientRepository  clientRepository;
+    private final PaymentRepository paymentRepository;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -82,15 +84,25 @@ public class InvoiceService {
                 ? request.getStatus()
                 : InvoiceStatus.PENDING;
 
-        Invoice invoice = invoiceRepository.save(Invoice.builder()
+        Invoice.InvoiceBuilder builder = Invoice.builder()
                 .invoiceNumber(request.getInvoiceNumber())
-                .clientName(request.getClientName())
                 .issueDate(request.getIssueDate())
                 .dueDate(request.getDueDate())
                 .amount(request.getAmount())
                 .status(status)
-                .tenant(tenant)
-                .build());
+                .tenant(tenant);
+
+        // Link to client if provided
+        if (request.getClientId() != null) {
+            Client client = clientRepository.findByIdAndTenantId(request.getClientId(), tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + request.getClientId()));
+            builder.client(client);
+            builder.clientName(client.getName());
+        } else if (StringUtils.hasText(request.getClientName())) {
+            builder.clientName(request.getClientName());
+        }
+
+        Invoice invoice = invoiceRepository.save(builder.build());
 
         log.info("Created invoice [id={}] '{}' in tenant [{}]",
                 invoice.getId(), invoice.getInvoiceNumber(), tenantId);
@@ -113,8 +125,14 @@ public class InvoiceService {
         if (StringUtils.hasText(request.getInvoiceNumber())) {
             invoice.setInvoiceNumber(request.getInvoiceNumber());
         }
-        if (StringUtils.hasText(request.getClientName())) {
-            invoice.setClientName(request.getClientName());
+        if (request.getClientId() != null) {
+            Long tenantId = TenantContext.getCurrentTenantId();
+            Client client = clientRepository.findByIdAndTenantId(request.getClientId(), tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + request.getClientId()));
+            invoice.setClient(client);
+            invoice.setClientName(client.getName());
+        } else if (request.getClientName() != null) {
+            invoice.setClientName(request.getClientName().isEmpty() ? null : request.getClientName());
         }
         if (request.getIssueDate() != null) {
             invoice.setIssueDate(request.getIssueDate());
@@ -161,9 +179,38 @@ public class InvoiceService {
         Invoice invoice = fetchInvoiceInTenant(id);
         invoice.setStatus(InvoiceStatus.PAID);
         Invoice saved = invoiceRepository.save(invoice);
+
+        // Auto-create a payment record for this invoice if none exists
+        Long tenantId = TenantContext.getCurrentTenantId();
+        var existingPayments = paymentRepository.findAllByTenantIdAndInvoiceIdOrderByPaymentDateDesc(tenantId, id);
+        if (existingPayments.isEmpty()) {
+            Tenant tenant = tenantRepository.findById(tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
+            Payment payment = Payment.builder()
+                    .paymentNumber(generatePaymentNumber())
+                    .amount(invoice.getAmount())
+                    .paymentDate(java.time.LocalDateTime.now())
+                    .paymentMethod(PaymentMethod.CASH)
+                    .status(PaymentStatus.PAID)
+                    .type(PaymentType.RENTAL)
+                    .invoice(invoice)
+                    .client(invoice.getClient())
+                    .tenant(tenant)
+                    .notes("Auto-generated from invoice payment")
+                    .build();
+            paymentRepository.save(payment);
+        }
+
         log.info("Marked invoice [id={}] as PAID in tenant [{}]",
-                id, TenantContext.getCurrentTenantId());
+                id, tenantId);
         return InvoiceResponse.from(saved);
+    }
+
+    private String generatePaymentNumber() {
+        String prefix = "PAY";
+        String year = String.valueOf(java.time.Year.now().getValue());
+        long count = paymentRepository.count() + 1;
+        return String.format("%s-%s-%05d", prefix, year, count);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

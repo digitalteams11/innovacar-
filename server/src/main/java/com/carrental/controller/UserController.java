@@ -1,6 +1,8 @@
 package com.carrental.controller;
 
+import com.carrental.dto.PasswordChangeRequest;
 import com.carrental.dto.user.CreateUserRequest;
+import com.carrental.dto.user.AdminPasswordResetRequest;
 import com.carrental.dto.user.UpdateUserRequest;
 import com.carrental.dto.user.UserResponse;
 import com.carrental.entity.Role;
@@ -15,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * User-management REST controller.
@@ -46,7 +49,7 @@ public class UserController {
      * Optional {@code role} query-param filters by role.
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
     public ResponseEntity<List<UserResponse>> listUsers(
             @RequestParam(required = false) Role role) {
 
@@ -64,7 +67,7 @@ public class UserController {
      * ADMINs can fetch any user in their tenant; employees can fetch only themselves.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES') or #id == authentication.principal.id")
     public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
@@ -75,7 +78,7 @@ public class UserController {
      * Create a new user inside the caller's tenant. ADMIN-only.
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
     public ResponseEntity<UserResponse> createUser(
             @Valid @RequestBody CreateUserRequest request) {
 
@@ -92,18 +95,37 @@ public class UserController {
      * silently ignored by the service when not performed by an ADMIN.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES') or #id == authentication.principal.id")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserRequest request,
             @AuthenticationPrincipal User caller) {
 
         // Non-admins cannot change roles — strip the field before forwarding
-        if (caller.getRole() != Role.ADMIN) {
+        if (caller.getRole() != Role.ADMIN && caller.getRole() != Role.AGENCY_OWNER) {
             request.setRole(null);
         }
 
         return ResponseEntity.ok(userService.updateUser(id, request));
+    }
+
+    // ── PUT /api/users/{id}/password ─────────────────────────────────────────
+
+    /**
+     * Change the current user's password.
+     * Requires the current password for verification.
+     */
+    @PutMapping("/{id}/password")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES') or #id == authentication.principal.id")
+    public ResponseEntity<Map<String, Object>> changePassword(
+            @PathVariable Long id,
+            @Valid @RequestBody PasswordChangeRequest request) {
+
+        userService.changePassword(id, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Password changed successfully"
+        ));
     }
 
     // ── DELETE /api/users/{id} ───────────────────────────────────────────────
@@ -112,12 +134,21 @@ public class UserController {
      * Hard-delete a user. ADMIN-only. Admins cannot delete themselves.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
     public ResponseEntity<Void> deleteUser(
             @PathVariable Long id,
             @AuthenticationPrincipal User caller) {
 
         userService.deleteUser(id, caller.getId());
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/admin-reset-password")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
+    public ResponseEntity<Map<String, Object>> adminResetPassword(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminPasswordResetRequest request) {
+        userService.adminResetPassword(id, request.getNewPassword());
+        return ResponseEntity.ok(Map.of("success", true, "message", "Password reset successfully"));
     }
 }

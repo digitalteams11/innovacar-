@@ -27,4 +27,29 @@ app:
   jwt:
     # 256-bit Base64-encoded secret (change in production!)
     secret: Y2FycmVudGFsLXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC1zaWduaW5nLTI1NmJpdHM=
-    expiration-ms: 86400000   # 24 h
+    expiration-ms: 900000         # 15 min access token
+    refresh-expiration-ms: 604800000  # 7 days refresh token
+
+  # ── Rate Limiting ────────────────────────────────────────────────────────────
+  rate-limit:
+    login:
+      max-attempts: 5
+      window-minutes: 15
+      lockout-minutes: 30
+    password-reset:
+      max-attempts: 3
+      window-minutes: 60
+    email-verification:
+      max-attempts: 5
+      window-minutes: 60
+
+  # ── Frontend URL for QR code generation ──────────────────────────────────────
+  frontend-url: "http://localhost:5173"
+  cors:
+    allowed-origins: "${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.194.1:5174}"
+
+  # ── Google OAuth ─────────────────────────────────────────────────────────────
+  google:
+    client-id: ""
+    # Configure your Google OAuth 2.0 client ID above for production use.
+    # Get one at: https://console.cloud.google.com/apis/credentials

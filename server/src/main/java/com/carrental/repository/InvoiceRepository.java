@@ -19,4 +19,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     /** All invoices of a specific status within a tenant — used for filtering. */
     List<Invoice> findAllByTenantIdAndStatus(Long tenantId, InvoiceStatus status);
+
+    /** All invoices for a specific client within a tenant. */
+    List<Invoice> findAllByTenantIdAndClientId(Long tenantId, Long clientId);
+
+    /** Tenant-scoped lookup by invoice number. */
+    Optional<Invoice> findByInvoiceNumberAndTenantId(String invoiceNumber, Long tenantId);
 }

@@ -61,7 +61,7 @@ public class EmployeeController {
      * Registers a new employee in the caller's tenant. ADMIN-only.
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
     public ResponseEntity<EmployeeResponse> createEmployee(
             @Valid @RequestBody CreateEmployeeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -75,7 +75,7 @@ public class EmployeeController {
      * ADMIN-only.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @PathVariable Long id,
             @Valid @RequestBody UpdateEmployeeRequest request) {
@@ -88,7 +88,7 @@ public class EmployeeController {
      * Hard-deletes an employee. ADMIN-only.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
     public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
         employeeService.deleteEmployee(id);
         return ResponseEntity.noContent().build();

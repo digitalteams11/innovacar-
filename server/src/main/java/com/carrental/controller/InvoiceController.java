@@ -62,7 +62,7 @@ public class InvoiceController {
      * Registers a new invoice in the caller's tenant. ADMIN-only.
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_INVOICES')")
     public ResponseEntity<InvoiceResponse> createInvoice(
             @Valid @RequestBody CreateInvoiceRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -76,7 +76,7 @@ public class InvoiceController {
      * ADMIN-only.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_INVOICES')")
     public ResponseEntity<InvoiceResponse> updateInvoice(
             @PathVariable Long id,
             @Valid @RequestBody UpdateInvoiceRequest request) {
@@ -89,7 +89,7 @@ public class InvoiceController {
      * Marks an invoice as PAID. ADMIN-only.
      */
     @PatchMapping("/{id}/pay")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_INVOICES')")
     public ResponseEntity<InvoiceResponse> markAsPaid(@PathVariable Long id) {
         return ResponseEntity.ok(invoiceService.markAsPaid(id));
     }
@@ -100,7 +100,7 @@ public class InvoiceController {
      * Hard-deletes an invoice. ADMIN-only.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_INVOICES')")
     public ResponseEntity<Void> deleteInvoice(@PathVariable Long id) {
         invoiceService.deleteInvoice(id);
         return ResponseEntity.noContent().build();

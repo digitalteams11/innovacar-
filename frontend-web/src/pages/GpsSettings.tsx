@@ -162,7 +162,7 @@ export default function GpsSettingsPage() {
         showToast(result.message || 'Connection failed', 'error');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Connection test failed';
+      const msg = (err as any).userMessage || 'Connection test failed';
       setTestResult({ success: false, message: msg, provider: settings.provider, devicesFound: 0, responseTime: '', errorCode: 'ERROR' });
       showToast(msg, 'error');
     } finally {
@@ -219,7 +219,7 @@ export default function GpsSettingsPage() {
       // Redirect to GPS Tracking after save
       setTimeout(() => navigate('/gps-tracking'), 1500);
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to save settings';
+      const msg = (err as any).userMessage || 'Failed to save settings';
       showToast(msg, 'error');
     } finally {
       setSaving(false);
@@ -237,7 +237,7 @@ export default function GpsSettingsPage() {
         showToast(data.message || 'Sync failed', 'error');
       }
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Device sync failed', 'error');
+      showToast((err as any).userMessage || 'Device sync failed', 'error');
     } finally {
       setSyncing(false);
     }
@@ -272,19 +272,19 @@ export default function GpsSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade max-w-6xl mx-auto">
+    <div className="space-y-6 animate-fade max-w-6xl mx-auto w-full p-3 sm:p-4 lg:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-[#1e293b]">GPS Integration Settings</h1>
-          <p className="text-slate-500 font-normal text-sm mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">GPS Integration Settings</h1>
+          <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">
             Configure your GPS provider credentials and manage fleet tracking
           </p>
         </div>
         {settings.hasCredentials && (
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-rose-600 bg-rose-50 rounded-xl text-sm font-medium hover:bg-rose-100 transition-all"
+            className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 text-rose-600 bg-rose-50 rounded-xl text-sm font-medium hover:bg-rose-100 transition-all"
           >
             <Trash2 size={16} />
             Remove Integration
@@ -293,13 +293,13 @@ export default function GpsSettingsPage() {
       </div>
 
       {/* Status Card */}
-      <div className="card-premium">
+      <div className="card-premium p-3 sm:p-5">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl ${statusConfig.bg} flex items-center justify-center`}>
               <StatusIcon size={24} className={statusConfig.color} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-bold text-[#1e293b]">Connection Status</h3>
               <p className="text-sm text-slate-400">{statusConfig.label}</p>
             </div>
@@ -309,7 +309,7 @@ export default function GpsSettingsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-[#f5f5f0] rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-400 mb-1">
               <Server size={14} />
@@ -358,7 +358,7 @@ export default function GpsSettingsPage() {
       </div>
 
       {/* Provider Selector */}
-      <div className="card-premium space-y-6">
+      <div className="card-premium space-y-6 p-3 sm:p-5">
         <div className="flex items-center gap-3 pb-5 border-b border-[#e8e6e1]/60">
           <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
             <Satellite size={20} className="text-brand-500" />
@@ -409,7 +409,7 @@ export default function GpsSettingsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className="block text-sm font-medium text-[#1e293b] mb-2">
               APP ID / Account ID
@@ -555,11 +555,11 @@ export default function GpsSettingsPage() {
       )}
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <button
           onClick={handleTestConnection}
           disabled={testing || !settings.provider}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl font-medium text-sm hover:bg-[#f5f5f0] hover:border-brand-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl font-medium text-sm hover:bg-[#f5f5f0] hover:border-brand-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
         >
           {testing ? <Loader2 size={16} className="animate-spin" /> : <Activity size={16} />}
           Test Connection
@@ -569,7 +569,7 @@ export default function GpsSettingsPage() {
           <button
             onClick={handleSyncDevices}
             disabled={syncing}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl font-medium text-sm hover:bg-[#f5f5f0] hover:border-brand-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl font-medium text-sm hover:bg-[#f5f5f0] hover:border-brand-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
           >
             {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Sync Devices
@@ -582,7 +582,7 @@ export default function GpsSettingsPage() {
           <button
             onClick={() => setShowSaveModal(true)}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50 w-full sm:w-auto"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             Save Configuration

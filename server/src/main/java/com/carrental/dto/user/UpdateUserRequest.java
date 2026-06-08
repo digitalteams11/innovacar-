@@ -22,4 +22,24 @@ public class UpdateUserRequest {
 
     /** Change the user's role. */
     private Role role;
+
+    /** First name */
+    @Size(max = 100)
+    private String firstName;
+
+    /** Last name */
+    @Size(max = 100)
+    private String lastName;
+
+    /** Phone number */
+    @Size(max = 32)
+    private String phoneNumber;
+
+    /** Job title */
+    @Size(max = 100)
+    private String jobTitle;
+
+    /** Avatar image URL */
+    @Size(max = 5000)
+    private String avatarUrl;
 }

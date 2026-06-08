@@ -24,10 +24,11 @@ class JwtTokenProviderTest {
     private static final String SECRET =
         "Y2FycmVudGFsLXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC1zaWduaW5nLTI1NmJpdHM=";
     private static final long EXP_MS = 86_400_000L;
+    private static final long REFRESH_EXP_MS = 604_800_000L;
 
     @BeforeEach
     void setUp() {
-        provider = new JwtTokenProvider(SECRET, EXP_MS);
+        provider = new JwtTokenProvider(SECRET, EXP_MS, REFRESH_EXP_MS);
     }
 
     private User buildUser() {

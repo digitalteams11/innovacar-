@@ -1,11 +1,16 @@
 package com.carrental.entity;
 
 /**
- * Lifecycle states of a rental contract.
+ * Complete lifecycle states of a rental contract.
  */
 public enum ContractStatus {
+    DRAFT,
+    PENDING_SIGNATURE,
+    PARTIALLY_SIGNED,
+    SIGNED,
     ACTIVE,
-    PENDING,
+    PAID,
     COMPLETED,
-    CANCELLED
+    CANCELLED,
+    EXPIRED
 }

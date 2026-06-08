@@ -18,6 +18,8 @@ public class UpdateInvoiceRequest {
 
     private String clientName;
 
+    private Long clientId;
+
     private LocalDate issueDate;
 
     private LocalDate dueDate;

@@ -29,7 +29,7 @@ export default function ContractDetails() {
   const [contract, setContract] = useState<ContractData | null>(null);
 
   // In a real app, this would be the actual public URL
-  const publicSignUrl = `${window.location.origin}/#/sign/${id}`;
+  const publicSignUrl = `${window.location.origin}/#/contract-sign/${id}/mock-token-${id}`;
 
   useEffect(() => {
     // Check if we have a saved version in localStorage
@@ -75,7 +75,7 @@ export default function ContractDetails() {
   return (
     <div className="space-y-6 animate-fade">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link to="/contracts" className="p-2 bg-white border border-[#e8e6e1] rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
             <ArrowLeft size={20} />
@@ -85,11 +85,11 @@ export default function ContractDetails() {
             <p className="text-slate-500 font-normal text-sm mt-0.5">Manage and track your digital agreement</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-xs sm:text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
             <Printer size={18} /> Print
           </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
+          <button className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-xs sm:text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
             <Download size={18} /> Export PDF
           </button>
         </div>
@@ -129,7 +129,7 @@ export default function ContractDetails() {
 
           {/* Details Card */}
           <div className="card-premium space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
               {/* Client Info */}
               <div className="space-y-4">
                 <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b pb-2">Client Details</h4>
@@ -167,7 +167,7 @@ export default function ContractDetails() {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-12">
+            <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-6 sm:gap-12">
                <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Total Amount</p>
                   <p className="text-2xl font-black text-brand-600">{contract.totalAmount} DH</p>
@@ -252,7 +252,7 @@ export default function ContractDetails() {
           <div className="card-premium">
              <h4 className="text-sm font-bold text-slate-900 mb-4">Quick Actions</h4>
              <div className="space-y-2">
-                <Link to={`/sign/${id}`} target="_blank" className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all group">
+                <Link to={`/contract-sign/${id}/mock-token-${id}`} target="_blank" className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all group">
                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center"><ExternalLink size={16} /></div>
                       <span className="text-sm font-medium text-slate-700">Preview as Client</span>
@@ -290,7 +290,7 @@ export default function ContractDetails() {
              </div>
              
              <div className="space-y-6 text-sm leading-relaxed">
-                <div className="grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                    <div className="space-y-1">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lessor</p>
                       <p className="font-bold">AutoLink Rental Solutions</p>

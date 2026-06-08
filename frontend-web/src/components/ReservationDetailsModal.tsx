@@ -1,9 +1,8 @@
-import React from 'react';
 import Modal from './Modal';
-import { 
-  User, Car, Calendar, CreditCard, Shield, 
-  MapPin, Clock, CheckCircle2, AlertCircle, 
-  FileText, Landmark, Phone, Mail
+import {
+  User, Car, Calendar, CreditCard,
+  MapPin, Clock, CheckCircle2,
+  FileText, Phone, Mail
 } from 'lucide-react';
 
 interface Reservation {

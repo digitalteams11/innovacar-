@@ -19,4 +19,13 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     /** All contracts of a specific status within a tenant — used for filtering. */
     List<Contract> findAllByTenantIdAndStatus(Long tenantId, ContractStatus status);
+
+    /** Find contract by its unique QR token (public signing link). */
+    Optional<Contract> findByQrToken(String qrToken);
+
+    /** Find contract by contract number. */
+    Optional<Contract> findByContractNumber(String contractNumber);
+
+    /** All contracts for a specific client within a tenant. */
+    List<Contract> findAllByTenantIdAndClientId(Long tenantId, Long clientId);
 }

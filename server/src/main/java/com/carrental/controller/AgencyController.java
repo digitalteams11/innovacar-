@@ -38,18 +38,22 @@ public class AgencyController {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Tenant not found with id: " + tenantId));
 
-        return ResponseEntity.ok(Map.of(
-                "id", tenant.getId(),
-                "name", tenant.getName() != null ? tenant.getName() : "",
-                "email", tenant.getEmail() != null ? tenant.getEmail() : "",
-                "address", tenant.getAddress() != null ? tenant.getAddress() : "",
-                "phone", tenant.getPhone() != null ? tenant.getPhone() : "",
-                "taxId", tenant.getTaxId() != null ? tenant.getTaxId() : "",
-                "city", tenant.getCity() != null ? tenant.getCity() : "",
-                "country", tenant.getCountry() != null ? tenant.getCountry() : "",
-                "subscriptionActive", tenant.isSubscriptionActive(),
-                "subscriptionEndDate", tenant.getSubscriptionEndDate() != null ? tenant.getSubscriptionEndDate().toString() : ""
-        ));
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("id", tenant.getId());
+        result.put("name", tenant.getName() != null ? tenant.getName() : "");
+        result.put("email", tenant.getEmail() != null ? tenant.getEmail() : "");
+        result.put("address", tenant.getAddress() != null ? tenant.getAddress() : "");
+        result.put("phone", tenant.getPhone() != null ? tenant.getPhone() : "");
+        result.put("taxId", tenant.getTaxId() != null ? tenant.getTaxId() : "");
+        result.put("city", tenant.getCity() != null ? tenant.getCity() : "");
+        result.put("country", tenant.getCountry() != null ? tenant.getCountry() : "");
+        result.put("logoUrl", tenant.getLogoUrl() != null ? tenant.getLogoUrl() : "");
+        result.put("agencySignature", tenant.getAgencySignature() != null ? tenant.getAgencySignature() : "");
+        result.put("agencyStampUrl", tenant.getAgencyStampUrl() != null ? tenant.getAgencyStampUrl() : "");
+        result.put("termsAndConditions", tenant.getTermsAndConditions() != null ? tenant.getTermsAndConditions() : "");
+        result.put("subscriptionActive", tenant.isSubscriptionActive());
+        result.put("subscriptionEndDate", tenant.getSubscriptionEndDate() != null ? tenant.getSubscriptionEndDate().toString() : "");
+        return ResponseEntity.ok(result);
     }
 
     // ── PUT /api/agency ──────────────────────────────────────────────────────
@@ -58,7 +62,7 @@ public class AgencyController {
      * Updates the current tenant's agency information. ADMIN-only.
      */
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_SETTINGS')")
     public ResponseEntity<Map<String, Object>> updateAgency(@RequestBody Map<String, String> updates) {
         Long tenantId = TenantContext.getCurrentTenantId();
         Tenant tenant = tenantRepository.findById(tenantId)
@@ -86,17 +90,33 @@ public class AgencyController {
         if (updates.containsKey("country")) {
             tenant.setCountry(updates.get("country"));
         }
+        if (updates.containsKey("logoUrl")) {
+            tenant.setLogoUrl(updates.get("logoUrl"));
+        }
+        if (updates.containsKey("agencySignature")) {
+            tenant.setAgencySignature(updates.get("agencySignature"));
+        }
+        if (updates.containsKey("agencyStampUrl")) {
+            tenant.setAgencyStampUrl(updates.get("agencyStampUrl"));
+        }
+        if (updates.containsKey("termsAndConditions")) {
+            tenant.setTermsAndConditions(updates.get("termsAndConditions"));
+        }
 
         Tenant saved = tenantRepository.save(tenant);
-        return ResponseEntity.ok(Map.of(
-                "id", saved.getId(),
-                "name", saved.getName() != null ? saved.getName() : "",
-                "email", saved.getEmail() != null ? saved.getEmail() : "",
-                "address", saved.getAddress() != null ? saved.getAddress() : "",
-                "phone", saved.getPhone() != null ? saved.getPhone() : "",
-                "taxId", saved.getTaxId() != null ? saved.getTaxId() : "",
-                "city", saved.getCity() != null ? saved.getCity() : "",
-                "country", saved.getCountry() != null ? saved.getCountry() : ""
-        ));
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("id", saved.getId());
+        result.put("name", saved.getName() != null ? saved.getName() : "");
+        result.put("email", saved.getEmail() != null ? saved.getEmail() : "");
+        result.put("address", saved.getAddress() != null ? saved.getAddress() : "");
+        result.put("phone", saved.getPhone() != null ? saved.getPhone() : "");
+        result.put("taxId", saved.getTaxId() != null ? saved.getTaxId() : "");
+        result.put("city", saved.getCity() != null ? saved.getCity() : "");
+        result.put("country", saved.getCountry() != null ? saved.getCountry() : "");
+        result.put("logoUrl", saved.getLogoUrl() != null ? saved.getLogoUrl() : "");
+        result.put("agencySignature", saved.getAgencySignature() != null ? saved.getAgencySignature() : "");
+        result.put("agencyStampUrl", saved.getAgencyStampUrl() != null ? saved.getAgencyStampUrl() : "");
+        result.put("termsAndConditions", saved.getTermsAndConditions() != null ? saved.getTermsAndConditions() : "");
+        return ResponseEntity.ok(result);
     }
 }

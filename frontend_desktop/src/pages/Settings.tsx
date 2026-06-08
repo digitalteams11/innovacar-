@@ -157,18 +157,18 @@ export default function Settings() {
         <p className="text-slate-500 font-normal text-sm mt-0.5">{t('settings.subtitle')}</p>
       </div>
 
-      <div className="card-premium p-2 flex gap-1 w-fit">
+      <div className="card-premium p-2 flex gap-1 w-full overflow-x-auto no-scrollbar max-w-full">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
               activeTab === tab.key
                 ? 'bg-brand-500 text-white shadow-md'
                 : 'text-slate-500 hover:text-[#1e293b] hover:bg-[#f5f5f0]'
             }`}
           >
-            <tab.icon size={17} />
+            <tab.icon className="w-4 h-4 sm:w-[17px] sm:h-[17px]" />
             {tab.label}
           </button>
         ))}
@@ -194,7 +194,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.fullName')}</label>
               <div className="relative">
@@ -245,10 +245,10 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
+          <div className="pt-4 border-t border-[#e8e6e1]/60 flex flex-col sm:flex-row justify-end">
             <button
               onClick={saveProfile}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all"
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-xs sm:text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all w-full sm:w-auto"
             >
               <Save size={16} />
               {t('settings.saveChanges')}
@@ -276,7 +276,7 @@ export default function Settings() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.currentPassword')}</label>
               <div className="relative">
@@ -318,10 +318,10 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
+          <div className="pt-4 border-t border-[#e8e6e1]/60 flex flex-col sm:flex-row justify-end">
             <button
               onClick={changePassword}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all"
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-xs sm:text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all w-full sm:w-auto"
             >
               <Lock size={16} />
               {t('settings.updatePassword')}
@@ -342,7 +342,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.agencyName')}</label>
               <div className="relative">
@@ -429,10 +429,10 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
+          <div className="pt-4 border-t border-[#e8e6e1]/60 flex flex-col sm:flex-row justify-end">
             <button
               onClick={saveAgency}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all"
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-xs sm:text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all w-full sm:w-auto"
             >
               <Save size={16} />
               {t('settings.saveChanges')}

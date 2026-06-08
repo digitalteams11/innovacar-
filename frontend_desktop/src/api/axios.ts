@@ -27,15 +27,23 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor to handle 401/403
+// Add a response interceptor to handle authentication failures.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      // Clear token and redirect to login if unauthorized
+    const featureLocked = error.response?.status === 403
+      && error.response?.data?.error === 'FEATURE_NOT_AVAILABLE';
+    if (error.response?.status === 401) {
+      // Clear token but don't redirect on public contract signing pages
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.dispatchEvent(new Event('auth-error'));
+      if (!window.location.hash.startsWith('#/contract-sign')) {
+        window.dispatchEvent(new Event('auth-error'));
+      }
+    }
+    if (featureLocked) {
+      error.userMessage = error.response?.data?.message;
+      error.feature = error.response?.data?.feature;
     }
     return Promise.reject(error);
   }

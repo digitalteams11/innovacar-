@@ -30,4 +30,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Tenant-scoped findById — prevents cross-tenant data leak. */
     Optional<User> findByIdAndTenantId(Long id, Long tenantId);
+
+    /** Lookup by Google OAuth ID. */
+    Optional<User> findByGoogleId(String googleId);
+
+    /** Check if Google ID exists. */
+    boolean existsByGoogleId(String googleId);
+
+    /** Lookup by phone number. */
+    Optional<User> findByPhoneNumber(String phoneNumber);
+
+    /** Check if phone number exists. */
+    boolean existsByPhoneNumber(String phoneNumber);
 }

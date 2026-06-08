@@ -3,6 +3,7 @@ package com.carrental.dto.employee;
 import com.carrental.entity.EmployeeStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -29,4 +30,8 @@ public class CreateEmployeeRequest {
     private LocalDate hireDate;
 
     private EmployeeStatus status;
+
+    @NotBlank(message = "A login password is required")
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    private String password;
 }

@@ -9,6 +9,12 @@ package com.carrental.entity;
  */
 public enum VehicleStatus {
     AVAILABLE,
+    RESERVED,
     RENTED,
+    IN_MAINTENANCE,
+    OUT_OF_SERVICE,
+    /**
+     * Legacy value retained for existing rows. New writes should use IN_MAINTENANCE.
+     */
     MAINTENANCE
 }

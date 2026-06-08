@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import {
   User, Lock, Building2, Mail, Phone, MapPin, Camera,
   Save, ShieldCheck, Briefcase, FileText, Globe,
-  Sun, Moon, Monitor, Palette
+  Sun, Moon, Monitor, Palette, Eye, EyeOff, Signature, Stamp, Image, FileCheck
+  , Bell, Server
 } from 'lucide-react';
+import SignaturePad from '../components/shared/SignaturePad';
 import { useTheme } from '../context/ThemeContext';
 
 interface ProfileData {
@@ -25,6 +28,10 @@ interface AgencyData {
   taxId: string;
   city: string;
   country: string;
+  logoUrl: string;
+  agencySignature: string;
+  agencyStampUrl: string;
+  termsAndConditions: string;
 }
 
 interface PasswordData {
@@ -33,22 +40,38 @@ interface PasswordData {
   confirm: string;
 }
 
+interface OperationalSettings {
+  currency: string;
+  language: string;
+  timezone: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUsername: string;
+  smtpPassword: string;
+  hasSmtpPassword: boolean;
+  smtpTls: boolean;
+  notificationInApp: boolean;
+  notificationEmail: boolean;
+  notificationPush: boolean;
+}
+
 export default function Settings() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { user, updateProfile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'agency' | 'appearance'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'agency' | 'operations' | 'appearance'>('profile');
   const { theme, setTheme, resolvedTheme } = useTheme();
 
-  const [profile, setProfile] = useState<ProfileData>(() => {
-    const saved = localStorage.getItem('user_profile');
-    return saved ? JSON.parse(saved) : {
-      fullName: 'Yassine Admin',
-      email: 'admin@loccar.com',
-      phone: '+212 600-000000',
-      jobTitle: 'Administrateur',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-    };
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const [profile, setProfile] = useState<ProfileData>({
+    fullName: '',
+    email: '',
+    phone: '',
+    jobTitle: '',
+    avatar: '',
   });
 
   const [agency, setAgency] = useState<AgencyData>({
@@ -59,7 +82,12 @@ export default function Settings() {
     taxId: '',
     city: '',
     country: '',
+    logoUrl: '',
+    agencySignature: '',
+    agencyStampUrl: '',
+    termsAndConditions: '',
   });
+
   const [, setAgencyLoading] = useState(true);
 
   const [password, setPassword] = useState<PasswordData>({
@@ -69,10 +97,41 @@ export default function Settings() {
   });
 
   const [passwordError, setPasswordError] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [operationsLoading, setOperationsLoading] = useState(false);
+  const [operations, setOperations] = useState<OperationalSettings>({
+    currency: 'MAD', language: 'fr', timezone: 'Africa/Casablanca',
+    smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '',
+    hasSmtpPassword: false, smtpTls: true,
+    notificationInApp: true, notificationEmail: true, notificationPush: false,
+  });
 
+  // Load profile from auth context / localStorage on mount
   useEffect(() => {
-    localStorage.setItem('user_profile', JSON.stringify(profile));
-  }, [profile]);
+    const stored = localStorage.getItem('user_profile');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setProfile(parsed);
+        return;
+      } catch { /* fall through */ }
+    }
+    // Fallback: build from user
+    if (user) {
+      const names = user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : user.firstName || user.email?.split('@')[0] || 'User';
+      setProfile({
+        fullName: names,
+        email: user.email || '',
+        phone: user.phoneNumber || '',
+        jobTitle: user.jobTitle || 'Administrator',
+        avatar: user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(names)}&background=4318ff&color=fff`,
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchAgency = async () => {
@@ -86,6 +145,10 @@ export default function Settings() {
           taxId: data.taxId || '',
           city: data.city || '',
           country: data.country || '',
+          logoUrl: data.logoUrl || '',
+          agencySignature: data.agencySignature || '',
+          agencyStampUrl: data.agencyStampUrl || '',
+          termsAndConditions: data.termsAndConditions || '',
         };
         setAgency(agencyData);
       } catch (err) {
@@ -95,6 +158,12 @@ export default function Settings() {
       }
     };
     fetchAgency();
+  }, []);
+
+  useEffect(() => {
+    api.get('/tenant-settings')
+      .then(({ data }) => setOperations((current) => ({ ...current, ...data, smtpPassword: '' })))
+      .catch((err) => console.error('Failed to fetch tenant settings', err));
   }, []);
 
   const handleProfileChange = (field: keyof ProfileData, value: string) => {
@@ -121,20 +190,51 @@ export default function Settings() {
     setPasswordError('');
   };
 
-  const saveProfile = () => {
-    showToast(t('settings.profileSaved'));
+  const saveProfile = async () => {
+    if (!user) return;
+    setProfileLoading(true);
+    try {
+      const names = profile.fullName.trim().split(' ');
+      const firstName = names[0] || '';
+      const lastName = names.slice(1).join(' ') || '';
+
+      await api.put(`/users/${user.id}`, {
+        firstName,
+        lastName,
+        phoneNumber: profile.phone,
+        jobTitle: profile.jobTitle,
+        avatarUrl: profile.avatar,
+      });
+
+      // Update local auth context
+      updateProfile({
+        fullName: profile.fullName,
+        phone: profile.phone,
+        jobTitle: profile.jobTitle,
+        avatar: profile.avatar,
+      });
+
+      showToast(t('settings.profileSaved'));
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to save profile', 'error');
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   const saveAgency = async () => {
     try {
       await api.put('/agency', agency);
       showToast(t('settings.agencySaved'));
-    } catch (err) {
-      showToast('Failed to save agency');
+      // Force refresh tenant branding in AuthContext so ContractDetails sees it immediately
+      window.dispatchEvent(new Event('tenant-updated'));
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to save agency', 'error');
     }
   };
 
-  const changePassword = () => {
+  const changePassword = async () => {
+    if (!user) return;
     if (password.newPassword !== password.confirm) {
       setPasswordError(t('settings.passwordMismatch'));
       return;
@@ -143,14 +243,39 @@ export default function Settings() {
       setPasswordError(t('settings.passwordTooShort'));
       return;
     }
-    setPassword({ current: '', newPassword: '', confirm: '' });
-    showToast(t('settings.passwordChanged'));
+    setPasswordLoading(true);
+    try {
+      await api.put(`/users/${user.id}/password`, {
+        currentPassword: password.current,
+        newPassword: password.newPassword,
+      });
+      setPassword({ current: '', newPassword: '', confirm: '' });
+      showToast(t('settings.passwordChanged'));
+    } catch (err: any) {
+      setPasswordError(err?.response?.data?.message || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const saveOperations = async () => {
+    setOperationsLoading(true);
+    try {
+      const { data } = await api.put('/tenant-settings', operations);
+      setOperations((current) => ({ ...current, ...data, smtpPassword: '' }));
+      showToast('Operational settings saved');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to save operational settings', 'error');
+    } finally {
+      setOperationsLoading(false);
+    }
   };
 
   const tabs = [
     { key: 'profile' as const, label: t('settings.tabs.profile'), icon: User },
     { key: 'password' as const, label: t('settings.tabs.password'), icon: Lock },
     { key: 'agency' as const, label: t('settings.tabs.agency'), icon: Building2 },
+    { key: 'operations' as const, label: 'Operations', icon: Server },
     { key: 'appearance' as const, label: 'Appearance', icon: Palette },
   ];
 
@@ -161,35 +286,35 @@ export default function Settings() {
   ];
 
   return (
-    <div className="space-y-5 animate-fade max-w-5xl mx-auto">
+    <div className="space-y-5 animate-fade max-w-5xl mx-auto w-full p-3 sm:p-4 lg:p-6">
       <div>
-        <h1 className="text-xl font-bold text-[#1e293b]">{t('settings.title')}</h1>
-        <p className="text-slate-500 font-normal text-sm mt-0.5">{t('settings.subtitle')}</p>
+        <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('settings.title')}</h1>
+        <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('settings.subtitle')}</p>
       </div>
 
-      <div className="card-premium p-2 flex gap-1 w-fit">
+      <div className="card-premium p-2 sm:p-3 flex gap-1 overflow-x-auto pb-1 no-scrollbar w-full sm:w-fit min-w-0">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
               activeTab === tab.key
                 ? 'bg-brand-500 text-white shadow-md'
                 : 'text-slate-500 hover:text-[#1e293b] hover:bg-[#f5f5f0]'
             }`}
           >
-            <tab.icon size={17} />
+            <tab.icon size={14} className="sm:w-[17px] sm:h-[17px]" />
             {tab.label}
           </button>
         ))}
       </div>
 
       {activeTab === 'profile' && (
-        <div className="card-premium space-y-6">
+        <div className="card-premium space-y-6 p-3 sm:p-5">
           <div className="flex items-center gap-4 pb-5 border-b border-[#e8e6e1]/60">
             <div className="relative">
               <img
-                src={profile.avatar}
+                src={profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || 'U')}&background=4318ff&color=fff`}
                 alt="Avatar"
                 className="w-20 h-20 rounded-2xl object-cover border-2 border-[#e8e6e1] shadow-sm"
               />
@@ -199,12 +324,12 @@ export default function Settings() {
               </label>
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1e293b]">{profile.fullName}</h3>
-              <p className="text-sm text-slate-400 font-normal">{profile.jobTitle}</p>
+              <h3 className="text-base font-bold text-[#1e293b]">{profile.fullName || 'User'}</h3>
+              <p className="text-sm text-slate-400 font-normal">{profile.jobTitle || 'Administrator'}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.fullName')}</label>
               <div className="relative">
@@ -238,6 +363,7 @@ export default function Settings() {
                   value={profile.email}
                   onChange={(e) => handleProfileChange('email', e.target.value)}
                   className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  disabled
                 />
               </div>
             </div>
@@ -258,9 +384,14 @@ export default function Settings() {
           <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
             <button
               onClick={saveProfile}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all"
+              disabled={profileLoading}
+              className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-70 w-full sm:w-auto"
             >
-              <Save size={16} />
+              {profileLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
               {t('settings.saveChanges')}
             </button>
           </div>
@@ -286,18 +417,26 @@ export default function Settings() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.currentPassword')}</label>
               <div className="relative">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="password"
+                  type={showCurrentPassword ? 'text' : 'password'}
                   value={password.current}
                   onChange={(e) => handlePasswordChange('current', e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full pl-11 pr-11 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(v => !v)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-500 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <div>
@@ -305,12 +444,20 @@ export default function Settings() {
               <div className="relative">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="password"
+                  type={showNewPassword ? 'text' : 'password'}
                   value={password.newPassword}
                   onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full pl-11 pr-11 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(v => !v)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-500 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <div>
@@ -318,12 +465,20 @@ export default function Settings() {
               <div className="relative">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   value={password.confirm}
                   onChange={(e) => handlePasswordChange('confirm', e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full pl-11 pr-11 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(v => !v)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-500 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
           </div>
@@ -331,9 +486,14 @@ export default function Settings() {
           <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
             <button
               onClick={changePassword}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all"
+              disabled={passwordLoading}
+              className="flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-70 w-full sm:w-auto"
             >
-              <Lock size={16} />
+              {passwordLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Lock size={16} />
+              )}
               {t('settings.updatePassword')}
             </button>
           </div>
@@ -352,7 +512,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.agencyName')}</label>
               <div className="relative">
@@ -439,13 +599,175 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* Agency Logo */}
+          <div className="pt-6 border-t border-[#e8e6e1]/60">
+            <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
+              <Image size={16} className="text-brand-500" /> Agency Logo
+            </label>
+            <div className="flex items-center gap-4">
+              {agency.logoUrl ? (
+                <img src={agency.logoUrl} alt="Agency Logo" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
+              ) : (
+                <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">No Logo</div>
+              )}
+              <label className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-500 rounded-xl text-sm font-medium cursor-pointer hover:bg-brand-100 transition-all">
+                <Camera size={14} />
+                Upload Logo
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setAgency(prev => ({ ...prev, logoUrl: reader.result as string }));
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+              </label>
+            </div>
+          </div>
+
+          {/* Agency Signature */}
+          <div className="pt-6 border-t border-[#e8e6e1]/60">
+            <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
+              <Signature size={16} className="text-brand-500" /> Agency Digital Signature
+            </label>
+            <p className="text-xs text-slate-400 mb-3">This signature will be automatically applied to all future contracts.</p>
+            {agency.agencySignature ? (
+              <div className="space-y-3">
+                <img src={agency.agencySignature} alt="Agency Signature" className="h-24 border border-[#e8e6e1] rounded-xl bg-white p-2" />
+                <button
+                  onClick={() => setAgency(prev => ({ ...prev, agencySignature: '' }))}
+                  className="text-xs text-danger-500 hover:text-danger-600 font-medium"
+                >
+                  Clear & Redraw
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white border border-[#e8e6e1] rounded-xl p-2">
+                <SignaturePad
+                  onSave={(sig) => setAgency(prev => ({ ...prev, agencySignature: sig }))}
+                  label="Draw agency signature here"
+                  showWatermark={false}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Agency Stamp */}
+          <div className="pt-6 border-t border-[#e8e6e1]/60">
+            <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
+              <Stamp size={16} className="text-brand-500" /> Agency Stamp (Optional)
+            </label>
+            <div className="flex items-center gap-4">
+              {agency.agencyStampUrl ? (
+                <img src={agency.agencyStampUrl} alt="Agency Stamp" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
+              ) : (
+                <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">No Stamp</div>
+              )}
+              <label className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-500 rounded-xl text-sm font-medium cursor-pointer hover:bg-brand-100 transition-all">
+                <Camera size={14} />
+                Upload Stamp
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setAgency(prev => ({ ...prev, agencyStampUrl: reader.result as string }));
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+              </label>
+              {agency.agencyStampUrl && (
+                <button onClick={() => setAgency(prev => ({ ...prev, agencyStampUrl: '' }))} className="text-xs text-danger-500 hover:text-danger-600 font-medium">Remove</button>
+              )}
+            </div>
+          </div>
+
+          {/* Terms & Conditions */}
+          <div className="pt-6 border-t border-[#e8e6e1]/60">
+            <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
+              <FileCheck size={16} className="text-brand-500" /> Terms & Conditions
+            </label>
+            <p className="text-xs text-slate-400 mb-3">These terms will be displayed on every contract signing page. Leave blank to use defaults.</p>
+            <textarea
+              value={agency.termsAndConditions}
+              onChange={(e) => handleAgencyChange('termsAndConditions', e.target.value)}
+              placeholder="Enter your agency's terms and conditions here..."
+              rows={6}
+              className="w-full px-4 py-3 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all resize-none"
+            />
+          </div>
+
           <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
             <button
               onClick={saveAgency}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all"
+              className="flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all w-full sm:w-auto"
             >
               <Save size={16} />
               {t('settings.saveChanges')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'operations' && (
+        <div className="card-premium space-y-6 p-4 sm:p-6">
+          <div className="flex items-center gap-3 pb-5 border-b border-[#e8e6e1]/60">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
+              <Server size={20} className="text-brand-500" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#1e293b]">Operational Settings</h3>
+              <p className="text-sm text-slate-400">Regional, email, and notification configuration</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <SettingSelect label="Currency" value={operations.currency}
+              options={['MAD', 'EUR', 'USD']} onChange={(value) => setOperations({ ...operations, currency: value })} />
+            <SettingSelect label="Language" value={operations.language}
+              options={['fr', 'en', 'ar']} onChange={(value) => setOperations({ ...operations, language: value })} />
+            <SettingSelect label="Timezone" value={operations.timezone}
+              options={['Africa/Casablanca', 'Europe/Paris', 'UTC']}
+              onChange={(value) => setOperations({ ...operations, timezone: value })} />
+          </div>
+
+          <div className="pt-5 border-t border-[#e8e6e1]/60 space-y-4">
+            <div className="flex items-center gap-2">
+              <Mail size={16} className="text-brand-500" />
+              <h4 className="text-sm font-bold text-[#1e293b]">Agency SMTP</h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SettingInput label="SMTP Host" value={operations.smtpHost}
+                onChange={(value) => setOperations({ ...operations, smtpHost: value })} />
+              <SettingInput label="SMTP Port" value={String(operations.smtpPort)} type="number"
+                onChange={(value) => setOperations({ ...operations, smtpPort: Number(value) })} />
+              <SettingInput label="Username" value={operations.smtpUsername}
+                onChange={(value) => setOperations({ ...operations, smtpUsername: value })} />
+              <SettingInput label="Password" value={operations.smtpPassword} type="password"
+                placeholder={operations.hasSmtpPassword ? 'Stored securely - enter to replace' : 'Enter SMTP password'}
+                onChange={(value) => setOperations({ ...operations, smtpPassword: value })} />
+            </div>
+            <Toggle label="Use TLS" checked={operations.smtpTls}
+              onChange={(checked) => setOperations({ ...operations, smtpTls: checked })} />
+          </div>
+
+          <div className="pt-5 border-t border-[#e8e6e1]/60 space-y-3">
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-brand-500" />
+              <h4 className="text-sm font-bold text-[#1e293b]">Notification Channels</h4>
+            </div>
+            <Toggle label="In-app notifications" checked={operations.notificationInApp}
+              onChange={(checked) => setOperations({ ...operations, notificationInApp: checked })} />
+            <Toggle label="Email notifications" checked={operations.notificationEmail}
+              onChange={(checked) => setOperations({ ...operations, notificationEmail: checked })} />
+            <Toggle label="Browser push notifications" checked={operations.notificationPush}
+              onChange={(checked) => setOperations({ ...operations, notificationPush: checked })} />
+          </div>
+
+          <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
+            <button onClick={saveOperations} disabled={operationsLoading}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium disabled:opacity-60">
+              {operationsLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+              Save Settings
             </button>
           </div>
         </div>
@@ -524,5 +846,43 @@ export default function Settings() {
         </div>
       )}
     </div>
+  );
+}
+
+function SettingInput({ label, value, onChange, type = 'text', placeholder }: {
+  label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string;
+}) {
+  return (
+    <label className="space-y-2">
+      <span className="block text-sm font-medium text-[#1e293b]">{label}</span>
+      <input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)}
+        className="w-full px-3 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm outline-none focus:border-brand-300" />
+    </label>
+  );
+}
+
+function SettingSelect({ label, value, options, onChange }: {
+  label: string; value: string; options: string[]; onChange: (value: string) => void;
+}) {
+  return (
+    <label className="space-y-2">
+      <span className="block text-sm font-medium text-[#1e293b]">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}
+        className="w-full px-3 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm outline-none focus:border-brand-300">
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function Toggle({ label, checked, onChange }: {
+  label: string; checked: boolean; onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between p-3 border border-[#e8e6e1] rounded-xl">
+      <span className="text-sm font-medium text-[#1e293b]">{label}</span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)}
+        className="w-4 h-4 accent-brand-500" />
+    </label>
   );
 }

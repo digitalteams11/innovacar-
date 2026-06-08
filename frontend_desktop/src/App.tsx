@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Layout from './components/Layout';
+import FeatureGate from './components/FeatureGate';
+import { FeatureAccessProvider } from './context/FeatureAccessContext';
 import Dashboard from './pages/Dashboard';
 
 import Vehicles from './pages/Vehicles';
@@ -39,6 +41,7 @@ function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <FeatureAccessProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           
@@ -50,19 +53,19 @@ function App() {
           
           <Route path="/vehicles" element={
             <ProtectedRoute>
-              <Vehicles />
+              <FeatureGate feature="VEHICLE_MANAGEMENT"><Vehicles /></FeatureGate>
             </ProtectedRoute>
           } />
           
           <Route path="/reservations" element={
             <ProtectedRoute>
-              <Reservations />
+              <FeatureGate feature="RESERVATION_MANAGEMENT"><Reservations /></FeatureGate>
             </ProtectedRoute>
           } />
 
           <Route path="/clients" element={
             <ProtectedRoute>
-              <Clients />
+              <FeatureGate feature="CLIENT_MANAGEMENT"><Clients /></FeatureGate>
             </ProtectedRoute>
           } />
 
@@ -80,21 +83,22 @@ function App() {
 
           <Route path="/contracts" element={
             <ProtectedRoute>
-              <Contracts />
+              <FeatureGate feature="CONTRACT_MANAGEMENT"><Contracts /></FeatureGate>
             </ProtectedRoute>
           } />
 
           <Route path="/contracts/:id" element={
             <ProtectedRoute>
-              <ContractDetails />
+              <FeatureGate feature="CONTRACT_MANAGEMENT"><ContractDetails /></FeatureGate>
             </ProtectedRoute>
           } />
 
-          <Route path="/sign/:id" element={<PublicContract />} />
+          <Route path="/contract-sign/:contractId/:token" element={<PublicContract />} />
+          <Route path="/contract-sign/:token" element={<PublicContract />} />
 
           <Route path="/invoices" element={
             <ProtectedRoute>
-              <Invoices />
+              <FeatureGate feature="INVOICE_GENERATION"><Invoices /></FeatureGate>
             </ProtectedRoute>
           } />
 
@@ -106,13 +110,13 @@ function App() {
 
           <Route path="/employees" element={
             <ProtectedRoute>
-              <Employees />
+              <FeatureGate feature="MULTI_EMPLOYEE"><Employees /></FeatureGate>
             </ProtectedRoute>
           } />
 
           <Route path="/reports" element={
             <ProtectedRoute>
-              <Reports />
+              <FeatureGate feature="REPORTS_BASIC"><Reports /></FeatureGate>
             </ProtectedRoute>
           } />
 
@@ -126,6 +130,7 @@ function App() {
             </ProtectedRoute>
           } />
         </Routes>
+        </FeatureAccessProvider>
       </ToastProvider>
     </AuthProvider>
   );

@@ -21,7 +21,13 @@ export default function Login() {
       await login({ email, password });
       navigate('/');
     } catch (err: any) {
-      setError(t('login.invalidCredentials'));
+      if (!err.response) {
+        setError('Server is not running. Please start the backend (mvn spring-boot:run in server folder).');
+      } else if (err.response.status === 401 || err.response.status === 403) {
+        setError(t('login.invalidCredentials'));
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -43,7 +49,7 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl p-8 md:p-10 shadow-elevated border border-[#e8e6e1]/60">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-elevated border border-[#e8e6e1]/60">
           <div className="text-center mb-8">
             <h1 className="text-xl font-bold text-[#1e293b] mb-1.5">{t('login.welcomeBack')}</h1>
             <p className="text-slate-500 font-normal text-sm">{t('login.enterDetails')}</p>

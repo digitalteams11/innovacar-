@@ -190,10 +190,10 @@ export default function GpsDashboard() {
 
   if (!settingsConfigured) {
     return (
-      <div className="space-y-6 animate-fade max-w-6xl mx-auto">
+      <div className="space-y-6 animate-fade max-w-6xl mx-auto w-full">
         <div>
-          <h1 className="text-xl font-bold text-[#1e293b]">GPS Live Tracking</h1>
-          <p className="text-slate-500 font-normal text-sm mt-0.5">Real-time fleet monitoring and analytics</p>
+          <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">GPS Live Tracking</h1>
+          <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">Real-time fleet monitoring and analytics</p>
         </div>
         <div className="card-premium flex flex-col items-center justify-center py-16 text-center">
           <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-4">
@@ -216,9 +216,9 @@ export default function GpsDashboard() {
   }
 
   return (
-    <div className="space-y-3 animate-fade">
+    <div className="space-y-3 animate-fade p-3 sm:p-4 lg:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-[#1e293b]">GPS Live Tracking</h1>
           <p className="text-slate-500 font-normal text-sm mt-0.5">Real-time fleet monitoring and analytics</p>
@@ -226,7 +226,7 @@ export default function GpsDashboard() {
         <button
           onClick={fetchAllData}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#f5f5f0] transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#f5f5f0] transition-all disabled:opacity-50"
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
           Refresh
@@ -235,7 +235,7 @@ export default function GpsDashboard() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
             { label: 'Tracked', value: stats.totalTracked, icon: Car, color: 'text-brand-600', bg: 'bg-brand-50' },
             { label: 'Online', value: stats.online, icon: Wifi, color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -397,7 +397,7 @@ export default function GpsDashboard() {
           </div>
 
           {/* Filters */}
-          <div className="flex gap-1.5 shrink-0">
+          <div className="flex gap-1.5 shrink-0 overflow-x-auto pb-1 no-scrollbar">
             {([
               { key: 'ALL', label: 'All', count: stats?.totalTracked || 0 },
               { key: 'ONLINE', label: 'On', count: stats?.online || 0 },
@@ -407,7 +407,7 @@ export default function GpsDashboard() {
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   filter === f.key
                     ? 'bg-brand-500 text-white shadow-sm'
                     : 'bg-white text-slate-500 hover:text-[#1e293b] hover:bg-[#f5f5f0] border border-[#e8e6e1]'

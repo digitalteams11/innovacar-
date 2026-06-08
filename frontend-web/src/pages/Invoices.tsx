@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
+import SmartClientSearch from '../components/shared/SmartClientSearch';
 import api from '../api/axios';
 import { Search, Plus, Download, FileText, Trash2, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -9,6 +10,7 @@ interface Invoice {
   id: number;
   invoiceNumber: string;
   clientName: string;
+  clientId: number;
   issueDate: string;
   dueDate: string;
   amount: number;
@@ -22,24 +24,25 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ invoiceNumber: '', clientName: '', issueDate: '', dueDate: '', amount: '', status: 'PENDING' });
+  const [clientData, setClientData] = useState<any>({});
+  const [form, setForm] = useState({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
 
   const { showToast } = useToast();
   const { t } = useTranslation();
 
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        const { data } = await api.get('/invoices');
-        setData(data);
-      } catch (err) {
-        console.error('Failed to fetch invoices', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInvoices();
-  }, []);
+  useEffect(() => { fetchInvoices(); }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get('/invoices');
+      setData(data);
+    } catch (err) {
+      console.error('Failed to fetch invoices', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const tabs = [
     { key: 'All', label: t('invoices.all') },
@@ -51,7 +54,7 @@ export default function Invoices() {
   const filteredData = data.filter((i) => {
     const matchesTab = activeTab === 'All' || i.status === activeTab;
     const q = searchQuery.toLowerCase();
-    return matchesTab && (i.clientName?.toLowerCase().includes(q) || i.invoiceNumber?.toLowerCase().includes(q));
+    return matchesTab && ((i.clientName || '').toLowerCase().includes(q) || i.invoiceNumber?.toLowerCase().includes(q));
   });
 
   const totalPaid = data.filter((i) => i.status === 'PAID').reduce((sum, i) => sum + i.amount, 0);
@@ -74,35 +77,45 @@ export default function Invoices() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ invoiceNumber: '', clientName: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
+    setClientData({});
+    setForm({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
     setIsModalOpen(true);
   };
 
   const openEdit = (invoice: Invoice) => {
     setEditingId(invoice.id);
-    setForm({ invoiceNumber: invoice.invoiceNumber, clientName: invoice.clientName, issueDate: invoice.issueDate, dueDate: invoice.dueDate, amount: String(invoice.amount), status: invoice.status });
+    setClientData({ clientId: invoice.clientId, clientFullName: invoice.clientName });
+    setForm({ invoiceNumber: invoice.invoiceNumber, issueDate: invoice.issueDate, dueDate: invoice.dueDate, amount: String(invoice.amount), status: invoice.status });
     setIsModalOpen(true);
   };
 
   const saveInvoice = async () => {
-    if (!form.invoiceNumber || !form.clientName || !form.issueDate || !form.dueDate || !form.amount) {
-      showToast('Please fill all fields');
+    if (!form.invoiceNumber || !form.issueDate || !form.dueDate || !form.amount) {
+      showToast('Please fill all required fields');
       return;
     }
     try {
-      const payload = { ...form, amount: Number(form.amount) };
+      const payload: any = {
+        invoiceNumber: form.invoiceNumber,
+        issueDate: form.issueDate,
+        dueDate: form.dueDate,
+        amount: Number(form.amount),
+        status: form.status,
+      };
+      if (clientData.clientId) {
+        payload.clientId = clientData.clientId;
+      }
       if (editingId !== null) {
         await api.put(`/invoices/${editingId}`, payload);
-        setData((prev) => prev.map((i) => (i.id === editingId ? { ...i, ...payload } : i)));
         showToast(t('toast.success', { action: 'Invoice updated' }));
       } else {
-        const { data: newInvoice } = await api.post('/invoices', payload);
-        setData((prev) => [...prev, newInvoice]);
+        await api.post('/invoices', payload);
         showToast(t('toast.success', { action: 'Invoice created' }));
       }
       setIsModalOpen(false);
-    } catch (err) {
-      showToast('Failed to save invoice');
+      fetchInvoices();
+    } catch (err: any) {
+      showToast((err as any).userMessage || 'Failed to save invoice');
     }
   };
 
@@ -110,7 +123,7 @@ export default function Invoices() {
     if (confirm(t('invoices.deleteConfirm') || 'Delete this invoice?')) {
       try {
         await api.delete(`/invoices/${id}`);
-        setData((prev) => prev.filter((i) => i.id !== id));
+        fetchInvoices();
         showToast(t('invoices.delete'));
       } catch (err) {
         showToast('Failed to delete invoice');
@@ -121,7 +134,7 @@ export default function Invoices() {
   const markAsPaid = async (id: number) => {
     try {
       await api.patch(`/invoices/${id}/pay`);
-      setData((prev) => prev.map((i) => (i.id === id ? { ...i, status: 'PAID' } : i)));
+      fetchInvoices();
       showToast(t('toast.success', { action: 'Invoice marked as paid' }));
     } catch (err) {
       showToast('Failed to mark invoice as paid');
@@ -129,45 +142,45 @@ export default function Invoices() {
   };
 
   return (
-    <div className="space-y-5 animate-fade">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-[#1e293b]">{t('invoices.title')}</h1>
-          <p className="text-slate-500 font-normal text-sm mt-0.5">{t('invoices.subtitle')}</p>
+          <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('invoices.title')}</h1>
+          <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('invoices.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={exportCSV} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <button onClick={exportCSV} className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
             <Download size={18} /> {t('invoices.export')}
           </button>
-          <button onClick={openCreate} className="flex items-center gap-2 px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
+          <button onClick={openCreate} className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
             <Plus size={18} /> {t('invoices.newInvoice')}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 sm:p-5">
           <p className="text-slate-500 text-xs font-medium mb-1 tracking-wide">{t('invoices.totalPaid')}</p>
-          <h3 className="text-xl font-bold text-success-500">{totalPaid.toLocaleString()} DH</h3>
+          <h3 className="text-xl font-bold text-success-500">{totalPaid.toLocaleString()} MAD</h3>
           <p className="text-[10px] text-slate-400 mt-1">{data.filter((i) => i.status === 'PAID').length} {t('invoices.invoices')}</p>
         </div>
-        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
+        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 sm:p-5">
           <p className="text-slate-500 text-xs font-medium mb-1 tracking-wide">{t('invoices.totalPending')}</p>
-          <h3 className="text-xl font-bold text-warning-500">{totalPending.toLocaleString()} DH</h3>
+          <h3 className="text-xl font-bold text-warning-500">{totalPending.toLocaleString()} MAD</h3>
           <p className="text-[10px] text-slate-400 mt-1">{data.filter((i) => i.status === 'PENDING').length} {t('invoices.invoices')}</p>
         </div>
-        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
+        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 sm:p-5">
           <p className="text-slate-500 text-xs font-medium mb-1 tracking-wide">{t('invoices.totalOverdue')}</p>
-          <h3 className="text-xl font-bold text-danger-500">{totalOverdue.toLocaleString()} DH</h3>
+          <h3 className="text-xl font-bold text-danger-500">{totalOverdue.toLocaleString()} MAD</h3>
           <p className="text-[10px] text-slate-400 mt-1">{data.filter((i) => i.status === 'OVERDUE').length} {t('invoices.invoices')}</p>
         </div>
       </div>
 
-      <div className="card-premium flex flex-col md:flex-row md:items-center gap-3 p-3">
-        <div className="flex p-1 bg-[#f5f5f0] rounded-xl">
+      <div className="card-premium flex flex-col sm:flex-row sm:items-center gap-3 p-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar p-1 bg-[#f5f5f0] rounded-xl">
           {tabs.map((tab) => (
-            <button key={tab.key} onClick={() => { setActiveTab(tab.key); showToast(t('toast.filterApplied', { action: tab.label })); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 ${activeTab === tab.key ? 'bg-white text-brand-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            <button key={tab.key} onClick={() => { setActiveTab(tab.key); }}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all active:scale-95 whitespace-nowrap flex-shrink-0 ${activeTab === tab.key ? 'bg-white text-brand-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               {tab.label}
             </button>
           ))}
@@ -210,7 +223,7 @@ export default function Invoices() {
                     <td className="px-5 py-4 font-medium text-[#1e293b]">{invoice.clientName}</td>
                     <td className="px-5 py-4 text-sm text-slate-400 font-normal">{new Date(invoice.issueDate).toLocaleDateString()}</td>
                     <td className="px-5 py-4 text-sm text-slate-400 font-normal">{new Date(invoice.dueDate).toLocaleDateString()}</td>
-                    <td className="px-5 py-4 font-bold text-[#1e293b]">{invoice.amount.toLocaleString()} DH</td>
+                    <td className="px-5 py-4 font-bold text-[#1e293b]">{invoice.amount.toLocaleString()} MAD</td>
                     <td className="px-5 py-4">
                       <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
                         invoice.status === 'PAID' ? 'bg-success-50 text-success-500' : invoice.status === 'PENDING' ? 'bg-warning-50 text-warning-500' : 'bg-danger-50 text-danger-500'
@@ -241,14 +254,19 @@ export default function Invoices() {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Edit Invoice' : t('invoices.newInvoice')}>
         <div className="space-y-4">
+          <SmartClientSearch value={clientData} onSelect={setClientData} required />
+          {clientData.clientFullName && (
+            <div className="p-3 bg-brand-50/50 rounded-xl border border-brand-100 text-sm">
+              <span className="text-brand-500 font-medium">{clientData.clientFullName}</span>
+            </div>
+          )}
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Invoice Number *</label><input type="text" value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
-          <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.client')} *</label><input type="text" value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.date')} *</label><input type="date" value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.dueDate')} *</label><input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.amount')} (DH) *</label><input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.amount')} (MAD) *</label><input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.status')}</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
                 <option value="PENDING">{t('invoices.pending')}</option><option value="PAID">{t('invoices.paid')}</option><option value="OVERDUE">{t('invoices.overdue')}</option>

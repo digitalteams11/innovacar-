@@ -18,6 +18,7 @@ public class InvoiceResponse {
     private Long          id;
     private String        invoiceNumber;
     private String        clientName;
+    private Long          clientId;
     private LocalDate     issueDate;
     private LocalDate     dueDate;
     private BigDecimal    amount;
@@ -31,6 +32,7 @@ public class InvoiceResponse {
                 .id(invoice.getId())
                 .invoiceNumber(invoice.getInvoiceNumber())
                 .clientName(invoice.getClientName())
+                .clientId(invoice.getClient() != null ? invoice.getClient().getId() : null)
                 .issueDate(invoice.getIssueDate())
                 .dueDate(invoice.getDueDate())
                 .amount(invoice.getAmount())

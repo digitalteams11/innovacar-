@@ -80,7 +80,7 @@ public class VehicleController {
      * Registers a new vehicle in the caller's tenant fleet. ADMIN-only.
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('CREATE_VEHICLE')")
     public ResponseEntity<VehicleResponse> createVehicle(
             @Valid @RequestBody CreateVehicleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -94,7 +94,7 @@ public class VehicleController {
      * ADMIN-only.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('EDIT_VEHICLE')")
     public ResponseEntity<VehicleResponse> updateVehicle(
             @PathVariable Long id,
             @Valid @RequestBody UpdateVehicleRequest request) {
@@ -108,7 +108,7 @@ public class VehicleController {
      * ADMIN-only. Especially useful for the rental workflow (AVAILABLE → RENTED).
      */
     @PatchMapping("/{id}/statut")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('EDIT_VEHICLE')")
     public ResponseEntity<VehicleResponse> changeStatut(
             @PathVariable Long id,
             @RequestParam VehicleStatus statut) {
@@ -125,7 +125,7 @@ public class VehicleController {
      * ADMIN-only.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('DELETE_VEHICLE')")
     public ResponseEntity<Void> deleteVehicle(@PathVariable Long id) {
         vehicleService.deleteVehicle(id);
         return ResponseEntity.noContent().build();

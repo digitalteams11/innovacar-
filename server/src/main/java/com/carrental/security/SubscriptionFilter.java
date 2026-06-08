@@ -1,5 +1,6 @@
 package com.carrental.security;
 
+import com.carrental.entity.Role;
 import com.carrental.entity.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,6 +20,8 @@ import java.io.IOException;
  *
  * <p>Excludes public endpoints (/api/auth/**) and the subscription renewal API
  * (/api/subscriptions/**) so admins can actually renew their expired subscriptions.
+ *
+ * <p>SUPER_ADMIN users bypass subscription checks entirely.
  */
 @Component
 public class SubscriptionFilter extends OncePerRequestFilter {
@@ -40,8 +43,14 @@ public class SubscriptionFilter extends OncePerRequestFilter {
         // 2. Check if user is authenticated
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof User user) {
-            
-            // 3. Check subscription validity
+
+            // 3. SUPER_ADMIN bypasses subscription checks
+            if (user.getRole() == Role.SUPER_ADMIN) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 4. Check subscription validity
             if (!user.getTenant().isSubscriptionValid()) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType("application/json");

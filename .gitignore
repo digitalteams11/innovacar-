@@ -1,0 +1,28 @@
+# Dependencies and frontend builds
+node_modules/
+dist/
+dist-ssr/
+
+# Java build output
+server/target/
+
+# Runtime output
+*.log
+server/pdfs/
+hs_err_pid*.log
+replay_pid*.log
+
+# Local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Separate nested repository, not part of this application
+codex-opener/

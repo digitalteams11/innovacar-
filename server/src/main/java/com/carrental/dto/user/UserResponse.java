@@ -18,6 +18,12 @@ public class UserResponse {
     private Role   role;
     private Long   tenantId;
     private String tenantName;
+    private String firstName;
+    private String lastName;
+    private String phoneNumber;
+    private String jobTitle;
+    private String avatarUrl;
+    private Boolean emailVerified;
 
     // ── Static factory ───────────────────────────────────────────────────────
 
@@ -28,6 +34,12 @@ public class UserResponse {
                 .role(user.getRole())
                 .tenantId(user.getTenant().getId())
                 .tenantName(user.getTenant().getName())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .jobTitle(user.getJobTitle())
+                .avatarUrl(user.getAvatarUrl())
+                .emailVerified(user.getEmailVerified())
                 .build();
     }
 }

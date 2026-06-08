@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import api from '../api/axios';
-import { Search, Plus, Download, Mail, Phone, Trash2, Edit3, Loader2 } from 'lucide-react';
+import { Search, Plus, Download, Mail, Phone, Trash2, Edit3, Loader2, KeyRound } from 'lucide-react';
 
 interface Employee {
   id: number;
@@ -14,6 +14,8 @@ interface Employee {
   department: string;
   hireDate: string;
   status: string;
+  userId?: number;
+  loginEnabled?: boolean;
 }
 
 export default function Employees() {
@@ -22,7 +24,7 @@ export default function Employees() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', role: '', department: '', hireDate: '', status: 'ACTIVE' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'EMPLOYEE', department: '', hireDate: '', status: 'ACTIVE', password: '' });
 
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -62,18 +64,18 @@ export default function Employees() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ name: '', email: '', phone: '', role: '', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'ACTIVE' });
+    setForm({ name: '', email: '', phone: '', role: 'EMPLOYEE', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'ACTIVE', password: '' });
     setIsModalOpen(true);
   };
 
   const openEdit = (emp: Employee) => {
     setEditingId(emp.id);
-    setForm({ name: emp.name, email: emp.email, phone: emp.phone || '', role: emp.role || '', department: emp.department || '', hireDate: emp.hireDate || '', status: emp.status });
+    setForm({ name: emp.name, email: emp.email, phone: emp.phone || '', role: emp.role || 'EMPLOYEE', department: emp.department || '', hireDate: emp.hireDate || '', status: emp.status, password: '' });
     setIsModalOpen(true);
   };
 
   const saveEmployee = async () => {
-    if (!form.name || !form.email) {
+    if (!form.name || !form.email || (editingId === null && form.password.length < 8)) {
       showToast('Please fill required fields');
       return;
     }
@@ -93,6 +95,21 @@ export default function Employees() {
     }
   };
 
+  const resetPassword = async (emp: Employee) => {
+    if (!emp.userId) {
+      showToast('This legacy employee does not have a login account');
+      return;
+    }
+    const newPassword = window.prompt(`New password for ${emp.name} (minimum 8 characters)`);
+    if (!newPassword || newPassword.length < 8) return;
+    try {
+      await api.put(`/users/${emp.userId}/admin-reset-password`, { newPassword });
+      showToast('Password reset successfully');
+    } catch {
+      showToast('Failed to reset password');
+    }
+  };
+
   const deleteEmployee = async (id: number) => {
     if (confirm('Delete this employee?')) {
       try {
@@ -106,23 +123,23 @@ export default function Employees() {
   };
 
   return (
-    <div className="space-y-5 animate-fade">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-[#1e293b]">{t('employees.title')}</h1>
-          <p className="text-slate-500 font-normal text-sm mt-0.5">{t('employees.subtitle')}</p>
+          <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('employees.title')}</h1>
+          <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('employees.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={exportCSV} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <button onClick={exportCSV} className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
             <Download size={18} /> Export
           </button>
-          <button onClick={openCreate} className="flex items-center gap-2 px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
+          <button onClick={openCreate} className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
             <Plus size={18} /> Add Employee
           </button>
         </div>
       </div>
 
-      <div className="card-premium flex flex-col md:flex-row gap-3">
+      <div className="card-premium flex flex-col sm:flex-row gap-3 p-3 sm:p-5">
         <div className="flex-1 relative group">
           <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
           <input type="text" placeholder="Search employees..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
@@ -173,6 +190,7 @@ export default function Employees() {
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => openEdit(emp)} className="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"><Edit3 size={17} /></button>
+                        <button title="Reset login password" onClick={() => resetPassword(emp)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"><KeyRound size={17} /></button>
                         <button onClick={() => deleteEmployee(emp.id)} className="p-2 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all"><Trash2 size={17} /></button>
                       </div>
                     </td>
@@ -192,11 +210,12 @@ export default function Employees() {
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Full Name *</label><input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Email *</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Phone</label><input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Role</label><input type="text" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"><option value="ADMIN">Administrator</option><option value="MANAGER">Manager</option><option value="EMPLOYEE">Employee</option><option value="ACCOUNTANT">Accountant</option><option value="RECEPTIONIST">Receptionist</option><option value="VIEWER">Viewer</option><option value="AGENT">Agent</option></select></div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Department</label><input type="text" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          {editingId === null && <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Temporary Password *</label><input type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Hire Date</label><input type="date" value={form.hireDate} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Status</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">

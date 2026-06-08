@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import SafeChartContainer from '../components/shared/SafeChartContainer';
 import { Car, Users, CreditCard, TrendingUp, Loader2 } from 'lucide-react';
 
 const COLORS = ['#1e3a5f', '#c9a96e', '#be123c', '#10b981', '#6366f1'];
@@ -48,55 +49,55 @@ export default function Reports() {
   const availableVehicles = totalVehicles - rentedVehicles;
 
   return (
-    <div className="space-y-5 animate-fade">
+    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
       <div>
-        <h1 className="text-xl font-bold text-[#1e293b]">{t('reports.title') || 'Reports'}</h1>
-        <p className="text-slate-500 font-normal text-sm mt-0.5">{t('reports.subtitle') || 'Business analytics and insights'}</p>
+        <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('reports.title') || 'Reports'}</h1>
+        <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('reports.subtitle') || 'Business analytics and insights'}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="card-premium flex items-center gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+        <div className="card-premium flex items-center gap-4 p-3 sm:p-5">
           <div className="w-12 h-12 rounded-xl bg-brand-500 flex items-center justify-center text-white">
             <Car size={22} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-slate-500 text-xs font-medium">Total Fleet</p>
             <h3 className="text-xl font-bold text-[#1e293b]">{totalVehicles}</h3>
           </div>
         </div>
-        <div className="card-premium flex items-center gap-4">
+        <div className="card-premium flex items-center gap-4 p-3 sm:p-5">
           <div className="w-12 h-12 rounded-xl bg-success-500 flex items-center justify-center text-white">
             <TrendingUp size={22} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-slate-500 text-xs font-medium">Active Rentals</p>
             <h3 className="text-xl font-bold text-[#1e293b]">{rentedVehicles}</h3>
           </div>
         </div>
-        <div className="card-premium flex items-center gap-4">
+        <div className="card-premium flex items-center gap-4 p-3 sm:p-5">
           <div className="w-12 h-12 rounded-xl bg-accent-500 flex items-center justify-center text-white">
             <CreditCard size={22} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-slate-500 text-xs font-medium">Total Revenue</p>
             <h3 className="text-xl font-bold text-[#1e293b]">{totalRevenue} DH</h3>
           </div>
         </div>
-        <div className="card-premium flex items-center gap-4">
+        <div className="card-premium flex items-center gap-4 p-3 sm:p-5">
           <div className="w-12 h-12 rounded-xl bg-[#1e293b] flex items-center justify-center text-white">
             <Users size={22} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-slate-500 text-xs font-medium">Available</p>
             <h3 className="text-xl font-bold text-[#1e293b]">{availableVehicles}</h3>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card-premium">
-          <h3 className="text-base font-bold text-[#1e293b] mb-4">Revenue Overview</h3>
-          <div className="h-[250px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+        <div className="card-premium p-3 sm:p-5">
+          <h3 className="text-sm sm:text-base font-bold text-[#1e293b] mb-4">Revenue Overview</h3>
+          <SafeChartContainer className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueData.length > 0 ? revenueData : [
                 { name: 'Jan', revenue: 0 }, { name: 'Feb', revenue: 0 }, { name: 'Mar', revenue: 0 },
@@ -108,12 +109,12 @@ export default function Reports() {
                 <Bar dataKey="revenue" fill="#1e3a5f" radius={[5, 5, 0, 0]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </SafeChartContainer>
         </div>
 
-        <div className="card-premium">
-          <h3 className="text-base font-bold text-[#1e293b] mb-4">Vehicle Utilization</h3>
-          <div className="h-[250px]">
+        <div className="card-premium p-3 sm:p-5">
+          <h3 className="text-sm sm:text-base font-bold text-[#1e293b] mb-4">Vehicle Utilization</h3>
+          <SafeChartContainer className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={vehicleUtilization.length > 0 ? vehicleUtilization : [
@@ -130,7 +131,7 @@ export default function Reports() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </SafeChartContainer>
         </div>
       </div>
     </div>

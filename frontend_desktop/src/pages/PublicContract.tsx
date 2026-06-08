@@ -23,7 +23,8 @@ interface ContractData {
 }
 
 export default function PublicContract() {
-  const { id } = useParams<{ id: string }>();
+  const { contractId, token } = useParams<{ contractId?: string; token?: string }>();
+  const contractIdentifier = contractId || token || 'CTR-2026-001';
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [contract, setContract] = useState<ContractData | null>(null);
@@ -33,7 +34,7 @@ export default function PublicContract() {
     // Mock data for the demonstration
     // In a real app, this would fetch from an API
     const mockContract: ContractData = {
-      id: id || 'CTR-2026-001',
+      id: contractIdentifier,
       clientName: 'Youssef El Mansouri',
       clientEmail: 'youssef.mansouri@email.com',
       clientPhone: '+212 612-345678',
@@ -55,7 +56,7 @@ export default function PublicContract() {
     };
     
     // Check if we have a saved version in localStorage
-    const saved = localStorage.getItem(`contract_${id}`);
+    const saved = localStorage.getItem(`contract_${contractIdentifier}`);
     if (saved) {
       const parsed = JSON.parse(saved);
       setContract(parsed);
@@ -63,7 +64,7 @@ export default function PublicContract() {
     } else {
       setContract(mockContract);
     }
-  }, [id]);
+  }, [contractIdentifier]);
 
   const handleSignatureSave = (signatureDataUrl: string) => {
     if (!contract) return;
@@ -77,7 +78,7 @@ export default function PublicContract() {
 
     setContract(updatedContract);
     setIsSigned(true);
-    localStorage.setItem(`contract_${id}`, JSON.stringify(updatedContract));
+    localStorage.setItem(`contract_${token}`, JSON.stringify(updatedContract));
     showToast('Contract signed successfully!', 'success');
   };
 
@@ -88,10 +89,10 @@ export default function PublicContract() {
   if (!contract) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-100 py-6 px-4 md:py-12 md:px-0 font-sans print:bg-white print:p-0">
+    <div className="min-h-screen bg-slate-100 py-6 px-4 md:py-12 md:px-0 font-sans print:bg-white print:p-0 animate-fade">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Status Header - Hide during print */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 print:hidden">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
           <div className="flex items-center gap-3">
             <div className={`w-3 h-3 rounded-full ${isSigned ? 'bg-success-500 animate-pulse' : 'bg-warning-500 animate-pulse'}`}></div>
             <span className="font-bold text-slate-700">
@@ -116,7 +117,7 @@ export default function PublicContract() {
         {/* The Contract Document */}
         <div className="bg-white shadow-2xl rounded-sm border border-slate-200 min-h-[11in] p-8 md:p-16 text-slate-800 relative overflow-hidden print:shadow-none print:border-none print:m-0">
           {/* Document Header */}
-          <div className="flex flex-col md:flex-row justify-between gap-8 mb-12 pb-12 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row justify-between gap-8 mb-12 pb-12 border-b border-slate-100">
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-brand-600">
                 <Building2 size={32} />
@@ -247,7 +248,7 @@ export default function PublicContract() {
         </div>
 
         {/* Verification Section */}
-        <div className="bg-white/50 backdrop-blur-xl rounded-2xl p-8 border border-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 print:hidden">
+        <div className="bg-white/50 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 print:hidden">
           <div className="space-y-2">
             <h4 className="font-bold text-slate-800 flex items-center gap-2">
               <Shield size={18} className="text-brand-500" /> Blockchain Verified

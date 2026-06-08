@@ -18,8 +18,9 @@ public class CreateInvoiceRequest {
     @NotBlank(message = "Invoice number is required")
     private String invoiceNumber;
 
-    @NotBlank(message = "Client name is required")
     private String clientName;
+
+    private Long clientId;
 
     @NotNull(message = "Issue date is required")
     private LocalDate issueDate;

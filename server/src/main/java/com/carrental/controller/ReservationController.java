@@ -2,6 +2,7 @@ package com.carrental.controller;
 
 import com.carrental.dto.reservation.CreateReservationRequest;
 import com.carrental.dto.reservation.ReservationResponse;
+import com.carrental.entity.ReservationStatus;
 import com.carrental.service.ReservationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Reservation REST controller.
@@ -50,6 +52,7 @@ public class ReservationController {
      * Creates a new reservation. Available to all authenticated users (EMPLOYEE or ADMIN).
      */
     @PostMapping
+    @PreAuthorize("@rolePermissionService.has('CREATE_RESERVATION')")
     public ResponseEntity<ReservationResponse> createReservation(
             @Valid @RequestBody CreateReservationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -62,9 +65,30 @@ public class ReservationController {
      * Deletes a reservation. Requires ADMIN role.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('CANCEL_RESERVATION')")
     public ResponseEntity<Void> deleteReservation(@PathVariable Long id) {
         reservationService.deleteReservation(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("@rolePermissionService.has('EDIT_RESERVATION')")
+    public ResponseEntity<ReservationResponse> updateReservation(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateReservationRequest request) {
+        return ResponseEntity.ok(reservationService.updateReservation(id, request));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("@rolePermissionService.has('EDIT_RESERVATION')")
+    public ResponseEntity<ReservationResponse> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String value = body.get("status");
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("status is required");
+        }
+        return ResponseEntity.ok(reservationService.updateStatus(
+                id, ReservationStatus.valueOf(value.trim().toUpperCase())));
     }
 }

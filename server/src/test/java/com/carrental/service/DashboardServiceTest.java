@@ -2,7 +2,11 @@ package com.carrental.service;
 
 import com.carrental.dto.dashboard.DashboardResponse;
 import com.carrental.entity.VehicleStatus;
+import com.carrental.repository.ClientRepository;
+import com.carrental.repository.DepositRepository;
+import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PaymentRepository;
+import com.carrental.repository.ReservationRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -14,8 +18,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,6 +29,10 @@ class DashboardServiceTest {
 
     @Mock private VehicleRepository vehicleRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private DepositRepository depositRepository;
+    @Mock private ReservationRepository reservationRepository;
+    @Mock private ClientRepository clientRepository;
+    @Mock private InvoiceRepository invoiceRepository;
 
     @InjectMocks private DashboardService dashboardService;
 
@@ -42,7 +52,12 @@ class DashboardServiceTest {
     void getDashboardMetrics_returnsCorrectAggregations() {
         when(vehicleRepository.countByTenantId(TENANT_ID)).thenReturn(10L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RENTED)).thenReturn(4L);
-        when(paymentRepository.sumPaidAmountByTenantId(TENANT_ID)).thenReturn(new BigDecimal("1500.50"));
+        when(reservationRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
+        when(clientRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
+        when(invoiceRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
+        when(paymentRepository.sumCollectedRentalRevenueByTenantId(TENANT_ID)).thenReturn(new BigDecimal("1500.50"));
+        when(paymentRepository.sumCollectedRentalRevenueBetween(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(paymentRepository.findTop5ByTenantIdOrderByPaymentDateDesc(TENANT_ID)).thenReturn(Collections.emptyList());
 
         DashboardResponse res = dashboardService.getDashboardMetrics();
 
@@ -55,7 +70,12 @@ class DashboardServiceTest {
     void getDashboardMetrics_handlesNullRevenue() {
         when(vehicleRepository.countByTenantId(TENANT_ID)).thenReturn(0L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RENTED)).thenReturn(0L);
-        when(paymentRepository.sumPaidAmountByTenantId(TENANT_ID)).thenReturn(null);
+        when(reservationRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
+        when(clientRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
+        when(invoiceRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
+        when(paymentRepository.sumCollectedRentalRevenueByTenantId(TENANT_ID)).thenReturn(null);
+        when(paymentRepository.sumCollectedRentalRevenueBetween(any(), any(), any())).thenReturn(null);
+        when(paymentRepository.findTop5ByTenantIdOrderByPaymentDateDesc(TENANT_ID)).thenReturn(Collections.emptyList());
 
         DashboardResponse res = dashboardService.getDashboardMetrics();
 

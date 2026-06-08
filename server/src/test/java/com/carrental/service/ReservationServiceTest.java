@@ -6,7 +6,10 @@ import com.carrental.entity.Payment;
 import com.carrental.entity.Reservation;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.Vehicle;
+import com.carrental.entity.VehicleStatus;
 import com.carrental.exception.ResourceNotFoundException;
+import com.carrental.repository.ClientRepository;
+import com.carrental.repository.ContractRepository;
 import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.ReservationRepository;
 import com.carrental.repository.VehicleRepository;
@@ -21,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +38,10 @@ class ReservationServiceTest {
     @Mock private ReservationRepository reservationRepository;
     @Mock private VehicleRepository vehicleRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private ClientRepository clientRepository;
+    @Mock private ContractRepository contractRepository;
+    @Mock private DepositService depositService;
+    @Mock private ContractService contractService;
 
     @InjectMocks
     private ReservationService reservationService;
@@ -58,6 +66,7 @@ class ReservationServiceTest {
                 .id(VEHICLE_ID)
                 .marque("Audi A4")
                 .prixJour(new BigDecimal("100.00"))
+                .statut(VehicleStatus.AVAILABLE)
                 .tenant(tenant)
                 .build();
 
@@ -108,10 +117,11 @@ class ReservationServiceTest {
         req.setDateStart(LocalDate.now().plusDays(10));
         req.setDateEnd(LocalDate.now().plusDays(12)); // 3 days
 
-        when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
+        when(vehicleRepository.findByIdAndTenantIdForUpdate(VEHICLE_ID, TENANT_ID))
                 .thenReturn(Optional.of(vehicle));
         when(reservationRepository.existsOverlappingReservation(
-                VEHICLE_ID, TENANT_ID, req.getDateStart(), req.getDateEnd())).thenReturn(false);
+                VEHICLE_ID, TENANT_ID, req.getDateStart(), LocalTime.of(9, 0),
+                req.getDateEnd(), LocalTime.of(18, 0))).thenReturn(false);
 
         Reservation saved = Reservation.builder()
                 .id(200L)
@@ -138,10 +148,11 @@ class ReservationServiceTest {
         req.setDateStart(LocalDate.now().plusDays(1));
         req.setDateEnd(LocalDate.now().plusDays(3));
 
-        when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
+        when(vehicleRepository.findByIdAndTenantIdForUpdate(VEHICLE_ID, TENANT_ID))
                 .thenReturn(Optional.of(vehicle));
         when(reservationRepository.existsOverlappingReservation(
-                VEHICLE_ID, TENANT_ID, req.getDateStart(), req.getDateEnd())).thenReturn(true);
+                VEHICLE_ID, TENANT_ID, req.getDateStart(), LocalTime.of(9, 0),
+                req.getDateEnd(), LocalTime.of(18, 0))).thenReturn(true);
 
         assertThatThrownBy(() -> reservationService.createReservation(req))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -167,6 +178,7 @@ class ReservationServiceTest {
 
         reservationService.deleteReservation(100L);
 
-        verify(reservationRepository).delete(existingReservation);
+        verify(reservationRepository).save(existingReservation);
+        assertThat(existingReservation.getStatus()).isEqualTo(com.carrental.entity.ReservationStatus.CANCELLED);
     }
 }
