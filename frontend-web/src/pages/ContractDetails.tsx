@@ -1,18 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { resolveMediaUrl } from '../lib/utils';
 import SignaturePad from '../components/shared/SignaturePad';
 import QRCodeModal from '../components/shared/QRCodeModal';
 import VehicleInspection from '../components/shared/VehicleInspection';
 import ReturnInspectionModal from '../components/shared/ReturnInspectionModal';
+import InspectionGallery from '../components/InspectionGallery';
+import Modal from '../components/Modal';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft, FileText, Calendar, User, Car, CheckCircle2, Clock,
   Printer, Download, QrCode, Shield,
   AlertCircle, Loader2, CreditCard,
-  ClipboardCheck, Users, History
+  ClipboardCheck, Users, History, RefreshCw
 } from 'lucide-react';
 
 interface ContractDetail {
@@ -61,6 +65,8 @@ interface ContractDetail {
   totalPrice: number;
   dailyPrice: number;
   depositAmount: number;
+  depositCurrency: string;
+  depositStatus: string;
   paidAmount: number;
   remainingAmount: number;
   paymentMethod: string;
@@ -83,6 +89,7 @@ interface ContractDetail {
   qrToken: string;
   publicSigningUrl: string;
   pdfUrl: string;
+  selectedTemplateId?: number | null;
 
   // Deposit
   deposit?: {
@@ -119,6 +126,16 @@ interface ContractDetail {
   updatedAt: string;
 }
 
+const unwrapObject = <T,>(payload: unknown): T => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    const response = payload as { data?: unknown };
+    if (response.data && typeof response.data === 'object') return response.data as T;
+  }
+  return payload as T;
+};
+const safePdfFileName = (contractNumber: string) =>
+  `contract-${(contractNumber || 'contract').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+
 export default function ContractDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -133,20 +150,141 @@ export default function ContractDetails() {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientBalance, setClientBalance] = useState<any>(null);
+  const [inspections, setInspections] = useState<any[]>([]);
+  const [inspectionQr, setInspectionQr] = useState<any>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<any>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
-  useEffect(() => { fetchContract(); }, [id]);
+  const emailErrorLabel = (code?: string | null): string => {
+    switch (code) {
+      case 'EMAIL_TO_ADDRESS_MISSING':
+      case 'CLIENT_EMAIL_MISSING':
+        return 'Client email is missing';
+      case 'EMAIL_SMTP_NOT_CONFIGURED':
+      case 'SMTP_NOT_CONFIGURED':
+        return 'SMTP is not configured';
+      case 'EMAIL_AUTH_FAILED':
+        return 'SMTP authentication failed';
+      case 'EMAIL_PROVIDER_TIMEOUT':
+        return 'Email provider timed out';
+      case 'EMAIL_PROVIDER_UNREACHABLE':
+        return 'Email provider unreachable';
+      case 'EMAIL_TLS_FAILED':
+        return 'SMTP TLS/SSL handshake failed';
+      default:
+        return code || 'Send failed';
+    }
+  };
 
-  const fetchContract = async () => {
+  const signingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchEmailStatus = useCallback(async (contractId: number) => {
+    try {
+      const { data } = await api.get(`/contracts/${contractId}/email-status`);
+      setEmailStatus(data);
+    } catch {
+      // non-critical
+    }
+  }, []);
+
+  const fetchContract = useCallback(async () => {
     try {
       const { data } = await api.get(`/contracts/${id}`);
-      setContract(data);
-      if (data.clientId) {
-        fetchClientBalance(data.clientId);
+      const payload = unwrapObject<ContractDetail>(data);
+      setContract(payload);
+      if (payload.selectedTemplateId !== undefined && payload.selectedTemplateId !== null) {
+        setSelectedTemplateId(payload.selectedTemplateId);
       }
-    } catch (err) {
-      showToast('Failed to load contract');
+      fetchInspections(payload.id);
+      fetchEmailStatus(payload.id);
+      if (payload.clientId) {
+        fetchClientBalance(payload.clientId);
+      }
+    } catch (err: any) {
+      const status = err?.response?.status;
+      showToast(status === 404 ? 'Contract not found or removed.' : 'Unable to load contract information. Please try again later.', 'error');
     } finally {
       setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  useEffect(() => { fetchContract(); fetchPdfTemplates(); }, [id, fetchContract]);
+
+  // Real-time auto-refresh via SSE contract_event / notification broadcast
+  useEffect(() => {
+    const handleContractUpdated = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { contractId?: number | string };
+      if (detail?.contractId && String(detail.contractId) === String(id)) {
+        fetchContract();
+        showToast('Contract signed by client', 'success');
+      }
+    };
+    window.addEventListener('contract:updated', handleContractUpdated);
+    return () => window.removeEventListener('contract:updated', handleContractUpdated);
+  }, [id, fetchContract, showToast]);
+
+  // Fallback polling every 5 s while contract awaits client signature
+  useEffect(() => {
+    const awaitingSignature = contract?.ownerSigned && !contract?.clientSigned;
+    if (awaitingSignature) {
+      signingPollRef.current = setInterval(() => {
+        fetchContract();
+      }, 5000);
+    } else {
+      if (signingPollRef.current) {
+        clearInterval(signingPollRef.current);
+        signingPollRef.current = null;
+      }
+    }
+    return () => {
+      if (signingPollRef.current) {
+        clearInterval(signingPollRef.current);
+        signingPollRef.current = null;
+      }
+    };
+  }, [contract?.ownerSigned, contract?.clientSigned, fetchContract]);
+  const fetchInspections = async (contractId: number) => {
+    try {
+      const { data } = await api.get(`/contracts/${contractId}/inspections`);
+      setInspections(Array.isArray(data) ? data : []);
+    } catch {
+      setInspections([]);
+    }
+  };
+
+  const fetchPdfTemplates = async () => {
+    try {
+      const { data } = await api.get('/contract-templates');
+      const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      const activeTemplates = list.filter((item: any) => item.active);
+      setTemplates(activeTemplates);
+      const defaultTemplate = activeTemplates.find((item: any) => item.default);
+      if (defaultTemplate) {
+        setSelectedTemplateId((current) => current ?? defaultTemplate.id);
+      }
+    } catch {
+      setTemplates([]);
+    }
+  };
+
+  const handleSelectTemplate = async (value: string) => {
+    if (!contract) return;
+    const templateId = value === 'system' ? null : Number(value);
+    setSelectedTemplateId(templateId);
+    setSavingTemplate(true);
+    try {
+      const { data } = await api.put(`/contracts/${contract.id}/template`, { templateId });
+      setContract((current) => current ? { ...current, selectedTemplateId: data?.selectedTemplateId ?? null } : current);
+      setSelectedTemplateId(data?.selectedTemplateId ?? null);
+      showToast(templateId ? 'Contract template saved' : 'System default template selected', 'success');
+    } catch (err: any) {
+      showToast(err?.userMessage || 'Unable to save template choice.', 'error');
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -159,22 +297,86 @@ export default function ContractDetails() {
     }
   };
 
+  const applyContractEnvelope = (payload: any, fallback?: Partial<ContractDetail>) => {
+    const updatedContract = payload?.data?.contract || payload?.contract;
+    if (updatedContract) {
+      setContract(updatedContract);
+      return;
+    }
+    setContract(current => current ? { ...current, ...fallback } : current);
+  };
+
   const handleDownloadPdf = async () => {
     if (!contract) return;
     setIsSubmitting(true);
     try {
-      const response = await api.get(`/contracts/${contract.id}/pdf`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      showToast('Generating PDF...', 'info');
+      const response = await api.get(`/contracts/${contract.id}/pdf`, { params: { template: 'agency' }, responseType: 'blob' });
+      if (!response.data || response.data.size === 0) {
+        showToast('PDF file is empty. Please try again.', 'error');
+        return;
+      }
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `contract-${contract.contractNumber}.pdf`);
+      link.download = safePdfFileName(contract.contractNumber);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      showToast('PDF downloaded');
+      showToast('PDF downloaded successfully', 'success');
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Failed to download PDF');
+      showToast((err as any).userMessage || 'Unable to download PDF. Please try again later.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegeneratePdf = async () => {
+    if (!contract) return;
+    setIsSubmitting(true);
+    try {
+      console.log('[CONTRACT_PDF_REGENERATE_DEBUG]', {
+        contractId: contract.id,
+        contractNumber: contract.contractNumber,
+        endpoint: `/contracts/${contract.id}/pdf/regenerate`,
+        method: 'POST',
+        templateId: contract.selectedTemplateId ?? null,
+        currentAgencySettings: true,
+      });
+      showToast('Regenerating PDF from current agency settings...', 'info');
+      const response = await api.post(`/contracts/${contract.id}/pdf/regenerate`);
+      const refreshed = response.data?.data;
+      if (refreshed?.pdfUrl) {
+        setContract(c => c ? { ...c, pdfUrl: refreshed.pdfUrl } : c);
+      } else {
+        applyContractEnvelope(response.data, refreshed);
+      }
+      showToast('PDF regenerated. It now reflects the agency\'s current logo, name, and settings.', 'success');
+    } catch (err: any) {
+      showToast((err as any).userMessage || 'Unable to regenerate PDF. Please try again later.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePrintPdf = async () => {
+    if (!contract) return;
+    setIsSubmitting(true);
+    try {
+      const response = await api.get(`/contracts/${contract.id}/pdf`, { params: { template: 'agency' }, responseType: 'blob' });
+      if (!response.data || response.data.size === 0) {
+        showToast('PDF file is empty. Please try again.', 'error');
+        return;
+      }
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      showToast('Contract PDF opened for printing', 'success');
+    } catch (err: any) {
+      showToast((err as any).userMessage || 'Unable to open contract PDF. Please try again later.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -182,60 +384,122 @@ export default function ContractDetails() {
 
   const handleOwnerSign = async (signatureData: string) => {
     if (!contract) return;
+    if (contract.ownerSigned) {
+      await fetchContract();
+      setShowOwnerSign(false);
+      showToast('Agency signature already applied.', 'info');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await api.post(`/contracts/${contract.id}/sign`, {
-        signatureData, signerType: 'OWNER',
+      const { data } = await api.post(`/contracts/${contract.id}/sign`, {
+        signatureType: 'AGENCY',
+        signatureData,
+        signedBy: 'admin',
+        signerType: 'OWNER',
+        deviceInfo: navigator.userAgent,
         ipAddress: '',
         userAgent: navigator.userAgent,
       });
-      showToast('Agency signature applied');
+      if (data?.success === false) {
+        showToast(data.message || 'Unable to save signature. Please try again later.', 'error');
+        return;
+      }
+      applyContractEnvelope(data, {
+        ownerSigned: true,
+        ownerSignature: signatureData,
+        status: contract.clientSigned ? 'ACTIVE' : 'PENDING_SIGNATURE',
+      });
+      await fetchContract();
       setShowOwnerSign(false);
-      fetchContract();
+      showToast(data?.message || 'Contract signed successfully', 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to save signature', 'error');
+      if (err?.response?.status === 409 && contract.ownerSigned) {
+        await fetchContract();
+        setShowOwnerSign(false);
+        showToast('Agency signature already applied.', 'info');
+        return;
+      }
+      showToast((err as any).userMessage || 'Unable to apply signature. Please check contract permissions.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleAutoAgencySign = async () => {
+    if (contract?.ownerSigned) {
+      await fetchContract();
+      showToast('Agency signature already applied.', 'info');
+      return;
+    }
     if (!contract || !tenant?.agencySignature) {
-      showToast('No agency signature configured. Please set it in Settings > Agency.', 'error');
+      showToast('No agency signature configured. Please set it in Settings > Agency.', 'warning');
       setShowOwnerSign(true);
       return;
     }
     setIsSubmitting(true);
     try {
-      await api.post(`/contracts/${contract.id}/sign`, {
+      const { data } = await api.post(`/contracts/${contract.id}/sign`, {
+        signatureType: 'AGENCY',
         signatureData: tenant.agencySignature,
+        signedBy: 'admin',
         signerType: 'OWNER',
+        deviceInfo: navigator.userAgent,
         ipAddress: '',
         userAgent: navigator.userAgent,
       });
-      showToast('Agency signature applied automatically');
-      fetchContract();
+      if (data?.success === false) {
+        showToast(data.message || 'Unable to apply signature. Please try again later.', 'error');
+        return;
+      }
+      applyContractEnvelope(data, {
+        ownerSigned: true,
+        ownerSignature: tenant.agencySignature,
+        status: contract.clientSigned ? 'ACTIVE' : 'PENDING_SIGNATURE',
+      });
+      await fetchContract();
+      showToast(data?.message || 'Contract signed successfully', 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to apply signature', 'error');
+      if (err?.response?.status === 409 && contract.ownerSigned) {
+        await fetchContract();
+        showToast('Agency signature already applied.', 'info');
+        return;
+      }
+      showToast((err as any).userMessage || 'Unable to apply signature. Please check contract permissions.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleGenerateQR = async () => {
-    if (!contract) return;
+    if (!contract || isSubmitting) return;
     if (!contract.ownerSigned) {
-      showToast('Agency must sign the contract before generating a QR code', 'error');
+      showToast('Agency must sign the contract before generating a QR code', 'warning');
       return;
     }
     setIsSubmitting(true);
     try {
-      await api.post(`/contracts/${contract.id}/qr`, { frontendUrl: window.location.origin + '/#' });
-      await fetchContract();
+      const { data } = await api.get(`/contracts/${contract.id}/qr`, {
+        params: { frontendUrl: window.location.origin + '/#' },
+      });
+      if (data?.success === false) {
+        showToast(data.message || 'Unable to generate QR code. Please try again later.', 'error');
+        return;
+      }
+      const qrData = data?.data || data;
+      applyContractEnvelope(data, {
+        qrToken: qrData?.qrToken || contract.qrToken,
+        publicSigningUrl: qrData?.signingUrl || qrData?.publicSigningUrl || contract.publicSigningUrl,
+      });
       setShowQRModal(true);
-      showToast('QR code generated');
+      showToast(data?.message || 'QR code generated successfully', 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to generate QR', 'error');
+      if (err?.response?.status === 409 && contract.qrToken && contract.publicSigningUrl) {
+        setShowQRModal(true);
+        showToast('Existing QR code loaded.', 'info');
+        return;
+      }
+      showToast((err as any).userMessage || 'Unable to generate QR code. Please try again later.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -246,10 +510,31 @@ export default function ContractDetails() {
     setIsSubmitting(true);
     try {
       await api.post(`/contracts/${contract.id}/finalize`);
-      showToast('Contract finalized');
+      showToast('Contract finalized successfully', 'success');
       fetchContract();
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Failed to finalize');
+      showToast((err as any).userMessage || 'Unable to finalize contract. Please try again later.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleStartInspection = async (type: 'BEFORE_DELIVERY' | 'AFTER_RETURN') => {
+    if (!contract) return;
+    setIsSubmitting(true);
+    try {
+      const { data } = await api.post('/inspections/create-token', {
+        contractId: contract.id,
+        type,
+        frontendUrl: window.location.origin + '/#',
+      });
+      setInspectionQr(data);
+      await fetchInspections(contract.id);
+      showToast(type === 'BEFORE_DELIVERY'
+        ? 'Before-delivery inspection QR generated'
+        : 'After-return inspection QR generated', 'success');
+    } catch (err: any) {
+      showToast((err as any).userMessage || 'Unable to start vehicle inspection', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -290,7 +575,13 @@ export default function ContractDetails() {
   }
 
   const bothSigned = contract.clientSigned && contract.ownerSigned;
+  const displayedStatus = bothSigned
+    ? 'ACTIVE'
+    : (contract.clientSigned || contract.ownerSigned) && contract.status !== 'CANCELLED' && contract.status !== 'COMPLETED'
+      ? 'PENDING_SIGNATURE'
+      : contract.status;
   const canFinalize = bothSigned && contract.status !== 'ACTIVE' && contract.status !== 'COMPLETED';
+  const selectedPdfTemplate = templates.find((tpl) => tpl.id === selectedTemplateId) || null;
 
   const detailTabs = [
     { key: 'overview', label: 'Overview', icon: FileText },
@@ -308,19 +599,48 @@ export default function ContractDetails() {
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/contracts')} className="p-2 -ml-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all shrink-0">
+          <button onClick={() => navigate('/contracts')} className="p-2 -ms-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all shrink-0">
             <ArrowLeft size={20} />
           </button>
+          {tenant?.logoUrl && (
+            <img
+              src={resolveMediaUrl(tenant.logoUrl) || undefined}
+              alt={tenant.name || 'Agency'}
+              className="h-9 w-auto max-w-[120px] rounded-lg object-contain border border-slate-100 bg-white p-0.5 shrink-0"
+            />
+          )}
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-[#1e293b] truncate">{contract.contractNumber}</h1>
-            <p className="text-slate-500 text-xs sm:text-sm">Contract Details</p>
+            <p className="text-slate-500 text-xs sm:text-sm">{tenant?.name || 'Contract Details'}</p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <span className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider ${getStatusBadge(contract.status)}`}>
-            {contract.status.replace('_', ' ')}
+          <span className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider ${getStatusBadge(displayedStatus)}`}>
+            {displayedStatus.replace('_', ' ')}
           </span>
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all">
+          <select
+            value={selectedTemplateId ?? 'system'}
+            onChange={(event) => handleSelectTemplate(event.target.value)}
+            disabled={savingTemplate}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:border-brand-300 disabled:opacity-50"
+            title="PDF Template"
+          >
+            <option value="system">System default</option>
+            {templates.map((tpl) => (
+              <option key={tpl.id} value={tpl.id}>
+                {tpl.name}{tpl.default ? ' (agency default)' : ''}{tpl.templateType === 'SYSTEM_DEFAULT' ? ' - system' : ''}
+              </option>
+            ))}
+          </select>
+          <span className="max-w-[280px] text-[11px] font-medium text-slate-500">
+            PDF Template: {selectedPdfTemplate ? selectedPdfTemplate.name : 'System default'}
+          </span>
+          {!selectedTemplateId && !templates.length && (
+            <span className="max-w-[260px] text-[11px] font-medium text-amber-600">
+              No agency contract template configured. System default will be used.
+            </span>
+          )}
+          <button onClick={handlePrintPdf} disabled={isSubmitting} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
             <Printer size={14} className="sm:hidden" />
             <Printer size={16} className="hidden sm:block" />
             <span className="hidden sm:inline">Print</span>
@@ -331,8 +651,17 @@ export default function ContractDetails() {
             <Download size={16} className="hidden sm:block" />
             <span className="hidden sm:inline">PDF</span>
           </button>
+          {contract.pdfUrl && (
+            <button onClick={handleRegeneratePdf} disabled={isSubmitting}
+              title="Refresh the saved PDF with the agency's current logo, name and settings"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
+              <RefreshCw size={14} className="sm:hidden" />
+              <RefreshCw size={16} className="hidden sm:block" />
+              <span className="hidden sm:inline">Regenerate PDF</span>
+            </button>
+          )}
           <button
-            onClick={contract.ownerSigned ? handleGenerateQR : () => showToast('Agency must sign first before generating QR', 'error')}
+            onClick={contract.ownerSigned ? handleGenerateQR : () => showToast('Agency must sign first before generating QR', 'warning')}
             disabled={isSubmitting}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all disabled:opacity-50 whitespace-nowrap ${
               contract.ownerSigned
@@ -342,6 +671,13 @@ export default function ContractDetails() {
             <QrCode size={14} className="sm:hidden" />
             <QrCode size={16} className="hidden sm:block" />
             {contract.qrToken ? 'Show QR' : 'Generate QR'}
+          </button>
+          <button
+            onClick={() => handleStartInspection('BEFORE_DELIVERY')}
+            disabled={isSubmitting}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-all disabled:opacity-50 whitespace-nowrap">
+            <CameraIcon />
+            Start Vehicle Inspection
           </button>
         </div>
       </div>
@@ -447,8 +783,11 @@ export default function ContractDetails() {
                     {contract.ownerSigned && contract.ownerSignature && (
                       <div className="space-y-2">
                         <p className="text-xs font-bold text-slate-500">Agency Representative</p>
-                        <div className="p-2 bg-white rounded-xl border border-slate-200">
-                          <img src={contract.ownerSignature} alt="Agency Signature" className="h-16 sm:h-20 w-full object-contain" />
+                        <div className="p-2 bg-white rounded-xl border border-slate-200 flex items-end gap-3">
+                          <img src={contract.ownerSignature} alt="Agency Signature" className="h-16 sm:h-20 flex-1 object-contain" />
+                          {tenant?.agencyStampUrl && (
+                            <img src={resolveMediaUrl(tenant.agencyStampUrl) || undefined} alt="Agency Stamp" className="h-14 sm:h-16 w-14 sm:w-16 object-contain opacity-80" />
+                          )}
                         </div>
                       </div>
                     )}
@@ -462,18 +801,78 @@ export default function ContractDetails() {
                     )}
                   </div>
                   {contract.pdfUrl && (
-                    <a
-                      href={`${import.meta.env.VITE_API_BASE_URL || ''}${contract.pdfUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 transition-all"
+                    <button
+                      type="button"
+                      onClick={handleDownloadPdf}
+                      disabled={isSubmitting}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 transition-all disabled:opacity-50"
                     >
                       <FileText size={16} />
                       View Signed PDF
-                    </a>
+                    </button>
                   )}
                 </div>
               )}
+
+              {/* Client Email Status */}
+              <div className="card-premium space-y-3 p-3 sm:p-5">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                  <AlertCircle size={14} /> Contract Email
+                </h3>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-slate-500">Client Email</p>
+                    {emailStatus?.hasClientEmail ? (
+                      <p className="text-sm font-semibold text-[#1e293b]">{emailStatus.clientEmail}</p>
+                    ) : (
+                      <p className="text-sm text-slate-400 italic">Client email is missing. Add an email to send the contract.</p>
+                    )}
+                    {emailStatus?.lastStatus && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {emailStatus.lastStatus === 'SENT' ? (
+                          <CheckCircle2 size={13} className="text-success-500" />
+                        ) : (
+                          <AlertCircle size={13} className="text-amber-500" />
+                        )}
+                        <span className={`text-xs font-semibold ${emailStatus.lastStatus === 'SENT' ? 'text-success-600' : 'text-amber-600'}`}>
+                          {emailStatus.lastStatus === 'SENT' ? 'Email sent' : emailErrorLabel(emailStatus.lastErrorCode)}
+                        </span>
+                        {emailStatus.lastSentAt && (
+                          <span className="text-xs text-slate-400">
+                            · {new Date(emailStatus.lastSentAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {!emailStatus?.lastStatus && emailStatus?.hasClientEmail && (
+                      <p className="text-xs text-slate-400">No email sent yet</p>
+                    )}
+                  </div>
+                  {emailStatus?.hasClientEmail && (
+                    <button
+                      onClick={async () => {
+                        setSendingEmail(true);
+                        try {
+                          const { data } = await api.post(`/contracts/${contract.id}/send-email`);
+                          showToast(data?.message || 'Email sent', data?.success ? 'success' : 'error');
+                          fetchEmailStatus(contract.id);
+                        } catch (err: any) {
+                          showToast(err?.response?.data?.message || 'Unable to send email', 'error');
+                        } finally {
+                          setSendingEmail(false);
+                        }
+                      }}
+                      disabled={sendingEmail}
+                      className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-600 rounded-xl text-xs font-semibold hover:bg-brand-100 transition-all disabled:opacity-50"
+                    >
+                      {sendingEmail
+                        ? <Loader2 size={13} className="animate-spin" />
+                        : <Download size={13} />}
+                      {emailStatus?.lastStatus === 'SENT' ? 'Resend Email' : 'Send Email'}
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {/* Security Deposit */}
               {contract.deposit && (
@@ -647,43 +1046,115 @@ export default function ContractDetails() {
           )}
 
           {activeTab === 'payment' && (
-            <div className="card-premium p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Payment Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <InfoRow label="Total Price" value={`${contract.totalPrice || 0} MAD`} />
-                <InfoRow label="Daily Price" value={`${contract.dailyPrice || 0} MAD`} />
-                <InfoRow label="Deposit" value={`${contract.depositAmount || 0} MAD`} />
-                <InfoRow label="Paid Amount" value={`${contract.paidAmount || 0} MAD`} />
-                <InfoRow label="Remaining" value={`${contract.remainingAmount || 0} MAD`} />
-                <InfoRow label="Payment Method" value={contract.paymentMethod} />
-                <InfoRow label="Payment Status" value={contract.paymentStatus} />
+            <div className="card-premium p-4 sm:p-6 space-y-5 sm:space-y-6">
+              {/* ── Rental Payment ─────────────────────────────────────────── */}
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">Rental Payment</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <InfoRow label="Total Price" value={`${(contract.totalPrice || 0).toLocaleString()} MAD`} />
+                  <InfoRow label="Daily Price" value={`${(contract.dailyPrice || 0).toLocaleString()} MAD`} />
+                  <InfoRow label="Paid Amount" value={`${(contract.paidAmount || 0).toLocaleString()} MAD`} />
+                  <InfoRow label="Remaining" value={`${(contract.remainingAmount || 0).toLocaleString()} MAD`} />
+                  <InfoRow label="Payment Method" value={contract.paymentMethod} />
+                  <InfoRow label="Payment Status" value={contract.paymentStatus} />
+                </div>
+              </div>
+              {/* ── Deposit / Guarantee (Caution) ────────────────────────────── */}
+              <div className="border-t border-[var(--border-subtle)] pt-4">
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
+                  Deposit / Guarantee (Caution)
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <InfoRow
+                    label="Deposit Required"
+                    value={`${(contract.depositAmount || 0).toLocaleString()} ${contract.depositCurrency || 'MAD'}`}
+                  />
+                  <InfoRow
+                    label="Deposit Status"
+                    value={(() => {
+                      const statusMap: Record<string, string> = {
+                        NOT_REQUIRED: 'Not Required',
+                        PENDING: 'Pending',
+                        RECEIVED: 'Received',
+                        HELD: 'Held',
+                        PARTIALLY_RETURNED: 'Partially Returned',
+                        RETURNED: 'Returned',
+                        KEPT: 'Kept by Agency',
+                        DEDUCTED: 'Deducted',
+                        CANCELLED: 'Cancelled',
+                      };
+                      return statusMap[contract.depositStatus] || contract.depositStatus || 'Not Required';
+                    })()}
+                  />
+                  {contract.deposit && (
+                    <>
+                      <InfoRow label="Deposit Held" value={`${(contract.deposit.amount || 0).toLocaleString()} MAD`} />
+                      {contract.deposit.returnedAmount != null && (
+                        <InfoRow label="Deposit Returned" value={`${(contract.deposit.returnedAmount || 0).toLocaleString()} MAD`} />
+                      )}
+                    </>
+                  )}
+                </div>
+                {contract.depositAmount > 0 && (
+                  <p className="text-[11px] text-slate-400 mt-2">
+                    The deposit/guarantee is separate from the rental price and is refundable according to the contract terms.
+                  </p>
+                )}
               </div>
             </div>
           )}
 
           {activeTab === 'inspection' && (
-            <div className="card-premium p-4 sm:p-6">
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 sm:mb-4">Vehicle Inspection</h3>
-              {contract.vehicleCondition ? (
-                <VehicleInspection
-                  value={[
-                    { id: 'front', label: 'Front', damaged: contract.vehicleCondition.frontDamage || false, notes: '' },
-                    { id: 'rear', label: 'Rear', damaged: contract.vehicleCondition.rearDamage || false, notes: '' },
-                    { id: 'leftSide', label: 'Left Side', damaged: contract.vehicleCondition.leftSideDamage || false, notes: '' },
-                    { id: 'rightSide', label: 'Right Side', damaged: contract.vehicleCondition.rightSideDamage || false, notes: '' },
-                    { id: 'windshield', label: 'Windshield', damaged: contract.vehicleCondition.windshieldDamage || false, notes: '' },
-                    { id: 'interior', label: 'Interior', damaged: contract.vehicleCondition.interiorDamage || false, notes: '' },
-                    { id: 'roof', label: 'Roof', damaged: contract.vehicleCondition.roofDamage || false, notes: '' },
-                    { id: 'bumperFront', label: 'Front Bumper', damaged: contract.vehicleCondition.bumperFrontDamage || false, notes: '' },
-                    { id: 'bumperRear', label: 'Rear Bumper', damaged: contract.vehicleCondition.bumperRearDamage || false, notes: '' },
-                    { id: 'hood', label: 'Hood', damaged: contract.vehicleCondition.hoodDamage || false, notes: '' },
-                    { id: 'trunk', label: 'Trunk', damaged: contract.vehicleCondition.trunkDamage || false, notes: '' },
-                  ]}
-                  onChange={() => {}}
-                  readOnly
-                />
-              ) : (
-                <p className="text-sm text-slate-400 text-center py-8">No inspection recorded</p>
+            <div className="card-premium p-4 sm:p-6 space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Vehicle Inspection Media</h3>
+                  <p className="mt-1 text-xs text-slate-400">Proof before delivery and after return, linked to this contract.</p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button onClick={() => handleStartInspection('BEFORE_DELIVERY')} disabled={isSubmitting}
+                    className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
+                    Before Delivery QR
+                  </button>
+                  <button onClick={() => handleStartInspection('AFTER_RETURN')} disabled={isSubmitting}
+                    className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+                    After Return QR
+                  </button>
+                  <button onClick={() => contract && fetchInspections(contract.id)} disabled={isSubmitting}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                    Refresh media
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <InspectionStatusCard title="Before Delivery" inspection={inspections.find((item) => item.type === 'BEFORE_DELIVERY')} />
+                <InspectionStatusCard title="After Return" inspection={inspections.find((item) => item.type === 'AFTER_RETURN')} />
+              </div>
+              <InspectionGallery
+                inspections={inspections}
+                onRefresh={() => { if (contract?.id) fetchInspections(contract.id); }}
+              />
+              {contract.vehicleCondition && (
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Legacy Damage Markers</h4>
+                  <VehicleInspection
+                    value={[
+                      { id: 'front', label: 'Front', damaged: contract.vehicleCondition.frontDamage || false, notes: '' },
+                      { id: 'rear', label: 'Rear', damaged: contract.vehicleCondition.rearDamage || false, notes: '' },
+                      { id: 'leftSide', label: 'Left Side', damaged: contract.vehicleCondition.leftSideDamage || false, notes: '' },
+                      { id: 'rightSide', label: 'Right Side', damaged: contract.vehicleCondition.rightSideDamage || false, notes: '' },
+                      { id: 'windshield', label: 'Windshield', damaged: contract.vehicleCondition.windshieldDamage || false, notes: '' },
+                      { id: 'interior', label: 'Interior', damaged: contract.vehicleCondition.interiorDamage || false, notes: '' },
+                      { id: 'roof', label: 'Roof', damaged: contract.vehicleCondition.roofDamage || false, notes: '' },
+                      { id: 'bumperFront', label: 'Front Bumper', damaged: contract.vehicleCondition.bumperFrontDamage || false, notes: '' },
+                      { id: 'bumperRear', label: 'Rear Bumper', damaged: contract.vehicleCondition.bumperRearDamage || false, notes: '' },
+                      { id: 'hood', label: 'Hood', damaged: contract.vehicleCondition.hoodDamage || false, notes: '' },
+                      { id: 'trunk', label: 'Trunk', damaged: contract.vehicleCondition.trunkDamage || false, notes: '' },
+                    ]}
+                    onChange={() => {}}
+                    readOnly
+                  />
+                </div>
               )}
             </div>
           )}
@@ -852,6 +1323,8 @@ export default function ContractDetails() {
           contractNumber={contract.contractNumber}
           clientName={contract.clientFullName || ''}
           contractId={contract.id}
+          clientSigned={contract.clientSigned}
+          signedAt={contract.signedAt}
         />
       )}
 
@@ -862,9 +1335,49 @@ export default function ContractDetails() {
           depositId={contract.deposit.id!}
           depositAmount={contract.deposit.amount || 0}
           contractId={contract.id}
-          onSuccess={() => { fetchContract(); showToast('Return processed successfully'); }}
+          onSuccess={() => { fetchContract(); showToast('Return processed successfully', 'success'); }}
         />
       )}
+
+      <Modal isOpen={!!inspectionQr} onClose={() => setInspectionQr(null)} title="Vehicle Inspection QR" maxWidth="md">
+        {inspectionQr && (
+          <div className="space-y-4 text-center">
+            <div className="mx-auto w-fit rounded-3xl bg-white p-5 shadow-sm">
+              <QRCodeSVG value={inspectionQr.captureUrl || ''} size={230} level="H" includeMargin />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">
+                {inspectionQr.type === 'BEFORE_DELIVERY' ? 'Before Delivery' : 'After Return'} Inspection
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Scan with a phone to open the camera checklist. Expires {new Date(inspectionQr.tokenExpiresAt).toLocaleString()}.
+              </p>
+            </div>
+            <input readOnly value={inspectionQr.captureUrl || ''} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500" />
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function CameraIcon() {
+  return <Shield size={14} className="sm:hidden" />;
+}
+
+function InspectionStatusCard({ title, inspection }: { title: string; inspection?: any }) {
+  const photoCount = (inspection?.media || []).filter((item: any) => item.type === 'PHOTO').length;
+  const requiredPhotoCount = 13;
+  const completed = inspection?.status === 'COMPLETED' || photoCount >= requiredPhotoCount;
+  const displayStatus = photoCount === 0 ? (inspection ? inspection.status : 'Pending') : completed ? 'COMPLETED' : 'IN_PROGRESS';
+  return (
+    <div className={`rounded-2xl border p-4 ${completed ? 'border-emerald-100 bg-emerald-50' : 'border-amber-100 bg-amber-50'}`}>
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</p>
+      <p className={`mt-1 text-lg font-black ${completed ? 'text-emerald-700' : 'text-amber-700'}`}>
+        {displayStatus.replace('_', ' ')}
+      </p>
+      {inspection && <p className="mt-1 text-xs text-slate-500">{photoCount}/{requiredPhotoCount} photos uploaded</p>}
+      {inspection?.mediaExpiresAt && <p className="mt-1 text-xs text-slate-500">Media expires {new Date(inspection.mediaExpiresAt).toLocaleDateString()}</p>}
     </div>
   );
 }
@@ -883,3 +1396,5 @@ function getStatusIndex(status: string): number {
   const order = ['DRAFT', 'PENDING_SIGNATURE', 'PARTIALLY_SIGNED', 'SIGNED', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'EXPIRED'];
   return order.indexOf(status);
 }
+
+

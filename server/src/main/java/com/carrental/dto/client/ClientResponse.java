@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class ClientResponse {
 
     private Long   id;
+    private String fullName;
     private String name;
     private String firstName;
     private String lastName;
@@ -50,6 +51,7 @@ public class ClientResponse {
         }
         return ClientResponse.builder()
                 .id(client.getId())
+                .fullName(client.getName())
                 .name(client.getName())
                 .firstName(firstName)
                 .lastName(lastName)
@@ -72,7 +74,7 @@ public class ClientResponse {
                 .emergencyContactPhone(client.getEmergencyContactPhone())
                 .companyName(client.getCompanyName())
                 .notes(client.getNotes())
-                .tenantId(client.getTenant().getId())
+                .tenantId(client.getTenant() != null ? client.getTenant().getId() : null)
                 .build();
     }
 }

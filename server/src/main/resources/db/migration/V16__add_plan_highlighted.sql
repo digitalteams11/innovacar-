@@ -1,0 +1,1 @@
+ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS highlighted BOOLEAN DEFAULT FALSE;

@@ -2,6 +2,7 @@ package com.carrental.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
  * Represents a single vehicle in a tenant's fleet with full pricing and status.
  */
 @Entity
+@SQLRestriction("coalesce(deleted, false) = false")
 @Table(
     name = "vehicles",
     indexes = {
@@ -84,7 +86,7 @@ public class Vehicle {
     private String transmission;
 
     /** Vehicle year */
-    @Column
+    @Column(name = "\"year\"")
     private Integer year;
 
     /** Vehicle color */
@@ -124,15 +126,68 @@ public class Vehicle {
     @Column(name = "gps_status", length = 20)
     private GpsDeviceStatus gpsStatus;
 
+    @Column(name = "out_of_zone")
+    private Boolean outOfZone = false;
+
     @Column(name = "last_speed")
     private Double lastSpeed;
 
     @Column(name = "gps_enabled")
     private Boolean gpsEnabled = false;
 
+    // ── Vehicle Condition & Tracking ────────────────────────────────────────
+
+    @Column(name = "fuel_level_current", length = 30)
+    private String fuelLevelCurrent;
+
+    @Column(name = "mileage_current")
+    private Integer mileageCurrent;
+
+    @Column(name = "license_expiry_date")
+    private LocalDate licenseExpiryDate;
+
+    @Column(name = "circulation_authorization_expiry_date")
+    private LocalDate circulationAuthorizationExpiryDate;
+
+    /** GOOD / WARNING / NEEDS_SERVICE */
+    @Column(name = "condition_status", length = 30)
+    private String conditionStatus;
+
+    @Column(name = "last_inspection_at")
+    private LocalDateTime lastInspectionAt;
+
+    @Column(name = "last_returned_at")
+    private LocalDateTime lastReturnedAt;
+
+    @Builder.Default
+    @Column(name = "deleted", columnDefinition = "boolean default false")
+    private Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by", length = 150)
+    private String deletedBy;
+
+    // Captures the statut held right before this vehicle was moved to trash,
+    // so restore can put it back (e.g. IN_MAINTENANCE) instead of always
+    // forcing AVAILABLE. Cleared again on restore.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_before_delete", length = 20)
+    private VehicleStatus statusBeforeDelete;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
     // ── Multi-tenancy link ──────────────────────────────────────────────────
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tenant_id", nullable = false)
     private Tenant tenant;
+
+    @PrePersist
+    protected void onCreate() {
+        if (deleted == null) deleted = false;
+    }
 }

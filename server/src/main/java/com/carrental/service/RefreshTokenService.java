@@ -32,6 +32,11 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshToken saveRefreshToken(Long userId, String rawToken) {
+        return saveRefreshToken(userId, rawToken, null, null);
+    }
+
+    @Transactional
+    public RefreshToken saveRefreshToken(Long userId, String rawToken, String ipAddress, String userAgent) {
         String tokenHash = hashToken(rawToken);
 
         // Revoke any existing refresh tokens for this user (optional: allow multiple)
@@ -39,9 +44,13 @@ public class RefreshTokenService {
         long activeCount = refreshTokenRepository.countByUserIdAndRevokedFalseAndExpiresAtAfter(
                 userId, LocalDateTime.now());
         if (activeCount >= 5) {
-            // Remove oldest tokens to make room
-            // This is a simple approach; in production, you might want to track per-device
-            log.warn("User {} has too many refresh tokens, pruning old ones", userId);
+            var tokensToRevoke = refreshTokenRepository
+                    .findByUserIdAndRevokedFalseOrderByCreatedAtAsc(userId).stream()
+                    .limit(activeCount - 4)
+                    .toList();
+            tokensToRevoke.forEach(token -> token.setRevoked(true));
+            refreshTokenRepository.saveAll(tokensToRevoke);
+            log.info("Pruned old refresh tokens for user {}", userId);
         }
 
         RefreshToken refreshToken = RefreshToken.builder()
@@ -49,6 +58,8 @@ public class RefreshTokenService {
                 .tokenHash(tokenHash)
                 .expiresAt(LocalDateTime.now().plusSeconds(jwtTokenProvider.getRefreshExpirationMs() / 1000))
                 .revoked(false)
+                .ipAddress(ipAddress)
+                .userAgent(userAgent)
                 .build();
 
         return refreshTokenRepository.save(refreshToken);

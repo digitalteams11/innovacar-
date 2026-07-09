@@ -24,12 +24,16 @@ export default function SafeChartContainer({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let frame = 0;
 
     const check = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        setReady(true);
-      }
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const width = Math.floor(rect.width);
+        const height = Math.floor(rect.height);
+        setReady(width > 1 && height > 1);
+      });
     };
 
     check();
@@ -40,6 +44,7 @@ export default function SafeChartContainer({
     ro.observe(el);
 
     return () => {
+      window.cancelAnimationFrame(frame);
       clearTimeout(timer);
       ro.disconnect();
     };
@@ -49,7 +54,7 @@ export default function SafeChartContainer({
     <div
       ref={ref}
       className={`w-full ${className}`}
-      style={{ ...style, minHeight: style?.height ?? minHeight }}
+      style={{ minWidth: 1, minHeight, height: style?.height ?? minHeight, ...style }}
     >
       {ready ? children : null}
     </div>

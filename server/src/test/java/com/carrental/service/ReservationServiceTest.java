@@ -2,15 +2,12 @@ package com.carrental.service;
 
 import com.carrental.dto.reservation.CreateReservationRequest;
 import com.carrental.dto.reservation.ReservationResponse;
-import com.carrental.entity.Payment;
 import com.carrental.entity.Reservation;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.Vehicle;
 import com.carrental.entity.VehicleStatus;
 import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.ClientRepository;
-import com.carrental.repository.ContractRepository;
-import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.ReservationRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
@@ -37,11 +34,8 @@ class ReservationServiceTest {
 
     @Mock private ReservationRepository reservationRepository;
     @Mock private VehicleRepository vehicleRepository;
-    @Mock private PaymentRepository paymentRepository;
     @Mock private ClientRepository clientRepository;
-    @Mock private ContractRepository contractRepository;
-    @Mock private DepositService depositService;
-    @Mock private ContractService contractService;
+    @Mock private AvailabilityService availabilityService;
 
     @InjectMocks
     private ReservationService reservationService;
@@ -119,9 +113,9 @@ class ReservationServiceTest {
 
         when(vehicleRepository.findByIdAndTenantIdForUpdate(VEHICLE_ID, TENANT_ID))
                 .thenReturn(Optional.of(vehicle));
-        when(reservationRepository.existsOverlappingReservation(
-                VEHICLE_ID, TENANT_ID, req.getDateStart(), LocalTime.of(9, 0),
-                req.getDateEnd(), LocalTime.of(18, 0))).thenReturn(false);
+        when(availabilityService.isVehicleAvailable(
+                VEHICLE_ID, req.getDateStart(), LocalTime.of(9, 0),
+                req.getDateEnd(), LocalTime.of(18, 0), null)).thenReturn(true);
 
         Reservation saved = Reservation.builder()
                 .id(200L)
@@ -138,7 +132,8 @@ class ReservationServiceTest {
 
         assertThat(response.getId()).isEqualTo(200L);
         assertThat(response.getTotalPrice()).isEqualByComparingTo("300.00");
-        verify(paymentRepository).save(any(Payment.class));
+        assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.RESERVED);
+        verify(vehicleRepository).save(vehicle);
     }
 
     @Test
@@ -150,9 +145,9 @@ class ReservationServiceTest {
 
         when(vehicleRepository.findByIdAndTenantIdForUpdate(VEHICLE_ID, TENANT_ID))
                 .thenReturn(Optional.of(vehicle));
-        when(reservationRepository.existsOverlappingReservation(
-                VEHICLE_ID, TENANT_ID, req.getDateStart(), LocalTime.of(9, 0),
-                req.getDateEnd(), LocalTime.of(18, 0))).thenReturn(true);
+        when(availabilityService.isVehicleAvailable(
+                VEHICLE_ID, req.getDateStart(), LocalTime.of(9, 0),
+                req.getDateEnd(), LocalTime.of(18, 0), null)).thenReturn(false);
 
         assertThatThrownBy(() -> reservationService.createReservation(req))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -176,7 +171,7 @@ class ReservationServiceTest {
         when(reservationRepository.findByIdAndTenantId(100L, TENANT_ID))
                 .thenReturn(Optional.of(existingReservation));
 
-        reservationService.deleteReservation(100L);
+        reservationService.deleteReservation(100L, "test@example.com");
 
         verify(reservationRepository).save(existingReservation);
         assertThat(existingReservation.getStatus()).isEqualTo(com.carrental.entity.ReservationStatus.CANCELLED);

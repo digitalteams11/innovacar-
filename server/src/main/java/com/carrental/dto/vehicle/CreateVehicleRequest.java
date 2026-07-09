@@ -29,6 +29,7 @@ public class CreateVehicleRequest {
     private String category;
 
     /** License plate number */
+    @NotBlank(message = "License plate is required")
     @Size(max = 30)
     private String plate;
 

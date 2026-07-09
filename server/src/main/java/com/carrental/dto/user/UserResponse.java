@@ -24,6 +24,9 @@ public class UserResponse {
     private String jobTitle;
     private String avatarUrl;
     private Boolean emailVerified;
+    private Boolean twoFactorEnabled;
+    private String language;
+    private String themeMode;
 
     // ── Static factory ───────────────────────────────────────────────────────
 
@@ -40,6 +43,9 @@ public class UserResponse {
                 .jobTitle(user.getJobTitle())
                 .avatarUrl(user.getAvatarUrl())
                 .emailVerified(user.getEmailVerified())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
+                .language(user.getLanguage())
+                .themeMode(user.getThemeMode())
                 .build();
     }
 }

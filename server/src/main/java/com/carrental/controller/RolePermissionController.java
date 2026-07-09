@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -22,18 +23,29 @@ public class RolePermissionController {
     }
 
     @GetMapping("/matrix")
-    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
+    @PreAuthorize("@rolePermissionService.has('ROLE_ACCESS_MANAGE')")
     public ResponseEntity<Map<String, Object>> matrix() {
         return ResponseEntity.ok(permissionService.matrix());
     }
 
     @PutMapping("/{role}/{permissionCode}")
-    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
+    @PreAuthorize("@rolePermissionService.has('ROLE_ACCESS_MANAGE')")
     public ResponseEntity<RolePermission> setPermission(
             @PathVariable Role role,
             @PathVariable String permissionCode,
             @RequestBody Map<String, Boolean> body) {
         return ResponseEntity.ok(permissionService.setPermission(
                 role, permissionCode, Boolean.TRUE.equals(body.get("enabled"))));
+    }
+
+    /**
+     * Bulk save: {@code {"ADMIN": ["VIEW_VEHICLES", ...], "MANAGER": [...]}}.
+     * Replaces each listed role's full enabled-permission set in one call.
+     */
+    @PutMapping("/matrix")
+    @PreAuthorize("@rolePermissionService.has('ROLE_ACCESS_MANAGE')")
+    public ResponseEntity<Map<String, Object>> saveMatrix(
+            @RequestBody Map<String, List<String>> roleToEnabledCodes) {
+        return ResponseEntity.ok(permissionService.saveMatrix(roleToEnabledCodes));
     }
 }

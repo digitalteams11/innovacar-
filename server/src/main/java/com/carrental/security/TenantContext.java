@@ -1,5 +1,9 @@
 package com.carrental.security;
 
+import com.carrental.entity.User;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 /**
  * Thread-local holder for the current tenant identifier.
  *
@@ -21,7 +25,18 @@ public final class TenantContext {
     }
 
     public static Long getCurrentTenantId() {
-        return CURRENT_TENANT.get();
+        Long tenantId = CURRENT_TENANT.get();
+        if (tenantId != null) {
+            return tenantId;
+        }
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof User user
+                && user.getTenant() != null) {
+            return user.getTenant().getId();
+        }
+
+        return null;
     }
 
     public static void clear() {

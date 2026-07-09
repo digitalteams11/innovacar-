@@ -39,40 +39,68 @@ public class RateLimitService {
      * Records a login attempt (successful or failed).
      */
     public void recordAttempt(String email, String ipAddress, boolean successful, String userAgent) {
+        recordAttempt(email, ipAddress, successful, userAgent, null, null, null);
+    }
+
+    public void recordAttempt(String email, String ipAddress, boolean successful, String userAgent,
+                              Long userId, Long tenantId, String failureReason) {
         LoginAttempt attempt = LoginAttempt.builder()
                 .email(email)
                 .ipAddress(ipAddress)
                 .successful(successful)
                 .userAgent(userAgent)
+                .userId(userId)
+                .tenantId(tenantId)
+                .failureReason(failureReason)
+                .suspicious(!successful && isIpRateLimited(ipAddress))
                 .build();
-        loginAttemptRepository.save(attempt);
+        try {
+            loginAttemptRepository.save(attempt);
+        } catch (Exception e) {
+            log.warn("Failed to record login attempt for email {}: {}", email, e.getMessage());
+        }
     }
 
     /**
      * Checks if the email is rate-limited due to too many failed login attempts.
      */
     public boolean isLoginRateLimited(String email) {
-        LocalDateTime windowStart = LocalDateTime.now().minusMinutes(loginWindowMinutes);
-        long failedAttempts = loginAttemptRepository.countByEmailAndSuccessfulFalseAndAttemptedAtAfter(email, windowStart);
-        return failedAttempts >= maxLoginAttempts;
+        try {
+            LocalDateTime windowStart = LocalDateTime.now().minusMinutes(loginWindowMinutes);
+            long failedAttempts = loginAttemptRepository.countByEmailAndSuccessfulFalseAndAttemptedAtAfter(email, windowStart);
+            return failedAttempts >= maxLoginAttempts;
+        } catch (Exception e) {
+            log.warn("Failed to evaluate email login rate limit for {}: {}", email, e.getMessage());
+            return false;
+        }
     }
 
     /**
      * Checks if the IP is rate-limited due to too many failed login attempts.
      */
     public boolean isIpRateLimited(String ipAddress) {
-        LocalDateTime windowStart = LocalDateTime.now().minusMinutes(loginWindowMinutes);
-        long failedAttempts = loginAttemptRepository.countByIpAddressAndSuccessfulFalseAndAttemptedAtAfter(ipAddress, windowStart);
-        return failedAttempts >= maxLoginAttempts * 2; // IP gets more leeway
+        try {
+            LocalDateTime windowStart = LocalDateTime.now().minusMinutes(loginWindowMinutes);
+            long failedAttempts = loginAttemptRepository.countByIpAddressAndSuccessfulFalseAndAttemptedAtAfter(ipAddress, windowStart);
+            return failedAttempts >= maxLoginAttempts * 2; // IP gets more leeway
+        } catch (Exception e) {
+            log.warn("Failed to evaluate IP login rate limit for {}: {}", ipAddress, e.getMessage());
+            return false;
+        }
     }
 
     /**
      * Gets the number of remaining login attempts for a user.
      */
     public int getRemainingAttempts(String email) {
-        LocalDateTime windowStart = LocalDateTime.now().minusMinutes(loginWindowMinutes);
-        long failedAttempts = loginAttemptRepository.countByEmailAndSuccessfulFalseAndAttemptedAtAfter(email, windowStart);
-        return Math.max(0, (int) (maxLoginAttempts - failedAttempts));
+        try {
+            LocalDateTime windowStart = LocalDateTime.now().minusMinutes(loginWindowMinutes);
+            long failedAttempts = loginAttemptRepository.countByEmailAndSuccessfulFalseAndAttemptedAtAfter(email, windowStart);
+            return Math.max(0, (int) (maxLoginAttempts - failedAttempts));
+        } catch (Exception e) {
+            log.warn("Failed to read remaining login attempts for {}: {}", email, e.getMessage());
+            return maxLoginAttempts;
+        }
     }
 
     /**

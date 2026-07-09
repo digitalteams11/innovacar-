@@ -17,6 +17,8 @@ public class GpsDeviceSyncResponse {
     private int devicesSynced;
     private int devicesCreated;
     private int devicesUpdated;
+    private int matchedVehicles;
+    private int unmatchedDevices;
     private List<GpsDeviceInfo> devices;
 
     @Data
@@ -25,9 +27,11 @@ public class GpsDeviceSyncResponse {
         private String deviceId;
         private String name;
         private String imei;
+        private String plateNumber;
         private String status;
         private Double latitude;
         private Double longitude;
         private Double speed;
+        private Long   linkedVehicleId;
     }
 }

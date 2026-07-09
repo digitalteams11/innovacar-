@@ -55,6 +55,10 @@ public class Payment {
     @Column(nullable = false, length = 20)
     private PaymentStatus status;
 
+    @Builder.Default
+    @Column(name = "paid", nullable = false)
+    private Boolean paid = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PaymentType type;
@@ -98,22 +102,23 @@ public class Payment {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    /** Convenience check — true when this payment has been fully settled. */
+    /** Convenience check - true when this payment has been fully settled. */
     public boolean isPaid() {
-        return status == PaymentStatus.PAID;
+        return Boolean.TRUE.equals(paid) || status == PaymentStatus.PAID;
     }
 
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+    @PreUpdate
+    protected void ensureDefaults() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
         if (status == null) status = PaymentStatus.PENDING;
         if (type == null) type = PaymentType.RENTAL;
         if (paymentDate == null) paymentDate = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
+        if (paid == null || status == PaymentStatus.PAID) {
+            paid = status == PaymentStatus.PAID;
+        }
         updatedAt = LocalDateTime.now();
     }
 }

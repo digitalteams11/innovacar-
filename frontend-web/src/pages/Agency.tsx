@@ -54,7 +54,7 @@ export default function Agency() {
       setData(updated);
       showToast(t('toast.success', { action: 'Agency updated' }));
     } catch (err) {
-      showToast('Failed to update agency');
+      showToast((err as any).userMessage || 'Unable to update agency. Please try again later.', 'error');
     } finally {
       setSaving(false);
     }

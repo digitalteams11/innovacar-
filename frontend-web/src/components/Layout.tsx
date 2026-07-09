@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  BarChart3, Bell, Calendar, Car, ChevronDown, CreditCard, Crown, FileText, HelpCircle,
+  BarChart3, Bell, Calendar, Car, ChevronDown, CreditCard, FileText, HelpCircle,
   Info, LayoutDashboard, LockKeyhole, MapPin, MoreHorizontal,
   Palette, PanelLeftClose, PanelLeftOpen, Settings, ShieldCheck,
-  Users, Workflow, Wrench, X,
+  Users, Wrench, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,7 @@ import AnnouncementBanner from './AnnouncementBanner';
 import NotificationBell from './shared/NotificationBell';
 import GuidanceSystem from './GuidanceSystem';
 import UserMenu from './UserMenu';
+import SubscriptionBadge from './shared/SubscriptionBadge';
 import { GlobalSearchBar } from './search/GlobalSearchBar';
 import { cn } from '../lib/utils';
 
@@ -42,7 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isBlocked = user?.accountAccess?.canUsePlatform === false;
-  const { hasFeature, planName, planCode } = useFeatureAccess();
+  const { hasFeature, planCode } = useFeatureAccess();
   const { hasPermission } = usePermissions();
   const { appearance, updateAppearance } = useTheme();
 
@@ -86,9 +87,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/contract-templates', icon: FileText, label: t('nav.contractTemplates'), feature: 'CUSTOM_TEMPLATES', permission: 'MANAGE_SETTINGS', hideWhenLocked: true },
     { to: '/agency', icon: Info, label: t('nav.agency') },
     { to: '/role-permissions', icon: ShieldCheck, label: t('nav.roleAccess'), permission: 'MANAGE_EMPLOYEES' },
-    { to: '/automations', icon: Workflow, label: t('nav.automations'), permission: 'MANAGE_AUTOMATIONS' },
     { to: '/white-label', icon: Palette, label: t('nav.whiteLabel'), feature: 'WHITE_LABEL' },
     { to: '/operations-center', icon: HelpCircle, label: t('nav.operationsCenter') },
+    { to: '/help', icon: HelpCircle, label: t('nav.help', 'Help & Support') },
   ], [t]);
 
   const menuItems = useMemo(() => [...primaryMenuItems, ...adminToolItems], [primaryMenuItems, adminToolItems]);
@@ -171,7 +172,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </button>
         )}
 
-        <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-1 space-y-0.5" aria-label="Primary navigation">
+        <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-1 space-y-0.5" aria-label={t('layout.primaryNavigation', 'Primary navigation')}>
           {visiblePrimaryItems.map((item) => renderNavLink(item))}
 
           {visibleAdminToolItems.length > 0 && (
@@ -236,10 +237,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="ms-auto flex items-center gap-1 sm:gap-2">
             <button
               onClick={() => navigate('/settings?tab=billing')}
-              className="hidden md:flex h-9 items-center gap-2 px-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] text-xs font-semibold text-[var(--text-secondary)]"
+              className="hidden md:flex h-9 items-center px-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+              title={t('layout.manageSubscription', 'Manage subscription')}
             >
-              <Crown size={14} className="text-[var(--brand-primary)]" />
-              {planName || planCode || 'Plan'}
+              <SubscriptionBadge
+                planCode={planCode || user?.planCode}
+                status={user?.subscriptionStatus}
+                size="sm"
+                showLabel
+              />
             </button>
             <NotificationBell />
             <button
@@ -259,7 +265,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <nav className="fixed lg:hidden z-50 bottom-0 inset-x-0 min-h-[66px] pb-[env(safe-area-inset-bottom)] px-1 flex items-center justify-around bg-[var(--glass-bg)] backdrop-blur-2xl border-t border-[var(--glass-border)]" aria-label="Mobile navigation">
+      <nav className="fixed lg:hidden z-50 bottom-0 inset-x-0 min-h-[66px] pb-[env(safe-area-inset-bottom)] px-1 flex items-center justify-around bg-[var(--glass-bg)] backdrop-blur-2xl border-t border-[var(--glass-border)]" aria-label={t('layout.mobileNavigation', 'Mobile navigation')}>
         {mobilePrimary.map((item) => (
           <Link key={item.to} to={item.to} className={cn(
             'relative min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px]',

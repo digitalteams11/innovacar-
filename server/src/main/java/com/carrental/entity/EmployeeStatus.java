@@ -5,5 +5,6 @@ package com.carrental.entity;
  */
 public enum EmployeeStatus {
     ACTIVE,
-    INACTIVE
+    INACTIVE,
+    SUSPENDED
 }

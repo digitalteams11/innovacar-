@@ -14,6 +14,12 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     /** All invoices belonging to a tenant. */
     List<Invoice> findAllByTenantId(Long tenantId);
 
+    /** Count of all invoices for a tenant — used by the Super Admin data-reset preview. */
+    long countByTenantId(Long tenantId);
+
+    /** Deletes every invoice for a tenant — used by the Super Admin data-reset execute. */
+    void deleteAllByTenantId(Long tenantId);
+
     /** Tenant-scoped lookup by id — prevents cross-tenant access. */
     Optional<Invoice> findByIdAndTenantId(Long id, Long tenantId);
 

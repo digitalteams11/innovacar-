@@ -59,12 +59,15 @@ public class GpsService {
         Long tenantId = TenantContext.getCurrentTenantId();
         List<Vehicle> tracked = vehicleRepository.findAllByTenantIdAndGpsEnabledTrue(tenantId);
 
-        long online = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.ONLINE).count();
+        long online  = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.ONLINE).count();
         long offline = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.OFFLINE).count();
-        long moving = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.MOVING).count();
+        long moving  = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.MOVING).count();
         long stopped = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.STOPPED).count();
-        long idle = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.IDLE).count();
-        long alerts = gpsAlertRepository.countByTenantIdAndReadFalse(tenantId);
+        long idle    = tracked.stream().filter(v -> v.getGpsStatus() == GpsDeviceStatus.IDLE).count();
+        long outOfZone = vehicleRepository.countByTenantIdAndGpsEnabledTrueAndOutOfZoneTrue(tenantId);
+        long activeAlerts = gpsAlertRepository.countByTenantIdAndReadFalse(tenantId);
+        long alertsToday  = gpsAlertRepository.countByTenantIdAndCreatedAtAfter(
+                tenantId, java.time.LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0));
 
         return GpsDashboardStats.builder()
                 .totalTracked((long) tracked.size())
@@ -73,8 +76,10 @@ public class GpsService {
                 .moving(moving)
                 .stopped(stopped)
                 .idle(idle)
-                .activeAlerts(alerts)
-                .totalDistanceTodayKm(0.0) // Would calculate from history
+                .outOfZone(outOfZone)
+                .activeAlerts(activeAlerts)
+                .alertsToday(alertsToday)
+                .totalDistanceTodayKm(0.0)
                 .build();
     }
 

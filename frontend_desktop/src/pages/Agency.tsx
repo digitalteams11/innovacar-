@@ -54,7 +54,7 @@ export default function Agency() {
       setData(updated);
       showToast(t('toast.success', { action: 'Agency updated' }));
     } catch (err) {
-      showToast('Failed to update agency');
+      showToast((err as any).userMessage || 'Unable to update agency. Please try again later.', 'error');
     } finally {
       setSaving(false);
     }
@@ -69,14 +69,14 @@ export default function Agency() {
   }
 
   return (
-    <div className="space-y-5 animate-fade">
+    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
       <div>
-        <h1 className="text-xl font-bold text-[#1e293b]">{t('agency.title') || 'Agency Profile'}</h1>
-        <p className="text-slate-500 font-normal text-sm mt-0.5">{t('agency.subtitle') || 'Manage your agency information'}</p>
+        <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('agency.title') || 'Agency Profile'}</h1>
+        <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('agency.subtitle') || 'Manage your agency information'}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div className="lg:col-span-2 card-premium p-4 sm:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 card-premium p-3 sm:p-5">
           <h3 className="text-base font-bold text-[#1e293b] mb-5">General Information</h3>
           <div className="space-y-4">
             <div>
@@ -84,7 +84,7 @@ export default function Agency() {
               <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-[#1e293b] mb-2">Email</label>
                 <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -101,7 +101,7 @@ export default function Agency() {
               <input type="text" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
                 className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-[#1e293b] mb-2">City</label>
                 <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
@@ -119,9 +119,9 @@ export default function Agency() {
                 className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
             </div>
           </div>
-          <div className="mt-6 flex flex-col sm:flex-row">
+          <div className="mt-6">
             <button onClick={saveAgency} disabled={saving}
-              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-xs sm:text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-70 w-full sm:w-auto">
+              className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-70">
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               Save Changes
             </button>
@@ -129,7 +129,7 @@ export default function Agency() {
         </div>
 
         <div className="space-y-4">
-          <div className="card-premium p-4 sm:p-6">
+          <div className="card-premium p-3 sm:p-5">
             <h3 className="text-base font-bold text-[#1e293b] mb-4">Contact Info</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm text-slate-500">

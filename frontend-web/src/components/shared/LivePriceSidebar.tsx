@@ -32,13 +32,12 @@ export default function LivePriceSidebar({
     extraHoursCost: 0,
     subtotal: 0,
     discount: 0,
-    tax: 0,
     total: 0,
   });
 
   useEffect(() => {
     if (!startDate || !endDate || !dailyPrice) {
-      setCalculation({ days: 0, basePrice: 0, insurance: 0, delivery: 0, extraHoursCost: 0, subtotal: 0, discount: 0, tax: 0, total: 0 });
+      setCalculation({ days: 0, basePrice: 0, insurance: 0, delivery: 0, extraHoursCost: 0, subtotal: 0, discount: 0, total: 0 });
       return;
     }
 
@@ -61,9 +60,7 @@ export default function LivePriceSidebar({
     }
     discount = Math.min(discount, subtotal);
 
-    const afterDiscount = subtotal - discount;
-    const tax = afterDiscount * 0.20; // 20% VAT
-    const total = afterDiscount + tax;
+    const total = subtotal - discount;
 
     setCalculation({
       days,
@@ -73,7 +70,6 @@ export default function LivePriceSidebar({
       extraHoursCost: Math.round(extraHoursCost * 100) / 100,
       subtotal: Math.round(subtotal * 100) / 100,
       discount: Math.round(discount * 100) / 100,
-      tax: Math.round(tax * 100) / 100,
       total: Math.round(total * 100) / 100,
     });
   }, [dailyPrice, startDate, endDate, insuranceFees, deliveryFees, extraHours, discountAmount, discountPercent]);
@@ -119,11 +115,6 @@ export default function LivePriceSidebar({
             <span className="font-bold text-success-500">-{calculation.discount} MAD</span>
           </div>
         )}
-
-        <div className="flex justify-between text-sm">
-          <span className="text-slate-500 font-medium">Tax (20%)</span>
-          <span className="font-bold text-[#1e293b]">{calculation.tax} MAD</span>
-        </div>
 
         <div className="h-px bg-slate-100" />
 

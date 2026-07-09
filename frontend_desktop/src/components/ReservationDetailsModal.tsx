@@ -1,9 +1,11 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import Modal from './Modal';
-import { 
-  User, Car, Calendar, CreditCard, Shield, 
-  MapPin, Clock, CheckCircle2, AlertCircle, 
-  FileText, Landmark, Phone, Mail
+import api from '../api/axios';
+import InspectionGallery from './InspectionGallery';
+import {
+  User, Car, Calendar, CreditCard,
+  MapPin, Clock, CheckCircle2,
+  FileText, Phone, Mail
 } from 'lucide-react';
 
 interface Reservation {
@@ -23,6 +25,15 @@ interface ReservationDetailsModalProps {
 }
 
 export default function ReservationDetailsModal({ isOpen, onClose, reservation }: ReservationDetailsModalProps) {
+  const [inspections, setInspections] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isOpen || !reservation?.id) return;
+    api.get(`/reservations/${reservation.id}/inspections`)
+      .then(({ data }) => setInspections(Array.isArray(data) ? data : []))
+      .catch(() => setInspections([]));
+  }, [isOpen, reservation?.id]);
+
   if (!reservation) return null;
 
   const duration = Math.ceil((new Date(reservation.dateFin).getTime() - new Date(reservation.dateDebut).getTime()) / (1000 * 3600 * 24));
@@ -146,6 +157,13 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
                  </div>
               </div>
            </div>
+        </div>
+
+        <div className="card-premium space-y-4">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 border-b pb-2">
+            <FileText size={14} /> Vehicle Inspection Media
+          </h4>
+          <InspectionGallery inspections={inspections} />
         </div>
 
         {/* Action Buttons */}

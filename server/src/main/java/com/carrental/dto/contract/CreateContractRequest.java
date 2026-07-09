@@ -2,7 +2,6 @@ package com.carrental.dto.contract;
 
 import com.carrental.entity.ContractStatus;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -17,7 +16,6 @@ import java.util.List;
 @Data
 public class CreateContractRequest {
 
-    @NotBlank(message = "Contract number is required")
     private String contractNumber;
 
     private ContractStatus status;
@@ -28,7 +26,13 @@ public class CreateContractRequest {
     // Links
     private Long reservationId;
     private Long clientId;
+    /** Inline new-client data. Provide either clientId OR newClient, never both. */
+    private NewClientInlineRequest newClient;
     private Long vehicleId;
+
+    // Contract PDF template explicitly chosen for this contract (null = resolve
+    // the agency's default template, or the system default PDF if none is set).
+    private Long selectedTemplateId;
 
     // Dates
     @NotNull(message = "Start date is required")
@@ -39,6 +43,8 @@ public class CreateContractRequest {
 
     private LocalDate pickupDate;
     private LocalDate returnDate;
+    private LocalTime startTime;
+    private LocalTime endTime;
     private LocalTime pickupTime;
     private LocalTime returnTime;
     private String pickupLocation;
@@ -95,15 +101,18 @@ public class CreateContractRequest {
     private BigDecimal fuelCharges;
 
     // Payment
-    @NotNull(message = "Total price is required")
     @DecimalMin(value = "0.00", message = "Total price must be non-negative")
     private BigDecimal totalPrice;
 
     private BigDecimal dailyPrice;
+    @DecimalMin(value = "0.00", message = "Deposit amount cannot be negative.")
     private BigDecimal depositAmount;
+    private String depositCurrency;
+    private com.carrental.entity.DepositStatus depositStatus;
     private BigDecimal paidAmount;
     private BigDecimal remainingAmount;
     private BigDecimal taxAmount;
+    private BigDecimal discount;
     private BigDecimal discountAmount;
     private String paymentMethod;
     private String paymentStatus;

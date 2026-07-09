@@ -1,143 +1,387 @@
-import axios from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL } from '../lib/api';
+import i18n from '../i18n';
+
+// This module runs outside React component tree (request/response interceptors),
+// so it can't use the useTranslation() hook — it calls the i18next singleton
+// directly instead. errorCode-specific keys (errors.<CODE>) take priority over
+// the generic fallback strings below, so any backend error code that has a
+// translation entry is shown in the user's language automatically.
+function te(key: string, fallback: string): string {
+  return i18n.exists(key) ? i18n.t(key) : fallback;
+}
+
+export type ApiSeverity = 'success' | 'warning' | 'error' | 'info';
+
+export interface NormalizedApiError extends AxiosError {
+  userMessage: string;
+  severity: ApiSeverity;
+  requestId?: string;
+  feature?: string;
+  networkError?: boolean;
+  errorCode?: string;
+  data?: unknown;
+}
 
 const api = axios.create({
-  baseURL: `http://${window.location.hostname}:8082/api`,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
   },
+  withCredentials: true,
+  timeout: 20000,
 });
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshSubscribers: ((error?: any) => void)[] = [];
+let lastNetworkAlertAt = 0;
+let authErrorDispatched = false;
 
-function onTokenRefreshed(token: string) {
-  refreshSubscribers.forEach((callback) => callback(token));
+function onTokenRefreshed(error?: any) {
+  refreshSubscribers.forEach(callback => callback(error));
   refreshSubscribers = [];
 }
 
-function addRefreshSubscriber(callback: (token: string) => void) {
+function addRefreshSubscriber(callback: (error?: any) => void) {
   refreshSubscribers.push(callback);
 }
 
-// Add a request interceptor to attach the JWT token
+
+function isAuthEntryRequest(url: string): boolean {
+  return /\/auth\/(login|signup|register|google|refresh|logout|phone\/verify-otp)/.test(url);
+}
+
+function isPublicRequest(url: string): boolean {
+  return isAuthEntryRequest(url) || /\/(health|public\/|inspections\/token\/)/.test(url);
+}
+
+function getStoredAccessToken(): string | null {
+  return localStorage.getItem('accessToken')
+    || sessionStorage.getItem('accessToken')
+    || localStorage.getItem('token')
+    || sessionStorage.getItem('token');
+}
+
+function getStoredRefreshToken(): string | null {
+  return localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+}
+
+function storeAccessToken(token: string) {
+  localStorage.setItem('token', token);
+  localStorage.setItem('accessToken', token);
+}
+
+function clearStoredAuth() {
+  localStorage.removeItem('user');
+  localStorage.removeItem('token');
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('tokenExpiry');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('accessToken');
+  sessionStorage.removeItem('refreshToken');
+}
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(window.atob(token.split('.')[1] || ''));
+    return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+function dispatchAuthErrorOnce() {
+  if (authErrorDispatched) return;
+  authErrorDispatched = true;
+  if (!window.location.hash.startsWith('#/contract-sign') && !window.location.hash.startsWith('#/inspection')) {
+    window.dispatchEvent(new Event('auth-error'));
+  }
+}
+
+// Account-level blocks (suspended/blocked agency, expired/suspended
+// subscription, plan limit reached) are a normal, recurring state — not a
+// one-off failure — so every matching request would otherwise re-trigger the
+// same toast/redirect. Dispatch the lock-state update once per occurrence of
+// each code instead of on every single failed request.
+const ACCOUNT_BLOCK_ERROR_CODES = new Set([
+  'AGENCY_SUSPENDED', 'AGENCY_BLOCKED', 'SUBSCRIPTION_EXPIRED', 'SUBSCRIPTION_SUSPENDED', 'PLAN_LIMIT_REACHED',
+]);
+let lastDispatchedBlockCode: string | null = null;
+
+function dispatchAccountBlockedOnce(errorCode: string, message: string, data: any) {
+  if (lastDispatchedBlockCode === errorCode) return;
+  lastDispatchedBlockCode = errorCode;
+  window.dispatchEvent(new CustomEvent('account-blocked', { detail: { errorCode, message, data } }));
+  window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'warning', message } }));
+}
+
+// Optional/best-effort endpoints whose failure must never force a full logout.
+// They're fetched in the background by providers (notifications, sound
+// settings, tenant appearance, agency branding) right after login; a single
+// flaky/racing 401 on one of them must not tear down an otherwise-valid
+// session. Only a confirmed failure on a core request (e.g. /me) should log
+// the user out — see the response interceptor below.
+const OPTIONAL_ENDPOINT_PATTERN = /\/(agency|tenant-settings|notifications\/unread|sound-settings|sse\/subscribe)(\/|$|\?)/;
+
+function isOptionalEndpoint(url: string): boolean {
+  return OPTIONAL_ENDPOINT_PATTERN.test(url);
+}
+
+/**
+ * Check if a message is safe to show to end users.
+ * Filters out technical/internal error details.
+ */
+function isSafeBusinessMessage(message: unknown): boolean {
+  if (typeof message !== 'string' || !message.trim() || message.length > 220) return false;
+  return !/(exception|stack|sql|jdbc|hibernate|nullpointer|null pointer|axios|fetch|database|constraint|at com\.|at java\.|at org\.|internal server|500|502|503|504)/i.test(message);
+}
+
+/**
+ * Notify about network failure with throttling to prevent spam.
+ */
+function notifyNetworkFailure() {
+  const now = Date.now();
+  if (now - lastNetworkAlertAt < 10000) return;
+  lastNetworkAlertAt = now;
+  window.dispatchEvent(new CustomEvent('app-toast', {
+    detail: {
+      type: 'error',
+      message: 'Backend server is not running on port 8082.',
+    },
+  }));
+}
+
+// Request interceptor: use bearer tokens stored for the current browser origin.
+// localhost and 192.168.x.x are different origins, so each one logs in and
+// persists its own token set.
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    config.withCredentials = true;
+    if (config.headers) {
+      config.headers['X-Requested-With'] = 'XMLHttpRequest';
+
+      const requestUrl = config.url || '';
+      const deviceId = localStorage.getItem('deviceFingerprint');
+      if (deviceId) config.headers['X-Device-Id'] = deviceId;
+      let token = getStoredAccessToken();
+      if (token && isTokenExpired(token)) {
+        clearStoredAuth();
+        token = null;
+        if (!isPublicRequest(requestUrl)) {
+          dispatchAuthErrorOnce();
+          return Promise.reject(new Error('Token expired'));
+        }
+      }
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+      }
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor to handle 401/403 and token expiry
+/**
+ * Log client-side failures to the backend for admin review.
+ * Never blocks or throws — fire-and-forget.
+ */
+function logClientFailure(error: NormalizedApiError) {
+  if (!localStorage.getItem('user') || error.config?.url?.includes('/client-errors')) return;
+  const payload = {
+    message: error.message || 'API request failed',
+    userMessage: error.userMessage,
+    method: error.config?.method?.toUpperCase(),
+    path: error.config?.url,
+    status: error.response?.status,
+    requestId: error.requestId,
+    page: window.location.hash || window.location.pathname,
+  };
+  fetch(`${api.defaults.baseURL}/client-errors`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => undefined);
+}
+
+// Response interceptor: handle errors, token refresh, normalization
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (!originalRequest) {
-      return Promise.reject(error);
+  (response) => {
+    const responseUrl = response.config?.url || '';
+    if (/\/auth\/(login|refresh)/.test(responseUrl)) {
+      authErrorDispatched = false;
+      lastDispatchedBlockCode = null;
     }
+    // Reactivation: once /me reports the platform is usable again, allow a
+    // future re-suspension to toast/redirect again instead of staying
+    // silenced by the earlier dispatch.
+    if (/\/me(\?|$)/.test(responseUrl) && response.data?.accountAccess?.canUsePlatform === true) {
+      lastDispatchedBlockCode = null;
+    }
+    // Check if response has a success message we should surface
+    const data = response.data;
+    if (data && typeof data === 'object' && data.success === true && data.message && typeof data.message === 'string') {
+      // Backend sent an explicit success message — we could auto-toast here
+      // But pages often handle their own success toasts, so we leave this optional
+      // via a custom header: X-Auto-Notify: true
+      if (response.headers['x-auto-notify'] === 'true') {
+        const severity: ApiSeverity = data.severity || 'success';
+        window.dispatchEvent(new CustomEvent('app-toast', {
+          detail: { type: severity, message: data.message },
+        }));
+      }
+    }
+    return response;
+  },
+  async (rawError: AxiosError<any>) => {
+    const error = rawError as NormalizedApiError;
+    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    if (!originalRequest) return Promise.reject(error);
 
-    // Check for Token-Expired header (set by backend when JWT is expired)
-    const tokenExpired = error.response?.headers?.['token-expired'] === 'true';
     const status = error.response?.status;
+    const responseData = error.response?.data;
+    const tokenExpired = error.response?.headers?.['token-expired'] === 'true';
+    const authEntryRequest = /\/auth\/(login|signup|register|google|refresh|logout|phone\/verify-otp)/.test(
+      originalRequest.url || ''
+    );
 
-    // If the token is expired and we haven't retried yet
-    if ((tokenExpired || status === 401) && !originalRequest._retry) {
+    const hasSessionMarker = Boolean(
+      getStoredAccessToken()
+      || getStoredRefreshToken()
+    );
+
+    if ((tokenExpired || status === 401)
+        && hasSessionMarker
+        && !authEntryRequest
+        && !originalRequest._retry) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
-        // Wait for the refresh to complete
-        return new Promise((resolve) => {
-          addRefreshSubscriber((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
+        return new Promise((resolve, reject) => {
+          addRefreshSubscriber((err: any) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(api(originalRequest));
+            }
           });
         });
       }
-
       isRefreshing = true;
-
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token');
+        const refreshResponse = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
+          refreshToken: getStoredRefreshToken(),
+        }, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        });
+        const payload = refreshResponse.data?.data || refreshResponse.data;
+        if (payload?.accessToken) {
+          storeAccessToken(payload.accessToken);
+          if (originalRequest.headers) {
+            originalRequest.headers['Authorization'] = `Bearer ${payload.accessToken}`;
+          }
         }
-
-        const { data } = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          { refreshToken }
-        );
-
-        const newAccessToken = data.accessToken;
-        localStorage.setItem('token', newAccessToken);
-        if (data.refreshToken) {
-          localStorage.setItem('refreshToken', data.refreshToken);
+        if (payload?.refreshToken) {
+          localStorage.setItem('refreshToken', payload.refreshToken);
+          sessionStorage.removeItem('refreshToken');
         }
-        if (data.expiresIn) {
-          const expiry = Date.now() + data.expiresIn * 1000;
-          localStorage.setItem('tokenExpiry', expiry.toString());
-        }
-
-        api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
-        onTokenRefreshed(newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        onTokenRefreshed();
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed — clear auth and signal logout (but not on public pages)
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        localStorage.removeItem('tokenExpiry');
-        if (!window.location.hash.startsWith('#/contract-sign')) {
-          window.dispatchEvent(new Event('auth-error'));
+        onTokenRefreshed(refreshError);
+        // Only a core/required request (e.g. /me) forces a full logout here.
+        // Optional background calls (agency, tenant-settings, notifications,
+        // sound-settings) must fail silently — the providers already swallow
+        // their own errors — so one flaky 401 right after login can't tear
+        // down an otherwise-valid session.
+        if (!isOptionalEndpoint(originalRequest.url || '')) {
+          clearStoredAuth();
+          dispatchAuthErrorOnce();
         }
+        (refreshError as NormalizedApiError).userMessage = 'Session expired. Please sign in again.';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    const featureLocked = status === 403 && error.response?.data?.error === 'FEATURE_NOT_AVAILABLE';
+    const responseDataObj = (responseData && typeof responseData === 'object') ? responseData as Record<string, any> : {};
+    const featureLocked = status === 403 && responseDataObj.error === 'FEATURE_NOT_AVAILABLE';
+    error.requestId = responseDataObj.requestId;
+    error.severity = responseDataObj.severity === 'warning' ? 'warning' : 'error';
+    error.errorCode = responseDataObj.errorCode;
+    error.data = responseDataObj.data;
 
-    // Only authentication failures should clear the session.
-    if (status === 401) {
-      // Only clear if it's not a refresh request itself and not on public pages
-      if (!originalRequest.url?.includes('/auth/refresh')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        localStorage.removeItem('tokenExpiry');
-        localStorage.removeItem('user_profile');
-        if (!window.location.hash.startsWith('#/contract-sign')) {
-          window.dispatchEvent(new Event('auth-error'));
-        }
-      }
+    // An errorCode-specific translation always wins over the generic
+    // per-status fallback text below — this is what lets any backend error
+    // code (VEHICLE_NOT_FOUND, INVALID_MAINTENANCE_STATUS_TRANSITION, etc.)
+    // show up translated without every page having to know about it.
+    const codeTranslation = responseDataObj.errorCode
+      ? (i18n.exists(`errors.${responseDataObj.errorCode}`) ? i18n.t(`errors.${responseDataObj.errorCode}`) : null)
+      : null;
+
+    if (ACCOUNT_BLOCK_ERROR_CODES.has(responseDataObj.errorCode)) {
+      error.userMessage = codeTranslation
+        || (isSafeBusinessMessage(responseDataObj.message) ? responseDataObj.message : te('errors.ACCOUNT_SUSPENDED', 'Your agency account is suspended. Please contact Innovax Technologies or update your subscription.'));
+      error.severity = 'warning';
+      dispatchAccountBlockedOnce(responseDataObj.errorCode, error.userMessage, responseDataObj.data);
+      // This is an expected, recurring account-state response, not a bug —
+      // reporting it to /client-errors on every blocked request would just
+      // spam the audit log with the same non-error over and over.
+      return Promise.reject(error);
     }
 
-    // Normalize network errors for consistent handling
     if (!error.response) {
-      error.userMessage = 'Server is offline. Please start the backend or check your connection.';
-    } else if (error.response.data?.message) {
-      error.userMessage = error.response.data.message;
-    } else if (error.response.status === 401) {
-      error.userMessage = 'Session expired. Please log in again.';
+      // Network error — no response from server
+      error.networkError = true;
+      error.userMessage = te('errors.NETWORK_ERROR', 'Backend server is not running on port 8082.');
+      notifyNetworkFailure();
+    } else if (status === 401) {
+      error.userMessage = codeTranslation || te('errors.UNAUTHORIZED', 'Your session has expired. Please sign in again.');
     } else if (featureLocked) {
-      error.userMessage = error.response.data?.message || 'This feature is not included in your subscription plan.';
-      error.feature = error.response.data?.feature;
-    } else if (error.response.status === 403) {
-      error.userMessage = 'You do not have permission to perform this action.';
-    } else if (error.response.status >= 500) {
-      error.userMessage = 'Server error. Please try again later.';
+      error.userMessage = codeTranslation
+        || (isSafeBusinessMessage(responseDataObj.message) ? responseDataObj.message : te('errors.FEATURE_NOT_AVAILABLE', 'This feature is not included in your subscription plan.'));
+      error.feature = responseDataObj.feature;
+      error.severity = 'warning';
+    } else if (status === 403) {
+      error.userMessage = codeTranslation
+        || (isSafeBusinessMessage(responseDataObj.message) ? responseDataObj.message : te('errors.PERMISSION_DENIED', 'You do not have permission to perform this action.'));
+    } else if (status && status >= 500) {
+      // Prefer an errorCode translation, then the backend's own message
+      // (e.g. a controller-level "please check backend logs" or a specific
+      // failure reason), and only fall back to the generic text when the
+      // backend gave no usable message at all.
+      error.userMessage = codeTranslation
+        || (isSafeBusinessMessage(responseDataObj.message) ? responseDataObj.message : te('errors.SERVER_ERROR', 'Server error. Please check backend logs.'));
+    } else if (codeTranslation) {
+      error.userMessage = codeTranslation;
+    } else if (isSafeBusinessMessage(responseDataObj.message)) {
+      // Safe business message from backend — show it
+      error.userMessage = responseDataObj.message;
     } else {
-      error.userMessage = `Request failed (${error.response.status})`;
+      // Unsafe or missing message — generic fallback
+      error.userMessage = te('errors.REQUEST_FAILED', 'We could not complete this request. Please try again.');
     }
 
+    logClientFailure(error);
     return Promise.reject(error);
   }
 );
 
+// Offline detection
+window.addEventListener('offline', notifyNetworkFailure);
+
 export default api;
+

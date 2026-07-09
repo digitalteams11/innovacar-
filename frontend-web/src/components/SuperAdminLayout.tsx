@@ -3,22 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '../context/AuthContext';
+import { resolveMediaUrl } from '../lib/utils';
 
-const useProfile = () => {
-  const [profile, setProfile] = useState(() => {
-    const raw = localStorage.getItem('user_profile');
-    return raw ? JSON.parse(raw) : null;
-  });
-  useEffect(() => {
-    const handler = () => {
-      const raw = localStorage.getItem('user_profile');
-      setProfile(raw ? JSON.parse(raw) : null);
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
-  return profile;
-};
+interface PlatformBranding {
+  platformName?: string;
+  platformLogoUrl?: string;
+}
+
 import { superAdminApi } from '../api/superAdminApi';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
@@ -26,10 +17,27 @@ import {
   LayoutDashboard, Building2, CreditCard, Satellite,
   Users, Receipt, LifeBuoy, Bell, BarChart3, Settings,
   Shield, LogOut, Search, Menu, X, ChevronLeft, ChevronRight,
-  Globe, Zap, Mail, Megaphone, FileText, ClipboardList, KeyRound
+  Globe, Zap, Mail, Megaphone, FileText, ClipboardList, KeyRound, DatabaseBackup,
+  UserCog, ShieldCheck, XCircle, Sparkles, Database
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const SidebarItem = ({ to, icon: Icon, label, active, collapsed }: any) => (
+interface SidebarItemProps {
+  to: string;
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  collapsed: boolean;
+}
+
+interface AdminNotification {
+  id: number | string;
+  type: string;
+  message: string;
+  timestamp?: string;
+}
+
+const SidebarItem = ({ to, icon: Icon, label, active, collapsed }: SidebarItemProps) => (
   <Link
     to={to}
     className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition-all duration-200 relative group ${
@@ -40,10 +48,10 @@ const SidebarItem = ({ to, icon: Icon, label, active, collapsed }: any) => (
     title={collapsed ? label : undefined}
   >
     {active && !collapsed && (
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-accent-400 rounded-r-full" />
+      <div className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-accent-400 rounded-e-full" />
     )}
     {active && collapsed && (
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-accent-400 rounded-r-full" />
+      <div className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-accent-400 rounded-e-full" />
     )}
     <Icon size={18} className={active ? 'text-accent-400' : 'text-slate-400 group-hover:text-white transition-colors'} strokeWidth={active ? 2.5 : 2} />
     {!collapsed && (
@@ -56,13 +64,14 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [canManageStaff, setCanManageStaff] = useState(false);
+  const [branding, setBranding] = useState<PlatformBranding>({});
   const notifRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
-  const profile = useProfile();
+  const { logout, user, profile } = useAuth();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -73,6 +82,29 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    // Defense in depth only — the backend enforces STAFF_MANAGE on every
+    // staff/role endpoint regardless of what this sidebar shows.
+    if (user?.role !== 'SUPER_ADMIN') {
+      setCanManageStaff(false);
+      return;
+    }
+    superAdminApi.getMyStaffAccess()
+      .then(({ data }) => setCanManageStaff((data?.permissions || []).includes('STAFF_MANAGE')))
+      .catch(() => setCanManageStaff(false));
+  }, [user?.role]);
+
+  useEffect(() => {
+    const loadBranding = () => {
+      superAdminApi.getBrandingSettings()
+        .then(({ data }) => setBranding(data?.data || {}))
+        .catch(() => undefined);
+    };
+    loadBranding();
+    window.addEventListener('platform-branding-updated', loadBranding);
+    return () => window.removeEventListener('platform-branding-updated', loadBranding);
   }, []);
 
   const fetchNotifications = async () => {
@@ -104,8 +136,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       label: t('superAdmin.nav.business'),
       items: [
         { to: '/super-admin/agencies', icon: Building2, label: t('superAdmin.nav.agencies') },
+        { to: '/super-admin/users', icon: Users, label: t('superAdmin.nav.users') },
         { to: '/super-admin/subscriptions', icon: CreditCard, label: t('superAdmin.nav.subscriptions') },
-        { to: '/super-admin/features', icon: KeyRound, label: 'Feature Access' },
+        { to: '/super-admin/cancellation-requests', icon: XCircle, label: t('superAdmin.nav.cancellationRequests') },
+        { to: '/super-admin/features', icon: KeyRound, label: t('superAdmin.nav.features') },
         { to: '/super-admin/payments', icon: Receipt, label: t('superAdmin.nav.payments') },
         { to: '/super-admin/contracts', icon: FileText, label: t('superAdmin.nav.contracts') },
       ],
@@ -114,19 +148,33 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       label: t('superAdmin.nav.operations'),
       items: [
         { to: '/super-admin/gps', icon: Satellite, label: t('superAdmin.nav.gps') },
-        { to: '/super-admin/users', icon: Users, label: t('superAdmin.nav.users') },
         { to: '/super-admin/support', icon: LifeBuoy, label: t('superAdmin.nav.support') },
+        { to: '/super-admin/announcements', icon: Megaphone, label: t('superAdmin.nav.announcements') },
         { to: '/super-admin/emails', icon: Mail, label: t('superAdmin.nav.emails') },
+        { to: '/super-admin/notifications', icon: Bell, label: t('superAdmin.nav.notifications') },
+      ],
+    },
+    {
+      label: t('superAdmin.nav.security'),
+      items: [
+        { to: '/super-admin/security', icon: Shield, label: t('superAdmin.nav.security') },
       ],
     },
     {
       label: t('superAdmin.nav.system'),
       items: [
-        { to: '/super-admin/notifications', icon: Bell, label: t('superAdmin.nav.notifications') },
-        { to: '/super-admin/security', icon: Shield, label: t('superAdmin.nav.security') },
-        { to: '/super-admin/marketing', icon: Megaphone, label: t('superAdmin.nav.marketing') },
-        { to: '/super-admin/reports', icon: ClipboardList, label: t('superAdmin.nav.reports') },
+        ...(canManageStaff ? [
+          { to: '/super-admin/staff', icon: UserCog, label: t('superAdmin.nav.staff') },
+          { to: '/super-admin/roles', icon: ShieldCheck, label: t('superAdmin.nav.roles') },
+        ] : []),
         { to: '/super-admin/settings', icon: Settings, label: t('superAdmin.nav.settings') },
+        { to: '/super-admin/ai-settings', icon: Sparkles, label: 'AI & Automation' },
+        { to: '/super-admin/backups', icon: DatabaseBackup, label: t('superAdmin.nav.backups') },
+        ...(canManageStaff ? [
+          { to: '/super-admin/data-reset', icon: Database, label: 'Data Reset Center' },
+        ] : []),
+        { to: '/super-admin/reports', icon: ClipboardList, label: t('superAdmin.nav.reports') },
+        { to: '/super-admin/marketing', icon: Megaphone, label: t('superAdmin.nav.marketing') },
       ],
     },
   ];
@@ -137,23 +185,32 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] flex">
+    <div className="app-shell min-h-screen flex">
       {/* ===== DESKTOP SIDEBAR ===== */}
       <aside
-        className={`hidden lg:flex flex-col bg-[#0a0f2c] fixed inset-y-0 z-50 shadow-2xl transition-all duration-300 ${
+        className={`app-sidebar hidden lg:flex flex-col fixed inset-y-4 start-4 rounded-lg z-50 transition-all duration-300 ${
           sidebarCollapsed ? 'w-[76px]' : 'w-[260px]'
         }`}
       >
         {/* Logo */}
         <div className={`p-5 mb-2 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-accent-400 flex items-center justify-center shadow-lg shrink-0">
-              <Zap size={18} className="text-[#0a0f2c]" strokeWidth={2.5} />
-            </div>
+            {branding.platformLogoUrl ? (
+              <img
+                src={resolveMediaUrl(branding.platformLogoUrl) || ''}
+                alt={branding.platformName || 'Logo'}
+                className="w-9 h-9 rounded-lg object-contain bg-white shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-lg bg-accent-400 flex items-center justify-center shadow-lg shrink-0">
+                <Zap size={18} className="text-[#0a0f2c]" strokeWidth={2.5} />
+              </div>
+            )}
             {!sidebarCollapsed && (
               <div className="text-white">
-                <h1 className="text-base font-bold tracking-tight leading-tight">Innovax</h1>
-                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-widest">Super Admin</p>
+                <h1 className="text-base font-bold tracking-tight leading-tight">{branding.platformName || 'Innovax'}</h1>
+                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
               </div>
             )}
           </div>
@@ -219,8 +276,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 <Globe size={14} className="text-accent-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-white text-xs font-medium truncate">Platform Active</p>
-                <p className="text-slate-500 text-[10px] truncate">All systems operational</p>
+                <p className="text-white text-xs font-medium truncate">{t('superAdmin.platformActive')}</p>
+                <p className="text-slate-500 text-[10px] truncate">{t('superAdmin.allSystemsOperational')}</p>
               </div>
             </div>
           </div>
@@ -234,15 +291,24 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 w-[260px] bg-[#0a0f2c] z-[70] lg:hidden flex flex-col">
+          <div className="app-sidebar fixed inset-y-0 start-0 w-[260px] z-[70] lg:hidden flex flex-col">
             <div className="p-5 mb-2 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-accent-400 flex items-center justify-center shadow-lg">
-                  <Zap size={18} className="text-[#0a0f2c]" strokeWidth={2.5} />
-                </div>
+                {branding.platformLogoUrl ? (
+                  <img
+                    src={resolveMediaUrl(branding.platformLogoUrl) || ''}
+                    alt={branding.platformName || 'Logo'}
+                    className="w-9 h-9 rounded-lg object-contain bg-white"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-lg bg-accent-400 flex items-center justify-center shadow-lg">
+                    <Zap size={18} className="text-[#0a0f2c]" strokeWidth={2.5} />
+                  </div>
+                )}
                 <div className="text-white">
-                  <h1 className="text-base font-bold tracking-tight">Innovax</h1>
-                  <p className="text-[9px] text-slate-400 uppercase tracking-widest">Super Admin</p>
+                  <h1 className="text-base font-bold tracking-tight">{branding.platformName || 'Innovax'}</h1>
+                  <p className="text-[9px] text-slate-400 uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
                 </div>
               </div>
               <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
@@ -289,10 +355,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       )}
 
       {/* ===== MAIN CONTENT AREA ===== */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[76px]' : 'lg:ml-[260px]'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'lg:ms-[96px]' : 'lg:ms-[268px]'}`}>
         {/* Topbar */}
-        <header className="h-[56px] lg:h-[72px] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-40">
-          <div className="absolute inset-0 bg-[#f5f5f0]/70 backdrop-blur-2xl border-b border-[#e8e6e1]/60" />
+        <header className="app-topbar h-[58px] lg:h-[64px] mx-2 lg:mx-4 px-4 lg:px-5 flex items-center justify-between sticky top-2 lg:top-4 z-40 rounded-lg">
           <div className="relative flex items-center gap-3 w-full">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -300,17 +365,17 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             >
               <Menu size={20} className="text-[#1e293b]" />
             </button>
-            <div className="hidden md:flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl shadow-soft border border-[#e8e6e1]/80 w-[360px] group focus-within:ring-2 ring-brand-100/50 transition-all">
+            <div className="surface-control hidden md:flex items-center gap-3 px-4 py-2.5 w-[360px] group transition-all">
               <Search size={16} className="text-slate-400 group-focus-within:text-brand-500 transition-colors" />
               <input
                 type="text"
                 placeholder={t('superAdmin.searchPlaceholder')}
-                className="bg-transparent border-none outline-none text-sm font-normal w-full text-[#1e293b] placeholder:text-slate-400"
+                className="bg-transparent border-none outline-none text-sm font-normal w-full text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
               />
             </div>
           </div>
 
-          <div className="relative flex items-center gap-2 lg:gap-3 bg-white p-1.5 px-2 lg:px-3 rounded-xl shadow-soft border border-[#e8e6e1]/80">
+          <div className="relative flex items-center gap-1 lg:gap-2">
             <div className="hidden lg:block">
               <ThemeToggle />
             </div>
@@ -324,11 +389,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               >
                 <Bell size={18} />
                 {notifications.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+                  <span className="absolute top-1.5 end-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-elevated border border-[#e8e6e1]/80 z-50 overflow-hidden">
+                <div className="glass-card absolute end-0 top-full mt-2 w-80 z-50 overflow-hidden">
                   <div className="px-4 py-3 border-b border-[#e8e6e1]/60 flex items-center justify-between">
                     <h3 className="text-sm font-bold text-[#1e293b]">{t('layout.notifications')}</h3>
                     <button onClick={() => setNotifOpen(false)} className="text-slate-400 hover:text-[#1e293b] transition-colors">
@@ -341,7 +406,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                     ) : notifications.length === 0 ? (
                       <div className="text-center py-4 text-slate-400 text-xs">{t('superAdmin.notifications.noNotifications')}</div>
                     ) : (
-                      notifications.map((n: any) => (
+                      notifications.map((n) => (
                         <div key={n.id} className="px-4 py-3 hover:bg-slate-50 border-b border-[#e8e6e1]/30 last:border-0 cursor-pointer" onClick={() => { setNotifOpen(false); navigate('/super-admin/notifications'); }}>
                           <p className="text-xs font-semibold text-[#1e293b]">{n.type}</p>
                           <p className="text-xs text-slate-500 truncate">{n.message}</p>
@@ -364,14 +429,14 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <div className="h-5 w-px bg-[#e8e6e1] mx-1 hidden sm:block" />
             <div
               onClick={() => navigate('/super-admin/settings')}
-              className="flex items-center gap-2 cursor-pointer group hover:bg-slate-50/80 p-1 pr-2 rounded-xl transition-all"
+              className="flex items-center gap-2 cursor-pointer group hover:bg-slate-50/80 p-1 pe-2 rounded-xl transition-all"
             >
               <img
-                src={profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.fullName || user?.email?.split('@')[0] || 'U')}&background=4318ff&color=fff`}
+                src={resolveMediaUrl(profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.fullName || user?.email?.split('@')[0] || 'U')}&background=4318ff&color=fff`}
                 alt="Profile"
                 className="w-8 h-8 rounded-full object-cover border border-white shadow-sm"
               />
-              <div className="text-right hidden sm:block">
+              <div className="text-end hidden sm:block">
                 <p className="text-xs font-semibold text-[#1e293b] group-hover:text-brand-600 transition-colors truncate max-w-[120px]">{profile?.fullName || user?.email?.split('@')[0] || 'Admin'}</p>
                 <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">{profile?.jobTitle || t('superAdmin.role.superAdmin')}</p>
               </div>
@@ -389,7 +454,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </header>
 
         {/* Content */}
-        <main className="p-3 lg:p-6 pt-2 flex-1">
+        <main className="page-canvas p-3 lg:p-6 pt-2 flex-1 w-full">
           {children}
         </main>
       </div>

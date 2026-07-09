@@ -6,15 +6,45 @@ import {
   Building2, Users, Car, Calendar, FileText,
   CreditCard, Satellite,
   Activity, ArrowRight, Zap, AlertTriangle,
-  Server, Shield, Plus, Bell, Globe
+  Server, Shield, Plus, Bell, Globe, HardDrive
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import { StatCard } from '../../components/superadmin';
+import SafeChartContainer from '../../components/shared/SafeChartContainer';
 
 const COLORS = ['#0a0f2c', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+
+const healthTone = (status: string) => {
+  if (status === 'healthy') return 'bg-emerald-500';
+  if (status === 'degraded' || status === 'not_configured') return 'bg-amber-500';
+  if (status === 'checking') return 'bg-slate-400';
+  return 'bg-rose-500';
+};
+
+const healthText = (status: string) => {
+  if (status === 'healthy') return 'Operational';
+  if (status === 'degraded') return 'Degraded';
+  if (status === 'not_configured') return 'Not configured';
+  if (status === 'checking') return 'Checking';
+  return 'Down';
+};
+
+const healthTextTone = (status: string) => {
+  if (status === 'healthy') return 'text-emerald-600 dark:text-emerald-400';
+  if (status === 'degraded' || status === 'not_configured') return 'text-amber-600 dark:text-amber-400';
+  if (status === 'checking') return 'text-slate-500 dark:text-slate-400';
+  return 'text-rose-600 dark:text-rose-400';
+};
+
+const formatBytes = (bytes: number) => {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / (1024 ** index)).toFixed(index > 1 ? 1 : 0)} ${units[index]}`;
+};
 
 export default function SuperAdminDashboard() {
   const { t } = useTranslation();
@@ -23,21 +53,24 @@ export default function SuperAdminDashboard() {
   const [activity, setActivity] = useState<any[]>([]);
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [health, setHealth] = useState<any>(null);
+  const [dataSafety, setDataSafety] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, activityRes, revenueRes, healthRes] = await Promise.all([
+        const [statsRes, activityRes, revenueRes, healthRes, dataSafetyRes] = await Promise.all([
           superAdminApi.getDashboardStats(),
           superAdminApi.getRecentActivity(),
           superAdminApi.getRevenueStats(),
           superAdminApi.getPlatformHealth().catch(() => ({ data: null })),
+          superAdminApi.getDataResetStatus().catch(() => ({ data: null })),
         ]);
         setStats(statsRes.data);
         setActivity(activityRes.data.slice(0, 10));
         setRevenueData(revenueRes.data.monthlyTrend || []);
         setHealth(healthRes.data);
+        setDataSafety(dataSafetyRes.data?.data ?? null);
       } catch (err) {
         console.error('Failed to load dashboard data', err);
       } finally {
@@ -52,6 +85,7 @@ export default function SuperAdminDashboard() {
     { name: 'Trial', value: stats.trialAgencies || 0 },
     { name: 'Expired', value: stats.expiredAgencies || 0 },
     { name: 'Suspended', value: stats.suspendedAgencies || 0 },
+    { name: 'Blocked', value: stats.blockedAgencies || 0 },
   ] : [];
 
   const criticalAlerts = [
@@ -101,36 +135,32 @@ export default function SuperAdminDashboard() {
         <StatCard
           title={t('superAdmin.dashboard.totalAgencies')}
           value={stats?.totalAgencies || 0}
-          change={12}
-          changeType="up"
           icon={Building2}
+          tone="blue"
           onClick={() => navigate('/super-admin/agencies')}
           loading={loading}
         />
         <StatCard
           title={t('superAdmin.dashboard.activeUsers')}
           value={stats?.totalUsers || 0}
-          change={8}
-          changeType="up"
           icon={Users}
+          tone="violet"
           onClick={() => navigate('/super-admin/users')}
           loading={loading}
         />
         <StatCard
           title={t('superAdmin.dashboard.totalVehicles')}
           value={stats?.totalVehicles || 0}
-          change={5}
-          changeType="up"
           icon={Car}
+          tone="neutral"
           onClick={() => navigate('/super-admin/agencies')}
           loading={loading}
         />
         <StatCard
           title={t('superAdmin.dashboard.totalReservations')}
           value={stats?.totalReservations || 0}
-          change={3}
-          changeType="down"
           icon={Calendar}
+          tone="amber"
           onClick={() => navigate('/super-admin/analytics')}
           loading={loading}
         />
@@ -140,18 +170,16 @@ export default function SuperAdminDashboard() {
         <StatCard
           title="Monthly Recurring Revenue"
           value={`${stats?.monthlyRevenue?.toLocaleString() || 0} MAD`}
-          change={15}
-          changeType="up"
           icon={CreditCard}
+          tone="emerald"
           onClick={() => navigate('/super-admin/payments')}
           loading={loading}
         />
         <StatCard
           title="Annual Recurring Revenue"
           value={`${stats?.yearlyRevenue?.toLocaleString() || 0} MAD`}
-          change={18}
-          changeType="up"
           icon={Zap}
+          tone="emerald"
           onClick={() => navigate('/super-admin/payments')}
           loading={loading}
         />
@@ -159,6 +187,7 @@ export default function SuperAdminDashboard() {
           title={t('superAdmin.dashboard.activeSubscriptions')}
           value={stats?.activeSubscriptions || 0}
           icon={FileText}
+          tone="blue"
           onClick={() => navigate('/super-admin/subscriptions')}
           loading={loading}
         />
@@ -166,6 +195,7 @@ export default function SuperAdminDashboard() {
           title={t('superAdmin.dashboard.activeGps')}
           value={stats?.activeGpsConnections || 0}
           icon={Satellite}
+          tone="violet"
           onClick={() => navigate('/super-admin/gps')}
           loading={loading}
         />
@@ -177,10 +207,11 @@ export default function SuperAdminDashboard() {
           <h3 className="text-base font-bold text-[#1e293b] dark:text-white mb-4">Platform Health</h3>
           <div className="space-y-3">
             {[
-              { label: 'API Server', status: 'healthy', icon: Server },
-              { label: 'Database', status: 'healthy', icon: Globe },
-              { label: 'GPS Services', status: health?.gpsStatus || 'healthy', icon: Satellite },
-              { label: 'Email Service', status: health?.emailStatus || 'healthy', icon: Bell },
+              { label: 'API Server', status: health?.apiStatus || (loading ? 'checking' : 'down'), icon: Server },
+              { label: 'Database', status: health?.dbStatus || (loading ? 'checking' : 'down'), icon: Globe },
+              { label: 'Storage', status: health?.storageStatus || (loading ? 'checking' : 'down'), icon: HardDrive },
+              { label: 'GPS Services', status: health?.gpsStatus || (loading ? 'checking' : 'not_configured'), icon: Satellite },
+              { label: 'Email Service', status: health?.emailStatus || (loading ? 'checking' : 'not_configured'), icon: Bell },
             ].map((service) => (
               <div key={service.label} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
@@ -188,18 +219,19 @@ export default function SuperAdminDashboard() {
                   <span className="text-sm text-[#1e293b] dark:text-white">{service.label}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${
-                    service.status === 'healthy' ? 'bg-emerald-500' : service.status === 'degraded' ? 'bg-amber-500' : 'bg-rose-500'
-                  }`} />
-                  <span className={`text-xs font-medium ${
-                    service.status === 'healthy' ? 'text-emerald-600 dark:text-emerald-400' : service.status === 'degraded' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
-                  }`}>
-                    {service.status === 'healthy' ? 'Operational' : service.status === 'degraded' ? 'Degraded' : 'Down'}
-                  </span>
+                  <span className={`w-2 h-2 rounded-full ${healthTone(service.status)}`} />
+                  <span className={`text-xs font-medium ${healthTextTone(service.status)}`}>{healthText(service.status)}</span>
                 </div>
               </div>
             ))}
           </div>
+          {health && (
+            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#e8e6e1]/70 pt-4 text-xs dark:border-white/5">
+              <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.03]"><span className="block text-slate-400">DB latency</span><strong className="text-[#1e293b] dark:text-white">{health.dbLatencyMs ?? 0} ms</strong></div>
+              <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.03]"><span className="block text-slate-400">App storage</span><strong className="text-[#1e293b] dark:text-white">{formatBytes(health.storageUsedBytes || 0)}</strong></div>
+              <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.03]"><span className="block text-slate-400">Errors (24h)</span><strong className="text-[#1e293b] dark:text-white">{health.errorsLast24Hours || 0}</strong></div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white dark:bg-[#1a2332]/70 rounded-2xl p-4 sm:p-6 border border-[#e8e6e1]/80 dark:border-white/5 shadow-soft">
@@ -251,12 +283,48 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
+      {/* Data Safety */}
+      <div className="bg-white dark:bg-[#1a2332]/70 rounded-2xl p-4 sm:p-6 border border-[#e8e6e1]/80 dark:border-white/5 shadow-soft">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-[#1e293b] dark:text-white">Data Safety</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Backup & Recovery → Data Reset Center</p>
+          </div>
+          <button
+            onClick={() => navigate('/super-admin/data-reset')}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#0a0f2c] px-4 py-2 text-sm font-semibold text-white dark:bg-accent-400 dark:text-[#0a0f2c]"
+          >
+            Open Data Reset Center <ArrowRight size={14} />
+          </button>
+        </div>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="rounded-lg bg-slate-50 p-3 dark:bg-white/[0.03]">
+            <span className="block text-slate-400">Last reset action</span>
+            <strong className="text-[#1e293b] dark:text-white">
+              {dataSafety?.lastResetAction
+                ? `${dataSafety.lastResetAction.action} — ${dataSafety.lastResetAction.status}`
+                : 'None yet'}
+            </strong>
+          </div>
+          <div className="rounded-lg bg-slate-50 p-3 dark:bg-white/[0.03]">
+            <span className="block text-slate-400">Pending backup</span>
+            <strong className="text-[#1e293b] dark:text-white">{dataSafety?.backupAvailable ? 'No — backup available' : 'Yes — no completed backup yet'}</strong>
+          </div>
+          <div className="rounded-lg bg-slate-50 p-3 dark:bg-white/[0.03]">
+            <span className="block text-slate-400">Dangerous actions</span>
+            <strong className={dataSafety?.dangerousActionsEnabled ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
+              {dataSafety?.dangerousActionsEnabled ? 'Enabled for you' : 'Disabled (Super Owner only)'}
+            </strong>
+          </div>
+        </div>
+      </div>
+
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Revenue Chart */}
         <div className="lg:col-span-2 bg-white dark:bg-[#1a2332]/70 rounded-2xl p-4 sm:p-6 border border-[#e8e6e1]/80 dark:border-white/5 shadow-soft">
           <h3 className="text-base font-bold text-[#1e293b] dark:text-white mb-6">{t('superAdmin.dashboard.revenueTrend')}</h3>
-          <div className="h-[280px]">
+          <SafeChartContainer className="h-[280px]" minHeight={280}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData}>
                 <defs>
@@ -275,13 +343,13 @@ export default function SuperAdminDashboard() {
                 <Area type="monotone" dataKey="revenue" stroke="#0a0f2c" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
+          </SafeChartContainer>
         </div>
 
         {/* Agency Status Distribution */}
         <div className="bg-white dark:bg-[#1a2332]/70 rounded-2xl p-4 sm:p-6 border border-[#e8e6e1]/80 dark:border-white/5 shadow-soft">
           <h3 className="text-base font-bold text-[#1e293b] dark:text-white mb-6">{t('superAdmin.dashboard.agencyStatus')}</h3>
-          <div className="h-[240px]">
+          <SafeChartContainer className="h-[240px]" minHeight={240}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -300,7 +368,7 @@ export default function SuperAdminDashboard() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </SafeChartContainer>
           <div className="grid grid-cols-2 gap-2 mt-4">
             {agencyStatusData.map((item: any, idx: number) => (
               <div key={item.name} className="flex items-center gap-2">

@@ -37,6 +37,7 @@ public class GpsVehicleResponse {
     // Derived
     private Long tenantId;
     private String statusLabel;
+    private Boolean outOfZone;
 
     public static GpsVehicleResponse from(Vehicle v) {
         return GpsVehicleResponse.builder()
@@ -58,6 +59,7 @@ public class GpsVehicleResponse {
                 .gpsEnabled(v.getGpsEnabled())
                 .tenantId(v.getTenant().getId())
                 .statusLabel(v.getGpsStatus() != null ? v.getGpsStatus().name() : "NO_DEVICE")
+                .outOfZone(v.getOutOfZone())
                 .build();
     }
 }

@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import api from '../api/axios';
-import { Search, Plus, Download, Mail, Phone, Trash2, Edit3, Loader2 } from 'lucide-react';
+import { Plus, Download, Mail, Phone, Trash2, Edit3, Loader2, KeyRound, Users } from 'lucide-react';
+import { GlassPageHeader } from '../components/GlassPageHeader';
+import { SearchInput } from '../components/SearchInput';
 
 interface Employee {
   id: number;
@@ -14,6 +16,8 @@ interface Employee {
   department: string;
   hireDate: string;
   status: string;
+  userId?: number;
+  loginEnabled?: boolean;
 }
 
 export default function Employees() {
@@ -22,7 +26,7 @@ export default function Employees() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', role: '', department: '', hireDate: '', status: 'ACTIVE' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'EMPLOYEE', department: '', hireDate: '', status: 'ACTIVE', password: '' });
 
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -62,19 +66,19 @@ export default function Employees() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ name: '', email: '', phone: '', role: '', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'ACTIVE' });
+    setForm({ name: '', email: '', phone: '', role: 'EMPLOYEE', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'ACTIVE', password: '' });
     setIsModalOpen(true);
   };
 
   const openEdit = (emp: Employee) => {
     setEditingId(emp.id);
-    setForm({ name: emp.name, email: emp.email, phone: emp.phone || '', role: emp.role || '', department: emp.department || '', hireDate: emp.hireDate || '', status: emp.status });
+    setForm({ name: emp.name, email: emp.email, phone: emp.phone || '', role: emp.role || 'EMPLOYEE', department: emp.department || '', hireDate: emp.hireDate || '', status: emp.status, password: '' });
     setIsModalOpen(true);
   };
 
   const saveEmployee = async () => {
-    if (!form.name || !form.email) {
-      showToast('Please fill required fields');
+    if (!form.name || !form.email || (editingId === null && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(form.password))) {
+      showToast('Complete required fields and use a strong temporary password.', 'warning');
       return;
     }
     try {
@@ -89,7 +93,22 @@ export default function Employees() {
       }
       setIsModalOpen(false);
     } catch (err) {
-      showToast('Failed to save employee');
+      showToast((err as any).userMessage || 'Unable to save employee. Please try again later.', 'error');
+    }
+  };
+
+  const resetPassword = async (emp: Employee) => {
+    if (!emp.userId) {
+      showToast('This legacy employee does not have a login account', 'warning');
+      return;
+    }
+    const newPassword = window.prompt(`New password for ${emp.name} (10+ characters with uppercase, lowercase, number, and symbol)`);
+    if (!newPassword || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(newPassword)) return;
+    try {
+      await api.put(`/users/${emp.userId}/admin-reset-password`, { newPassword });
+      showToast('Password reset successfully', 'success');
+    } catch {
+      showToast('Unable to reset password. Please try again later.', 'error');
     }
   };
 
@@ -100,34 +119,29 @@ export default function Employees() {
         setData((prev) => prev.filter((e) => e.id !== id));
         showToast(t('toast.success', { action: 'Delete' }));
       } catch (err) {
-        showToast('Failed to delete employee');
+        showToast('Unable to delete employee. Please try again later.', 'error');
       }
     }
   };
 
   return (
     <div className="space-y-5 animate-fade">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-[#1e293b]">{t('employees.title')}</h1>
-          <p className="text-slate-500 font-normal text-sm mt-0.5">{t('employees.subtitle')}</p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <button onClick={exportCSV} className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-xs sm:text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
+      <GlassPageHeader
+        title={t('employees.title')}
+        subtitle={t('employees.subtitle')}
+        icon={Users}
+        actions={<>
+          <button onClick={exportCSV} className="surface-control flex items-center gap-2 h-10 px-4 font-medium text-sm active:scale-95">
             <Download size={18} /> Export
           </button>
-          <button onClick={openCreate} className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-xs sm:text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
+          <button onClick={openCreate} className="premium-action flex items-center gap-2 h-10 px-4 font-medium text-sm active:scale-95">
             <Plus size={18} /> Add Employee
           </button>
-        </div>
-      </div>
+        </>}
+      />
 
-      <div className="card-premium flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative group">
-          <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
-          <input type="text" placeholder="Search employees..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
-        </div>
+      <div className="flex justify-end">
+        <SearchInput className="w-full sm:w-[380px]" placeholder="Search employees..." value={searchQuery} onChange={setSearchQuery} />
       </div>
 
       {loading ? (
@@ -135,7 +149,7 @@ export default function Employees() {
           <Loader2 size={32} className="animate-spin text-brand-500" />
         </div>
       ) : (
-        <div className="card-premium overflow-hidden p-0">
+        <div className="data-surface">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left">
               <thead>
@@ -173,6 +187,7 @@ export default function Employees() {
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => openEdit(emp)} className="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"><Edit3 size={17} /></button>
+                        <button title="Reset login password" onClick={() => resetPassword(emp)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"><KeyRound size={17} /></button>
                         <button onClick={() => deleteEmployee(emp.id)} className="p-2 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all"><Trash2 size={17} /></button>
                       </div>
                     </td>
@@ -192,11 +207,12 @@ export default function Employees() {
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Full Name *</label><input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Email *</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Phone</label><input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Role</label><input type="text" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"><option value="ADMIN">Administrator</option><option value="MANAGER">Manager</option><option value="EMPLOYEE">Employee</option><option value="ACCOUNTANT">Accountant</option><option value="RECEPTIONIST">Receptionist</option><option value="VIEWER">Viewer</option><option value="AGENT">Agent</option></select></div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Department</label><input type="text" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {editingId === null && <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Temporary Password *</label><input type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Hire Date</label><input type="date" value={form.hireDate} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Status</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">

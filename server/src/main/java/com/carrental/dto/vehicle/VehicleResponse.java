@@ -42,15 +42,15 @@ public class VehicleResponse {
     public static VehicleResponse from(Vehicle v) {
         return VehicleResponse.builder()
                 .id(v.getId())
-                .marque(v.getMarque())
-                .prixJour(v.getPrixJour())
-                .statut(v.getStatut())
-                .category(v.getCategory())
-                .plate(v.getPlate())
-                .fuel(v.getFuel())
-                .transmission(v.getTransmission())
-                .imageUrl(v.getImageUrl())
-                .tenantId(v.getTenant().getId())
+                .marque(v.getMarque() != null ? v.getMarque() : "")
+                .prixJour(v.getPrixJour() != null ? v.getPrixJour() : BigDecimal.ZERO)
+                .statut(v.getStatut() != null ? v.getStatut() : VehicleStatus.AVAILABLE)
+                .category(v.getCategory() != null ? v.getCategory() : "")
+                .plate(v.getPlate() != null ? v.getPlate() : "")
+                .fuel(v.getFuel() != null ? v.getFuel() : "")
+                .transmission(v.getTransmission() != null ? v.getTransmission() : "")
+                .imageUrl(v.getImageUrl() != null ? v.getImageUrl() : "")
+                .tenantId(v.getTenant() == null ? null : v.getTenant().getId())
                 .gpsDeviceId(v.getGpsDeviceId())
                 .gpsImei(v.getGpsImei())
                 .lastLatitude(v.getLastLatitude())
@@ -58,7 +58,7 @@ public class VehicleResponse {
                 .lastGpsUpdate(v.getLastGpsUpdate())
                 .gpsStatus(v.getGpsStatus())
                 .lastSpeed(v.getLastSpeed())
-                .gpsEnabled(v.getGpsEnabled())
+                .gpsEnabled(Boolean.TRUE.equals(v.getGpsEnabled()))
                 .build();
     }
 }

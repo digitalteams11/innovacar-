@@ -5,6 +5,11 @@ import en from './locales/en.json';
 import fr from './locales/fr.json';
 import ar from './locales/ar.json';
 
+function applyDocumentDirection(language: string) {
+  document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.lang = language;
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -20,6 +25,13 @@ i18n
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
     },
+  })
+  .then(() => {
+    applyDocumentDirection(i18n.resolvedLanguage || i18n.language);
   });
+
+i18n.on('languageChanged', (language) => {
+  applyDocumentDirection(language);
+});
 
 export default i18n;

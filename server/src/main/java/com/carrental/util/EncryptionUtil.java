@@ -15,8 +15,12 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * AES-256 GCM encryption utility for sensitive data (API keys, tokens).
- * Uses a master key derived from the application's encryption secret.
+ * AES-256-GCM encryption utility for sensitive data (API keys, tokens).
+ *
+ * <p><strong>The secret MUST be stable between restarts.</strong> If it changes,
+ * all previously encrypted values (e.g., the stored Gemini API key) become
+ * permanently unreadable. Configure {@code APP_ENCRYPTION_SECRET} as a
+ * stable environment variable in every deployed environment.
  */
 @Slf4j
 @Component
@@ -29,7 +33,7 @@ public class EncryptionUtil {
     @Value("${app.encryption.secret:changeme-in-production-32bytes!}")
     private String encryptionSecret;
 
-    private static SecretKeySpec secretKey;
+    private SecretKeySpec secretKey;
     private static final SecureRandom secureRandom = new SecureRandom();
 
     @PostConstruct
@@ -38,14 +42,15 @@ public class EncryptionUtil {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             byte[] keyBytes = sha256.digest(encryptionSecret.getBytes(StandardCharsets.UTF_8));
             secretKey = new SecretKeySpec(keyBytes, "AES");
-            log.info("EncryptionUtil initialized with AES-256 GCM");
+            log.info("EncryptionUtil initialized — secret length={}", encryptionSecret.length());
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize encryption", e);
         }
     }
 
+    /** Encrypts plainText with AES-256-GCM. Returns null for blank input. */
     public String encrypt(String plainText) {
-        if (plainText == null || plainText.isEmpty()) {
+        if (plainText == null || plainText.isBlank()) {
             return null;
         }
         try {
@@ -53,44 +58,73 @@ public class EncryptionUtil {
             secureRandom.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
-
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
 
-            ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + encrypted.length);
-            byteBuffer.put(iv);
-            byteBuffer.put(encrypted);
-
-            return Base64.getEncoder().encodeToString(byteBuffer.array());
+            ByteBuffer buf = ByteBuffer.allocate(iv.length + encrypted.length);
+            buf.put(iv);
+            buf.put(encrypted);
+            return Base64.getEncoder().encodeToString(buf.array());
         } catch (Exception e) {
             log.error("Encryption failed", e);
             throw new RuntimeException("Encryption failed", e);
         }
     }
 
+    /**
+     * Decrypts an AES-256-GCM ciphertext produced by {@link #encrypt}.
+     * Throws {@link RuntimeException} if decryption fails — use
+     * {@link #tryDecrypt} when you need a null-safe version.
+     */
     public String decrypt(String encryptedText) {
-        if (encryptedText == null || encryptedText.isEmpty()) {
+        if (encryptedText == null || encryptedText.isBlank()) {
             return null;
         }
         try {
             byte[] decoded = Base64.getDecoder().decode(encryptedText);
-
-            ByteBuffer byteBuffer = ByteBuffer.wrap(decoded);
+            ByteBuffer buf = ByteBuffer.wrap(decoded);
             byte[] iv = new byte[GCM_IV_LENGTH];
-            byteBuffer.get(iv);
-            byte[] encrypted = new byte[byteBuffer.remaining()];
-            byteBuffer.get(encrypted);
+            buf.get(iv);
+            byte[] cipherBytes = new byte[buf.remaining()];
+            buf.get(cipherBytes);
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
-
-            byte[] decrypted = cipher.doFinal(encrypted);
-            return new String(decrypted, StandardCharsets.UTF_8);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+            return new String(cipher.doFinal(cipherBytes), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            log.error("Decryption failed", e);
-            throw new RuntimeException("Decryption failed", e);
+            throw new RuntimeException("Decryption failed: " + e.getClass().getSimpleName(), e);
         }
+    }
+
+    /**
+     * Like {@link #decrypt} but returns null instead of throwing.
+     * Callers can distinguish three states:
+     * <ul>
+     *   <li>input null/blank  → null (no key stored)</li>
+     *   <li>decrypt throws    → null + log warning (key corrupted / wrong secret)</li>
+     *   <li>success           → the plaintext key</li>
+     * </ul>
+     */
+    public String tryDecrypt(String encryptedText) {
+        if (encryptedText == null || encryptedText.isBlank()) {
+            return null;
+        }
+        try {
+            return decrypt(encryptedText);
+        } catch (Exception e) {
+            log.warn("[ENCRYPTION] Decrypt failed for stored value (length={}): {} — secret may have changed or value is corrupted",
+                    encryptedText.length(), e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Returns true if the stored value can be successfully decrypted to a
+     * non-blank string. Never throws.
+     */
+    public boolean canDecrypt(String encryptedText) {
+        if (encryptedText == null || encryptedText.isBlank()) return false;
+        String plain = tryDecrypt(encryptedText);
+        return plain != null && !plain.isBlank();
     }
 }

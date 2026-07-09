@@ -3,6 +3,7 @@ package com.carrental.controller;
 import com.carrental.dto.PasswordChangeRequest;
 import com.carrental.dto.user.CreateUserRequest;
 import com.carrental.dto.user.AdminPasswordResetRequest;
+import com.carrental.dto.user.UpdatePreferencesRequest;
 import com.carrental.dto.user.UpdateUserRequest;
 import com.carrental.dto.user.UserResponse;
 import com.carrental.entity.Role;
@@ -11,10 +12,12 @@ import com.carrental.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -109,6 +112,26 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
 
+    // ── POST /api/users/{id}/avatar ──────────────────────────────────────────
+
+    /**
+     * Upload a profile avatar image. ADMINs can update any tenant user's
+     * avatar; non-admins may only update their own.
+     */
+    @PostMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES') or #id == authentication.principal.id")
+    public ResponseEntity<Map<String, Object>> uploadAvatar(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+
+        UserResponse updated = userService.updateAvatar(id, file);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Profile image updated successfully",
+                "data", updated
+        ));
+    }
+
     // ── PUT /api/users/{id}/password ─────────────────────────────────────────
 
     /**
@@ -141,6 +164,77 @@ public class UserController {
 
         userService.deleteUser(id, caller.getId());
         return ResponseEntity.noContent().build();
+    }
+
+    // ── GET /api/users/me ─────────────────────────────────────────────────────
+
+    /**
+     * Returns the caller's own user record. Any authenticated user can call
+     * this — no permission check beyond a valid JWT.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal User caller) {
+        return ResponseEntity.ok(userService.getUserById(caller.getId()));
+    }
+
+    // ── GET /api/users/me/preferences ────────────────────────────────────────
+
+    /**
+     * Returns the calling user's own language/theme preferences. Personal —
+     * never shared across the tenant/agency.
+     */
+    @GetMapping("/me/preferences")
+    public ResponseEntity<Map<String, Object>> getMyPreferences(
+            @AuthenticationPrincipal User caller) {
+        Map<String, Object> preferences = new java.util.LinkedHashMap<>();
+        preferences.put("language", caller.getLanguage());
+        preferences.put("themeMode", caller.getThemeMode());
+        return ResponseEntity.ok(preferences);
+    }
+
+    // ── PUT /api/users/me/preferences ────────────────────────────────────────
+
+    /**
+     * Updates the calling user's own language/theme preferences.
+     */
+    @PutMapping("/me/preferences")
+    public ResponseEntity<Map<String, Object>> updateMyPreferences(
+            @Valid @RequestBody UpdatePreferencesRequest request,
+            @AuthenticationPrincipal User caller) {
+
+        if (caller == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "success", false,
+                    "message", "Your session has expired. Please sign in again."));
+        }
+
+        try {
+            UserResponse updated = userService.updatePreferences(
+                    caller.getId(), request.getLanguage(), request.getThemeMode());
+            Map<String, Object> data = new java.util.LinkedHashMap<>();
+            data.put("language", updated.getLanguage());
+            data.put("themeMode", updated.getThemeMode());
+
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("success", true);
+            response.put("message", "Preferences saved successfully.");
+            response.put("data", data);
+            return ResponseEntity.ok(response);
+        } catch (com.carrental.exception.ResourceNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", "Your user account could not be found."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "success", false,
+                    "message", ex.getMessage() != null ? ex.getMessage() : "Invalid preferences."));
+        } catch (Exception ex) {
+            org.slf4j.LoggerFactory.getLogger(UserController.class)
+                    .error("Failed to update preferences for user {}", caller.getId(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "message", "Unable to save preferences right now. Please try again later."));
+        }
     }
 
     @PutMapping("/{id}/admin-reset-password")

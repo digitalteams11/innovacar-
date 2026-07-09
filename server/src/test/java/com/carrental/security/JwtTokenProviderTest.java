@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for {@link JwtTokenProvider}.
@@ -20,7 +21,7 @@ class JwtTokenProviderTest {
 
     private JwtTokenProvider provider;
 
-    /** Same 256-bit key used in application.yml */
+    /** 256-bit Base64 key used only for tests. Runtime secrets come from JWT_SECRET. */
     private static final String SECRET =
         "Y2FycmVudGFsLXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC1zaWduaW5nLTI1NmJpdHM=";
     private static final long EXP_MS = 86_400_000L;
@@ -71,5 +72,21 @@ class JwtTokenProviderTest {
     void invalidTokenReturnsFalse() {
         assertThat(provider.validateToken("not.a.jwt.token")).isFalse();
         assertThat(provider.validateToken("")).isFalse();
+    }
+
+    @Test
+    void missingSecretFailsFastWithClearMessage() {
+        assertThatThrownBy(() -> new JwtTokenProvider("", EXP_MS, REFRESH_EXP_MS))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("JWT_SECRET must be configured");
+    }
+
+    @Test
+    void weakSecretFailsFastWithClearMessage() {
+        String weakSecret = Base64.getEncoder().encodeToString("too-short".getBytes());
+
+        assertThatThrownBy(() -> new JwtTokenProvider(weakSecret, EXP_MS, REFRESH_EXP_MS))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("at least 32 bytes");
     }
 }

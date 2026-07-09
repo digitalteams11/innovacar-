@@ -16,6 +16,8 @@ public class GpsDashboardStats {
     private Long moving;
     private Long stopped;
     private Long idle;
+    private Long outOfZone;
     private Long activeAlerts;
+    private Long alertsToday;
     private Double totalDistanceTodayKm;
 }

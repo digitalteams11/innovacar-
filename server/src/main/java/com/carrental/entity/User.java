@@ -64,8 +64,18 @@ public class User implements UserDetails {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "password_expires_at")
+    private LocalDateTime passwordExpiresAt;
+
     @Column(name = "account_enabled")
     private Boolean accountEnabled;
+
+    @Column(name = "must_change_password", nullable = false)
+    @Builder.Default
+    private Boolean mustChangePassword = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -88,6 +98,62 @@ public class User implements UserDetails {
     @Column(name = "avatar_url", length = 5000)
     private String avatarUrl;
 
+    @Column(name = "two_factor_enabled")
+    private Boolean twoFactorEnabled;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "two_factor_method", length = 32)
+    private TwoFactorMethod twoFactorMethod;
+
+    @Column(name = "two_factor_secret_encrypted", length = 1000)
+    private String twoFactorSecretEncrypted;
+
+    @Column(name = "two_factor_confirmed_at")
+    private LocalDateTime twoFactorConfirmedAt;
+
+    @Column(name = "two_factor_recovery_codes_hash", columnDefinition = "TEXT")
+    private String twoFactorRecoveryCodesHash;
+
+    /** Encrypted TOTP secret stored during setup — cleared once confirmed. */
+    @Column(name = "pending_two_factor_secret_encrypted", length = 1000)
+    private String pendingTwoFactorSecretEncrypted;
+
+    /** When the pending setup was initiated — used to enforce 10-minute expiry. */
+    @Column(name = "pending_two_factor_setup_at")
+    private LocalDateTime pendingTwoFactorSetupAt;
+
+    /** Whether Email OTP is enabled as a second factor (independent of TOTP). */
+    @Column(name = "email_otp_enabled")
+    private Boolean emailOtpEnabled;
+
+    @Column(name = "last_email_otp_enabled_at")
+    private LocalDateTime lastEmailOtpEnabledAt;
+
+    @Column(name = "last_security_change_at")
+    private LocalDateTime lastSecurityChangeAt;
+
+    // ── Personal UI preferences (per-user, not per-agency) ───────────────────
+
+    /** UI language: en / fr / ar. Defaults to "en" if unset. */
+    @Column(name = "language", length = 8)
+    private String language;
+
+    /** Quick theme mode: light / dark / auto. Defaults to "auto" if unset. */
+    @Column(name = "theme_mode", length = 16)
+    private String themeMode;
+
+    // ── Super Admin staff (only meaningful when role == SUPER_ADMIN) ─────────
+
+    /**
+     * Platform-level sub-role (SUPER_OWNER, MANAGER, FINANCE_MANAGER, ...).
+     * Null means "legacy/unrestricted super admin" — full access, for
+     * backward compatibility with super admin accounts created before this
+     * staff-role system existed.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "super_admin_role_id")
+    private SuperAdminRole superAdminRole;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -95,6 +161,12 @@ public class User implements UserDetails {
         if (emailVerified == null) emailVerified = false;
         if (failedLoginAttempts == null) failedLoginAttempts = 0;
         if (accountEnabled == null) accountEnabled = true;
+        if (mustChangePassword == null) mustChangePassword = false;
+        if (twoFactorEnabled == null) twoFactorEnabled = false;
+        if (emailOtpEnabled == null) emailOtpEnabled = false;
+        if (passwordChangedAt == null) passwordChangedAt = createdAt;
+        if (language == null) language = "en";
+        if (themeMode == null) themeMode = "auto";
     }
 
     @PreUpdate
@@ -123,7 +195,9 @@ public class User implements UserDetails {
 
     @Override public boolean isAccountNonLocked()      { return !isLocked(); }
 
-    @Override public boolean isCredentialsNonExpired() { return true; }
+    @Override public boolean isCredentialsNonExpired() {
+        return passwordExpiresAt == null || LocalDateTime.now().isBefore(passwordExpiresAt);
+    }
 
     @Override public boolean isEnabled()               { return accountEnabled == null || accountEnabled; }
 }

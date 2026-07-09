@@ -3,6 +3,7 @@ package com.carrental.service;
 import com.carrental.dto.dashboard.DashboardResponse;
 import com.carrental.entity.VehicleStatus;
 import com.carrental.repository.ClientRepository;
+import com.carrental.repository.ContractRepository;
 import com.carrental.repository.DepositRepository;
 import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PaymentRepository;
@@ -31,6 +32,7 @@ class DashboardServiceTest {
     @Mock private PaymentRepository paymentRepository;
     @Mock private DepositRepository depositRepository;
     @Mock private ReservationRepository reservationRepository;
+    @Mock private ContractRepository contractRepository;
     @Mock private ClientRepository clientRepository;
     @Mock private InvoiceRepository invoiceRepository;
 
@@ -51,7 +53,10 @@ class DashboardServiceTest {
     @Test
     void getDashboardMetrics_returnsCorrectAggregations() {
         when(vehicleRepository.countByTenantId(TENANT_ID)).thenReturn(10L);
+        when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.AVAILABLE)).thenReturn(4L);
+        when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RESERVED)).thenReturn(2L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RENTED)).thenReturn(4L);
+        when(contractRepository.findAllByTenantIdAndStatus(any(), any())).thenReturn(Collections.emptyList());
         when(reservationRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
         when(clientRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
         when(invoiceRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
@@ -63,13 +68,18 @@ class DashboardServiceTest {
 
         assertThat(res.getTotalVehicles()).isEqualTo(10L);
         assertThat(res.getRentedVehicles()).isEqualTo(4L);
+        assertThat(res.getAvailableVehicles()).isEqualTo(4L);
+        assertThat(res.getReservedVehicles()).isEqualTo(2L);
         assertThat(res.getTotalRevenue()).isEqualByComparingTo("1500.50");
     }
 
     @Test
     void getDashboardMetrics_handlesNullRevenue() {
         when(vehicleRepository.countByTenantId(TENANT_ID)).thenReturn(0L);
+        when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.AVAILABLE)).thenReturn(0L);
+        when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RESERVED)).thenReturn(0L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RENTED)).thenReturn(0L);
+        when(contractRepository.findAllByTenantIdAndStatus(any(), any())).thenReturn(Collections.emptyList());
         when(reservationRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
         when(clientRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
         when(invoiceRepository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
@@ -82,5 +92,12 @@ class DashboardServiceTest {
         assertThat(res.getTotalVehicles()).isEqualTo(0L);
         assertThat(res.getRentedVehicles()).isEqualTo(0L);
         assertThat(res.getTotalRevenue()).isEqualByComparingTo("0.00");
+        assertThat(res.getReservationsThisMonth()).isZero();
+        assertThat(res.getPendingContracts()).isZero();
+        assertThat(res.getSignedContracts()).isZero();
+        assertThat(res.getPaymentsToday()).isEqualByComparingTo("0.00");
+        assertThat(res.getUpcomingReturns()).isEmpty();
+        assertThat(res.getRecentActivity()).isEmpty();
+        assertThat(res.getAlerts()).isEmpty();
     }
 }

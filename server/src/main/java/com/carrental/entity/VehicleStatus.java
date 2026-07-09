@@ -13,8 +13,10 @@ public enum VehicleStatus {
     RENTED,
     IN_MAINTENANCE,
     OUT_OF_SERVICE,
+    SOLD,
+    ARCHIVED,
     /**
-     * Legacy value retained for existing rows. New writes should use IN_MAINTENANCE.
+     * Legacy value retained for existing rows. New writes should use MAINTENANCE.
      */
     MAINTENANCE
 }

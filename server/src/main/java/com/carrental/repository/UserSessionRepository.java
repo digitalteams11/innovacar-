@@ -22,4 +22,7 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
     void deleteByExpiresAtBefore(LocalDateTime date);
 
     long countByUserIdAndRevokedFalseAndExpiresAtAfter(Long userId, LocalDateTime now);
+
+    boolean existsByIdAndUserIdAndRevokedFalseAndExpiresAtAfter(
+            Long id, Long userId, LocalDateTime now);
 }

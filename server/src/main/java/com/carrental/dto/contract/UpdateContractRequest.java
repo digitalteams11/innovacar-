@@ -88,6 +88,8 @@ public class UpdateContractRequest {
     private BigDecimal totalPrice;
     private BigDecimal dailyPrice;
     private BigDecimal depositAmount;
+    private String depositCurrency;
+    private com.carrental.entity.DepositStatus depositStatus;
     private BigDecimal paidAmount;
     private BigDecimal remainingAmount;
     private BigDecimal taxAmount;

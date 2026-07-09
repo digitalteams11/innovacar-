@@ -35,6 +35,8 @@ export function FeatureAccessProvider({ children }: { children: React.ReactNode 
   const refresh = async () => {
     if (!isAuthenticated || isSuperAdmin) {
       setFeatureList([]);
+      setPlanName(undefined);
+      setPlanCode(undefined);
       return;
     }
     setLoading(true);

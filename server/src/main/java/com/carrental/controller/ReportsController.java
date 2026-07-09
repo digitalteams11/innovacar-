@@ -13,9 +13,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 /**
  * Reports REST controller.
@@ -49,26 +53,38 @@ public class ReportsController {
 
         Long tenantId = TenantContext.getCurrentTenantId();
 
-        // Return sample monthly data if no invoices yet
-        List<Map<String, Object>> result = new ArrayList<>();
-        String[] months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun"};
-        for (String month : months) {
-            result.add(Map.of("name", month, "revenue", 0));
+        LocalDate today = LocalDate.now();
+        LocalDate rangeStart = startDate != null ? startDate : today.minusMonths(5).withDayOfMonth(1);
+        LocalDate rangeEnd = endDate != null ? endDate : today;
+        if (rangeEnd.isBefore(rangeStart)) {
+            throw new IllegalArgumentException("endDate must be on or after startDate");
         }
 
-        // If we have paid invoices, calculate real revenue
-        BigDecimal totalRevenue = invoiceRepository.findAllByTenantId(tenantId).stream()
-                .filter(i -> i.getStatus() == InvoiceStatus.PAID)
-                .map(i -> i.getAmount())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (totalRevenue.compareTo(BigDecimal.ZERO) > 0) {
-            // Distribute across months for demo purposes
-            BigDecimal perMonth = totalRevenue.divide(BigDecimal.valueOf(6), 2, BigDecimal.ROUND_HALF_UP);
-            for (int i = 0; i < months.length; i++) {
-                result.set(i, Map.of("name", months[i], "revenue", perMonth.intValue()));
-            }
+        Map<YearMonth, BigDecimal> revenueByMonth = new LinkedHashMap<>();
+        YearMonth cursor = YearMonth.from(rangeStart);
+        YearMonth last = YearMonth.from(rangeEnd);
+        while (!cursor.isAfter(last)) {
+            revenueByMonth.put(cursor, BigDecimal.ZERO);
+            cursor = cursor.plusMonths(1);
         }
+
+        invoiceRepository.findAllByTenantId(tenantId).stream()
+                .filter(invoice -> invoice.getStatus() == InvoiceStatus.PAID)
+                .filter(invoice -> invoice.getIssueDate() != null)
+                .filter(invoice -> !invoice.getIssueDate().isBefore(rangeStart)
+                        && !invoice.getIssueDate().isAfter(rangeEnd))
+                .forEach(invoice -> {
+                    YearMonth month = YearMonth.from(invoice.getIssueDate());
+                    BigDecimal current = revenueByMonth.getOrDefault(month, BigDecimal.ZERO);
+                    revenueByMonth.put(month, current.add(invoice.getAmount() == null ? BigDecimal.ZERO : invoice.getAmount()));
+                });
+
+        List<Map<String, Object>> result = revenueByMonth.entrySet().stream()
+                .map(entry -> Map.<String, Object>of(
+                        "name", entry.getKey().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                        "month", entry.getKey().toString(),
+                        "revenue", entry.getValue()))
+                .toList();
 
         return ResponseEntity.ok(result);
     }
@@ -82,20 +98,18 @@ public class ReportsController {
     public ResponseEntity<List<Map<String, Object>>> getVehicleUtilization() {
         Long tenantId = TenantContext.getCurrentTenantId();
 
-        long total      = vehicleRepository.countByTenantId(tenantId);
-        long rented     = vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.RENTED);
-        long available  = vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.AVAILABLE);
+        long available = vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.AVAILABLE);
+        long reserved = vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.RESERVED);
+        long rented = vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.RENTED);
         long maintenance = vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.MAINTENANCE);
+        long outOfService = vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.OUT_OF_SERVICE);
 
         List<Map<String, Object>> result = new ArrayList<>();
         if (available > 0) result.add(Map.of("name", "Available", "value", available));
+        if (reserved > 0) result.add(Map.of("name", "Reserved", "value", reserved));
         if (rented > 0) result.add(Map.of("name", "Rented", "value", rented));
         if (maintenance > 0) result.add(Map.of("name", "Maintenance", "value", maintenance));
-
-        if (result.isEmpty()) {
-            result.add(Map.of("name", "Available", "value", 1));
-            result.add(Map.of("name", "Rented", "value", 0));
-        }
+        if (outOfService > 0) result.add(Map.of("name", "Out of Service", "value", outOfService));
 
         return ResponseEntity.ok(result);
     }

@@ -1,0 +1,1042 @@
+# Translation Audit
+
+Generated: 2026-07-07T14:09:47.257Z
+Scanned source files: 166
+Static translation keys used: 915
+
+## Missing EN Keys (0)
+
+None.
+
+## Missing FR Keys (0)
+
+None.
+
+## Missing AR Keys (0)
+
+None.
+
+## Possible Visible Hardcoded Text (1020)
+
+- src\components\Layout.tsx:157 - Rent
+- src\components\Layout.tsx:157 - Car
+- src\components\ReservationDetailsModal.tsx:102 - ABC-123-XY
+- src\components\ReservationDetailsModal.tsx:133 - Casablanca International Airport (CMN)
+- src\components\settings\BillingTab.tsx:286 - Payment received!
+- src\components\settings\BillingTab.tsx:287 - Your subscription is being activated. This usually takes a few seconds after payment confirmation.
+- src\components\settings\BillingTab.tsx:399 - Whop
+- src\components\settings\BillingTab.tsx:442 - Monthly
+- src\components\settings\BillingTab.tsx:451 - Yearly
+- src\components\settings\BillingTab.tsx:461 - No subscription plans found. Ask Super Admin to create active plans.
+- src\components\settings\BillingTab.tsx:555 - Your cancellation request is pending review. We'll notify you once it's processed.
+- src\components\settings\BillingTab.tsx:559 - Cancel subscription
+- src\components\settings\BillingTab.tsx:574 - Confirm Plan Change
+- src\components\settings\BillingTab.tsx:575 - Subscribing to
+- src\components\settings\BillingTab.tsx:583 - Promo Code
+- src\components\settings\BillingTab.tsx:604 - Remove
+- src\components\settings\BillingTab.tsx:617 - Subtotal
+- src\components\settings\BillingTab.tsx:629 - Total
+- src\components\settings\BillingTab.tsx:638 - You will be redirected to our secure checkout to complete payment. Subscription activates after payment confirmation.
+- src\components\settings\BillingTab.tsx:650 - Cancel
+- src\components\settings\BillingTab.tsx:663 - Request Cancellation
+- src\components\settings\BillingTab.tsx:664 - Your request will be reviewed by our team before your subscription is cancelled. This does not delete your data.
+- src\components\settings\BillingTab.tsx:668 - Reason
+- src\components\settings\BillingTab.tsx:674 - Too expensive
+- src\components\settings\BillingTab.tsx:675 - Missing features
+- src\components\settings\BillingTab.tsx:676 - Switching provider
+- src\components\settings\BillingTab.tsx:677 - Temporary pause
+- src\components\settings\BillingTab.tsx:678 - Business closed
+- src\components\settings\BillingTab.tsx:679 - Technical issues
+- src\components\settings\BillingTab.tsx:680 - Other
+- src\components\settings\BillingTab.tsx:683 - Tell us more (optional)
+- src\components\settings\BillingTab.tsx:699 - I understand this will submit a cancellation request for review.
+- src\components\settings\BillingTab.tsx:713 - Keep Subscription
+- src\components\settings\NotificationsTab.tsx:24 - Notification Channels
+- src\components\settings\NotificationsTab.tsx:25 - Choose how you want to be notified about agency activity
+- src\components\settings\PrivacyTab.tsx:117 - Export Your Data
+- src\components\settings\PrivacyTab.tsx:118 - Download your agency data as CSV files
+- src\components\settings\PrivacyTab.tsx:143 - Download Account Data
+- src\components\settings\PrivacyTab.tsx:144 - Your agency profile and operational settings as JSON
+- src\components\settings\PrivacyTab.tsx:159 - Data Retention
+- src\components\settings\PrivacyTab.tsx:160 - Vehicle inspection photos and videos are kept for
+- src\components\settings\PrivacyTab.tsx:163 - Contact support about data requests
+- src\components\settings\PrivacyTab.tsx:175 - Danger Zone
+- src\components\settings\PrivacyTab.tsx:176 - Request account deactivation
+- src\components\settings\PrivacyTab.tsx:185 - Request Account Deactivation
+- src\components\settings\PrivacyTab.tsx:194 - Request Account Deactivation
+- src\components\settings\PrivacyTab.tsx:195 - This will open a support ticket with our team to review and process your deactivation request. Your data will not be deleted automatically.
+- src\components\settings\PrivacyTab.tsx:198 - Reason (optional)
+- src\components\settings\PrivacyTab.tsx:206 - I understand this request will be reviewed by the RentCar team before any action is taken.
+- src\components\settings\PrivacyTab.tsx:217 - Cancel
+- src\components\shared\AiChatPanel.tsx:152 - AI Assistant
+- src\components\shared\AiChatPanel.tsx:172 - Ask about how to use RentCar, troubleshoot issues, or learn about any feature.
+- src\components\shared\AiChatPanel.tsx:213 - Open AI Settings
+- src\components\shared\AiChatPanel.tsx:237 - Thinking...
+- src\components\shared\AiStatusBadge.tsx:34 - Checking AI status...
+- src\components\shared\AiStatusBadge.tsx:54 - AI available
+- src\components\shared\ContractReturnModal.tsx:89 - Vehicle Return Inspection
+- src\components\shared\ContractReturnModal.tsx:104 - Fuel Level at Return
+- src\components\shared\ContractReturnModal.tsx:136 - Mileage at Return
+- src\components\shared\ContractReturnModal.tsx:147 - Distance driven:
+- src\components\shared\ContractReturnModal.tsx:157 - Condition Notes
+- src\components\shared\ContractReturnModal.tsx:179 - Optional Fees (MAD)
+- src\components\shared\ContractReturnModal.tsx:206 - Cancel
+- src\components\shared\DashboardVehicleCard.tsx:110 - Fuel
+- src\components\shared\DashboardVehicleCard.tsx:168 - View
+- src\components\shared\DashboardVehicleCard.tsx:175 - Reserve
+- src\components\shared\DashboardVehicleCard.tsx:180 - Contract
+- src\components\shared\DashboardVehicleCard.tsx:188 - Return
+- src\components\shared\DashboardVehicleCard.tsx:195 - Maintenance
+- src\components\shared\LivePriceSidebar.tsx:82 - Select dates to see pricing
+- src\components\shared\LivePriceSidebar.tsx:92 - Live Pricing
+- src\components\shared\LivePriceSidebar.tsx:106 - Subtotal
+- src\components\shared\LivePriceSidebar.tsx:113 - Discount
+- src\components\shared\LivePriceSidebar.tsx:122 - Total
+- src\components\shared\QRCodeModal.tsx:293 - WhatsApp
+- src\components\shared\QRCodeModal.tsx:300 - SMS
+- src\components\shared\QRCodeModal.tsx:307 - Email
+- src\components\shared\ReturnInspectionModal.tsx:83 - Vehicle Return Inspection
+- src\components\shared\ReturnInspectionModal.tsx:84 - Process deposit return after inspection
+- src\components\shared\ReturnInspectionModal.tsx:95 - Inspection Checklist
+- src\components\shared\ReturnInspectionModal.tsx:98 - Fuel Level
+- src\components\shared\ReturnInspectionModal.tsx:101 - Full
+- src\components\shared\ReturnInspectionModal.tsx:105 - Empty
+- src\components\shared\ReturnInspectionModal.tsx:109 - Mileage End
+- src\components\shared\ReturnInspectionModal.tsx:115 - Interior Condition
+- src\components\shared\ReturnInspectionModal.tsx:118 - Clean
+- src\components\shared\ReturnInspectionModal.tsx:119 - Light Dirt
+- src\components\shared\ReturnInspectionModal.tsx:120 - Heavy Dirt
+- src\components\shared\ReturnInspectionModal.tsx:121 - Damage
+- src\components\shared\ReturnInspectionModal.tsx:125 - Exterior Condition
+- src\components\shared\ReturnInspectionModal.tsx:128 - Clean
+- src\components\shared\ReturnInspectionModal.tsx:129 - Light Scratches
+- src\components\shared\ReturnInspectionModal.tsx:130 - Damage
+- src\components\shared\ReturnInspectionModal.tsx:135 - Missing Items / Notes
+- src\components\shared\ReturnInspectionModal.tsx:145 - Deductions
+- src\components\shared\ReturnInspectionModal.tsx:165 - Return Notes
+- src\components\shared\ReturnInspectionModal.tsx:177 - Deposit Calculation
+- src\components\shared\ReturnInspectionModal.tsx:180 - Deposit
+- src\components\shared\ReturnInspectionModal.tsx:185 - Damage
+- src\components\shared\ReturnInspectionModal.tsx:191 - Cleaning
+- src\components\shared\ReturnInspectionModal.tsx:197 - Late Fee
+- src\components\shared\ReturnInspectionModal.tsx:203 - Fuel
+- src\components\shared\ReturnInspectionModal.tsx:209 - Other
+- src\components\shared\ReturnInspectionModal.tsx:215 - Total Deductions
+- src\components\shared\ReturnInspectionModal.tsx:219 - Deposit Returned
+- src\components\shared\ReturnInspectionModal.tsx:225 - Total deductions exceed deposit amount
+- src\components\shared\ReturnInspectionModal.tsx:233 - Cancel
+- src\components\shared\SignaturePad.tsx:136 - Clear
+- src\components\shared\SignaturePad.tsx:176 - Digital Signature
+- src\components\shared\SignaturePad.tsx:184 - Signature locked
+- src\components\shared\SignaturePad.tsx:205 - Confirm Signature
+- src\components\shared\SmartClientSearch.tsx:200 - Searching...
+- src\components\shared\SmartVehicleSelector.tsx:253 - Please select rental dates first to see available vehicles
+- src\components\shared\SmartVehicleSelector.tsx:264 - Vehicle availability is unavailable
+- src\components\shared\SmartVehicleSelector.tsx:278 - Retry availability
+- src\components\shared\SmartVehicleSelector.tsx:321 - MAD/day
+- src\components\shared\VehicleInspection.tsx:65 - Click zones to mark damage
+- src\components\shared\VehicleInspection.tsx:208 - INTERIOR
+- src\context\AuthContext.tsx:73 - Promise
+- src\context\AuthContext.tsx:74 - Promise
+- src\context\AuthContext.tsx:75 - Promise
+- src\context\AuthContext.tsx:76 - Promise
+- src\context\AuthContext.tsx:77 - Promise
+- src\context\AuthContext.tsx:78 - Promise
+- src\context\AuthContext.tsx:79 - Promise
+- src\context\FeatureAccessContext.tsx:23 - Promise
+- src\context\NotificationContext.tsx:28 - Promise
+- src\context\NotificationContext.tsx:29 - Promise
+- src\context\NotificationContext.tsx:30 - Promise
+- src\context\NotificationContext.tsx:31 - Promise
+- src\context\NotificationContext.tsx:32 - Promise
+- src\context\NotificationContext.tsx:33 - Promise
+- src\context\OnboardingContext.tsx:17 - Promise
+- src\context\OnboardingContext.tsx:18 - Promise
+- src\pages\AccountSuspended.tsx:18 - Account suspended
+- src\pages\AccountSuspended.tsx:25 - Plan
+- src\pages\AccountSuspended.tsx:29 - Status
+- src\pages\AccountSuspended.tsx:39 - Open Billing
+- src\pages\AccountSuspended.tsx:46 - Contact Support
+- src\pages\AccountSuspended.tsx:53 - Logout
+- src\pages\Agency.tsx:80 - General Information
+- src\pages\Agency.tsx:83 - Agency Name
+- src\pages\Agency.tsx:89 - Email
+- src\pages\Agency.tsx:94 - Phone
+- src\pages\Agency.tsx:100 - Address
+- src\pages\Agency.tsx:106 - City
+- src\pages\Agency.tsx:111 - Country
+- src\pages\Agency.tsx:117 - Tax ID
+- src\pages\Agency.tsx:133 - Contact Info
+- src\pages\Clients.tsx:409 - No clients available
+- src\pages\Clients.tsx:410 - Get started by adding your first client.
+- src\pages\Clients.tsx:422 - Full Name
+- src\pages\Clients.tsx:427 - Email
+- src\pages\Clients.tsx:432 - Phone
+- src\pages\Clients.tsx:437 - Secondary Phone
+- src\pages\Clients.tsx:447 - Passport Number
+- src\pages\Clients.tsx:452 - Driving License
+- src\pages\Clients.tsx:457 - Nationality
+- src\pages\Clients.tsx:462 - Gender
+- src\pages\Clients.tsx:465 - Select
+- src\pages\Clients.tsx:466 - Male
+- src\pages\Clients.tsx:467 - Female
+- src\pages\Clients.tsx:471 - Birth Date
+- src\pages\Clients.tsx:476 - Address
+- src\pages\Clients.tsx:481 - City
+- src\pages\Clients.tsx:486 - Country
+- src\pages\Clients.tsx:491 - Postal Code
+- src\pages\Clients.tsx:496 - Company Name
+- src\pages\Clients.tsx:501 - Notes
+- src\pages\ContractDetails.tsx:569 - Contract not found
+- src\pages\ContractDetails.tsx:570 - Back to Contracts
+- src\pages\ContractDetails.tsx:628 - System default
+- src\pages\ContractDetails.tsx:639 - No agency contract template configured. System default will be used.
+- src\pages\ContractDetails.tsx:646 - Print
+- src\pages\ContractDetails.tsx:652 - PDF
+- src\pages\ContractDetails.tsx:660 - Regenerate PDF
+- src\pages\ContractDetails.tsx:679 - Start Vehicle Inspection
+- src\pages\ContractDetails.tsx:707 - Signature Status
+- src\pages\ContractDetails.tsx:711 - Client
+- src\pages\ContractDetails.tsx:718 - Owner
+- src\pages\ContractDetails.tsx:725 - Employee
+- src\pages\ContractDetails.tsx:743 - No agency signature configured.
+- src\pages\ContractDetails.tsx:744 - Set it in Settings
+- src\pages\ContractDetails.tsx:760 - Agency Signature Applied
+- src\pages\ContractDetails.tsx:781 - Signatures
+- src\pages\ContractDetails.tsx:785 - Agency Representative
+- src\pages\ContractDetails.tsx:796 - Client
+- src\pages\ContractDetails.tsx:810 - View Signed PDF
+- src\pages\ContractDetails.tsx:820 - Contract Email
+- src\pages\ContractDetails.tsx:824 - Client Email
+- src\pages\ContractDetails.tsx:828 - Client email is missing. Add an email to send the contract.
+- src\pages\ContractDetails.tsx:848 - No email sent yet
+- src\pages\ContractDetails.tsx:881 - Security Deposit
+- src\pages\ContractDetails.tsx:896 - Type
+- src\pages\ContractDetails.tsx:900 - Amount
+- src\pages\ContractDetails.tsx:905 - Reference
+- src\pages\ContractDetails.tsx:915 - Process Vehicle Return
+- src\pages\ContractDetails.tsx:921 - Return Summary
+- src\pages\ContractDetails.tsx:923 - Deposit
+- src\pages\ContractDetails.tsx:928 - Damage
+- src\pages\ContractDetails.tsx:934 - Cleaning
+- src\pages\ContractDetails.tsx:940 - Late Fee
+- src\pages\ContractDetails.tsx:946 - Fuel
+- src\pages\ContractDetails.tsx:952 - Other
+- src\pages\ContractDetails.tsx:958 - Returned
+- src\pages\ContractDetails.tsx:974 - Client
+- src\pages\ContractDetails.tsx:983 - Vehicle
+- src\pages\ContractDetails.tsx:992 - Period
+- src\pages\ContractDetails.tsx:1003 - Payment
+- src\pages\ContractDetails.tsx:1014 - Client Information
+- src\pages\ContractDetails.tsx:1033 - Vehicle Information
+- src\pages\ContractDetails.tsx:1052 - Rental Payment
+- src\pages\ContractDetails.tsx:1064 - Deposit / Guarantee (Caution)
+- src\pages\ContractDetails.tsx:1099 - The deposit/guarantee is separate from the rental price and is refundable according to the contract terms.
+- src\pages\ContractDetails.tsx:1111 - Vehicle Inspection Media
+- src\pages\ContractDetails.tsx:1112 - Proof before delivery and after return, linked to this contract.
+- src\pages\ContractDetails.tsx:1116 - Before Delivery QR
+- src\pages\ContractDetails.tsx:1120 - After Return QR
+- src\pages\ContractDetails.tsx:1124 - Refresh media
+- src\pages\ContractDetails.tsx:1139 - Legacy Damage Markers
+- src\pages\ContractDetails.tsx:1164 - Document Checklist
+- src\pages\ContractDetails.tsx:1175 - No documents recorded
+- src\pages\ContractDetails.tsx:1182 - Additional Drivers
+- src\pages\ContractDetails.tsx:1197 - No additional drivers
+- src\pages\ContractDetails.tsx:1204 - Activity Log
+- src\pages\ContractDetails.tsx:1219 - No activity recorded
+- src\pages\ContractDetails.tsx:1229 - Contract Timeline
+- src\pages\ContractDetails.tsx:1256 - Client Balance
+- src\pages\ContractDetails.tsx:1265 - Paid
+- src\pages\ContractDetails.tsx:1270 - Remaining
+- src\pages\ContractDetails.tsx:1280 - Rentals
+- src\pages\ContractDetails.tsx:1284 - Invoices
+- src\pages\ContractDetails.tsx:1288 - Active
+- src\pages\ContractDetails.tsx:1296 - Terms & Conditions
+- src\pages\ContractDetails.tsx:1307 - Metadata
+- src\pages\Contracts.tsx:106 - CIN:
+- src\pages\Contracts.tsx:113 - Passport:
+- src\pages\Contracts.tsx:120 - License:
+- src\pages\Contracts.tsx:127 - Nationality:
+- src\pages\Contracts.tsx:134 - City:
+- src\pages\Contracts.tsx:141 - Birth:
+- src\pages\Contracts.tsx:148 - Emergency:
+- src\pages\Contracts.tsx:178 - Plate:
+- src\pages\Contracts.tsx:183 - Fuel:
+- src\pages\Contracts.tsx:188 - Trans:
+- src\pages\Contracts.tsx:193 - Day:
+- src\pages\Contracts.tsx:199 - Deposit:
+- src\pages\Contracts.tsx:206 - GPS Enabled
+- src\pages\Contracts.tsx:1008 - Export
+- src\pages\Contracts.tsx:1012 - New Contract
+- src\pages\Contracts.tsx:1037 - Client
+- src\pages\Contracts.tsx:1038 - Vehicle
+- src\pages\Contracts.tsx:1039 - Deleted
+- src\pages\Contracts.tsx:1040 - Days Remaining
+- src\pages\Contracts.tsx:1041 - Actions
+- src\pages\Contracts.tsx:1102 - Trash is empty
+- src\pages\Contracts.tsx:1112 - Contracts are permanently deleted automatically 30 days after being trashed.
+- src\pages\Contracts.tsx:1127 - Client
+- src\pages\Contracts.tsx:1128 - Period
+- src\pages\Contracts.tsx:1129 - Status
+- src\pages\Contracts.tsx:1130 - Total
+- src\pages\Contracts.tsx:1131 - Actions
+- src\pages\Contracts.tsx:1147 - Vehicle removed
+- src\pages\Contracts.tsx:1187 - No contracts found
+- src\pages\Contracts.tsx:1205 - Select Reservation (Optional)
+- src\pages\Contracts.tsx:1224 - Reservation selected. Client, vehicle, and dates are auto-filled.
+- src\pages\Contracts.tsx:1251 - Auto Generate
+- src\pages\Contracts.tsx:1260 - Client
+- src\pages\Contracts.tsx:1267 - Loading client data from reservation...
+- src\pages\Contracts.tsx:1277 - Search Existing Client
+- src\pages\Contracts.tsx:1302 - New Client Information
+- src\pages\Contracts.tsx:1305 - Full Name
+- src\pages\Contracts.tsx:1314 - Phone
+- src\pages\Contracts.tsx:1332 - Passport (optional)
+- src\pages\Contracts.tsx:1340 - Driver License No.
+- src\pages\Contracts.tsx:1349 - Email (optional)
+- src\pages\Contracts.tsx:1357 - Address (optional)
+- src\pages\Contracts.tsx:1365 - Date of Birth (optional)
+- src\pages\Contracts.tsx:1373 - Nationality (optional)
+- src\pages\Contracts.tsx:1387 - Client already exists
+- src\pages\Contracts.tsx:1402 - Use Existing Client
+- src\pages\Contracts.tsx:1411 - Vehicle not available
+- src\pages\Contracts.tsx:1419 - Choose different dates or another vehicle.
+- src\pages\Contracts.tsx:1426 - Amount paid exceeds total
+- src\pages\Contracts.tsx:1443 - Contract number already exists
+- src\pages\Contracts.tsx:1444 - Contract number
+- src\pages\Contracts.tsx:1451 - Generate new number
+- src\pages\Contracts.tsx:1460 - Save failed
+- src\pages\Contracts.tsx:1465 - Check your input and try again, or contact support with the request ID.
+- src\pages\Contracts.tsx:1478 - Rental Period & Vehicle
+- src\pages\Contracts.tsx:1485 - Start Date
+- src\pages\Contracts.tsx:1490 - Start Time
+- src\pages\Contracts.tsx:1495 - End Date
+- src\pages\Contracts.tsx:1500 - End Time
+- src\pages\Contracts.tsx:1538 - Pricing & Rental Details
+- src\pages\Contracts.tsx:1542 - Discount (MAD)
+- src\pages\Contracts.tsx:1554 - Payment Method
+- src\pages\Contracts.tsx:1557 - Cash
+- src\pages\Contracts.tsx:1558 - Check
+- src\pages\Contracts.tsx:1559 - Bank Transfer
+- src\pages\Contracts.tsx:1560 - Card
+- src\pages\Contracts.tsx:1561 - Online Payment
+- src\pages\Contracts.tsx:1562 - Other
+- src\pages\Contracts.tsx:1566 - Amount Paid (MAD)
+- src\pages\Contracts.tsx:1573 - Deposit / Guarantee Amount (MAD)
+- src\pages\Contracts.tsx:1583 - Refundable guarantee/caution held by the agency. Separate from the rental price.
+- src\pages\Contracts.tsx:1589 - Pickup Location
+- src\pages\Contracts.tsx:1594 - Return Location
+- src\pages\Contracts.tsx:1600 - Contract Template
+- src\pages\Contracts.tsx:1603 - System default
+- src\pages\Contracts.tsx:1611 - No agency contract template configured. System default will be used.
+- src\pages\Contracts.tsx:1615 - Notes
+- src\pages\Contracts.tsx:1627 - Required Documents
+- src\pages\Contracts.tsx:1657 - Additional Drivers
+- src\pages\Contracts.tsx:1662 - No additional drivers
+- src\pages\Contracts.tsx:1685 - Vehicle Inspection
+- src\pages\Contracts.tsx:1700 - Reservation Summary
+- src\pages\Contracts.tsx:1760 - Creating contract...
+- src\pages\Contracts.tsx:1787 - Vehicle Already Booked
+- src\pages\Contracts.tsx:1788 - Contract
+- src\pages\Contracts.tsx:1795 - This vehicle is already booked for the same dates by another active booking:
+- src\pages\Contracts.tsx:1799 - Type
+- src\pages\Contracts.tsx:1811 - Number
+- src\pages\Contracts.tsx:1817 - Status
+- src\pages\Contracts.tsx:1823 - Conflict Dates
+- src\pages\Contracts.tsx:1831 - Requested Dates
+- src\pages\Contracts.tsx:1841 - Restore as Draft
+- src\pages\Contracts.tsx:1849 - Cancel
+- src\pages\ContractTemplates.tsx:527 - Agency Contract Templates
+- src\pages\ContractTemplates.tsx:528 - Choose a ready contract, upload your scanned paper, map fields, and set the PDF default.
+- src\pages\ContractTemplates.tsx:531 - Upload My Contract Paper
+- src\pages\ContractTemplates.tsx:556 - My Templates
+- src\pages\ContractTemplates.tsx:569 - Default
+- src\pages\ContractTemplates.tsx:576 - No templates found.
+- src\pages\ContractTemplates.tsx:577 - Create your first template
+- src\pages\ContractTemplates.tsx:583 - Template Usage Info
+- src\pages\ContractTemplates.tsx:584 - Agency scan templates use your uploaded paper and mapped fields. System templates use the built-in PDF layout safely.
+- src\pages\ContractTemplates.tsx:608 - Locked
+- src\pages\ContractTemplates.tsx:616 - Agency Default
+- src\pages\ContractTemplates.tsx:622 - Activated
+- src\pages\ContractTemplates.tsx:644 - Open
+- src\pages\ContractTemplates.tsx:648 - Default
+- src\pages\ContractTemplates.tsx:668 - Set Default
+- src\pages\ContractTemplates.tsx:675 - Preview
+- src\pages\ContractTemplates.tsx:679 - Upgrade
+- src\pages\ContractTemplates.tsx:683 - Preview
+- src\pages\ContractTemplates.tsx:688 - Use Template
+- src\pages\ContractTemplates.tsx:703 - My Templates
+- src\pages\ContractTemplates.tsx:704 - Your agency templates and saved system choices. These persist after refresh.
+- src\pages\ContractTemplates.tsx:706 - New Template
+- src\pages\ContractTemplates.tsx:730 - Upload Front Template
+- src\pages\ContractTemplates.tsx:734 - Upload Conditions Page
+- src\pages\ContractTemplates.tsx:737 - Add Field
+- src\pages\ContractTemplates.tsx:738 - Save Mapping
+- src\pages\ContractTemplates.tsx:741 - Preview PDF
+- src\pages\ContractTemplates.tsx:742 - Set As Default
+- src\pages\ContractTemplates.tsx:743 - Delete Template
+- src\pages\ContractTemplates.tsx:749 - Default
+- src\pages\ContractTemplates.tsx:751 - Recommended scan: A4 portrait, 300 DPI, clean white background. System templates do not require uploaded paper.
+- src\pages\ContractTemplates.tsx:756 - Template Preview
+- src\pages\ContractTemplates.tsx:792 - Field Mapping Tools
+- src\pages\ContractTemplates.tsx:794 - This system template already includes built-in field mapping. You can preview it, set it as default, or select it from Contract Details for PDF generation.
+- src\pages\ContractTemplates.tsx:796 - No fields mapped yet. Click Add Field or use a quick button below.
+- src\pages\ContractTemplates.tsx:812 - Selected field properties
+- src\pages\ContractTemplates.tsx:825 - Left
+- src\pages\ContractTemplates.tsx:825 - Center
+- src\pages\ContractTemplates.tsx:825 - Right
+- src\pages\ContractTemplates.tsx:827 - Save
+- src\pages\ContractTemplates.tsx:830 - Duplicate
+- src\pages\ContractTemplates.tsx:831 - Delete
+- src\pages\ContractTemplates.tsx:835 - Select a field on the template or click Add Field to start mapping.
+- src\pages\ContractTemplates.tsx:838 - Built-in sample data
+- src\pages\ContractTemplates.tsx:839 - CTR-2026-00004 - Mohamed Yacoubi - Hyundai i20 - 19/06/2026 to 22/06/2026 - 1728 MAD
+- src\pages\ContractTemplates.tsx:858 - Create or choose a template to preview it.
+- src\pages\ContractTemplates.tsx:865 - Conditions generales
+- src\pages\ContractTemplates.tsx:866 - Please review your legal terms before using them officially.
+- src\pages\ContractTemplates.tsx:869 - Save Conditions
+- src\pages\ContractTemplates.tsx:872 - Conditions Page Options
+- src\pages\ContractTemplates.tsx:873 - Use uploaded scanned conditions page, agency terms, or system default conditions in generated PDFs.
+- src\pages\ContractTemplates.tsx:875 - Upload Conditions Page
+- src\pages\ContractTemplates.tsx:883 - No scanned conditions page uploaded. Agency/system text can still be used.
+- src\pages\ContractTemplates.tsx:905 - Use Template
+- src\pages\ContractTemplates.tsx:915 - Create Contract Template
+- src\pages\ContractTemplates.tsx:928 - Front page upload
+- src\pages\ContractTemplates.tsx:932 - Back page / conditions upload optional
+- src\pages\ContractTemplates.tsx:937 - Set as default
+- src\pages\ContractTemplates.tsx:941 - Active
+- src\pages\ContractTemplates.tsx:946 - Cancel
+- src\pages\ContractTemplates.tsx:992 - LOGO
+- src\pages\ContractTemplates.tsx:1025 - Documents
+- src\pages\ContractTemplates.tsx:1036 - Inspection
+- src\pages\ContractTemplates.tsx:1054 - Conditions
+- src\pages\Dashboard.tsx:330 - Reservations Calendar
+- src\pages\Dashboard.tsx:355 - TODAY
+- src\pages\Dashboard.tsx:493 - Your agency is all set!
+- src\pages\Dashboard.tsx:522 - Set up your agency
+- src\pages\Dashboard.tsx:623 - Build your fleet
+- src\pages\Dashboard.tsx:626 - Add vehicles to start managing bookings, contracts, fuel, mileage, and availability.
+- src\pages\Dashboard.tsx:634 - Add first vehicle
+- src\pages\Dashboard.tsx:787 - View GPS Map
+- src\pages\Dashboard.tsx:1302 - Bookings
+- src\pages\Dashboard.tsx:1347 - View All
+- src\pages\Dashboard.tsx:1393 - Fleet Distribution
+- src\pages\Dashboard.tsx:1445 - See all
+- src\pages\Dashboard.tsx:1485 - See all clients
+- src\pages\Dashboard.tsx:1756 - Retry
+- src\pages\Dashboard.tsx:1766 - Customize
+- src\pages\Employees.tsx:248 - Export
+- src\pages\Employees.tsx:251 - Add Employee
+- src\pages\Employees.tsx:270 - Employee
+- src\pages\Employees.tsx:271 - Contact
+- src\pages\Employees.tsx:272 - Role
+- src\pages\Employees.tsx:273 - Department
+- src\pages\Employees.tsx:274 - Status
+- src\pages\Employees.tsx:275 - Actions
+- src\pages\Employees.tsx:310 - No employees found
+- src\pages\Employees.tsx:322 - Phone
+- src\pages\Employees.tsx:324 - Role
+- src\pages\Employees.tsx:325 - Department
+- src\pages\Employees.tsx:329 - Hire Date
+- src\pages\Employees.tsx:330 - Status
+- src\pages\Employees.tsx:332 - Active
+- src\pages\Employees.tsx:332 - Inactive
+- src\pages\ForgotPassword.tsx:156 - Rent
+- src\pages\ForgotPassword.tsx:156 - Car
+- src\pages\GpsAlerts.tsx:160 - Mark all read
+- src\pages\GpsAlerts.tsx:161 - All read
+- src\pages\GpsAlerts.tsx:169 - Refresh
+- src\pages\GpsAlerts.tsx:330 - Latitude
+- src\pages\GpsAlerts.tsx:336 - Longitude
+- src\pages\GpsAlerts.tsx:342 - Speed
+- src\pages\GpsAlerts.tsx:347 - Time
+- src\pages\GpsAlerts.tsx:359 - View location on Google Maps
+- src\pages\GpsDashboard.tsx:287 - GPS Not Configured
+- src\pages\GpsDashboard.tsx:288 - Connect a GPS provider to start tracking your fleet in real time. You can configure IOPGPS, Traccar, Wialon, GPSWOX, or a custom API.
+- src\pages\GpsDashboard.tsx:295 - Open GPS Settings
+- src\pages\GpsDashboard.tsx:343 - Alerts
+- src\pages\GpsDashboard.tsx:355 - Refresh
+- src\pages\GpsDashboard.tsx:395 - OpenStreetMap
+- src\pages\GpsDashboard.tsx:450 - Details
+- src\pages\GpsDashboard.tsx:458 - Maps
+- src\pages\GpsDashboard.tsx:482 - No GPS devices found
+- src\pages\GpsDashboard.tsx:483 - Go to GPS Settings and click Sync Devices to import your fleet.
+- src\pages\GpsDashboard.tsx:488 - GPS Settings
+- src\pages\GpsDashboard.tsx:626 - Vehicle is outside the allowed city zone
+- src\pages\GpsDashboard.tsx:654 - Open in Google Maps
+- src\pages\GpsDashboard.tsx:661 - View Alerts
+- src\pages\GpsSettings.tsx:461 - GPS Integration Settings
+- src\pages\GpsSettings.tsx:462 - Configure your GPS provider credentials and manage fleet tracking
+- src\pages\GpsSettings.tsx:471 - Open Guide
+- src\pages\GpsSettings.tsx:479 - Remove Integration
+- src\pages\GpsSettings.tsx:493 - How to connect your GPS platform
+- src\pages\GpsSettings.tsx:494 - New to GPS integration? Follow our step-by-step guide to link your provider account and start tracking your fleet.
+- src\pages\GpsSettings.tsx:501 - View steps
+- src\pages\GpsSettings.tsx:515 - Connection Status
+- src\pages\GpsSettings.tsx:531 - Provider
+- src\pages\GpsSettings.tsx:538 - Active Devices
+- src\pages\GpsSettings.tsx:546 - Last Sync
+- src\pages\GpsSettings.tsx:558 - Last Tested
+- src\pages\GpsSettings.tsx:569 - Credentials
+- src\pages\GpsSettings.tsx:582 - Last Error
+- src\pages\GpsSettings.tsx:596 - GPS Provider
+- src\pages\GpsSettings.tsx:600 - Select your tracking platform
+- src\pages\GpsSettings.tsx:639 - API Credentials
+- src\pages\GpsSettings.tsx:640 - Your credentials are encrypted at rest
+- src\pages\GpsSettings.tsx:646 - APP ID / Account ID
+- src\pages\GpsSettings.tsx:663 - API Key
+- src\pages\GpsSettings.tsx:730 - Auth Header Name
+- src\pages\GpsSettings.tsx:741 - HTTP header name sent to your API (default: Authorization)
+- src\pages\GpsSettings.tsx:744 - Auth Prefix
+- src\pages\GpsSettings.tsx:755 - Prefix before the API key value (default: Bearer)
+- src\pages\GpsSettings.tsx:761 - Base URL
+- src\pages\GpsSettings.tsx:778 - Device Group ID
+- src\pages\GpsSettings.tsx:795 - Webhook URL
+- src\pages\GpsSettings.tsx:820 - Enable GPS Tracking
+- src\pages\GpsSettings.tsx:821 - Activate live tracking for your fleet
+- src\pages\GpsSettings.tsx:888 - Deactivate GPS
+- src\pages\GpsSettings.tsx:898 - Delete Credentials
+- src\pages\GpsSettings.tsx:926 - Define your city zone and configure automatic alerts
+- src\pages\GpsSettings.tsx:933 - City center coordinates
+- src\pages\GpsSettings.tsx:937 - Latitude
+- src\pages\GpsSettings.tsx:948 - Longitude
+- src\pages\GpsSettings.tsx:968 - Zone radius (km)
+- src\pages\GpsSettings.tsx:978 - Movement threshold (m)
+- src\pages\GpsSettings.tsx:988 - Offline timeout (min)
+- src\pages\GpsSettings.tsx:998 - Polling interval (sec)
+- src\pages\GpsSettings.tsx:1013 - Alert notifications
+- src\pages\GpsSettings.tsx:1047 - Device Mapping
+- src\pages\GpsSettings.tsx:1051 - Link GPS devices found on your provider to your vehicles
+- src\pages\GpsSettings.tsx:1065 - Your API credentials will be encrypted using AES-256 GCM before storage.
+- src\pages\GpsSettings.tsx:1072 - Provider
+- src\pages\GpsSettings.tsx:1076 - APP ID
+- src\pages\GpsSettings.tsx:1080 - Base URL
+- src\pages\GpsSettings.tsx:1084 - Status
+- src\pages\GpsSettings.tsx:1093 - Cancel
+- src\pages\GpsSettings.tsx:1112 - This will permanently remove all GPS credentials and tracking configuration for your agency.
+- src\pages\GpsSettings.tsx:1116 - Your vehicle data will remain, but live tracking will be disabled. This action cannot be undone.
+- src\pages\GpsSettings.tsx:1123 - Cancel
+- src\pages\GpsSettings.tsx:1129 - Remove Integration
+- src\pages\GpsSettings.tsx:1141 - Live tracking and device sync will stop. Your stored credentials are kept, so you can reactivate later without re-entering your API key.
+- src\pages\GpsSettings.tsx:1149 - Cancel
+- src\pages\GpsSettings.tsx:1168 - Deleting credentials will disconnect this agency from the GPS provider. Existing vehicle GPS history will be kept. Continue?
+- src\pages\GpsSettings.tsx:1172 - Provider and Base URL are kept so you can reconnect later without looking them up again.
+- src\pages\GpsSettings.tsx:1179 - Cancel
+- src\pages\HelpCenter.tsx:188 - Refresh
+- src\pages\HelpCenter.tsx:205 - Quick help
+- src\pages\HelpCenter.tsx:218 - Contact support
+- src\pages\HelpCenter.tsx:219 - If your system stopped working, choose Technical. If you have a question before buying, choose Contact. If you need help with your account, choose Support.
+- src\pages\HelpCenter.tsx:238 - My tickets
+- src\pages\HelpCenter.tsx:243 - No requests yet
+- src\pages\HelpCenter.tsx:244 - Choose a channel above to reach the right team.
+- src\pages\HelpCenter.tsx:280 - Category
+- src\pages\HelpCenter.tsx:292 - Priority
+- src\pages\HelpCenter.tsx:298 - Low
+- src\pages\HelpCenter.tsx:299 - Normal
+- src\pages\HelpCenter.tsx:300 - High
+- src\pages\HelpCenter.tsx:301 - Urgent
+- src\pages\HelpCenter.tsx:305 - Subject
+- src\pages\HelpCenter.tsx:315 - Message
+- src\pages\HelpCenter.tsx:327 - Cancel
+- src\pages\InspectionCapture.tsx:85 - Opening secure inspection...
+- src\pages\InspectionCapture.tsx:116 - Inspection checklist
+- src\pages\InspectionCapture.tsx:135 - Uploaded media
+- src\pages\InspectionCapture.tsx:149 - Inspection media is linked to the reservation, contract, client, vehicle, and employee.
+- src\pages\InspectionCapture.tsx:173 - JPEG, PNG, or WebP
+- src\pages\Invoices.tsx:229 - Pay
+- src\pages\Invoices.tsx:238 - No invoices found
+- src\pages\Login.tsx:333 - Rent
+- src\pages\Login.tsx:334 - Car
+- src\pages\Maintenance.tsx:195 - Vehicle Maintenance
+- src\pages\Maintenance.tsx:196 - Work orders, service alerts, cost summary and fleet health
+- src\pages\Maintenance.tsx:200 - New Work Order
+- src\pages\Maintenance.tsx:212 - This happens when a vehicle status is changed directly instead of through the Maintenance module.
+- src\pages\Maintenance.tsx:236 - Vehicle Health
+- src\pages\Maintenance.tsx:244 - Upcoming Service Alerts
+- src\pages\Maintenance.tsx:257 - Vehicle
+- src\pages\Maintenance.tsx:258 - Work
+- src\pages\Maintenance.tsx:259 - Provider
+- src\pages\Maintenance.tsx:260 - Schedule
+- src\pages\Maintenance.tsx:261 - Cost
+- src\pages\Maintenance.tsx:262 - Mileage
+- src\pages\Maintenance.tsx:263 - Status
+- src\pages\Maintenance.tsx:264 - Actions
+- src\pages\Maintenance.tsx:273 - No maintenance work orders yet.
+- src\pages\Maintenance.tsx:274 - Create your first work order to keep your fleet healthy.
+- src\pages\Maintenance.tsx:337 - Select vehicle
+- src\pages\Maintenance.tsx:354 - Description
+- src\pages\OperationsCenter.tsx:346 - Refresh
+- src\pages\OperationsCenter.tsx:394 - Conversation
+- src\pages\OperationsCenter.tsx:434 - Accepted
+- src\pages\OperationsCenter.tsx:436 - Accept document
+- src\pages\OperationsCenter.tsx:438 - Review
+- src\pages\OperationsCenter.tsx:454 - Known devices
+- src\pages\OperationsCenter.tsx:455 - Trust devices you recognize and block access you do not.
+- src\pages\OperationsCenter.tsx:465 - No known devices recorded yet.
+- src\pages\OperationsCenter.tsx:494 - Active sessions
+- src\pages\OperationsCenter.tsx:496 - No active sessions found.
+- src\pages\OperationsCenter.tsx:504 - Revoke
+- src\pages\OperationsCenter.tsx:510 - Login history
+- src\pages\OperationsCenter.tsx:512 - No login history recorded yet.
+- src\pages\OperationsCenter.tsx:552 - Your request receives a permanent tracking number.
+- src\pages\OperationsCenter.tsx:560 - Technical
+- src\pages\OperationsCenter.tsx:561 - Billing
+- src\pages\OperationsCenter.tsx:562 - Subscription
+- src\pages\OperationsCenter.tsx:564 - Security
+- src\pages\OperationsCenter.tsx:565 - Service
+- src\pages\OperationsCenter.tsx:568 - Low
+- src\pages\OperationsCenter.tsx:569 - Medium
+- src\pages\OperationsCenter.tsx:570 - High
+- src\pages\OperationsCenter.tsx:571 - Critical
+- src\pages\OperationsCenter.tsx:594 - No messages yet. Start the conversation below.
+- src\pages\PublicContact.tsx:52 - We sent your request to the right team
+- src\pages\PublicContact.tsx:53 - Your ticket number is
+- src\pages\PublicContact.tsx:66 - Contact Us
+- src\pages\PublicContact.tsx:77 - Your name
+- src\pages\PublicContact.tsx:86 - Phone (optional)
+- src\pages\PublicContact.tsx:96 - Email
+- src\pages\PublicContact.tsx:106 - Topic
+- src\pages\PublicContact.tsx:116 - Subject
+- src\pages\PublicContact.tsx:126 - Message
+- src\pages\PublicContract.tsx:199 - Loading contract...
+- src\pages\PublicContract.tsx:212 - Invalid Link
+- src\pages\PublicContract.tsx:214 - Please contact your rental agency for assistance.
+- src\pages\PublicContract.tsx:231 - Contract Signed!
+- src\pages\PublicContract.tsx:232 - Your signature has been securely recorded and synced to the agency dashboard.
+- src\pages\PublicContract.tsx:238 - Contract
+- src\pages\PublicContract.tsx:242 - Status
+- src\pages\PublicContract.tsx:243 - Signed
+- src\pages\PublicContract.tsx:247 - Final Status
+- src\pages\PublicContract.tsx:248 - Active
+- src\pages\PublicContract.tsx:252 - You can now close this page. A confirmation email will be sent shortly.
+- src\pages\PublicContract.tsx:279 - Digital Contract
+- src\pages\PublicContract.tsx:294 - Contract Number
+- src\pages\PublicContract.tsx:350 - Start
+- src\pages\PublicContract.tsx:361 - End
+- src\pages\PublicContract.tsx:371 - Payment Summary
+- src\pages\PublicContract.tsx:380 - Deposit
+- src\pages\PublicContract.tsx:386 - Additional Fees
+- src\pages\PublicContract.tsx:392 - Discount
+- src\pages\PublicContract.tsx:398 - Total Amount
+- src\pages\PublicContract.tsx:409 - Agency Signed
+- src\pages\PublicContract.tsx:427 - This contract has already been signed by the agency. Please review and sign below to complete the agreement.
+- src\pages\PublicContract.tsx:438 - Security Deposit
+- src\pages\PublicContract.tsx:442 - Type
+- src\pages\PublicContract.tsx:446 - Amount
+- src\pages\PublicContract.tsx:451 - Reference
+- src\pages\PublicContract.tsx:456 - Status
+- src\pages\PublicContract.tsx:477 - I understand and accept the deposit conditions.
+- src\pages\PublicContract.tsx:489 - Terms & Conditions
+- src\pages\PublicContract.tsx:515 - I have read and agree to the terms and conditions above.
+- src\pages\PublicContract.tsx:527 - Your Signature
+- src\pages\PublicContract.tsx:533 - Please accept the terms and conditions above before signing.
+- src\pages\PublicContract.tsx:540 - Please acknowledge the security deposit conditions above before signing.
+- src\pages\PublicContract.tsx:555 - Syncing your signature...
+- src\pages\PublicContract.tsx:563 - Contract Signed!
+- src\pages\PublicContract.tsx:570 - Your Signature
+- src\pages\PublicContract.tsx:581 - Download Signed Contract
+- src\pages\PublicContract.tsx:602 - This document is digitally signed and timestamped.
+- src\pages\Register.tsx:222 - Rent
+- src\pages\Register.tsx:223 - Car
+- src\pages\Reports.tsx:97 - Revenue Overview
+- src\pages\Reports.tsx:121 - Vehicle Utilization
+- src\pages\Reservations.tsx:627 - Auto-created from contract
+- src\pages\Reservations.tsx:901 - Plate:
+- src\pages\Reservations.tsx:902 - Fuel:
+- src\pages\Reservations.tsx:903 - Day:
+- src\pages\RolePermissions.tsx:131 - Role Access
+- src\pages\RolePermissions.tsx:132 - Control every role from stored tenant permissions.
+- src\pages\RolePermissions.tsx:147 - Permission
+- src\pages\Settings.tsx:512 - Agency Logo
+- src\pages\Settings.tsx:518 - No Logo
+- src\pages\Settings.tsx:521 - Upload Logo
+- src\pages\Settings.tsx:549 - Remove
+- src\pages\Settings.tsx:559 - Agency Digital Signature
+- src\pages\Settings.tsx:561 - This signature will be automatically applied to all future contracts.
+- src\pages\Settings.tsx:568 - Clear & Redraw
+- src\pages\Settings.tsx:586 - Agency Stamp (Optional)
+- src\pages\Settings.tsx:592 - No Stamp
+- src\pages\Settings.tsx:595 - Upload Stamp
+- src\pages\Settings.tsx:623 - Remove
+- src\pages\Settings.tsx:631 - Terms & Conditions
+- src\pages\Settings.tsx:633 - These terms will be displayed on every contract signing page. Leave blank to use defaults.
+- src\pages\Settings.tsx:667 - Operational Settings
+- src\pages\Settings.tsx:668 - Regional, email, and notification configuration
+- src\pages\Settings.tsx:685 - Vehicle Inspection Media
+- src\pages\Settings.tsx:687 - Keep inspection photos and videos until reservation end date plus this retention period.
+- src\pages\Settings.tsx:707 - More operations tools
+- src\pages\Settings.tsx:734 - More branding tools
+- src\pages\Subscription.tsx:236 - Special access by Innovax Technologies
+- src\pages\Subscription.tsx:251 - Cancellation Scheduled
+- src\pages\Subscription.tsx:252 - Your subscription will remain
+- src\pages\Subscription.tsx:282 - Trial
+- src\pages\Subscription.tsx:288 - Cancelling
+- src\pages\Subscription.tsx:292 - Most Popular
+- src\pages\Subscription.tsx:342 - Cancel subscription
+- src\pages\Subscription.tsx:360 - Monthly
+- src\pages\Subscription.tsx:370 - Yearly
+- src\pages\Subscription.tsx:395 - Most Popular
+- src\pages\Subscription.tsx:401 - Current
+- src\pages\Subscription.tsx:429 - Vehicles
+- src\pages\Subscription.tsx:433 - Employees
+- src\pages\Subscription.tsx:441 - Storage
+- src\pages\Subscription.tsx:467 - Feature Comparison
+- src\pages\Subscription.tsx:473 - Feature
+- src\pages\Subscription.tsx:522 - Billing History
+- src\pages\Subscription.tsx:537 - No invoices found. Billing history will appear here once you have a paid subscription.
+- src\pages\Subscription.tsx:545 - Invoice
+- src\pages\Subscription.tsx:546 - Plan
+- src\pages\Subscription.tsx:547 - Billing
+- src\pages\Subscription.tsx:548 - Total
+- src\pages\Subscription.tsx:549 - Status
+- src\pages\Subscription.tsx:550 - Date
+- src\pages\Subscription.tsx:596 - Cancel Subscription
+- src\pages\Subscription.tsx:602 - What happens when you cancel:
+- src\pages\Subscription.tsx:604 - Your subscription remains
+- src\pages\Subscription.tsx:605 - All your data is preserved and accessible
+- src\pages\Subscription.tsx:606 - You can undo this cancellation anytime before the period ends
+- src\pages\Subscription.tsx:607 - After the period ends, your account switches to read-only mode
+- src\pages\Subscription.tsx:612 - Why are you cancelling?
+- src\pages\Subscription.tsx:620 - Select a reason...
+- src\pages\Subscription.tsx:628 - Anything else you'd like to share?
+- src\pages\Subscription.tsx:645 - Keep Subscription
+- src\pages\Subscription.tsx:666 - Confirm Subscription
+- src\pages\Subscription.tsx:667 - You are subscribing to
+- src\pages\Subscription.tsx:673 - Plan
+- src\pages\Subscription.tsx:677 - Billing
+- src\pages\Subscription.tsx:681 - Total
+- src\pages\Subscription.tsx:688 - Checkout is not configured for this plan yet. Please contact support.
+- src\pages\Subscription.tsx:701 - Cancel
+- src\pages\superadmin\SuperAdminAgencies.tsx:248 - Create Agency
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:226 - Back to Agencies
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:292 - Force Renew
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:297 - Extend Trial (+30d)
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:302 - Change Plan
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:316 - Agency Information
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:336 - Subscription Summary
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:360 - Current Plan
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:366 - Max Vehicles
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:367 - Max Employees
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:368 - Max GPS
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:369 - Max Reservations
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:372 - Force Renew
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:376 - Extend Trial
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:383 - Payment History
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:415 - Account Balance
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:422 - Add Credit
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:425 - Deduct Balance
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:429 - History
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:452 - Manual Free Access
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:456 - Special access by Innovax Technologies
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:461 - No active free-access override for this agency.
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:464 - Grant Free Access
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:468 - Remove Override
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:550 - Subscribe
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:553 - Cancel
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:569 - This will immediately change the agency's subscription plan.
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:590 - Cancel
+- src\pages\superadmin\SuperAdminAgencyDetail.tsx:622 - Cancel
+- src\pages\superadmin\SuperAdminAiSettings.tsx:312 - Gemini Configuration
+- src\pages\superadmin\SuperAdminAiSettings.tsx:410 - Current AI Status
+- src\pages\superadmin\SuperAdminAiSettings.tsx:412 - Provider
+- src\pages\superadmin\SuperAdminAiSettings.tsx:415 - API Key
+- src\pages\superadmin\SuperAdminAiSettings.tsx:424 - Configured
+- src\pages\superadmin\SuperAdminAiSettings.tsx:427 - Not configured
+- src\pages\superadmin\SuperAdminAiSettings.tsx:431 - Your saved API key cannot be used. Paste the Gemini API key again and click Save & Test.
+- src\pages\superadmin\SuperAdminAiSettings.tsx:436 - Platform AI
+- src\pages\superadmin\SuperAdminAiSettings.tsx:442 - Chat Feature
+- src\pages\superadmin\SuperAdminAiSettings.tsx:450 - Last Test
+- src\pages\superadmin\SuperAdminAiSettings.tsx:482 - Will test with the unsaved key above
+- src\pages\superadmin\SuperAdminAiSettings.tsx:505 - Copy debug info
+- src\pages\superadmin\SuperAdminAiSettings.tsx:518 - Feature Toggles
+- src\pages\superadmin\SuperAdminAiSettings.tsx:568 - Recent AI Audit Logs
+- src\pages\superadmin\SuperAdminAiSettings.tsx:592 - Loading...
+- src\pages\superadmin\SuperAdminAiSettings.tsx:594 - No AI calls have been logged yet.
+- src\pages\superadmin\SuperAdminAiSettings.tsx:600 - Feature
+- src\pages\superadmin\SuperAdminAiSettings.tsx:601 - Category
+- src\pages\superadmin\SuperAdminAiSettings.tsx:602 - Model
+- src\pages\superadmin\SuperAdminAiSettings.tsx:603 - Status
+- src\pages\superadmin\SuperAdminAiSettings.tsx:604 - Agency
+- src\pages\superadmin\SuperAdminAiSettings.tsx:605 - When
+- src\pages\superadmin\SuperAdminAnalytics.tsx:123 - MRR
+- src\pages\superadmin\SuperAdminAnalytics.tsx:134 - ARPU
+- src\pages\superadmin\SuperAdminAnalytics.tsx:145 - Revenue by Plan
+- src\pages\superadmin\SuperAdminAnalytics.tsx:161 - Plan Performance
+- src\pages\superadmin\SuperAdminAnnouncements.tsx:93 - New Announcement
+- src\pages\superadmin\SuperAdminAnnouncements.tsx:99 - Loading...
+- src\pages\superadmin\SuperAdminAnnouncements.tsx:141 - Cancel
+- src\pages\superadmin\SuperAdminAnnouncements.tsx:163 - Delivered in-app on the agency dashboard. Email/SMS/WhatsApp channels are not yet wired to a real provider, so they're intentionally left out for now rather than faking delivery.
+- src\pages\superadmin\SuperAdminBackups.tsx:169 - Backup & Recovery
+- src\pages\superadmin\SuperAdminBackups.tsx:170 - Native PostgreSQL backups with checksum verification and guarded disaster recovery.
+- src\pages\superadmin\SuperAdminBackups.tsx:176 - Refresh
+- src\pages\superadmin\SuperAdminBackups.tsx:206 - Cron:
+- src\pages\superadmin\SuperAdminBackups.tsx:216 - Restore protection is enabled
+- src\pages\superadmin\SuperAdminBackups.tsx:217 - Restores are disabled by default. Set
+- src\pages\superadmin\SuperAdminBackups.tsx:224 - Backup history
+- src\pages\superadmin\SuperAdminBackups.tsx:225 - Each completed file is verified with SHA-256 before download or restore.
+- src\pages\superadmin\SuperAdminBackups.tsx:235 - Backup
+- src\pages\superadmin\SuperAdminBackups.tsx:235 - Policy
+- src\pages\superadmin\SuperAdminBackups.tsx:235 - Size
+- src\pages\superadmin\SuperAdminBackups.tsx:235 - Status
+- src\pages\superadmin\SuperAdminBackups.tsx:235 - Checksum
+- src\pages\superadmin\SuperAdminBackups.tsx:235 - Actions
+- src\pages\superadmin\SuperAdminBackups.tsx:274 - Restore the production database?
+- src\pages\superadmin\SuperAdminBackups.tsx:275 - This creates a safety backup, validates the selected checksum, then runs PostgreSQL restore with clean mode. Active requests must be stopped during this maintenance operation.
+- src\pages\superadmin\SuperAdminBackups.tsx:279 - Type
+- src\pages\superadmin\SuperAdminBackups.tsx:283 - Cancel
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:89 - Cancellation Requests
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:90 - Review and approve or reject agency cancellation requests.
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:98 - Pending
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:99 - Approved
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:100 - Rejected
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:101 - All
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:112 - Agency
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:113 - Reason
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:114 - Feedback
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:115 - Status
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:116 - Requested
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:117 - Actions
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:122 - Loading...
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:124 - No cancellation requests found.
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:146 - Approve
+- src\pages\superadmin\SuperAdminCancellationRequests.tsx:153 - Reject
+- src\pages\superadmin\SuperAdminContracts.tsx:77 - Export
+- src\pages\superadmin\SuperAdminDashboard.tsx:207 - Platform Health
+- src\pages\superadmin\SuperAdminDashboard.tsx:230 - DB latency
+- src\pages\superadmin\SuperAdminDashboard.tsx:231 - App storage
+- src\pages\superadmin\SuperAdminDashboard.tsx:232 - Errors (24h)
+- src\pages\superadmin\SuperAdminDashboard.tsx:238 - Quick Actions
+- src\pages\superadmin\SuperAdminDashboard.tsx:259 - Recent Signups
+- src\pages\superadmin\SuperAdminDashboard.tsx:290 - Data Safety
+- src\pages\superadmin\SuperAdminDashboard.tsx:296 - Open Data Reset Center
+- src\pages\superadmin\SuperAdminDashboard.tsx:302 - Last reset action
+- src\pages\superadmin\SuperAdminDashboard.tsx:310 - Pending backup
+- src\pages\superadmin\SuperAdminDashboard.tsx:314 - Dangerous actions
+- src\pages\superadmin\SuperAdminDataReset.tsx:175 - Data Reset Center
+- src\pages\superadmin\SuperAdminDataReset.tsx:206 - Super Owner access required
+- src\pages\superadmin\SuperAdminDataReset.tsx:207 - Data Reset Center operations require a Super Owner account. Contact your platform administrator to request Super Owner access.
+- src\pages\superadmin\SuperAdminDataReset.tsx:216 - Security requirements not met
+- src\pages\superadmin\SuperAdminDataReset.tsx:228 - Go to Security Settings
+- src\pages\superadmin\SuperAdminDataReset.tsx:241 - Scope
+- src\pages\superadmin\SuperAdminDataReset.tsx:243 - Agency
+- src\pages\superadmin\SuperAdminDataReset.tsx:244 - Client
+- src\pages\superadmin\SuperAdminDataReset.tsx:245 - Platform (dev only)
+- src\pages\superadmin\SuperAdminDataReset.tsx:250 - Agency
+- src\pages\superadmin\SuperAdminDataReset.tsx:252 - Select agency...
+- src\pages\superadmin\SuperAdminDataReset.tsx:259 - Client ID
+- src\pages\superadmin\SuperAdminDataReset.tsx:264 - Action
+- src\pages\superadmin\SuperAdminDataReset.tsx:272 - Force delete even if the client has an active/draft contract
+- src\pages\superadmin\SuperAdminDataReset.tsx:290 - Will delete
+- src\pages\superadmin\SuperAdminDataReset.tsx:298 - Will keep
+- src\pages\superadmin\SuperAdminDataReset.tsx:313 - Current password
+- src\pages\superadmin\SuperAdminDataReset.tsx:322 - Type
+- src\pages\superadmin\SuperAdminDataReset.tsx:331 - Copy
+- src\pages\superadmin\SuperAdminDataReset.tsx:359 - Reset completed
+- src\pages\superadmin\SuperAdminDataReset.tsx:371 - Recent destructive actions
+- src\pages\superadmin\SuperAdminDataReset.tsx:374 - No data reset actions have been performed yet.
+- src\pages\superadmin\SuperAdminDataReset.tsx:379 - Action
+- src\pages\superadmin\SuperAdminDataReset.tsx:379 - Agency
+- src\pages\superadmin\SuperAdminDataReset.tsx:379 - Status
+- src\pages\superadmin\SuperAdminDataReset.tsx:379 - When
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:351 - New Template
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:380 - SMTP Configuration
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:383 - Provider
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:400 - Gmail: use an
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:400 - App Password
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:403 - SMTP Host
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:404 - SMTP Port
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:405 - SMTP Username (email)
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:407 - SMTP Password
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:414 - For Zoho: use an App Password from
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:416 - From Email
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:417 - From Name
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:418 - Reply-To (optional)
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:421 - Use TLS (STARTTLS)
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:428 - SMTP Username
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:429 - SMTP Password
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:429 - App Password
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:430 - From Email
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:431 - Host
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:432 - Port 587
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:432 - STARTTLS
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:433 - SMTP Access
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:444 - Send Test Email
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:445 - Save SMTP settings first, then send a test to verify delivery.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:474 - Auth failed (Zoho):
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:474 - Normal account passwords are rejected. Generate an
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:474 - App Password
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:474 - Try also: use
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:476 - Invalid test recipient.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:477 - No password saved.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:477 - Enter your App Password above and click Save SMTP Settings first.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:478 - SMTP host not set.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:478 - Enter your SMTP host (e.g. smtppro.zoho.com) and save.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:479 - From Email not set.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:479 - Enter your From Email address and save.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:480 - Connection failed.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:480 - Check host/port and ensure outbound port 587 is not blocked by your firewall.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:481 - TLS failed.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:482 - Connection timed out.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:482 - The SMTP server did not respond. Check host/port or try again.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:483 - Invalid SMTP username.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:484 - Verify all SMTP settings and try again.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:500 - Tests connection + auth to your configured host (and both Zoho hosts if applicable). Password is never logged.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:539 - Contact Email (sales / general / demo)
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:543 - Support Email (account / login / contract / reservation)
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:547 - Technical Email (GPS / SMTP / PDF / bugs)
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:559 - Default Fallback Email
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:662 - Cancel
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:667 - Recipient Email
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:668 - Example variable values will be used for the preview render.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:698 - Default
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:751 - No HTML body set yet.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:773 - Variables
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:773 - Preview
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:773 - Edit
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:785 - Type
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:791 - Language
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:796 - Template Key (optional)
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:800 - HTML Body
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:806 - Plain Text Fallback
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:813 - Active
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:820 - Variables replaced with example values. Rendered using saved HTML body.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:830 - Click a variable to copy it. Paste into Subject or HTML Body.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:832 - No variable definitions for this template key.
+- src\pages\superadmin\SuperAdminEmailCenter.tsx:851 - Cancel
+- src\pages\superadmin\SuperAdminFeatures.tsx:95 - Feature Access Control
+- src\pages\superadmin\SuperAdminFeatures.tsx:96 - Manage the feature catalog and plan access matrix.
+- src\pages\superadmin\SuperAdminFeatures.tsx:99 - Create Feature
+- src\pages\superadmin\SuperAdminFeatures.tsx:107 - Feature
+- src\pages\superadmin\SuperAdminFeatures.tsx:108 - Category
+- src\pages\superadmin\SuperAdminFeatures.tsx:110 - Actions
+- src\pages\superadmin\SuperAdminFeatures.tsx:115 - Loading feature matrix...
+- src\pages\superadmin\SuperAdminFeatures.tsx:169 - Enabled in catalog
+- src\pages\superadmin\SuperAdminFeatures.tsx:172 - Description
+- src\pages\superadmin\SuperAdminFeatures.tsx:176 - Benefits shown on upgrade card
+- src\pages\superadmin\SuperAdminFeatures.tsx:182 - Cancel
+- src\pages\superadmin\SuperAdminFeatures.tsx:183 - Save Feature
+- src\pages\superadmin\SuperAdminMarketing.tsx:80 - Conversion Funnel
+- src\pages\superadmin\SuperAdminMarketing.tsx:108 - Onboarding Flow Configuration
+- src\pages\superadmin\SuperAdminMarketing.tsx:136 - Landing Page Content
+- src\pages\superadmin\SuperAdminPayments.tsx:103 - Refresh
+- src\pages\superadmin\SuperAdminPayments.tsx:217 - Actions
+- src\pages\superadmin\SuperAdminPayments.tsx:247 - Retry
+- src\pages\superadmin\SuperAdminReports.tsx:74 - Generate Report
+- src\pages\superadmin\SuperAdminReports.tsx:83 - Scheduled Reports
+- src\pages\superadmin\SuperAdminReports.tsx:84 - Scheduled report automation is not configured yet. Generated exports are available on demand.
+- src\pages\superadmin\SuperAdminReports.tsx:96 - Cancel
+- src\pages\superadmin\SuperAdminRoles.tsx:110 - Roles & permissions are unavailable.
+- src\pages\superadmin\SuperAdminRoles.tsx:123 - Roles & Permissions
+- src\pages\superadmin\SuperAdminRoles.tsx:124 - Control what each Innovax staff role can do in the Super Admin control center.
+- src\pages\superadmin\SuperAdminRoles.tsx:131 - New Role
+- src\pages\superadmin\SuperAdminRoles.tsx:146 - Permission
+- src\pages\superadmin\SuperAdminRoles.tsx:202 - New Staff Role
+- src\pages\superadmin\SuperAdminRoles.tsx:226 - Cancel
+- src\pages\superadmin\SuperAdminSecurity.tsx:75 - These recovery codes will only be shown once. Store them in a safe place. Each code can be used once to regain access if you lose your authenticator.
+- src\pages\superadmin\SuperAdminSecurity.tsx:105 - Download .txt
+- src\pages\superadmin\SuperAdminSecurity.tsx:269 - Two-Factor Authentication
+- src\pages\superadmin\SuperAdminSecurity.tsx:271 - Enabled
+- src\pages\superadmin\SuperAdminSecurity.tsx:272 - Not enabled
+- src\pages\superadmin\SuperAdminSecurity.tsx:280 - Protect destructive actions and Super Admin access with an authenticator app (Google Authenticator, Authy, 1Password, etc.).
+- src\pages\superadmin\SuperAdminSecurity.tsx:312 - Set up authenticator app
+- src\pages\superadmin\SuperAdminSecurity.tsx:333 - Works with Google Authenticator, Authy, Microsoft Authenticator, and 1Password.
+- src\pages\superadmin\SuperAdminSecurity.tsx:340 - Or enter the secret key manually
+- src\pages\superadmin\SuperAdminSecurity.tsx:411 - Regenerate recovery codes
+- src\pages\superadmin\SuperAdminSecurity.tsx:418 - Disable 2FA
+- src\pages\superadmin\SuperAdminSecurity.tsx:426 - Disable Two-Factor Authentication
+- src\pages\superadmin\SuperAdminSecurity.tsx:436 - Current password
+- src\pages\superadmin\SuperAdminSecurity.tsx:445 - Authenticator code
+- src\pages\superadmin\SuperAdminSecurity.tsx:470 - Regenerate Recovery Codes
+- src\pages\superadmin\SuperAdminSecurity.tsx:478 - Old recovery codes will be immediately invalidated and replaced with new ones.
+- src\pages\superadmin\SuperAdminSecurity.tsx:483 - Current password
+- src\pages\superadmin\SuperAdminSecurity.tsx:492 - Authenticator code
+- src\pages\superadmin\SuperAdminSecurity.tsx:517 - Works with Google Authenticator, Microsoft Authenticator, Authy, and 1Password.
+- src\pages\superadmin\SuperAdminSecurity.tsx:603 - Recent Suspicious Activity
+- src\pages\superadmin\SuperAdminSecurity.tsx:605 - No suspicious events detected.
+- src\pages\superadmin\SuperAdminSecurity.tsx:621 - Security Recommendations
+- src\pages\superadmin\SuperAdminSettings.tsx:282 - Settings service is temporarily unavailable. Default values are being used.
+- src\pages\superadmin\SuperAdminSettings.tsx:293 - Branding & Appearance
+- src\pages\superadmin\SuperAdminSettings.tsx:470 - Agency Theme Studio
+- src\pages\superadmin\SuperAdminSettings.tsx:472 - Create governed visual presets and deliver them directly to agency workspaces.
+- src\pages\superadmin\SuperAdminSettings.tsx:482 - All agencies
+- src\pages\superadmin\SuperAdminSettings.tsx:492 - New preset
+- src\pages\superadmin\SuperAdminSettings.tsx:505 - Create your first corporate theme
+- src\pages\superadmin\SuperAdminSettings.tsx:506 - Colors, glass depth, radius and layout behavior stay synchronized.
+- src\pages\superadmin\SuperAdminSettings.tsx:598 - Email Configuration
+- src\pages\superadmin\SuperAdminSettings.tsx:629 - Security Settings
+- src\pages\superadmin\SuperAdminSettings.tsx:651 - Feature Toggles
+- src\pages\superadmin\SuperAdminSettings.tsx:665 - Toggle availability across all tenants
+- src\pages\superadmin\SuperAdminStaff.tsx:103 - Super Admin Staff
+- src\pages\superadmin\SuperAdminStaff.tsx:104 - Manage Innovax team accounts and their platform roles.
+- src\pages\superadmin\SuperAdminStaff.tsx:110 - Add Staff
+- src\pages\superadmin\SuperAdminStaff.tsx:119 - Staff
+- src\pages\superadmin\SuperAdminStaff.tsx:120 - Role
+- src\pages\superadmin\SuperAdminStaff.tsx:121 - Status
+- src\pages\superadmin\SuperAdminStaff.tsx:122 - Last login
+- src\pages\superadmin\SuperAdminStaff.tsx:123 - Actions
+- src\pages\superadmin\SuperAdminStaff.tsx:128 - Loading...
+- src\pages\superadmin\SuperAdminStaff.tsx:130 - No staff accounts found.
+- src\pages\superadmin\SuperAdminStaff.tsx:151 - Unrestricted (legacy)
+- src\pages\superadmin\SuperAdminStaff.tsx:156 - Owner
+- src\pages\superadmin\SuperAdminStaff.tsx:195 - Add Staff Account
+- src\pages\superadmin\SuperAdminStaff.tsx:228 - Unrestricted (legacy super admin)
+- src\pages\superadmin\SuperAdminStaff.tsx:233 - Cancel
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:257 - Promo Codes
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:259 - Add Promo Code
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:268 - Code
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:269 - Discount
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:270 - Uses
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:271 - Valid Until
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:272 - Status
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:273 - Actions
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:278 - No promo codes found
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:427 - Cancel
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:436 - Discount
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:437 - Free Months
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:444 - Fixed Amount (MAD)
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:462 - Both
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:463 - Monthly only
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:464 - Yearly only
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:469 - Applies to all plans
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:473 - First-time subscribers only
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:485 - Discounted Whop Checkout URLs (Mode 1)
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:486 - For each plan+cycle this promo applies to, enter the Whop checkout URL that charges the discounted price. If not set, promo checkout will return an error.
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:491 - Monthly
+- src\pages\superadmin\SuperAdminSubscriptions.tsx:492 - Yearly
+- src\pages\superadmin\SuperAdminSupport.tsx:141 - New Ticket
+- src\pages\superadmin\SuperAdminSupport.tsx:179 - Create Ticket
+- src\pages\superadmin\SuperAdminSupport.tsx:182 - Cancel
+- src\pages\superadmin\SuperAdminSupport.tsx:198 - General
+- src\pages\superadmin\SuperAdminSupport.tsx:199 - Billing
+- src\pages\superadmin\SuperAdminSupport.tsx:200 - Technical
+- src\pages\superadmin\SuperAdminSupport.tsx:201 - Feature Request
+- src\pages\superadmin\SuperAdminSupport.tsx:210 - Low
+- src\pages\superadmin\SuperAdminSupport.tsx:211 - Medium
+- src\pages\superadmin\SuperAdminSupport.tsx:212 - High
+- src\pages\superadmin\SuperAdminSupport.tsx:213 - Urgent
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:106 - Ticket not found
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:124 - Back to Support
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:158 - Routed to
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:169 - Resend email
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:198 - Description
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:204 - Resolution
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:229 - No internal notes yet.
+- src\pages\superadmin\SuperAdminTicketDetail.tsx:246 - No conversation messages yet.
+- src\pages\superadmin\SuperAdminUsers.tsx:191 - Cancel
+- src\pages\superadmin\SuperAdminUsers.tsx:200 - Change Role
+- src\pages\TicketDetail.tsx:132 - Back to tickets
+- src\pages\TicketDetail.tsx:160 - Conversation
+- src\pages\TicketDetail.tsx:162 - No messages yet.
+- src\pages\Vehicles.tsx:415 - Trash is empty
+- src\pages\Vehicles.tsx:425 - Vehicles are permanently deleted automatically 30 days after being trashed (unless still linked to a contract/reservation).
+- src\pages\VerifyEmail.tsx:48 - Rent
+- src\pages\VerifyEmail.tsx:48 - Car
+- src\pages\WhiteLabel.tsx:42 - White Label
+- src\pages\WhiteLabel.tsx:43 - Configure the agency logo, colors, and customer-facing domain.
+- src\pages\WhiteLabel.tsx:48 - Agency Logo
+- src\pages\WhiteLabel.tsx:50 - No logo uploaded
+- src\pages\WhiteLabel.tsx:56 - Brand Colors
+- src\pages\WhiteLabel.tsx:75 - Custom Domain
+- src\pages\WhiteLabel.tsx:84 - Save Branding
+
+Dynamic translation keys are reviewed separately because static analysis cannot resolve template expressions.

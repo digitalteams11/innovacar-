@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 
@@ -41,6 +41,13 @@ function createWindow() {
       contextIsolation: true,
       webSecurity: false,
     },
+  });
+
+  // External links (help center, support, OAuth, etc.) must open in the
+  // user's real browser, not navigate the app window away from the SPA.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 
   if (isDev) {

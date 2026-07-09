@@ -1,5 +1,6 @@
 package com.carrental.dto.client;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -12,20 +13,25 @@ import java.time.LocalDate;
 @Data
 public class CreateClientRequest {
 
-    @NotBlank(message = "Name is required")
-    private String name;
+    @JsonAlias("name")
+    @NotBlank(message = "Full name is required")
+    private String fullName;
 
     @Email(message = "Must be a valid email address")
     private String email;
 
+    @NotBlank(message = "Phone is required")
     private String phone;
 
     private String secondaryPhone;
 
+    @NotBlank(message = "Address is required")
     private String address;
 
+    @NotBlank(message = "City is required")
     private String city;
 
+    @NotBlank(message = "Country is required")
     private String country;
 
     private String postalCode;

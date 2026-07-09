@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import {
-  User, Lock, Building2, Mail, Phone, MapPin, Camera,
+  User, Building2, Mail, Phone, MapPin, Camera,
   Save, ShieldCheck, Briefcase, FileText, Globe,
-  Sun, Moon, Monitor, Palette, Eye, EyeOff, Signature, Stamp, Image, FileCheck
-  , Bell, Server
+  Palette, Signature, Stamp, Image, FileCheck,
+  Bell, Server, Settings as SettingsIcon, Lock, CreditCard, Database,
+  HelpCircle, ArrowRight,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import SignaturePad from '../components/shared/SignaturePad';
-import { useTheme } from '../context/ThemeContext';
+import AppearanceCustomizer from '../components/AppearanceCustomizer';
+import SecurityTab from '../components/settings/SecurityTab';
+import NotificationsTab from '../components/settings/NotificationsTab';
+import BillingTab from '../components/settings/BillingTab';
+import PrivacyTab from '../components/settings/PrivacyTab';
+import { GlassPageHeader } from '../components/GlassPageHeader';
+import { resolveMediaUrl } from '../lib/utils';
 
 interface ProfileData {
   fullName: string;
@@ -34,37 +43,31 @@ interface AgencyData {
   termsAndConditions: string;
 }
 
-interface PasswordData {
-  current: string;
-  newPassword: string;
-  confirm: string;
-}
-
 interface OperationalSettings {
   currency: string;
   language: string;
   timezone: string;
-  smtpHost: string;
-  smtpPort: number;
-  smtpUsername: string;
-  smtpPassword: string;
-  hasSmtpPassword: boolean;
-  smtpTls: boolean;
   notificationInApp: boolean;
   notificationEmail: boolean;
   notificationPush: boolean;
+  inspectionRetentionDays: number;
 }
+
+type SettingsTab = 'profile' | 'security' | 'agency' | 'operations' | 'appearance' | 'notifications' | 'billing' | 'privacy';
+
+const VALID_TABS: SettingsTab[] = ['profile', 'security', 'agency', 'operations', 'appearance', 'notifications', 'billing', 'privacy'];
 
 export default function Settings() {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { user, updateProfile } = useAuth();
+  const { user, profile: authProfile, updateCurrentUser } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'agency' | 'operations' | 'appearance'>('profile');
-  const { theme, setTheme, resolvedTheme } = useTheme();
-
+  const tabFromQuery = searchParams.get('tab') as SettingsTab | null;
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    tabFromQuery && VALID_TABS.includes(tabFromQuery) ? tabFromQuery : 'profile',
+  );
   const [profileLoading, setProfileLoading] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const [profile, setProfile] = useState<ProfileData>({
     fullName: '',
@@ -88,50 +91,21 @@ export default function Settings() {
     termsAndConditions: '',
   });
 
-  const [, setAgencyLoading] = useState(true);
+  const [agencyLoading, setAgencyLoading] = useState(true);
 
-  const [password, setPassword] = useState<PasswordData>({
-    current: '',
-    newPassword: '',
-    confirm: '',
-  });
-
-  const [passwordError, setPasswordError] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [operationsLoading, setOperationsLoading] = useState(false);
   const [operations, setOperations] = useState<OperationalSettings>({
     currency: 'MAD', language: 'fr', timezone: 'Africa/Casablanca',
-    smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '',
-    hasSmtpPassword: false, smtpTls: true,
     notificationInApp: true, notificationEmail: true, notificationPush: false,
+    inspectionRetentionDays: 7,
   });
 
-  // Load profile from auth context / localStorage on mount
+  // Seed the editable form from the AuthContext profile, which is always
+  // derived live from the current user (kept fresh by login, refresh,
+  // profile save, and avatar upload).
   useEffect(() => {
-    const stored = localStorage.getItem('user_profile');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setProfile(parsed);
-        return;
-      } catch { /* fall through */ }
-    }
-    // Fallback: build from user
-    if (user) {
-      const names = user.firstName && user.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user.firstName || user.email?.split('@')[0] || 'User';
-      setProfile({
-        fullName: names,
-        email: user.email || '',
-        phone: user.phoneNumber || '',
-        jobTitle: user.jobTitle || 'Administrator',
-        avatar: user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(names)}&background=4318ff&color=fff`,
-      });
-    }
-  }, [user]);
+    setProfile(authProfile);
+  }, [authProfile]);
 
   useEffect(() => {
     const fetchAgency = async () => {
@@ -162,7 +136,19 @@ export default function Settings() {
 
   useEffect(() => {
     api.get('/tenant-settings')
-      .then(({ data }) => setOperations((current) => ({ ...current, ...data, smtpPassword: '' })))
+      .then(({ data }) => {
+        const raw: any = data?.data && typeof data.data === 'object' ? data.data : data;
+        setOperations((current) => ({
+          ...current,
+          currency:                raw.currency               ?? current.currency,
+          language:                raw.language               ?? current.language,
+          timezone:                raw.timezone               ?? current.timezone,
+          notificationInApp:       raw.notificationInApp      ?? current.notificationInApp,
+          notificationEmail:       raw.notificationEmail      ?? current.notificationEmail,
+          notificationPush:        raw.notificationPush       ?? current.notificationPush,
+          inspectionRetentionDays: raw.inspectionRetentionDays ?? current.inspectionRetentionDays,
+        }));
+      })
       .catch((err) => console.error('Failed to fetch tenant settings', err));
   }, []);
 
@@ -174,87 +160,87 @@ export default function Settings() {
     setAgency(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfile(prev => ({ ...prev, avatar: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+    if (!file || !user) return;
 
-  const handlePasswordChange = (field: keyof PasswordData, value: string) => {
-    setPassword(prev => ({ ...prev, [field]: value }));
-    setPasswordError('');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const { data } = await api.post(`/users/${user.id}/avatar`, formData);
+      const updated = data?.data;
+      const avatarUrl = updated?.avatarUrl as string;
+      setProfile(prev => ({ ...prev, avatar: avatarUrl }));
+      updateCurrentUser({
+        firstName: updated?.firstName,
+        lastName: updated?.lastName,
+        phoneNumber: updated?.phoneNumber,
+        jobTitle: updated?.jobTitle,
+        avatarUrl,
+      });
+      showToast(t('settings.avatarSaved'));
+    } catch (err: any) {
+      showToast((err as any).userMessage || t('settings.avatarUploadFailed'), 'error');
+    }
   };
 
   const saveProfile = async () => {
     if (!user) return;
+    const trimmedName = profile.fullName.trim();
+    if (!trimmedName) {
+      showToast(t('settings.fullNameRequired'), 'error');
+      return;
+    }
+
     setProfileLoading(true);
     try {
-      const names = profile.fullName.trim().split(' ');
+      const names = trimmedName.split(' ');
       const firstName = names[0] || '';
       const lastName = names.slice(1).join(' ') || '';
 
-      await api.put(`/users/${user.id}`, {
+      // avatarUrl is intentionally omitted — it is only ever changed via the
+      // dedicated multipart avatar upload, never echoed back from this form.
+      const { data: updated } = await api.put(`/users/${user.id}`, {
         firstName,
         lastName,
-        phoneNumber: profile.phone,
-        jobTitle: profile.jobTitle,
-        avatarUrl: profile.avatar,
+        phoneNumber: profile.phone.trim() || null,
+        jobTitle: profile.jobTitle.trim() || null,
       });
 
-      // Update local auth context
-      updateProfile({
-        fullName: profile.fullName,
-        phone: profile.phone,
-        jobTitle: profile.jobTitle,
-        avatar: profile.avatar,
+      // Sync the global current-user state from the backend's confirmed
+      // response so Settings, the topbar, and any other consumer agree.
+      updateCurrentUser({
+        firstName: updated?.firstName,
+        lastName: updated?.lastName,
+        phoneNumber: updated?.phoneNumber,
+        jobTitle: updated?.jobTitle,
+        avatarUrl: updated?.avatarUrl,
       });
 
       showToast(t('settings.profileSaved'));
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to save profile', 'error');
+      showToast((err as any).userMessage || t('settings.profileSaveFailed'), 'error');
     } finally {
       setProfileLoading(false);
     }
   };
 
   const saveAgency = async () => {
+    if (agencyLoading) return;
+    setAgencyLoading(true);
     try {
-      await api.put('/agency', agency);
+      // Exclude logoUrl and agencyStampUrl — those are managed by dedicated
+      // upload endpoints and must never be overwritten with stale state here.
+      const { logoUrl: _logo, agencyStampUrl: _stamp, ...agencyPayload } = agency;
+      const { data } = await api.put('/agency', agencyPayload);
+      setAgency((current) => ({ ...current, ...data }));
       showToast(t('settings.agencySaved'));
-      // Force refresh tenant branding in AuthContext so ContractDetails sees it immediately
       window.dispatchEvent(new Event('tenant-updated'));
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to save agency', 'error');
-    }
-  };
-
-  const changePassword = async () => {
-    if (!user) return;
-    if (password.newPassword !== password.confirm) {
-      setPasswordError(t('settings.passwordMismatch'));
-      return;
-    }
-    if (password.newPassword.length < 6) {
-      setPasswordError(t('settings.passwordTooShort'));
-      return;
-    }
-    setPasswordLoading(true);
-    try {
-      await api.put(`/users/${user.id}/password`, {
-        currentPassword: password.current,
-        newPassword: password.newPassword,
-      });
-      setPassword({ current: '', newPassword: '', confirm: '' });
-      showToast(t('settings.passwordChanged'));
-    } catch (err: any) {
-      setPasswordError(err?.response?.data?.message || 'Failed to change password');
+      showToast((err as any).userMessage || 'Unable to save agency information. Please try again later.', 'error');
     } finally {
-      setPasswordLoading(false);
+      setAgencyLoading(false);
     }
   };
 
@@ -262,35 +248,43 @@ export default function Settings() {
     setOperationsLoading(true);
     try {
       const { data } = await api.put('/tenant-settings', operations);
-      setOperations((current) => ({ ...current, ...data, smtpPassword: '' }));
-      showToast('Operational settings saved');
+      const raw: any = data?.data && typeof data.data === 'object' ? data.data : data;
+      setOperations((current) => ({
+        ...current,
+        currency:               raw.currency               ?? current.currency,
+        language:               raw.language               ?? current.language,
+        timezone:               raw.timezone               ?? current.timezone,
+        notificationInApp:      raw.notificationInApp      ?? current.notificationInApp,
+        notificationEmail:      raw.notificationEmail      ?? current.notificationEmail,
+        notificationPush:       raw.notificationPush       ?? current.notificationPush,
+        inspectionRetentionDays: raw.inspectionRetentionDays ?? current.inspectionRetentionDays,
+      }));
+      showToast(data?.message || 'Settings saved successfully', 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to save operational settings', 'error');
+      showToast((err as any).userMessage || 'Unable to save operational settings. Please try again later.', 'error');
     } finally {
       setOperationsLoading(false);
     }
   };
 
-  const tabs = [
-    { key: 'profile' as const, label: t('settings.tabs.profile'), icon: User },
-    { key: 'password' as const, label: t('settings.tabs.password'), icon: Lock },
-    { key: 'agency' as const, label: t('settings.tabs.agency'), icon: Building2 },
-    { key: 'operations' as const, label: 'Operations', icon: Server },
-    { key: 'appearance' as const, label: 'Appearance', icon: Palette },
-  ];
+  const handleNotificationToggle = (field: 'notificationInApp' | 'notificationEmail' | 'notificationPush', value: boolean) => {
+    setOperations((prev) => ({ ...prev, [field]: value }));
+  };
 
-  const themeOptions = [
-    { value: 'light' as const, icon: Sun, label: 'Light', desc: 'Always light mode' },
-    { value: 'dark' as const, icon: Moon, label: 'Dark', desc: 'Always dark mode' },
-    { value: 'auto' as const, icon: Monitor, label: 'Auto', desc: '6 AM - 6 PM = Light, else Dark' },
+  const tabs: { key: SettingsTab; label: string; icon: typeof User }[] = [
+    { key: 'profile', label: t('settings.tabs.profile'), icon: User },
+    { key: 'security', label: t('settings.tabs.security'), icon: Lock },
+    { key: 'agency', label: t('settings.tabs.agency'), icon: Building2 },
+    { key: 'operations', label: t('settings.tabs.operations'), icon: Server },
+    { key: 'appearance', label: t('settings.tabs.appearance'), icon: Palette },
+    { key: 'notifications', label: t('settings.tabs.notifications'), icon: Bell },
+    { key: 'billing', label: t('settings.tabs.billing'), icon: CreditCard },
+    { key: 'privacy', label: t('settings.tabs.privacy'), icon: Database },
   ];
 
   return (
-    <div className="space-y-5 animate-fade max-w-5xl mx-auto w-full p-3 sm:p-4 lg:p-6">
-      <div>
-        <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('settings.title')}</h1>
-        <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('settings.subtitle')}</p>
-      </div>
+    <div className="space-y-5 animate-fade max-w-6xl mx-auto w-full">
+      <GlassPageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} icon={SettingsIcon} />
 
       <div className="card-premium p-2 sm:p-3 flex gap-1 overflow-x-auto pb-1 no-scrollbar w-full sm:w-fit min-w-0">
         {tabs.map((tab) => (
@@ -314,11 +308,11 @@ export default function Settings() {
           <div className="flex items-center gap-4 pb-5 border-b border-[#e8e6e1]/60">
             <div className="relative">
               <img
-                src={profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || 'U')}&background=4318ff&color=fff`}
+                src={resolveMediaUrl(profile.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || 'U')}&background=4318ff&color=fff`}
                 alt="Avatar"
                 className="w-20 h-20 rounded-2xl object-cover border-2 border-[#e8e6e1] shadow-sm"
               />
-              <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-brand-500 text-white rounded-lg flex items-center justify-center cursor-pointer hover:bg-brand-600 transition-colors shadow-md">
+              <label className="absolute -bottom-2 -end-2 w-8 h-8 bg-brand-500 text-white rounded-lg flex items-center justify-center cursor-pointer hover:bg-brand-600 transition-colors shadow-md">
                 <Camera size={14} />
                 <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
               </label>
@@ -333,36 +327,36 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.fullName')}</label>
               <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <User size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={profile.fullName}
                   onChange={(e) => handleProfileChange('fullName', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.jobTitle')}</label>
               <div className="relative">
-                <Briefcase size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Briefcase size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={profile.jobTitle}
                   onChange={(e) => handleProfileChange('jobTitle', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.email')}</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Mail size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
                   value={profile.email}
                   onChange={(e) => handleProfileChange('email', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                   disabled
                 />
               </div>
@@ -370,12 +364,12 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.phone')}</label>
               <div className="relative">
-                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Phone size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="tel"
                   value={profile.phone}
                   onChange={(e) => handleProfileChange('phone', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
@@ -398,104 +392,17 @@ export default function Settings() {
         </div>
       )}
 
-      {activeTab === 'password' && (
-        <div className="card-premium space-y-6">
-          <div className="flex items-center gap-3 pb-5 border-b border-[#e8e6e1]/60">
-            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
-              <ShieldCheck size={20} className="text-brand-500" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-[#1e293b]">{t('settings.changePassword')}</h3>
-              <p className="text-sm text-slate-400 font-normal">{t('settings.passwordSubtitle')}</p>
-            </div>
-          </div>
-
-          {passwordError && (
-            <div className="bg-danger-50/80 text-danger-500 p-4 rounded-xl text-sm font-medium flex items-center gap-3 border border-danger-100">
-              <div className="w-2 h-2 bg-danger-500 rounded-full"></div>
-              {passwordError}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.currentPassword')}</label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={password.current}
-                  onChange={(e) => handlePasswordChange('current', e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-11 pr-11 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(v => !v)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-500 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.newPassword')}</label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={password.newPassword}
-                  onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-11 pr-11 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(v => !v)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-500 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.confirmPassword')}</label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={password.confirm}
-                  onChange={(e) => handlePasswordChange('confirm', e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-11 pr-11 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(v => !v)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-500 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
-            <button
-              onClick={changePassword}
-              disabled={passwordLoading}
-              className="flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-70 w-full sm:w-auto"
-            >
-              {passwordLoading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Lock size={16} />
-              )}
-              {t('settings.updatePassword')}
-            </button>
+      {activeTab === 'security' && (
+        <div className="space-y-4">
+          <SecurityTab />
+          <div className="card-premium p-3 sm:p-5 space-y-2">
+            <h4 className="text-sm font-bold px-1" style={{ color: 'var(--text-primary)' }}>{t('settings.teamAccess')}</h4>
+            <QuickLinkCard
+              to="/role-permissions"
+              icon={ShieldCheck}
+              label={t('nav.roleAccess')}
+              description={t('settings.teamAccessDesc')}
+            />
           </div>
         </div>
       )}
@@ -516,84 +423,84 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.agencyName')}</label>
               <div className="relative">
-                <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Building2 size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={agency.name}
                   onChange={(e) => handleAgencyChange('name', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.taxId')}</label>
               <div className="relative">
-                <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <FileText size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={agency.taxId}
                   onChange={(e) => handleAgencyChange('taxId', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.address')}</label>
               <div className="relative">
-                <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <MapPin size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={agency.address}
                   onChange={(e) => handleAgencyChange('address', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.city')}</label>
               <div className="relative">
-                <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Globe size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={agency.city}
                   onChange={(e) => handleAgencyChange('city', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.country')}</label>
               <div className="relative">
-                <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Globe size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={agency.country}
                   onChange={(e) => handleAgencyChange('country', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.agencyEmail')}</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Mail size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
                   value={agency.email}
                   onChange={(e) => handleAgencyChange('email', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.agencyPhone')}</label>
               <div className="relative">
-                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Phone size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="tel"
                   value={agency.phone}
                   onChange={(e) => handleAgencyChange('phone', e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
@@ -606,22 +513,43 @@ export default function Settings() {
             </label>
             <div className="flex items-center gap-4">
               {agency.logoUrl ? (
-                <img src={agency.logoUrl} alt="Agency Logo" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
+                <img src={resolveMediaUrl(agency.logoUrl) || undefined} alt="Agency Logo" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
               ) : (
                 <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">No Logo</div>
               )}
               <label className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-500 rounded-xl text-sm font-medium cursor-pointer hover:bg-brand-100 transition-all">
                 <Camera size={14} />
                 Upload Logo
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => setAgency(prev => ({ ...prev, logoUrl: reader.result as string }));
-                    reader.readAsDataURL(file);
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  try {
+                    const { data } = await api.post('/agency/settings/logo', formData);
+                    setAgency(prev => ({ ...prev, logoUrl: data.url || data.logoUrl || '' }));
+                    window.dispatchEvent(new Event('tenant-updated'));
+                    showToast('Logo uploaded successfully', 'success');
+                  } catch (err: any) {
+                    showToast((err as any).userMessage || 'Failed to upload logo. Please try again.', 'error');
                   }
+                  e.target.value = '';
                 }} />
               </label>
+              {agency.logoUrl && (
+                <button onClick={async () => {
+                  try {
+                    await api.delete('/agency/settings/logo');
+                    setAgency(prev => ({ ...prev, logoUrl: '' }));
+                    window.dispatchEvent(new Event('tenant-updated'));
+                    showToast('Logo removed', 'success');
+                  } catch {
+                    showToast('Failed to remove logo', 'error');
+                  }
+                }} className="text-xs text-danger-500 hover:text-danger-600 font-medium">
+                  Remove
+                </button>
+              )}
             </div>
           </div>
 
@@ -659,24 +587,40 @@ export default function Settings() {
             </label>
             <div className="flex items-center gap-4">
               {agency.agencyStampUrl ? (
-                <img src={agency.agencyStampUrl} alt="Agency Stamp" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
+                <img src={resolveMediaUrl(agency.agencyStampUrl) || undefined} alt="Agency Stamp" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
               ) : (
                 <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">No Stamp</div>
               )}
               <label className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-500 rounded-xl text-sm font-medium cursor-pointer hover:bg-brand-100 transition-all">
                 <Camera size={14} />
                 Upload Stamp
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => setAgency(prev => ({ ...prev, agencyStampUrl: reader.result as string }));
-                    reader.readAsDataURL(file);
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  try {
+                    const { data } = await api.post('/agency/settings/stamp', formData);
+                    setAgency(prev => ({ ...prev, agencyStampUrl: data.url || data.stampUrl || '' }));
+                    window.dispatchEvent(new Event('tenant-updated'));
+                    showToast('Stamp uploaded successfully', 'success');
+                  } catch (err: any) {
+                    showToast((err as any).userMessage || 'Failed to upload stamp. Please try again.', 'error');
                   }
+                  e.target.value = '';
                 }} />
               </label>
               {agency.agencyStampUrl && (
-                <button onClick={() => setAgency(prev => ({ ...prev, agencyStampUrl: '' }))} className="text-xs text-danger-500 hover:text-danger-600 font-medium">Remove</button>
+                <button onClick={async () => {
+                  try {
+                    await api.delete('/agency/settings/stamp');
+                    setAgency(prev => ({ ...prev, agencyStampUrl: '' }));
+                    window.dispatchEvent(new Event('tenant-updated'));
+                    showToast('Stamp removed', 'success');
+                  } catch {
+                    showToast('Failed to remove stamp', 'error');
+                  }
+                }} className="text-xs text-danger-500 hover:text-danger-600 font-medium">Remove</button>
               )}
             </div>
           </div>
@@ -699,9 +643,14 @@ export default function Settings() {
           <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
             <button
               onClick={saveAgency}
-              className="flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all w-full sm:w-auto"
+              disabled={agencyLoading}
+              className="flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-70 w-full sm:w-auto"
             >
-              <Save size={16} />
+              {agencyLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
               {t('settings.saveChanges')}
             </button>
           </div>
@@ -730,37 +679,40 @@ export default function Settings() {
               onChange={(value) => setOperations({ ...operations, timezone: value })} />
           </div>
 
-          <div className="pt-5 border-t border-[#e8e6e1]/60 space-y-4">
-            <div className="flex items-center gap-2">
-              <Mail size={16} className="text-brand-500" />
-              <h4 className="text-sm font-bold text-[#1e293b]">Agency SMTP</h4>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SettingInput label="SMTP Host" value={operations.smtpHost}
-                onChange={(value) => setOperations({ ...operations, smtpHost: value })} />
-              <SettingInput label="SMTP Port" value={String(operations.smtpPort)} type="number"
-                onChange={(value) => setOperations({ ...operations, smtpPort: Number(value) })} />
-              <SettingInput label="Username" value={operations.smtpUsername}
-                onChange={(value) => setOperations({ ...operations, smtpUsername: value })} />
-              <SettingInput label="Password" value={operations.smtpPassword} type="password"
-                placeholder={operations.hasSmtpPassword ? 'Stored securely - enter to replace' : 'Enter SMTP password'}
-                onChange={(value) => setOperations({ ...operations, smtpPassword: value })} />
-            </div>
-            <Toggle label="Use TLS" checked={operations.smtpTls}
-              onChange={(checked) => setOperations({ ...operations, smtpTls: checked })} />
-          </div>
-
           <div className="pt-5 border-t border-[#e8e6e1]/60 space-y-3">
             <div className="flex items-center gap-2">
-              <Bell size={16} className="text-brand-500" />
-              <h4 className="text-sm font-bold text-[#1e293b]">Notification Channels</h4>
+              <ShieldCheck size={16} className="text-brand-500" />
+              <h4 className="text-sm font-bold text-[#1e293b]">Vehicle Inspection Media</h4>
             </div>
-            <Toggle label="In-app notifications" checked={operations.notificationInApp}
-              onChange={(checked) => setOperations({ ...operations, notificationInApp: checked })} />
-            <Toggle label="Email notifications" checked={operations.notificationEmail}
-              onChange={(checked) => setOperations({ ...operations, notificationEmail: checked })} />
-            <Toggle label="Browser push notifications" checked={operations.notificationPush}
-              onChange={(checked) => setOperations({ ...operations, notificationPush: checked })} />
+            <p className="text-xs text-slate-500">
+              Keep inspection photos and videos until reservation end date plus this retention period.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[7, 15, 30].map((days) => (
+                <button key={days} type="button" onClick={() => setOperations({ ...operations, inspectionRetentionDays: days })}
+                  className={`rounded-xl border px-3 py-2 text-sm font-bold transition-all ${
+                    operations.inspectionRetentionDays === days
+                      ? 'border-brand-500 bg-brand-50 text-brand-600'
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                  }`}>
+                  {days} days
+                </button>
+              ))}
+              <SettingInput label="Custom days" value={String(operations.inspectionRetentionDays)} type="number"
+                onChange={(value) => setOperations({ ...operations, inspectionRetentionDays: Number(value) })} />
+            </div>
+          </div>
+
+          <div className="pt-5 border-t border-[#e8e6e1]/60 space-y-2">
+            <h4 className="text-sm font-bold text-[#1e293b]">More operations tools</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <QuickLinkCard
+                to="/operations-center"
+                icon={HelpCircle}
+                label={t('nav.operationsCenter')}
+                description="Track support tickets and operational issues."
+              />
+            </div>
           </div>
 
           <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
@@ -774,77 +726,36 @@ export default function Settings() {
       )}
 
       {activeTab === 'appearance' && (
-        <div className="card-premium space-y-6">
-          <div className="flex items-center gap-3 pb-5 border-b border-[#e8e6e1]/60">
-            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
-              <Palette size={20} className="text-brand-500" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-[#1e293b]">Appearance</h3>
-              <p className="text-sm text-slate-400 font-normal">Customize how the app looks</p>
-            </div>
+        <div className="space-y-4">
+          <div className="card-premium p-4 sm:p-6">
+            <AppearanceCustomizer />
           </div>
-
-          {/* Current status */}
-          <div className="flex items-center gap-3 p-4 bg-[#f5f5f0] rounded-xl">
-            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-              {resolvedTheme === 'dark' ? <Moon size={18} className="text-brand-500" /> : <Sun size={18} className="text-amber-500" />}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-[#1e293b]">Currently {resolvedTheme === 'dark' ? 'Dark' : 'Light'} Mode</p>
-              <p className="text-xs text-slate-400">
-                {theme === 'auto'
-                  ? `Auto-switching: ${new Date().getHours() >= 6 && new Date().getHours() < 18 ? 'Light' : 'Dark'} (updates every minute)`
-                  : `Manual: ${theme} mode`}
-              </p>
-            </div>
-          </div>
-
-          {/* Theme options */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {themeOptions.map((opt) => {
-              const isActive = theme === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => setTheme(opt.value)}
-                  className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all duration-200 ${
-                    isActive
-                      ? 'border-brand-500 bg-brand-50 text-brand-500 shadow-md'
-                      : 'border-[#e8e6e1] bg-white text-slate-500 hover:border-slate-300 hover:bg-[#f5f5f0]'
-                  }`}
-                >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isActive ? 'bg-brand-500 text-white' : 'bg-[#f5f5f0] text-slate-400'}`}>
-                    <opt.icon size={24} />
-                  </div>
-                  <div className="text-center">
-                    <p className={`text-sm font-semibold ${isActive ? 'text-brand-500' : 'text-[#1e293b]'}`}>{opt.label}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{opt.desc}</p>
-                  </div>
-                  {isActive && (
-                    <div className="w-2 h-2 rounded-full bg-brand-500 mt-1"></div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Auto schedule info */}
-          <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-            <div className="flex items-start gap-3">
-              <Monitor size={16} className="text-blue-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-blue-700">Auto Mode Schedule</p>
-                <p className="text-xs text-blue-500 mt-1">
-                  <span className="font-semibold">Light:</span> 6:00 AM - 5:59 PM<br />
-                  <span className="font-semibold">Dark:</span> 6:00 PM - 5:59 AM<br />
-                  The app checks every minute and switches automatically.
-                </p>
-              </div>
-            </div>
+          <div className="card-premium p-3 sm:p-5 space-y-2">
+            <h4 className="text-sm font-bold text-[#1e293b] px-1">More branding tools</h4>
+            <QuickLinkCard
+              to="/white-label"
+              icon={Palette}
+              label={t('nav.whiteLabel')}
+              description="Custom domain, logo, and white-label branding."
+            />
           </div>
         </div>
       )}
+
+      {activeTab === 'notifications' && (
+        <NotificationsTab
+          notificationInApp={operations.notificationInApp}
+          notificationEmail={operations.notificationEmail}
+          notificationPush={operations.notificationPush}
+          onChange={handleNotificationToggle}
+          onSave={saveOperations}
+          saving={operationsLoading}
+        />
+      )}
+
+      {activeTab === 'billing' && <BillingTab />}
+
+      {activeTab === 'privacy' && <PrivacyTab inspectionRetentionDays={operations.inspectionRetentionDays} />}
     </div>
   );
 }
@@ -875,14 +786,23 @@ function SettingSelect({ label, value, options, onChange }: {
   );
 }
 
-function Toggle({ label, checked, onChange }: {
-  label: string; checked: boolean; onChange: (checked: boolean) => void;
+function QuickLinkCard({ to, icon: Icon, label, description }: {
+  to: string; icon: LucideIcon; label: string; description: string;
 }) {
   return (
-    <label className="flex items-center justify-between p-3 border border-[#e8e6e1] rounded-xl">
-      <span className="text-sm font-medium text-[#1e293b]">{label}</span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)}
-        className="w-4 h-4 accent-brand-500" />
-    </label>
+    <Link
+      to={to}
+      className="flex items-center gap-3 p-3 rounded-xl border border-[#e8e6e1] hover:border-brand-300 hover:bg-brand-50/40 transition-all group"
+    >
+      <div className="w-9 h-9 rounded-lg bg-[#f5f5f0] flex items-center justify-center shrink-0 group-hover:bg-white">
+        <Icon size={16} className="text-brand-500" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <strong className="block text-sm text-[#1e293b]">{label}</strong>
+        <span className="block text-xs text-slate-400">{description}</span>
+      </div>
+      <ArrowRight size={14} className="text-slate-300 group-hover:text-brand-500 shrink-0" />
+    </Link>
   );
 }
+

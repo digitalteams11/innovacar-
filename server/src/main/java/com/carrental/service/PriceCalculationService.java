@@ -17,7 +17,7 @@ import java.time.temporal.ChronoUnit;
 @Service
 public class PriceCalculationService {
 
-    private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("0.20"); // 20% VAT
+    // No automatic VAT/tax applied to rental contracts in Morocco.
 
     /**
      * Calculate rental price based on vehicle pricing and duration.
@@ -61,14 +61,10 @@ public class PriceCalculationService {
             extraMileageCost = perKmRate.multiply(BigDecimal.valueOf(actualMileage - allowedMileage));
         }
 
-        // Subtotal before tax
         BigDecimal subtotal = basePrice.add(insuranceFees).add(deliveryFees).add(extraHoursCost).add(extraMileageCost);
 
-        // Tax
-        BigDecimal taxAmount = subtotal.multiply(DEFAULT_TAX_RATE).setScale(2, RoundingMode.HALF_UP);
-
-        // Total
-        BigDecimal totalPrice = subtotal.add(taxAmount);
+        BigDecimal taxAmount = BigDecimal.ZERO;
+        BigDecimal totalPrice = subtotal;
 
         // Deposit
         BigDecimal deposit = vehicle.getDepositAmount() != null ? vehicle.getDepositAmount() : BigDecimal.ZERO;
@@ -82,8 +78,8 @@ public class PriceCalculationService {
                 .extraHoursCost(extraHoursCost)
                 .extraMileageCost(extraMileageCost)
                 .subtotal(subtotal)
-                .taxRate(DEFAULT_TAX_RATE)
-                .taxAmount(taxAmount)
+                .taxRate(BigDecimal.ZERO)
+                .taxAmount(BigDecimal.ZERO)
                 .totalPrice(totalPrice)
                 .depositAmount(deposit)
                 .build();
@@ -102,8 +98,6 @@ public class PriceCalculationService {
         }
 
         BigDecimal newSubtotal = price.getSubtotal().subtract(discount).max(BigDecimal.ZERO);
-        BigDecimal newTax = newSubtotal.multiply(DEFAULT_TAX_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal newTotal = newSubtotal.add(newTax);
 
         return RentalPrice.builder()
                 .totalDays(price.getTotalDays())
@@ -115,9 +109,9 @@ public class PriceCalculationService {
                 .extraMileageCost(price.getExtraMileageCost())
                 .discountAmount(discount)
                 .subtotal(newSubtotal)
-                .taxRate(DEFAULT_TAX_RATE)
-                .taxAmount(newTax)
-                .totalPrice(newTotal)
+                .taxRate(BigDecimal.ZERO)
+                .taxAmount(BigDecimal.ZERO)
+                .totalPrice(newSubtotal)
                 .depositAmount(price.getDepositAmount())
                 .build();
     }

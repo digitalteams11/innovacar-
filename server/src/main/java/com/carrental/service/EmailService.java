@@ -1,5 +1,6 @@
 package com.carrental.service;
 
+import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -7,35 +8,55 @@ import org.springframework.stereotype.Service;
 /**
  * Email service for sending transactional emails.
  * <p>
- * In production, this should integrate with an SMTP provider (SendGrid, AWS SES, etc.)
- * or use Spring Mail. For now, it logs the emails and provides templates.
+ * Delivery goes through {@link SmtpMailService}, which sends over whichever
+ * SMTP provider is actually configured (tenant's own, falling back to the
+ * platform-wide provider). A failed or unconfigured send is logged — it never
+ * throws, so it can't break the business operation that triggered it.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
+    private final SmtpMailService smtpMailService;
+
     public void sendCustomerSuccessEmail(String toEmail, String subject, String message) {
         if (toEmail == null || toEmail.isBlank()) {
             log.info("[EMAIL] Skipped customer success email because no recipient was provided");
             return;
         }
-        log.info("[EMAIL] To: {} | Subject: {}", toEmail, subject);
-        log.info("[EMAIL BODY]\n{}", message);
+        deliver(smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject, message),
+                toEmail, subject);
     }
 
     /**
-     * Sends a password reset email with a reset link.
+     * Sends a 6-digit password reset code email (new code-based flow).
      */
+    public void sendPasswordResetCodeEmail(String toEmail, String userName, String code, int expiresInMinutes) {
+        String subject = "Your RentCar password reset code";
+        String body = buildPasswordResetCodeEmail(userName, code, expiresInMinutes);
+        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
+    }
+
+    /**
+     * Sends a confirmation email after a successful password reset.
+     */
+    public void sendPasswordChangedEmail(String toEmail, String userName) {
+        String subject = "Your RentCar password was changed";
+        String body = buildPasswordChangedEmail(userName);
+        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
+    }
+
+    /**
+     * @deprecated Use {@link #sendPasswordResetCodeEmail} instead.
+     * Kept for backward compatibility — sends a reset link.
+     */
+    @Deprecated
     public void sendPasswordResetEmail(String toEmail, String resetToken, String frontendUrl) {
         String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
-
         String subject = "Password Reset Request";
         String body = buildPasswordResetEmail(resetLink);
-
-        // In production, use JavaMailSender or an email API
-        log.info("[EMAIL] To: {} | Subject: {} | Reset link: {}", toEmail, subject, resetLink);
-        log.info("[EMAIL BODY]\n{}", body);
+        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
     }
 
     /**
@@ -43,12 +64,36 @@ public class EmailService {
      */
     public void sendVerificationEmail(String toEmail, String verificationToken, String frontendUrl) {
         String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
-
         String subject = "Verify Your Email Address";
         String body = buildVerificationEmail(verifyLink);
+        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
+    }
 
-        log.info("[EMAIL] To: {} | Subject: {} | Verify link: {}", toEmail, subject, verifyLink);
-        log.info("[EMAIL BODY]\n{}", body);
+    /**
+     * Sends a 6-digit email verification code (code-based flow for authenticated users).
+     */
+    public void sendEmailVerificationCodeEmail(String toEmail, String userName, String code) {
+        String subject = "Your Email Verification Code";
+        String body = buildEmailVerificationCodeEmail(userName, code);
+        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
+    }
+
+    /**
+     * Sends a 6-digit Email OTP code for 2FA or security verification.
+     * Throws if SMTP fails — caller (EmailOtpService) handles the exception.
+     */
+    public void sendEmailOtpCode(String toEmail, String userName, String code,
+                                  int expiresInMinutes, Object purpose) {
+        String subject = "Your RentCar verification code";
+        String purposeLabel = purpose != null ? purpose.toString() : "VERIFICATION";
+        String body = buildEmailOtpCodeEmail(userName, code, expiresInMinutes, purposeLabel);
+        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, body);
+        if (!result.sent()) {
+            String errorCode = result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED";
+            log.warn("[EMAIL] OTP send failed to {} | errorCode={} | message={}", toEmail, errorCode, result.errorMessage());
+            throw new RuntimeException(errorCode);
+        }
+        deliver(result, toEmail, subject);
     }
 
     /**
@@ -57,9 +102,7 @@ public class EmailService {
     public void sendWelcomeEmail(String toEmail, String firstName) {
         String subject = "Welcome to RentCar SaaS";
         String body = buildWelcomeEmail(firstName);
-
-        log.info("[EMAIL] To: {} | Subject: {}", toEmail, subject);
-        log.info("[EMAIL BODY]\n{}", body);
+        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
     }
 
     /**
@@ -73,8 +116,10 @@ public class EmailService {
         }
         String subject = agencyName + " — Your Rental Contract is Ready for Signature";
         String body = buildContractReadyEmail(clientName, contractNumber, signingUrl, agencyName);
-        log.info("[EMAIL] To: {} | Subject: {} | URL: {}", toEmail, subject, signingUrl);
-        log.info("[EMAIL BODY]\n{}", body);
+        // Client-facing emails should appear to come from the agency, so the
+        // agency's own SMTP (if configured) takes priority here.
+        deliver(smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject, body),
+                toEmail, subject);
     }
 
     /**
@@ -88,11 +133,103 @@ public class EmailService {
         }
         String subject = agencyName + " — Your Contract Has Been Fully Signed";
         String body = buildContractSignedEmail(clientName, contractNumber, agencyName);
-        log.info("[EMAIL] To: {} | Subject: {}", toEmail, subject);
-        log.info("[EMAIL BODY]\n{}", body);
+        deliver(smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject, body),
+                toEmail, subject);
+    }
+
+    private void deliver(SmtpMailService.SmtpResult result, String toEmail, String subject) {
+        if (result.sent()) {
+            log.info("[EMAIL] Delivered via {} to {} | Subject: {}", result.providerUsed(), toEmail, subject);
+        } else {
+            log.warn("[EMAIL] Not delivered to {} | Subject: {} | Reason: {}", toEmail, subject, result.errorMessage());
+        }
     }
 
     // ── Email templates ─────────────────────────────────────────────────────
+
+    private String buildPasswordResetCodeEmail(String userName, String code, int expiresInMinutes) {
+        String name = (userName != null && !userName.isBlank()) ? userName : "there";
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+            <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:40px 0;">
+                <tr><td align="center">
+                  <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                    <tr><td style="background:#1a56db;padding:32px 40px;">
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                    </td></tr>
+                    <tr><td style="padding:40px;">
+                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Reset your password</h2>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">Hi %s,</p>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+                        We received a request to reset your RentCar password. Use the verification code below:
+                      </p>
+                      <div style="background:#f0f4ff;border:2px dashed #1a56db;border-radius:8px;padding:24px;text-align:center;margin:0 0 24px;">
+                        <span style="font-size:42px;font-weight:700;letter-spacing:12px;color:#1a56db;font-family:monospace;">%s</span>
+                      </div>
+                      <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
+                        This code expires in <strong>%d minutes</strong>. Do not share it with anyone.
+                      </p>
+                      <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">
+                        If you did not request a password reset, you can safely ignore this email. Your password will not change.
+                      </p>
+                    </td></tr>
+                    <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
+                      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                        &copy; 2025 RentCar SaaS. All rights reserved.
+                      </p>
+                    </td></tr>
+                  </table>
+                </td></tr>
+              </table>
+            </body>
+            </html>
+            """.formatted(name, code, expiresInMinutes);
+    }
+
+    private String buildPasswordChangedEmail(String userName) {
+        String name = (userName != null && !userName.isBlank()) ? userName : "there";
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+            <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:40px 0;">
+                <tr><td align="center">
+                  <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                    <tr><td style="background:#059669;padding:32px 40px;">
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                    </td></tr>
+                    <tr><td style="padding:40px;">
+                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Password changed successfully</h2>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">Hi %s,</p>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+                        Your RentCar account password was changed successfully.
+                      </p>
+                      <div style="background:#f0fdf4;border-left:4px solid #059669;padding:16px 20px;border-radius:4px;margin:0 0 24px;">
+                        <p style="margin:0;color:#065f46;font-size:14px;">
+                          &#10003; Password updated on %s
+                        </p>
+                      </div>
+                      <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">
+                        If you did not make this change, please contact our support team immediately and secure your account.
+                      </p>
+                    </td></tr>
+                    <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
+                      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                        &copy; 2025 RentCar SaaS. All rights reserved.
+                      </p>
+                    </td></tr>
+                  </table>
+                </td></tr>
+              </table>
+            </body>
+            </html>
+            """.formatted(name, java.time.LocalDateTime.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy 'at' HH:mm")));
+    }
 
     private String buildPasswordResetEmail(String resetLink) {
         return String.format("""
@@ -109,6 +246,27 @@ public class EmailService {
 
             — RentCar Security Team
             """, resetLink);
+    }
+
+    private String buildEmailVerificationCodeEmail(String userName, String code) {
+        String name = (userName != null && !userName.isBlank()) ? userName : "there";
+        return """
+            Verify Your Email Address
+            =========================
+
+            Hi %s,
+
+            Your email verification code is:
+
+                %s
+
+            This code is valid for 10 minutes.
+            Enter it in the app to verify your email address.
+
+            If you did not request this, please ignore this email.
+
+            — RentCar Security Team
+            """.formatted(name, code);
     }
 
     private String buildVerificationEmail(String verifyLink) {
@@ -164,6 +322,61 @@ public class EmailService {
             signingUrl,
             agencyName,
             agencyName);
+    }
+
+    private String buildEmailOtpCodeEmail(String userName, String code, int expiresInMinutes, String purpose) {
+        String name = (userName != null && !userName.isBlank()) ? userName : "there";
+        String purposeText = switch (purpose) {
+            case "LOGIN_2FA"        -> "sign in to your account";
+            case "ENABLE_EMAIL_OTP" -> "enable Email OTP verification";
+            case "PASSWORD_CHANGE"  -> "confirm your password change";
+            case "DATA_RESET"       -> "authorize a data reset";
+            default                 -> "verify your identity";
+        };
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+            <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:40px 0;">
+                <tr><td align="center">
+                  <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                    <tr><td style="background:#1a56db;padding:32px 40px;">
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                      <p style="margin:6px 0 0;color:#93c5fd;font-size:13px;">Secure Verification Code</p>
+                    </td></tr>
+                    <tr><td style="padding:40px;">
+                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Your verification code</h2>
+                      <p style="margin:0 0 8px;color:#374151;font-size:15px;line-height:1.6;">Hi %s,</p>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+                        Use the code below to %s. Do not share this code with anyone.
+                      </p>
+                      <div style="background:#f0f4ff;border:2px dashed #1a56db;border-radius:8px;padding:28px;text-align:center;margin:0 0 24px;">
+                        <span style="font-size:48px;font-weight:700;letter-spacing:16px;color:#1a56db;font-family:monospace;">%s</span>
+                      </div>
+                      <p style="margin:0 0 8px;color:#6b7280;font-size:14px;line-height:1.6;">
+                        This code expires in <strong>%d minutes</strong>.
+                      </p>
+                      <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
+                        If you did not request this code, please ignore this email and secure your account immediately.
+                      </p>
+                      <div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:4px;padding:12px 16px;">
+                        <p style="margin:0;color:#92400e;font-size:13px;line-height:1.5;">
+                          <strong>Security tip:</strong> RentCar will never ask you to share this code via email, phone, or chat.
+                        </p>
+                      </div>
+                    </td></tr>
+                    <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
+                      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                        &copy; 2025 RentCar &mdash; Innovacar. All rights reserved.
+                      </p>
+                    </td></tr>
+                  </table>
+                </td></tr>
+              </table>
+            </body>
+            </html>
+            """.formatted(name, purposeText, code, expiresInMinutes);
     }
 
     private String buildContractSignedEmail(String clientName, String contractNumber, String agencyName) {

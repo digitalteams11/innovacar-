@@ -1,0 +1,25 @@
+-- Fix: POST /api/contracts/direct-create failed with
+--   "null value in column "paid" of relation "payments" violates not-null constraint"
+--
+-- Root cause: the `payments.paid` column is an orphan leftover from an older
+-- version of the Payment entity. The current Payment.java has no `paid`
+-- field at all -- payment settlement is tracked exclusively via the `status`
+-- enum, with `Payment.isPaid()` deriving the boolean from it. Hibernate's
+-- INSERT therefore never includes `paid`, and since the column had no
+-- DEFAULT, Postgres rejected the insert outright.
+--
+-- `ddl-auto: update` only ever adds missing columns/constraints -- it never
+-- drops or alters existing ones -- so this stale column survived schema
+-- updates indefinitely until it started blocking inserts.
+--
+-- Fix: give the column a DEFAULT. Postgres fills in DEFAULT automatically
+-- for any column omitted from the INSERT's column list, so this resolves
+-- the failure without touching the Payment entity, application code, or any
+-- existing data. No rows are dropped, no columns are dropped, ddl-auto is
+-- untouched.
+--
+-- Safe to re-run (idempotent).
+
+-- No backfill needed: the NOT NULL constraint was already enforced, so no
+-- existing row could have paid = NULL (verified: 0 rows before this fix).
+ALTER TABLE payments ALTER COLUMN paid SET DEFAULT false;

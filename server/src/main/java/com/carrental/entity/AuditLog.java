@@ -73,4 +73,9 @@ public class AuditLog {
         createdAt = LocalDateTime.now();
         if (isSuccess == null) isSuccess = true;
     }
+
+    @PreUpdate
+    protected void preventModification() {
+        throw new IllegalStateException("Audit records are append-only");
+    }
 }

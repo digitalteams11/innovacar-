@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PlatformSettingsRepository extends JpaRepository<PlatformSettings, Long> {
+    java.util.Optional<PlatformSettings> findTopByOrderByIdAsc();
 }

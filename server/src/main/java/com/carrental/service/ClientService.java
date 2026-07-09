@@ -9,6 +9,9 @@ import com.carrental.dto.contract.ContractResponse;
 import com.carrental.dto.invoice.InvoiceResponse;
 import com.carrental.entity.*;
 import com.carrental.exception.ResourceNotFoundException;
+import com.carrental.exception.ClientDuplicateException;
+import com.carrental.exception.ClientValidationException;
+import com.carrental.exception.DuplicateClientException;
 import com.carrental.repository.*;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -16,11 +19,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Client-management business logic.
@@ -53,7 +60,7 @@ public class ClientService {
      */
     @Transactional(readOnly = true)
     public List<ClientResponse> getAllClients() {
-        Long tenantId = TenantContext.getCurrentTenantId();
+        Long tenantId = requireTenantId();
         log.debug("Listing clients for tenant [{}]", tenantId);
 
         return clientRepository.findAllByTenantId(tenantId)
@@ -81,39 +88,93 @@ public class ClientService {
      */
     @Transactional
     public ClientResponse createClient(CreateClientRequest request) {
-        Long   tenantId = TenantContext.getCurrentTenantId();
-        Tenant tenant   = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Tenant not found with id: " + tenantId));
+        Long tenantId = requireTenantId();
+        validateRequired(request);
+        checkDuplicates(tenantId, request);
 
-        Client client = clientRepository.save(Client.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .phone(request.getPhone())
-                .secondaryPhone(request.getSecondaryPhone())
-                .address(request.getAddress())
-                .city(request.getCity())
-                .country(request.getCountry())
-                .postalCode(request.getPostalCode())
-                .nationality(request.getNationality())
-                .gender(request.getGender())
-                .birthDate(request.getBirthDate())
-                .cin(request.getCin())
-                .passportNumber(request.getPassportNumber())
-                .drivingLicense(request.getDrivingLicense())
-                .drivingLicenseIssue(request.getDrivingLicenseIssue())
-                .drivingLicenseExpiry(request.getDrivingLicenseExpiry())
-                .emergencyContactName(request.getEmergencyContactName())
-                .emergencyContactPhone(request.getEmergencyContactPhone())
-                .companyName(request.getCompanyName())
-                .notes(request.getNotes())
-                .tenant(tenant)
-                .build());
+        Tenant tenant   = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new ClientValidationException(
+                        "Agency account is not linked to a tenant.", "TENANT_REQUIRED"));
+
+        Client client;
+        try {
+            client = clientRepository.save(Client.builder()
+                    .name(required(request.getFullName()))
+                    .email(optional(request.getEmail()))
+                    .phone(required(request.getPhone()))
+                    .secondaryPhone(optional(request.getSecondaryPhone()))
+                    .address(required(request.getAddress()))
+                    .city(required(request.getCity()))
+                    .country(required(request.getCountry()))
+                    .postalCode(optional(request.getPostalCode()))
+                    .nationality(required(request.getNationality()))
+                    .gender(normalizeGender(request.getGender()))
+                    .birthDate(request.getBirthDate())
+                    .cin(optional(request.getCin()))
+                    .passportNumber(optional(request.getPassportNumber()))
+                    .drivingLicense(optional(request.getDrivingLicense()))
+                    .drivingLicenseIssue(request.getDrivingLicenseIssue())
+                    .drivingLicenseExpiry(request.getDrivingLicenseExpiry())
+                    .emergencyContactName(optional(request.getEmergencyContactName()))
+                    .emergencyContactPhone(optional(request.getEmergencyContactPhone()))
+                    .companyName(optional(request.getCompanyName()))
+                    .notes(optional(request.getNotes()))
+                    .tenant(tenant)
+                    .build());
+        } catch (DataIntegrityViolationException ex) {
+            // Race-condition fallback only: checkDuplicates() above already
+            // rejects any match among active clients before we get here, so
+            // this only fires if two requests insert the same value at once.
+            // Map the DB-level partial unique index that fired back to a
+            // field-specific message instead of a blanket "already exists".
+            String field = fieldForConstraint(ex);
+            if (field != null) {
+                throw new DuplicateClientException(duplicateMessage(field), field);
+            }
+            throw new ClientDuplicateException("Client already exists", "CLIENT_ALREADY_EXISTS", null);
+        }
 
         log.info("Created client [id={}] '{}' in tenant [{}]",
                 client.getId(), client.getName(), tenantId);
 
         return ClientResponse.from(client);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> checkExistingClient(String email, String phone, String cin, String passportNumber) {
+        Long tenantId = requireTenantId();
+        Map<String, Object> result = new HashMap<>();
+        result.put("exists", false);
+        String normalizedEmail = optional(email);
+        if (normalizedEmail != null) {
+            Optional<Client> duplicate = clientRepository.findFirstByTenantIdAndEmailIgnoreCase(tenantId, normalizedEmail);
+            if (duplicate.isPresent()) return duplicateCheck("email", duplicate.get());
+        }
+        String normalizedPhone = optional(phone);
+        if (normalizedPhone != null) {
+            Optional<Client> duplicate = clientRepository.findFirstByTenantIdAndPhoneIgnoreCase(tenantId, normalizedPhone);
+            if (duplicate.isPresent()) return duplicateCheck("phone", duplicate.get());
+        }
+        String normalizedCin = optional(cin);
+        if (normalizedCin != null) {
+            Optional<Client> duplicate = clientRepository.findFirstByTenantIdAndCinIgnoreCase(tenantId, normalizedCin);
+            if (duplicate.isPresent()) return duplicateCheck("cin", duplicate.get());
+        }
+        String normalizedPassport = optional(passportNumber);
+        if (normalizedPassport != null) {
+            Optional<Client> duplicate = clientRepository.findFirstByTenantIdAndPassportNumberIgnoreCase(tenantId, normalizedPassport);
+            if (duplicate.isPresent()) return duplicateCheck("passportNumber", duplicate.get());
+        }
+        return result;
+    }
+
+    private Map<String, Object> duplicateCheck(String field, Client client) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("exists", true);
+        result.put("field", field);
+        result.put("clientId", client.getId());
+        result.put("message", duplicateMessage(field));
+        return result;
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────────────
@@ -197,16 +258,70 @@ public class ClientService {
     // ── DELETE ────────────────────────────────────────────────────────────────
 
     /**
-     * Hard-deletes a client from the caller's tenant. ADMIN-only.
+     * Soft-deletes a client from the caller's tenant. ADMIN-only.
      *
      * @throws ResourceNotFoundException if the client is not found in this tenant
      */
     @Transactional
     public void deleteClient(Long id) {
         Client client = fetchClientInTenant(id);
-        clientRepository.delete(client);
-        log.info("Deleted client [id={}] from tenant [{}]",
+        client.setDeleted(true);
+        client.setDeletedAt(LocalDateTime.now());
+        client.setDeletedBy(currentUserEmail());
+        clientRepository.save(client);
+        log.info("Soft-deleted client [id={}] from tenant [{}]",
                 id, TenantContext.getCurrentTenantId());
+    }
+
+    private String currentUserEmail() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null ? authentication.getName() : "system";
+    }
+
+    /** Archived clients only, for the admin "view deleted" screen. */
+    @Transactional(readOnly = true)
+    public List<ClientResponse> getDeletedClients() {
+        Long tenantId = requireTenantId();
+        return clientRepository.findAllDeletedByTenantId(tenantId)
+                .stream()
+                .map(ClientResponse::from)
+                .toList();
+    }
+
+    /**
+     * Restores a soft-deleted client. Rejected with 409 if an active client
+     * in the same tenant already holds the same phone/CIN/passport/email —
+     * restoring must not silently create a new duplicate-among-active-rows.
+     */
+    @Transactional
+    public ClientResponse restoreClient(Long id) {
+        Long tenantId = requireTenantId();
+        Client client = clientRepository.findDeletedByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Deleted client not found with id: " + id));
+
+        if (StringUtils.hasText(client.getPhone())) {
+            var conflict = clientRepository.findFirstByTenantIdAndPhoneIgnoreCase(tenantId, client.getPhone());
+            if (conflict.isPresent()) throw duplicate("phone", conflict.get());
+        }
+        if (StringUtils.hasText(client.getEmail())) {
+            var conflict = clientRepository.findFirstByTenantIdAndEmailIgnoreCase(tenantId, client.getEmail());
+            if (conflict.isPresent()) throw duplicate("email", conflict.get());
+        }
+        if (StringUtils.hasText(client.getCin())) {
+            var conflict = clientRepository.findFirstByTenantIdAndCinIgnoreCase(tenantId, client.getCin());
+            if (conflict.isPresent()) throw duplicate("cin", conflict.get());
+        }
+        if (StringUtils.hasText(client.getPassportNumber())) {
+            var conflict = clientRepository.findFirstByTenantIdAndPassportNumberIgnoreCase(tenantId, client.getPassportNumber());
+            if (conflict.isPresent()) throw duplicate("passportNumber", conflict.get());
+        }
+
+        client.setDeleted(false);
+        client.setDeletedAt(null);
+        client.setDeletedBy(null);
+        Client restored = clientRepository.save(client);
+        log.info("Restored client [id={}] in tenant [{}]", id, tenantId);
+        return ClientResponse.from(restored);
     }
 
     // ── CLIENT BALANCE ────────────────────────────────────────────────────────
@@ -327,9 +442,115 @@ public class ClientService {
      * cross-tenant clients so tenant B cannot discover tenant A's IDs.
      */
     public Client fetchClientInTenant(Long clientId) {
-        Long tenantId = TenantContext.getCurrentTenantId();
+        Long tenantId = requireTenantId();
         return clientRepository.findByIdAndTenantId(clientId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Client not found with id: " + clientId));
+    }
+
+    private Long requireTenantId() {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        if (tenantId == null) {
+            throw new ClientValidationException(
+                    "Current user is not linked to an agency.", "TENANT_REQUIRED");
+        }
+        return tenantId;
+    }
+
+    private void validateRequired(CreateClientRequest request) {
+        if (!StringUtils.hasText(request.getFullName())) {
+            throw new ClientValidationException("Full name is required");
+        }
+        if (!StringUtils.hasText(request.getPhone())) {
+            throw new ClientValidationException("Phone is required");
+        }
+        if (!StringUtils.hasText(request.getAddress())) {
+            throw new ClientValidationException("Address is required");
+        }
+        if (!StringUtils.hasText(request.getCity())) {
+            throw new ClientValidationException("City is required");
+        }
+        if (!StringUtils.hasText(request.getCountry())) {
+            throw new ClientValidationException("Country is required");
+        }
+        if (!StringUtils.hasText(request.getNationality())) {
+            throw new ClientValidationException("Nationality is required");
+        }
+        if (!StringUtils.hasText(request.getCin()) && !StringUtils.hasText(request.getPassportNumber())) {
+            throw new ClientValidationException("CIN or passport number is required");
+        }
+    }
+
+    private void checkDuplicates(Long tenantId, CreateClientRequest request) {
+        String phone = required(request.getPhone());
+        var byPhone = clientRepository.findFirstByTenantIdAndPhoneIgnoreCase(tenantId, phone);
+        if (byPhone.isPresent()) {
+            throw duplicate("phone", byPhone.get());
+        }
+        String email = optional(request.getEmail());
+        var byEmail = email == null ? Optional.<Client>empty()
+                : clientRepository.findFirstByTenantIdAndEmailIgnoreCase(tenantId, email);
+        if (byEmail.isPresent()) {
+            throw duplicate("email", byEmail.get());
+        }
+        String cin = optional(request.getCin());
+        var byCin = cin == null ? Optional.<Client>empty()
+                : clientRepository.findFirstByTenantIdAndCinIgnoreCase(tenantId, cin);
+        if (byCin.isPresent()) {
+            throw duplicate("cin", byCin.get());
+        }
+        String passport = optional(request.getPassportNumber());
+        var byPassport = passport == null ? Optional.<Client>empty()
+                : clientRepository.findFirstByTenantIdAndPassportNumberIgnoreCase(tenantId, passport);
+        if (byPassport.isPresent()) {
+            throw duplicate("passportNumber", byPassport.get());
+        }
+    }
+
+    private DuplicateClientException duplicate(String field, Client existing) {
+        return new DuplicateClientException(duplicateMessage(field), field, existing.getId());
+    }
+
+    /** Maps a DB-level unique-index violation back to the offending field name. */
+    private String fieldForConstraint(DataIntegrityViolationException ex) {
+        Throwable cause = ex;
+        String constraintName = null;
+        while (cause != null) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException cve) {
+                constraintName = cve.getConstraintName();
+                break;
+            }
+            cause = cause.getCause();
+        }
+        if (constraintName == null) return null;
+        String lower = constraintName.toLowerCase();
+        if (lower.contains("email")) return "email";
+        if (lower.contains("phone")) return "phone";
+        if (lower.contains("passport")) return "passportNumber";
+        if (lower.contains("cin")) return "cin";
+        return null;
+    }
+
+    private String duplicateMessage(String field) {
+        return switch (field) {
+            case "email" -> "A client with this email already exists in this agency.";
+            case "phone" -> "A client with this phone number already exists in this agency.";
+            case "cin" -> "A client with this CIN already exists in this agency.";
+            case "passportNumber" -> "A client with this passport number already exists in this agency.";
+            default -> "A client with this information already exists in this agency.";
+        };
+    }
+
+    private String normalizeGender(String value) {
+        String gender = optional(value);
+        return gender == null ? null : gender.toUpperCase();
+    }
+
+    private String required(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String optional(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 }

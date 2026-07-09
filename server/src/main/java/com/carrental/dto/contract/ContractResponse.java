@@ -29,6 +29,8 @@ public class ContractResponse {
     private Long reservationId;
     private Long clientId;
     private Long vehicleId;
+    /** True when {@code vehicleId} points at a vehicle that no longer exists (soft-deleted). Set by the service layer. */
+    private boolean vehicleMissing;
 
     // Dates
     private LocalDate startDate;
@@ -94,6 +96,8 @@ public class ContractResponse {
     private BigDecimal totalPrice;
     private BigDecimal dailyPrice;
     private BigDecimal depositAmount;
+    private String depositCurrency;
+    private com.carrental.entity.DepositStatus depositStatus;
     private BigDecimal paidAmount;
     private BigDecimal remainingAmount;
     private BigDecimal taxAmount;
@@ -129,6 +133,11 @@ public class ContractResponse {
     private String qrToken;
     private String publicSigningUrl;
     private String pdfUrl;
+
+    // Selected agency contract template (null = system default PDF)
+    private Long selectedTemplateId;
+    private String selectedTemplateName;
+    private String selectedTemplateType;
 
     // Deposit
     private com.carrental.dto.deposit.DepositResponse deposit;
@@ -169,6 +178,10 @@ public class ContractResponse {
                 .returnTime(contract.getReturnTime())
                 .pickupLocation(contract.getPickupLocation())
                 .returnLocation(contract.getReturnLocation())
+                .selectedTemplateId(contract.getSelectedTemplate() != null ? contract.getSelectedTemplate().getId() : null)
+                .selectedTemplateName(contract.getSelectedTemplate() != null ? contract.getSelectedTemplate().getName() : null)
+                .selectedTemplateType(contract.getSelectedTemplate() != null && contract.getSelectedTemplate().getTemplateType() != null
+                        ? contract.getSelectedTemplate().getTemplateType().name() : null)
                 .clientFirstName(contract.getClientFirstName())
                 .clientLastName(contract.getClientLastName())
                 .clientFullName(contract.getClientFullName())
@@ -216,6 +229,8 @@ public class ContractResponse {
                 .totalPrice(contract.getTotalPrice())
                 .dailyPrice(contract.getDailyPrice())
                 .depositAmount(contract.getDepositAmount())
+                .depositCurrency(contract.getDepositCurrency() != null ? contract.getDepositCurrency() : "MAD")
+                .depositStatus(contract.getDepositStatus())
                 .paidAmount(contract.getPaidAmount())
                 .remainingAmount(contract.getRemainingAmount())
                 .taxAmount(contract.getTaxAmount())
@@ -232,19 +247,24 @@ public class ContractResponse {
                 .clientSigned(contract.getClientSignature() != null && !contract.getClientSignature().isEmpty())
                 .ownerSigned(contract.getOwnerSignature() != null && !contract.getOwnerSignature().isEmpty())
                 .employeeSigned(contract.getEmployeeSignature() != null && !contract.getEmployeeSignature().isEmpty())
+                .clientSignature(contract.getClientSignature())
+                .ownerSignature(contract.getOwnerSignature())
+                .employeeSignature(contract.getEmployeeSignature())
+                .clientSignedAt(contract.getClientSignedAt())
+                .ownerSignedAt(contract.getOwnerSignedAt())
                 .termsAccepted(contract.getTermsAccepted())
                 .termsAcceptedAt(contract.getTermsAcceptedAt())
                 .signedAt(contract.getSignedAt())
                 .qrToken(contract.getQrToken())
                 .publicSigningUrl(contract.getPublicSigningUrl())
-                .pdfUrl(contract.getPdfUrl())
+                .pdfUrl(cacheBustedPdfUrl(contract.getPdfUrl(), contract.getUpdatedAt()))
                 .deposit(null) // set externally by service layer
                 .notes(contract.getNotes())
                 .generatedBy(contract.getGeneratedBy())
                 .lastModifiedBy(contract.getLastModifiedBy())
                 .createdAt(contract.getCreatedAt())
                 .updatedAt(contract.getUpdatedAt())
-                .tenantId(contract.getTenant().getId())
+                .tenantId(contract.getTenant() != null ? contract.getTenant().getId() : null)
                 .additionalDrivers(contract.getAdditionalDrivers() != null
                         ? contract.getAdditionalDrivers().stream()
                             .map(d -> AdditionalDriverDto.builder()
@@ -312,4 +332,19 @@ public class ContractResponse {
                         : null)
                 .build();
     }
+
+    /**
+     * Appends a version query param derived from the contract's last-updated
+     * timestamp so the browser never reuses a cached PDF response after the
+     * agency's branding/settings change and the PDF is regenerated.
+     */
+    private static String cacheBustedPdfUrl(String pdfUrl, LocalDateTime updatedAt) {
+        if (pdfUrl == null || pdfUrl.isBlank()) return pdfUrl;
+        long version = updatedAt != null
+                ? updatedAt.toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
+                : System.currentTimeMillis();
+        String separator = pdfUrl.contains("?") ? "&" : "?";
+        return pdfUrl + separator + "v=" + version;
+    }
 }
+

@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface PlanFeatureRepository extends JpaRepository<PlanFeature, Long> {
     List<PlanFeature> findAllByPlanId(Long planId);
-    List<PlanFeature> findAllByPlanCode(String planCode);
+    List<PlanFeature> findAllByPlan_Code(String planCode);
     List<PlanFeature> findAllByFeatureCodeAndEnabledTrue(String featureCode);
     Optional<PlanFeature> findByPlanIdAndFeatureCode(Long planId, String featureCode);
     boolean existsByPlanIdAndFeatureCodeAndEnabledTrue(Long planId, String featureCode);

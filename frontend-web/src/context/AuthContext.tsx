@@ -1,8 +1,32 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import api from '../api/axios';
+import { generateId } from '../lib/generateId';
+import i18n from '../i18n';
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'EMPLOYEE' | 'AGENT' | 'CLIENT';
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'AGENCY_OWNER'
+  | 'ADMIN'
+  | 'MANAGER'
+  | 'EMPLOYEE'
+  | 'ACCOUNTANT'
+  | 'FLEET_MANAGER'
+  | 'CUSTOM'
+  | 'RECEPTIONIST'
+  | 'VIEWER'
+  | 'AGENT'
+  | 'CLIENT';
+
+export interface AccountAccess {
+  canUsePlatform: boolean;
+  canCreateContracts: boolean;
+  canCreateReservations: boolean;
+  canManageVehicles: boolean;
+  canAccessBilling: boolean;
+  canAccessSupport: boolean;
+  blockedReason: string | null;
+}
 
 export interface User {
   id: number;
@@ -11,11 +35,19 @@ export interface User {
   tenantId: number;
   tenantName: string;
   emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
+  language?: string;
+  themeMode?: string;
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
   jobTitle?: string;
   avatarUrl?: string;
+  agencyStatus?: string;
+  subscriptionStatus?: string;
+  planCode?: string;
+  planName?: string;
+  accountAccess?: AccountAccess;
 }
 
 export interface UserProfile {
@@ -36,13 +68,17 @@ export interface TenantBranding {
 
 interface AuthContextType {
   user: User | null;
+  profile: UserProfile;
   tenant: TenantBranding | null;
-  login: (credentials: any) => Promise<User>;
+  login: (credentials: any) => Promise<any>;
+  verify2FA: (challengeToken: string, code: string, recoveryCode?: string, trustDevice?: boolean) => Promise<User>;
+  verifyEmailOtp2FA: (challengeToken: string, code: string, trustDevice?: boolean) => Promise<User>;
   logout: () => Promise<void>;
   register: (data: any) => Promise<User>;
-  googleLogin: (idToken: string) => Promise<User>;
-  refreshAccessToken: () => Promise<string | null>;
+  googleLogin: (idToken: string) => Promise<any>;
+  refreshAccessToken: () => Promise<boolean>;
   updateProfile: (profile: Partial<UserProfile>) => void;
+  updateCurrentUser: (updatedUser: Partial<User>) => void;
   getProfile: () => UserProfile;
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
@@ -51,11 +87,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getStoredAccessToken = () =>
+  localStorage.getItem('accessToken')
+  || sessionStorage.getItem('accessToken')
+  || localStorage.getItem('token')
+  || sessionStorage.getItem('token');
+
+const getStoredRefreshToken = () =>
+  localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+
+const storeAccessToken = (token: string) => {
+  localStorage.setItem('token', token);
+  localStorage.setItem('accessToken', token);
+};
+
+const logAuthDebug = (details: Record<string, unknown>) => {
+  if (!import.meta.env.DEV) return;
+  const token = getStoredAccessToken();
+  console.info('[AUTH_DEBUG]', {
+    origin: window.location.origin,
+    apiBaseUrl: api.defaults.baseURL,
+    tokenExists: Boolean(token),
+    tokenLength: token?.length || 0,
+    ...details,
+  });
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
   const [loading, setLoading] = useState(true);
-  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
 
   const fetchTenantBranding = useCallback(async () => {
     try {
@@ -72,26 +134,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Initialize from localStorage
+  // Bootstrap the UI by verifying the current origin's bearer token via /me.
+  // localhost and 192.168.x.x have separate localStorage, so opening the LAN
+  // URL for the first time correctly stays unauthenticated without calling
+  // protected APIs until the user logs in on that origin.
   useEffect(() => {
+    let cancelled = false;
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser(normalizeUser(parsed));
-        fetchTenantBranding();
-      } catch {
+    const storedAccessToken = getStoredAccessToken();
+    const storedRefreshToken = getStoredRefreshToken();
+    logAuthDebug({ meStatus: 'BOOTSTRAP_START' });
+
+    if (storedAccessToken) {
+      api.get('/me')
+        .then(({ data }) => {
+          if (cancelled) return;
+          const currentUser = normalizeUser(data);
+          logAuthDebug({ meStatus: 200, currentUserRole: currentUser.role, agencyId: currentUser.tenantId || (data as any)?.agencyId });
+          localStorage.setItem('user', JSON.stringify(currentUser));
+          setUser(currentUser);
+          fetchTenantBranding();
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          // Only drop the session on a confirmed auth rejection (401, even
+          // after the interceptor's silent refresh attempt already failed).
+          // Network errors / 5xx must never log the user out.
+          logAuthDebug({ meStatus: err?.response?.status || 'NETWORK_ERROR', currentUserRole: null, agencyId: null });
+          if (err?.response?.status === 401) {
+            clearStorage();
+            setUser(null);
+            window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'error', message: 'Session expired. Please login again.' } }));
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    } else {
+      if (storedUser || storedRefreshToken) {
+        logAuthDebug({ meStatus: 'TOKEN_MISSING_FOR_ORIGIN', currentUserRole: null, agencyId: null });
         clearStorage();
+        setUser(null);
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'warning', message: 'You are not signed in on this browser address. Please login again.' } }));
       }
+      setLoading(false);
     }
-    setLoading(false);
 
     const handleAuthError = () => {
       clearStorage();
       setUser(null);
       // NEVER redirect to login from public contract signing pages
-      const isPublicSigningPage = window.location.hash.startsWith('#/contract-sign');
+      const isPublicSigningPage = window.location.hash.startsWith('#/contract-sign') || window.location.hash.startsWith('#/inspection');
       if (!isPublicSigningPage && window.location.pathname !== '/login' && !window.location.hash.startsWith('#/login')) {
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'error', message: 'Session expired. Please login again.' } }));
         window.location.href = '/#/login';
       }
     };
@@ -100,17 +195,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fetchTenantBranding();
     };
 
+    // Any API call can surface a freshly-suspended/blocked agency or an
+    // expired/suspended subscription — update accountAccess immediately
+    // so the route guard redirects to the lock screen on this same request
+    // cycle, without waiting for the next /me poll or a logout/login.
+    const handleAccountBlocked = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { errorCode: string; data?: any } | undefined;
+      if (!detail) return;
+      setUser((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          agencyStatus: detail.data?.agencyStatus || current.agencyStatus,
+          subscriptionStatus: detail.data?.subscriptionStatus || current.subscriptionStatus,
+          accountAccess: {
+            canUsePlatform: false,
+            canCreateContracts: false,
+            canCreateReservations: false,
+            canManageVehicles: false,
+            canAccessBilling: true,
+            canAccessSupport: true,
+            blockedReason: detail.errorCode,
+          },
+        };
+      });
+    };
+
     window.addEventListener('auth-error', handleAuthError);
     window.addEventListener('tenant-updated', handleTenantUpdated);
+    window.addEventListener('account-blocked', handleAccountBlocked);
     return () => {
+      cancelled = true;
       window.removeEventListener('auth-error', handleAuthError);
       window.removeEventListener('tenant-updated', handleTenantUpdated);
+      window.removeEventListener('account-blocked', handleAccountBlocked);
     };
   }, [fetchTenantBranding]);
 
+  // The user's saved UI language is a personal account preference — apply it
+  // as soon as it's known (bootstrap /me, login, or a later preference save)
+  // so the whole app (including RTL direction) follows the account, not just
+  // this browser's localStorage.
+  useEffect(() => {
+    if (user?.language && user.language !== i18n.language) {
+      i18n.changeLanguage(user.language);
+    }
+  }, [user?.language]);
+
   const clearStorage = () => {
+    // Remove legacy token storage left by pre-cookie releases.
     localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('tokenExpiry');
     localStorage.removeItem('user_profile');
@@ -124,29 +263,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tenantId: data.tenantId,
     tenantName: data.tenantName,
     emailVerified: data.emailVerified,
+    twoFactorEnabled: data.twoFactorEnabled,
+    language: data.language,
+    themeMode: data.themeMode,
     firstName: data.firstName,
     lastName: data.lastName,
     phoneNumber: data.phoneNumber,
     jobTitle: data.jobTitle,
     avatarUrl: data.avatarUrl,
+    agencyStatus: data.agencyStatus,
+    subscriptionStatus: data.subscriptionStatus,
+    planCode: data.planCode,
+    planName: data.planName,
+    accountAccess: data.accountAccess,
   });
 
-  const setAuthData = (data: any) => {
-    localStorage.setItem('token', data.accessToken);
-    if (data.refreshToken) {
-      localStorage.setItem('refreshToken', data.refreshToken);
+  const setAuthData = (data: any): User => {
+    const payload = (data && data.success !== undefined && data.data) ? data.data : data;
+    const userPayload = payload?.user || payload;
+    if (payload?.accessToken) storeAccessToken(payload.accessToken);
+    else localStorage.removeItem('token');
+    if (payload?.refreshToken) localStorage.setItem('refreshToken', payload.refreshToken);
+    else localStorage.removeItem('refreshToken');
+    if (payload?.expiresIn) {
+      localStorage.setItem('tokenExpiry', String(Date.now() + payload.expiresIn * 1000));
+    } else {
+      localStorage.removeItem('tokenExpiry');
     }
-    const user = normalizeUser(data);
+    const user = normalizeUser(userPayload);
     localStorage.setItem('user', JSON.stringify(user));
-    if (data.expiresIn) {
-      const expiry = Date.now() + data.expiresIn * 1000;
-      localStorage.setItem('tokenExpiry', expiry.toString());
-    }
     // Also sync profile
     const profile = buildProfile(user);
     localStorage.setItem('user_profile', JSON.stringify(profile));
     setUser(user);
     fetchTenantBranding();
+    // The login/register response doesn't carry agencyStatus/accountAccess —
+    // only /me computes those fresh from the DB. Enrich right away so a
+    // just-suspended agency is locked out from the very first page load,
+    // not only after the next unrelated /me call happens to fire.
+    api.get('/me')
+      .then(({ data }) => {
+        setUser((current) => current && current.id === user.id ? { ...current, ...normalizeUser(data) } : current);
+      })
+      .catch(() => undefined);
+    return user;
   };
 
   const buildProfile = (data: any): UserProfile => ({
@@ -160,31 +320,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = async (credentials: any) => {
-    const { data } = await api.post('/auth/login', credentials);
-    setAuthData(data);
-    return data;
+    let deviceFingerprint = localStorage.getItem('deviceFingerprint');
+    if (!deviceFingerprint) {
+      deviceFingerprint = crypto.randomUUID ? crypto.randomUUID() : generateId('device');
+      localStorage.setItem('deviceFingerprint', deviceFingerprint);
+    }
+    const deviceName = `${navigator.platform || 'Device'} · ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Browser'}`;
+    const { data } = await api.post('/auth/login', {
+      ...credentials,
+      deviceFingerprint,
+      deviceName,
+    });
+    const payload = (data && data.success !== undefined && data.data) ? data.data : data;
+    // 2FA challenge — return payload without storing tokens
+    if (payload?.twoFactorRequired) return payload;
+    return setAuthData(data);
+  };
+
+  const verify2FA = async (challengeToken: string, code: string, recoveryCode?: string, trustDevice?: boolean) => {
+    let deviceFingerprint = localStorage.getItem('deviceFingerprint');
+    if (!deviceFingerprint) {
+      deviceFingerprint = crypto.randomUUID ? crypto.randomUUID() : generateId('device');
+      localStorage.setItem('deviceFingerprint', deviceFingerprint);
+    }
+    const deviceName = `${navigator.platform || 'Device'} · ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Browser'}`;
+    const { data } = await api.post('/auth/2fa/verify', {
+      challengeToken,
+      code: code || '',
+      recoveryCode: recoveryCode || '',
+      deviceFingerprint,
+      deviceName,
+      trustDevice: !!trustDevice,
+    });
+    return setAuthData(data);
+  };
+
+  const verifyEmailOtp2FA = async (challengeToken: string, code: string, trustDevice?: boolean) => {
+    let deviceFingerprint = localStorage.getItem('deviceFingerprint');
+    if (!deviceFingerprint) {
+      deviceFingerprint = crypto.randomUUID ? crypto.randomUUID() : generateId('device');
+      localStorage.setItem('deviceFingerprint', deviceFingerprint);
+    }
+    const deviceName = `${navigator.platform || 'Device'} · ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Browser'}`;
+    const { data } = await api.post('/auth/2fa/email/verify', {
+      challengeToken,
+      code,
+      deviceFingerprint,
+      deviceName,
+      trustDevice: !!trustDevice,
+    });
+    return setAuthData(data);
   };
 
   const register = async (registerData: any) => {
     const { data } = await api.post('/auth/register', registerData);
-    setAuthData(data);
-    return data;
+    return setAuthData(data);
   };
 
   const googleLogin = async (idToken: string) => {
     const { data } = await api.post('/auth/google', { idToken });
-    setAuthData(data);
-    return data;
+    const payload = (data && data.success !== undefined && data.data) ? data.data : data;
+    // 2FA challenge — return payload without storing tokens (same as email login path)
+    if (payload?.twoFactorRequired) return payload;
+    return setAuthData(data);
   };
 
-  const refreshAccessToken = useCallback(async (): Promise<string | null> => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
-      clearStorage();
-      setUser(null);
-      window.dispatchEvent(new Event('auth-error'));
-      return null;
-    }
+  const refreshAccessToken = useCallback(async (): Promise<boolean> => {
+    const refreshToken = getStoredRefreshToken();
+    if (!refreshToken) return false;
 
     // If a refresh is already in flight, return that promise
     if (refreshPromiseRef.current) {
@@ -193,21 +396,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const promise = api.post('/auth/refresh', { refreshToken })
       .then(({ data }) => {
-        localStorage.setItem('token', data.accessToken);
-        if (data.refreshToken) {
-          localStorage.setItem('refreshToken', data.refreshToken);
-        }
-        if (data.expiresIn) {
-          const expiry = Date.now() + data.expiresIn * 1000;
-          localStorage.setItem('tokenExpiry', expiry.toString());
-        }
-        return data.accessToken as string;
+        const payload = (data && data.success !== undefined && data.data) ? data.data : data;
+        if (payload?.accessToken) storeAccessToken(payload.accessToken);
+        if (payload?.refreshToken) localStorage.setItem('refreshToken', payload.refreshToken);
+        return true;
       })
       .catch(() => {
         clearStorage();
         setUser(null);
         window.dispatchEvent(new Event('auth-error'));
-        return null;
+        return false;
       })
       .finally(() => {
         refreshPromiseRef.current = null;
@@ -218,11 +416,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
     try {
-      if (refreshToken) {
-        await api.post('/auth/logout', { refreshToken });
-      }
+      const refreshToken = getStoredRefreshToken();
+      await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
     } catch {
       // Ignore logout errors
     } finally {
@@ -239,7 +435,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(prev => {
       if (!prev) return prev;
       const names = updated.fullName?.split(' ') || [];
-      return {
+      const next = {
         ...prev,
         firstName: names[0] || prev.firstName,
         lastName: names.slice(1).join(' ') || prev.lastName,
@@ -247,6 +443,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         jobTitle: updated.jobTitle || prev.jobTitle,
         avatarUrl: updated.avatar || prev.avatarUrl,
       };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Merges fields straight from a backend user DTO (e.g. the response of a
+  // profile/avatar save) into the global user state — the single source of
+  // truth every topbar/sidebar/settings component reads from.
+  const updateCurrentUser = useCallback((updatedUser: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updatedUser };
+      localStorage.setItem('user', JSON.stringify(next));
+      localStorage.setItem('user_profile', JSON.stringify(buildProfile(next)));
+      return next;
     });
   }, []);
 
@@ -276,16 +487,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
+  // Always derived from `user` so any update to it (login, refresh, profile
+  // save, avatar upload) is reflected synchronously everywhere — no stale
+  // localStorage-only state, no same-tab event wiring needed.
+  const profile = useMemo<UserProfile>(() => buildProfile(user || {}), [user]);
+
   return (
     <AuthContext.Provider value={{
       user,
+      profile,
       tenant,
       login,
+      verify2FA,
+      verifyEmailOtp2FA,
       logout,
       register,
       googleLogin,
       refreshAccessToken,
       updateProfile,
+      updateCurrentUser,
       getProfile,
       isAuthenticated: !!user,
       isSuperAdmin,
@@ -303,3 +523,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

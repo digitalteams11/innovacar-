@@ -8,6 +8,7 @@ import com.carrental.entity.Tenant;
 import com.carrental.entity.Vehicle;
 import com.carrental.entity.VehicleStatus;
 import com.carrental.exception.ResourceNotFoundException;
+import com.carrental.repository.BranchRepository;
 import com.carrental.repository.TenantRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
@@ -37,6 +38,7 @@ class VehicleServiceTest {
 
     @Mock private VehicleRepository vehicleRepository;
     @Mock private TenantRepository  tenantRepository;
+    @Mock private BranchRepository branchRepository;
 
     @InjectMocks
     private VehicleService vehicleService;
@@ -208,7 +210,9 @@ class VehicleServiceTest {
 
         vehicleService.deleteVehicle(VEHICLE_ID);
 
-        verify(vehicleRepository).delete(availableVehicle);
+        verify(vehicleRepository).save(availableVehicle);
+        assertThat(availableVehicle.getDeleted()).isTrue();
+        assertThat(availableVehicle.getDeletedAt()).isNotNull();
     }
 
     @Test
@@ -231,5 +235,21 @@ class VehicleServiceTest {
         long count = vehicleService.countAvailable();
 
         assertThat(count).isEqualTo(7L);
+    }
+
+    @Test
+    void vehicleResponseUsesSafeDefaultsForSparseRows() {
+        Vehicle sparse = Vehicle.builder()
+                .id(400L)
+                .tenant(tenant)
+                .build();
+
+        VehicleResponse response = VehicleResponse.from(sparse);
+
+        assertThat(response.getMarque()).isEmpty();
+        assertThat(response.getPrixJour()).isEqualByComparingTo("0.00");
+        assertThat(response.getStatut()).isEqualTo(VehicleStatus.AVAILABLE);
+        assertThat(response.getCategory()).isEmpty();
+        assertThat(response.getGpsEnabled()).isFalse();
     }
 }

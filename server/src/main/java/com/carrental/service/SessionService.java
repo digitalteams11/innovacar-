@@ -2,6 +2,7 @@ package com.carrental.service;
 
 import com.carrental.entity.UserSession;
 import com.carrental.repository.UserSessionRepository;
+import com.carrental.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.Optional;
 public class SessionService {
 
     private final UserSessionRepository userSessionRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public UserSession createSession(Long userId, String tokenHash, String ipAddress, String userAgent, long expiryMinutes) {
@@ -51,6 +53,10 @@ public class SessionService {
         sessionOpt.ifPresent(session -> {
             session.setRevoked(true);
             userSessionRepository.save(session);
+            refreshTokenRepository.findByTokenHash(session.getTokenHash()).ifPresent(token -> {
+                token.setRevoked(true);
+                refreshTokenRepository.save(token);
+            });
             log.info("Revoked session {} for user {}", sessionId, session.getUserId());
         });
     }
@@ -72,7 +78,34 @@ public class SessionService {
             session.setRevoked(true);
         }
         userSessionRepository.saveAll(sessions);
+        var refreshTokens = refreshTokenRepository.findByUserIdAndRevokedFalseOrderByCreatedAtAsc(userId);
+        refreshTokens.forEach(token -> token.setRevoked(true));
+        refreshTokenRepository.saveAll(refreshTokens);
         log.info("Revoked all {} sessions for user {}", sessions.size(), userId);
+    }
+
+    @Transactional
+    public void revokeAllUserSessionsExcept(Long userId, Long keepSessionId) {
+        List<UserSession> sessions = getActiveSessions(userId);
+        List<UserSession> toRevoke = sessions.stream()
+                .filter(s -> !s.getId().equals(keepSessionId))
+                .toList();
+        for (UserSession session : toRevoke) {
+            session.setRevoked(true);
+        }
+        userSessionRepository.saveAll(toRevoke);
+        var refreshTokens = refreshTokenRepository.findByUserIdAndRevokedFalseOrderByCreatedAtAsc(userId);
+        // revoke refresh tokens not belonging to the kept session
+        List<String> keepHashes = sessions.stream()
+                .filter(s -> s.getId().equals(keepSessionId))
+                .map(UserSession::getTokenHash)
+                .toList();
+        var tokensToRevoke = refreshTokens.stream()
+                .filter(t -> !keepHashes.contains(t.getTokenHash()))
+                .toList();
+        tokensToRevoke.forEach(token -> token.setRevoked(true));
+        refreshTokenRepository.saveAll(tokensToRevoke);
+        log.info("Revoked {} sessions (kept session {}) for user {}", toRevoke.size(), keepSessionId, userId);
     }
 
     @Transactional

@@ -5,10 +5,19 @@ import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.TenantRepository;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 /**
@@ -53,6 +62,10 @@ public class AgencyController {
         result.put("termsAndConditions", tenant.getTermsAndConditions() != null ? tenant.getTermsAndConditions() : "");
         result.put("subscriptionActive", tenant.isSubscriptionActive());
         result.put("subscriptionEndDate", tenant.getSubscriptionEndDate() != null ? tenant.getSubscriptionEndDate().toString() : "");
+        result.put("balance", tenant.getBalance() != null ? tenant.getBalance() : java.math.BigDecimal.ZERO);
+        result.put("hasFreeAccess", tenant.hasActiveFreeAccess());
+        result.put("freeAccessUntil", tenant.getFreeAccessUntil());
+        result.put("freeAccessReason", tenant.getFreeAccessReason());
         return ResponseEntity.ok(result);
     }
 
@@ -69,26 +82,45 @@ public class AgencyController {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Tenant not found with id: " + tenantId));
 
+        // name and email are unique per-tenant columns — only re-validate them
+        // when the caller is actually changing the value, and exclude this
+        // tenant's own row so re-saving the same agency never looks like a
+        // duplicate of itself.
         if (updates.containsKey("name")) {
-            tenant.setName(updates.get("name"));
+            String name = updates.get("name");
+            if (!StringUtils.hasText(name)) {
+                throw new IllegalArgumentException("Agency information is required.");
+            }
+            if (!name.equals(tenant.getName()) && tenantRepository.existsByNameAndIdNot(name, tenantId)) {
+                throw new IllegalStateException("This agency name is already used by another agency.");
+            }
+            tenant.setName(name);
         }
         if (updates.containsKey("email")) {
-            tenant.setEmail(updates.get("email"));
+            String email = updates.get("email");
+            if (StringUtils.hasText(email)
+                    && !email.equals(tenant.getEmail())
+                    && tenantRepository.existsByEmailAndIdNot(email, tenantId)) {
+                throw new IllegalStateException("This email is already used by another agency.");
+            }
+            if (StringUtils.hasText(email)) {
+                tenant.setEmail(email);
+            }
         }
         if (updates.containsKey("address")) {
-            tenant.setAddress(updates.get("address"));
+            tenant.setAddress(StringUtils.hasText(updates.get("address")) ? updates.get("address") : null);
         }
         if (updates.containsKey("phone")) {
-            tenant.setPhone(updates.get("phone"));
+            tenant.setPhone(StringUtils.hasText(updates.get("phone")) ? updates.get("phone") : null);
         }
         if (updates.containsKey("taxId")) {
-            tenant.setTaxId(updates.get("taxId"));
+            tenant.setTaxId(StringUtils.hasText(updates.get("taxId")) ? updates.get("taxId") : null);
         }
         if (updates.containsKey("city")) {
-            tenant.setCity(updates.get("city"));
+            tenant.setCity(StringUtils.hasText(updates.get("city")) ? updates.get("city") : null);
         }
         if (updates.containsKey("country")) {
-            tenant.setCountry(updates.get("country"));
+            tenant.setCountry(StringUtils.hasText(updates.get("country")) ? updates.get("country") : null);
         }
         if (updates.containsKey("logoUrl")) {
             tenant.setLogoUrl(updates.get("logoUrl"));
@@ -118,5 +150,106 @@ public class AgencyController {
         result.put("agencyStampUrl", saved.getAgencyStampUrl() != null ? saved.getAgencyStampUrl() : "");
         result.put("termsAndConditions", saved.getTermsAndConditions() != null ? saved.getTermsAndConditions() : "");
         return ResponseEntity.ok(result);
+    }
+
+    // ── POST /api/agency/settings/logo ──────────────────────────────────────
+
+    @PostMapping(value = "/settings/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@rolePermissionService.has('MANAGE_SETTINGS')")
+    public ResponseEntity<Map<String, Object>> uploadLogo(@RequestParam("file") MultipartFile file) {
+        return storeAgencyAsset(file, "logo");
+    }
+
+    // ── DELETE /api/agency/settings/logo ────────────────────────────────────
+
+    @DeleteMapping("/settings/logo")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_SETTINGS')")
+    public ResponseEntity<Void> deleteLogo() {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + tenantId));
+        tenant.setLogoUrl(null);
+        tenantRepository.save(tenant);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── POST /api/agency/settings/stamp ─────────────────────────────────────
+
+    @PostMapping(value = "/settings/stamp", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@rolePermissionService.has('MANAGE_SETTINGS')")
+    public ResponseEntity<Map<String, Object>> uploadStamp(@RequestParam("file") MultipartFile file) {
+        return storeAgencyAsset(file, "stamp");
+    }
+
+    // ── DELETE /api/agency/settings/stamp ───────────────────────────────────
+
+    @DeleteMapping("/settings/stamp")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_SETTINGS')")
+    public ResponseEntity<Void> deleteStamp() {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + tenantId));
+        tenant.setAgencyStampUrl(null);
+        tenantRepository.save(tenant);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Shared file-storage helper ───────────────────────────────────────────
+
+    private static final long MAX_ASSET_BYTES = 5L * 1024 * 1024;
+    private static final DateTimeFormatter ASSET_TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+
+    private ResponseEntity<Map<String, Object>> storeAgencyAsset(MultipartFile file, String assetType) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is required.");
+        }
+        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase() : "";
+        if (!contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files are allowed.");
+        }
+        if (file.getSize() > MAX_ASSET_BYTES) {
+            throw new IllegalArgumentException("File must be under 5 MB.");
+        }
+
+        Long tenantId = TenantContext.getCurrentTenantId();
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + tenantId));
+
+        String ext = resolveExtension(file.getOriginalFilename(), contentType);
+        String ts = ASSET_TS.format(LocalDateTime.now());
+        String fileName = assetType + "_" + ts + ext;
+
+        try {
+            Path dir = Path.of("uploads", "agency", String.valueOf(tenantId));
+            Files.createDirectories(dir);
+            Files.copy(file.getInputStream(), dir.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store " + assetType + " file: " + e.getMessage());
+        }
+
+        String url = "/uploads/agency/" + tenantId + "/" + fileName;
+        if ("logo".equals(assetType)) {
+            tenant.setLogoUrl(url);
+        } else {
+            tenant.setAgencyStampUrl(url);
+        }
+        tenantRepository.save(tenant);
+
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("url", url);
+        body.put(assetType + "Url", url);
+        return ResponseEntity.ok(body);
+    }
+
+    private String resolveExtension(String originalFilename, String contentType) {
+        if (StringUtils.hasText(originalFilename)) {
+            int dot = originalFilename.lastIndexOf('.');
+            if (dot >= 0) return originalFilename.substring(dot).toLowerCase();
+        }
+        if (contentType.contains("png"))  return ".png";
+        if (contentType.contains("jpeg") || contentType.contains("jpg")) return ".jpg";
+        if (contentType.contains("gif"))  return ".gif";
+        if (contentType.contains("webp")) return ".webp";
+        return ".png";
     }
 }

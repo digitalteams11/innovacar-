@@ -16,8 +16,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * User-management business logic.
@@ -41,6 +51,9 @@ public class UserService {
     private final UserRepository   userRepository;
     private final TenantRepository tenantRepository;
     private final PasswordEncoder  passwordEncoder;
+    private final PasswordPolicyService passwordPolicyService;
+    private final RefreshTokenService refreshTokenService;
+    private final SessionService sessionService;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -88,6 +101,7 @@ public class UserService {
      */
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
+        passwordPolicyService.validate(request.getPassword());
         Long   tenantId = TenantContext.getCurrentTenantId();
         Tenant tenant   = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -139,7 +153,7 @@ public class UserService {
 
         // Re-hash password only when provided
         if (StringUtils.hasText(request.getPassword())) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            passwordPolicyService.replacePassword(user, request.getPassword());
         }
 
         // Profile fields
@@ -167,6 +181,59 @@ public class UserService {
         User saved = userRepository.save(user);
         log.info("Updated user [id={}] in tenant [{}]", id, tenantId);
         return UserResponse.from(saved);
+    }
+
+    // ── Avatar upload ────────────────────────────────────────────────────────
+
+    private static final Set<String> ALLOWED_AVATAR_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/jfif");
+    private static final long MAX_AVATAR_BYTES = 5L * 1024 * 1024;
+
+    /**
+     * Stores the uploaded avatar image under {@code uploads/avatars/{userId}/}
+     * and persists the resulting short relative URL on the user record.
+     *
+     * @throws IllegalArgumentException if the file is missing, too large, or an unsupported type
+     */
+    @Transactional
+    public UserResponse updateAvatar(Long id, MultipartFile file) {
+        User user = fetchUserInTenant(id);
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Avatar file is required");
+        }
+        String contentType = file.getContentType() != null
+                ? file.getContentType().toLowerCase(Locale.ROOT) : "";
+        if (!ALLOWED_AVATAR_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Only JPEG, PNG, WebP, or JFIF images are allowed.");
+        }
+        if (file.getSize() > MAX_AVATAR_BYTES) {
+            throw new IllegalArgumentException("Avatar image must be smaller than 5MB.");
+        }
+
+        String extension = switch (contentType) {
+            case "image/jpeg", "image/jfif" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            default -> throw new IllegalArgumentException("Unsupported avatar type");
+        };
+
+        try {
+            Path avatarDir = Path.of("uploads", "avatars", String.valueOf(id));
+            Files.createDirectories(avatarDir);
+            String timestamp = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS").format(LocalDateTime.now());
+            String fileName = "avatar_" + timestamp + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
+            Path destination = avatarDir.resolve(fileName);
+            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+
+            user.setAvatarUrl("/uploads/avatars/" + id + "/" + fileName);
+            User saved = userRepository.save(user);
+            log.info("Updated avatar for user [id={}]", id);
+            return UserResponse.from(saved);
+        } catch (IOException exception) {
+            log.warn("Unable to save avatar for user [id={}]", id, exception);
+            throw new java.io.UncheckedIOException("Unable to upload avatar image", exception);
+        }
     }
 
     // ── DELETE ────────────────────────────────────────────────────────────────
@@ -201,18 +268,54 @@ public class UserService {
             throw new IllegalArgumentException("Current password is incorrect");
         }
 
-        user.setPassword(passwordEncoder.encode(newPassword));
+        passwordPolicyService.replacePassword(user, newPassword);
+        user.setMustChangePassword(false);
         userRepository.save(user);
+        refreshTokenService.revokeAllUserRefreshTokens(user.getId());
+        sessionService.revokeAllUserSessions(user.getId());
         log.info("Password changed for user [id={}] in tenant [{}]", userId, TenantContext.getCurrentTenantId());
     }
 
     @Transactional
     public void adminResetPassword(Long userId, String newPassword) {
         User user = fetchUserInTenant(userId);
-        user.setPassword(passwordEncoder.encode(newPassword));
+        passwordPolicyService.replacePassword(user, newPassword);
+        user.setMustChangePassword(false);
         userRepository.save(user);
+        refreshTokenService.revokeAllUserRefreshTokens(user.getId());
+        sessionService.revokeAllUserSessions(user.getId());
         log.info("Administrator reset password for user [id={}] in tenant [{}]",
                 userId, TenantContext.getCurrentTenantId());
+    }
+
+    // ── Personal preferences (language / theme mode) ────────────────────────
+
+    private static final Set<String> ALLOWED_LANGUAGES = Set.of("en", "fr", "ar");
+    private static final Set<String> ALLOWED_THEME_MODES = Set.of("light", "dark", "auto");
+
+    /**
+     * Updates the calling user's own language/theme preferences. These are
+     * personal account settings — never shared across the tenant/agency.
+     */
+    @Transactional
+    public UserResponse updatePreferences(Long userId, String language, String themeMode) {
+        User user = fetchUserInTenant(userId);
+
+        if (language != null) {
+            if (!ALLOWED_LANGUAGES.contains(language)) {
+                throw new IllegalArgumentException("Unsupported language: " + language);
+            }
+            user.setLanguage(language);
+        }
+        if (themeMode != null) {
+            if (!ALLOWED_THEME_MODES.contains(themeMode)) {
+                throw new IllegalArgumentException("Unsupported theme mode: " + themeMode);
+            }
+            user.setThemeMode(themeMode);
+        }
+
+        userRepository.save(user);
+        return UserResponse.from(user);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

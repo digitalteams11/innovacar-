@@ -34,6 +34,7 @@ public class PhoneAuthService {
     private final TenantRepository tenantRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final SessionService sessionService;
     private final EmailService emailService;
 
     private static final int OTP_EXPIRY_MINUTES = 5;
@@ -182,9 +183,16 @@ public class PhoneAuthService {
     }
 
     private AuthResponse buildAuthResponse(User user) {
-        String accessToken = jwtTokenProvider.generateToken(user);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user);
         refreshTokenService.saveRefreshToken(user.getId(), refreshToken);
+        UserSession session = sessionService.createSession(
+                user.getId(),
+                RefreshTokenService.hashToken(refreshToken),
+                null,
+                "Phone OTP",
+                jwtTokenProvider.getRefreshExpirationMs() / 60000
+        );
+        String accessToken = jwtTokenProvider.generateToken(user, session.getId());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)

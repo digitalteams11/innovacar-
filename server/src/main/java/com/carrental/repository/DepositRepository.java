@@ -3,6 +3,7 @@ package com.carrental.repository;
 import com.carrental.entity.Deposit;
 import com.carrental.entity.DepositStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,6 +16,20 @@ import java.util.Optional;
 public interface DepositRepository extends JpaRepository<Deposit, Long> {
 
     List<Deposit> findAllByTenantId(Long tenantId);
+
+    /** Count of all deposits for a tenant — used by the Super Admin data-reset preview. */
+    long countByTenantId(Long tenantId);
+
+    /** Deletes every deposit for a tenant — used by the Super Admin data-reset execute. */
+    void deleteAllByTenantId(Long tenantId);
+
+    /** Deletes the deposit linked to a contract (if any) — used by contract trash purge. */
+    void deleteAllByContractId(Long contractId);
+
+    /** Native bulk DELETE — bypasses @SQLRestriction on Contract (see PaymentRepository for details). */
+    @Modifying
+    @Query(value = "DELETE FROM deposits WHERE contract_id = :contractId", nativeQuery = true)
+    int deleteNativeByContractId(@Param("contractId") Long contractId);
 
     List<Deposit> findAllByClientIdAndTenantId(Long clientId, Long tenantId);
 

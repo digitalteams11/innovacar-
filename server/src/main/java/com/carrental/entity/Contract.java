@@ -2,6 +2,7 @@ package com.carrental.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,11 +16,12 @@ import java.util.List;
  * Supports digital contracts, QR signing, PDF generation, and full rental workflow.
  */
 @Entity
+@SQLRestriction("coalesce(deleted, false) = false")
 @Table(
     name = "contracts",
     indexes = {
         @Index(name = "idx_contract_tenant", columnList = "tenant_id"),
-        @Index(name = "idx_contract_tenant_status", columnList = "tenant_id, status"),
+        @Index(name = "idx_contract_tenant_status", columnList = "tenant_id, contract_status"),
         @Index(name = "idx_contract_qr_token", columnList = "qr_token", unique = true),
         @Index(name = "idx_contract_number", columnList = "contract_number", unique = true),
         @Index(name = "idx_contract_reservation", columnList = "reservation_id")
@@ -56,8 +58,8 @@ public class Contract {
 
     // ── Linked Entities ──────────────────────────────────────────────────────
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reservation_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id", unique = true)
     private Reservation reservation;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -67,6 +69,12 @@ public class Contract {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vehicle_id")
     private Vehicle vehicle;
+
+    // Optional agency contract template chosen for this contract's PDF.
+    // Nullable: existing contracts and "System default" choices have no template.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_template_id")
+    private ContractTemplate selectedTemplate;
 
     // ── Dates & Times ────────────────────────────────────────────────────────
 
@@ -246,6 +254,13 @@ public class Contract {
     @Column(name = "deposit_amount", precision = 10, scale = 2)
     private BigDecimal depositAmount;
 
+    @Column(name = "deposit_currency", length = 10)
+    private String depositCurrency;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deposit_status", length = 50)
+    private DepositStatus depositStatus;
+
     @Column(name = "paid_amount", precision = 10, scale = 2)
     private BigDecimal paidAmount;
 
@@ -287,6 +302,18 @@ public class Contract {
     @Column(name = "mileage_end")
     private Integer mileageEnd;
 
+    @Column(name = "condition_start_note", columnDefinition = "TEXT")
+    private String conditionStartNote;
+
+    @Column(name = "condition_end_note", columnDefinition = "TEXT")
+    private String conditionEndNote;
+
+    @Column(name = "damage_start_note", columnDefinition = "TEXT")
+    private String damageStartNote;
+
+    @Column(name = "damage_end_note", columnDefinition = "TEXT")
+    private String damageEndNote;
+
     // ── Digital Signatures ───────────────────────────────────────────────────
 
     @Column(name = "client_signature", columnDefinition = "TEXT")
@@ -327,6 +354,20 @@ public class Contract {
     @Column(name = "owner_user_agent", length = 255)
     private String ownerUserAgent;
 
+    // ── Branding Snapshot (captured when agency signs) ───────────────────────
+    // Preserves the agency's logo, stamp, and T&C at signing time so PDF
+    // regeneration always reflects the branding that was in place when the
+    // contract was officially signed, regardless of later Settings changes.
+
+    @Column(name = "branding_logo_url", columnDefinition = "TEXT")
+    private String brandingLogoUrl;
+
+    @Column(name = "branding_stamp_url", columnDefinition = "TEXT")
+    private String brandingStampUrl;
+
+    @Column(name = "branding_terms_snapshot", columnDefinition = "TEXT")
+    private String brandingTermsSnapshot;
+
     // ── QR & Public Signing ──────────────────────────────────────────────────
 
     @Column(name = "qr_token", unique = true, length = 128)
@@ -354,6 +395,29 @@ public class Contract {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Builder.Default
+    @Column(name = "deleted", columnDefinition = "boolean default false")
+    private Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by", length = 150)
+    private String deletedBy;
+
+    // Captures the contract_status held right before this contract was moved
+    // to trash, so restore can put it back instead of always landing on one
+    // hardcoded status. Cleared again on restore.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_before_delete", length = 30)
+    private ContractStatus statusBeforeDelete;
+
+    // Captures the reservation status held right before the linked reservation
+    // was cancelled during trash. Restore uses this to put the reservation back
+    // to its original state instead of leaving it permanently CANCELLED.
+    @Column(name = "previous_reservation_status", length = 50)
+    private String previousReservationStatus;
 
     // ── Related Entities ─────────────────────────────────────────────────────
 
@@ -386,6 +450,7 @@ public class Contract {
         updatedAt = LocalDateTime.now();
         if (status == null) status = ContractStatus.DRAFT;
         if (termsAccepted == null) termsAccepted = false;
+        if (deleted == null) deleted = false;
     }
 
     @PreUpdate

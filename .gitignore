@@ -2,15 +2,25 @@
 node_modules/
 dist/
 dist-ssr/
+build/
 
 # Java build output
+target/
 server/target/
 
 # Runtime output
 *.log
-server/pdfs/
 hs_err_pid*.log
 replay_pid*.log
+
+# User-generated / runtime data — never belongs in version control.
+# storage/backups/ in particular holds full pg_dump database backups
+# (all user records, hashed passwords, client PII). uploads/ and
+# inspection-media/ hold real uploaded photos (vehicle inspections,
+# contract scans, avatars, branding assets).
+server/pdfs/
+server/uploads/
+server/storage/
 
 # Local configuration
 .env
@@ -18,11 +28,25 @@ replay_pid*.log
 !.env.example
 *.local
 
+# Environment-specific Spring config that may hold real credentials
+application-prod.properties
+application-local.properties
+application-prod.yml
+application-local.yml
+application-dev.yml
+
 # Editor and OS files
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local AI coding assistant tooling/session state — not project source.
+# .claude/worktrees/ in particular can contain full duplicate copies of the
+# repo from prior agent sessions and must never be pushed.
+.claude/
+.codex/
+.agents/
 
 # Separate nested repository, not part of this application
 codex-opener/

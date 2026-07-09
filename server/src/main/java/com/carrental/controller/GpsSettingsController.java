@@ -35,6 +35,7 @@ public class GpsSettingsController {
     // ── GET /api/gps/settings ────────────────────────────────────────────────
 
     @GetMapping
+    @PreAuthorize("@rolePermissionService.has('GPS_SETTINGS_VIEW')")
     public ResponseEntity<GpsSettingsResponse> getSettings() {
         return ResponseEntity.ok(gpsSettingsService.getSettings());
     }
@@ -42,34 +43,65 @@ public class GpsSettingsController {
     // ── POST /api/gps/settings ───────────────────────────────────────────────
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('GPS_SETTINGS_UPDATE')")
     public ResponseEntity<GpsSettingsResponse> saveSettings(
             @Valid @RequestBody GpsSettingsRequest request) {
         return ResponseEntity.ok(gpsSettingsService.saveSettings(request));
     }
 
     // ── DELETE /api/gps/settings ─────────────────────────────────────────────
+    // Full reset — removes the entire row (provider, base URL, credentials).
 
     @DeleteMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('GPS_CREDENTIALS_DELETE')")
     public ResponseEntity<Map<String, String>> deleteSettings() {
         gpsSettingsService.deleteSettings();
         return ResponseEntity.ok(Map.of("message", "GPS settings deleted successfully"));
     }
 
+    // ── POST /api/gps/settings/deactivate ────────────────────────────────────
+    // Disables tracking but keeps credentials, so reconnecting later doesn't
+    // require re-entering the API key.
+
+    @PostMapping("/deactivate")
+    @PreAuthorize("@rolePermissionService.has('GPS_SETTINGS_UPDATE')")
+    public ResponseEntity<Map<String, Object>> deactivate() {
+        GpsSettingsResponse result = gpsSettingsService.deactivate();
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "GPS integration deactivated successfully.",
+                "data", result
+        ));
+    }
+
+    // ── DELETE /api/gps/settings/credentials ─────────────────────────────────
+    // Surgical reset — clears only the API key/APP ID, keeps provider/base URL.
+
+    @DeleteMapping("/credentials")
+    @PreAuthorize("@rolePermissionService.has('GPS_CREDENTIALS_DELETE')")
+    public ResponseEntity<Map<String, Object>> deleteCredentials() {
+        GpsSettingsResponse result = gpsSettingsService.deleteCredentials();
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "GPS credentials deleted successfully.",
+                "data", result
+        ));
+    }
+
     // ── POST /api/gps/settings/test ──────────────────────────────────────────
 
     @PostMapping("/test")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('GPS_TEST_CONNECTION')")
     public ResponseEntity<GpsConnectionTestResponse> testConnectionWithStoredSettings() {
         GpsSettings settings = gpsSettingsService.getSettingsEntity();
         GpsConnectionTestResponse result = gpsProviderService.testConnectionWithStoredSettings(settings);
 
-        // Update connection status in DB based on test result
+        // Update connection status in DB based on the REAL test result — never
+        // mark CONNECTED unless the provider actually confirmed it.
         if (result.isSuccess()) {
             gpsSettingsService.updateConnectionStatus("CONNECTED", null);
         } else {
-            gpsSettingsService.updateConnectionStatus("ERROR", result.getMessage());
+            gpsSettingsService.updateConnectionStatus("FAILED", result.getMessage());
         }
 
         return ResponseEntity.ok(result);
@@ -78,7 +110,7 @@ public class GpsSettingsController {
     // ── POST /api/gps/settings/test-raw ──────────────────────────────────────
 
     @PostMapping("/test-raw")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('GPS_TEST_CONNECTION')")
     public ResponseEntity<GpsConnectionTestResponse> testConnectionWithRawCredentials(
             @Valid @RequestBody GpsConnectionTestRequest request) {
         GpsConnectionTestResponse result = gpsProviderService.testConnection(request);
@@ -88,14 +120,11 @@ public class GpsSettingsController {
     // ── POST /api/gps/settings/sync ──────────────────────────────────────────
 
     @PostMapping("/sync")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@rolePermissionService.has('GPS_SYNC_DEVICES')")
     public ResponseEntity<GpsDeviceSyncResponse> syncDevices() {
         GpsSettings settings = gpsSettingsService.getSettingsEntity();
-        if (settings == null) {
-            return ResponseEntity.ok(GpsDeviceSyncResponse.builder()
-                    .success(false)
-                    .message("No GPS settings configured")
-                    .build());
+        if (settings == null || settings.getApiKeyEncrypted() == null || settings.getApiKeyEncrypted().isBlank()) {
+            throw new IllegalStateException("Connect your GPS provider before syncing devices.");
         }
 
         GpsDeviceSyncResponse result = gpsProviderService.syncDevices(settings);
@@ -103,7 +132,7 @@ public class GpsSettingsController {
         if (result.isSuccess()) {
             gpsSettingsService.updateConnectionStatus("CONNECTED", null);
         } else {
-            gpsSettingsService.updateConnectionStatus("ERROR", result.getMessage());
+            gpsSettingsService.updateConnectionStatus("FAILED", result.getMessage());
         }
 
         return ResponseEntity.ok(result);

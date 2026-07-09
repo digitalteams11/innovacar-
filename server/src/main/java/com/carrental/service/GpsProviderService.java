@@ -1,8 +1,10 @@
 package com.carrental.service;
 
 import com.carrental.dto.gps.*;
+import com.carrental.entity.GpsDevice;
 import com.carrental.entity.GpsSettings;
 import com.carrental.entity.Vehicle;
+import com.carrental.repository.GpsDeviceRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
 import com.carrental.util.EncryptionUtil;
@@ -12,23 +14,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Service for interacting with external GPS providers.
- * Handles connection testing, device sync, and provider-specific API calls.
- * All API keys are decrypted only in-memory and never logged.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,6 +32,7 @@ public class GpsProviderService {
 
     private final EncryptionUtil encryptionUtil;
     private final VehicleRepository vehicleRepository;
+    private final GpsDeviceRepository gpsDeviceRepository;
 
     private WebClient createWebClient(String baseUrl) {
         return WebClient.builder()
@@ -43,21 +40,27 @@ public class GpsProviderService {
                 .build();
     }
 
-    /**
-     * Test connection to a GPS provider using provided credentials.
-     * Does NOT save anything to the database.
-     */
+    // ── Basic Auth helper ──────────────────────────────────────────────────────
+
+    private String basicAuthHeader(String username, String password) {
+        String credentials = username + ":" + password;
+        return "Basic " + Base64.getEncoder()
+                .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+    }
+
+    // ── Connection test (raw credentials, nothing saved) ─────────────────────
+
     public GpsConnectionTestResponse testConnection(GpsConnectionTestRequest request) {
         long startTime = System.currentTimeMillis();
         String provider = request.getProvider().toUpperCase();
 
         try {
             return switch (provider) {
-                case "IOPGPS" -> testIopgpsConnection(request, startTime);
+                case "IOPGPS"  -> testIopgpsConnection(request, startTime);
                 case "TRACCAR" -> testTraccarConnection(request, startTime);
-                case "WIALON" -> testWialonConnection(request, startTime);
-                case "GPSWOX" -> testGpswoxConnection(request, startTime);
-                case "CUSTOM" -> testCustomConnection(request, startTime);
+                case "WIALON"  -> testWialonConnection(request, startTime);
+                case "GPSWOX"  -> testGpswoxConnection(request, startTime);
+                case "CUSTOM"  -> testCustomConnection(request, startTime);
                 default -> GpsConnectionTestResponse.builder()
                         .success(false)
                         .message("Unsupported provider: " + provider)
@@ -86,11 +89,13 @@ public class GpsProviderService {
         }
     }
 
-    /**
-     * Test connection using stored settings for the current tenant.
-     */
     public GpsConnectionTestResponse testConnectionWithStoredSettings(GpsSettings settings) {
-        if (settings == null || settings.getApiKeyEncrypted() == null) {
+        boolean hasApiKey  = settings != null && settings.getApiKeyEncrypted() != null
+                && !settings.getApiKeyEncrypted().isBlank();
+        boolean hasPassword = settings != null && settings.getEncryptedPassword() != null
+                && !settings.getEncryptedPassword().isBlank();
+
+        if (!hasApiKey && !hasPassword) {
             return GpsConnectionTestResponse.builder()
                     .success(false)
                     .message("No GPS credentials configured")
@@ -98,76 +103,160 @@ public class GpsProviderService {
                     .build();
         }
 
-        String apiKey = encryptionUtil.decrypt(settings.getApiKeyEncrypted());
         GpsConnectionTestRequest request = new GpsConnectionTestRequest();
         request.setProvider(settings.getProvider());
         request.setAppId(settings.getAppId());
-        request.setApiKey(apiKey);
         request.setBaseUrl(settings.getBaseUrl());
         request.setDeviceGroupId(settings.getDeviceGroupId());
+        if (hasApiKey)  request.setApiKey(encryptionUtil.decrypt(settings.getApiKeyEncrypted()));
+        if (hasPassword) request.setPassword(encryptionUtil.decrypt(settings.getEncryptedPassword()));
 
         return testConnection(request);
     }
 
-    /**
-     * Sync GPS devices from provider to local vehicles.
-     */
+    // ── Device sync ────────────────────────────────────────────────────────────
+
+    @Transactional
     public GpsDeviceSyncResponse syncDevices(GpsSettings settings) {
         Long tenantId = TenantContext.getCurrentTenantId();
-        if (settings == null || settings.getApiKeyEncrypted() == null) {
+
+        boolean hasApiKey  = settings != null && settings.getApiKeyEncrypted() != null
+                && !settings.getApiKeyEncrypted().isBlank();
+        boolean hasPassword = settings != null && settings.getEncryptedPassword() != null
+                && !settings.getEncryptedPassword().isBlank();
+
+        if (!hasApiKey && !hasPassword) {
             return GpsDeviceSyncResponse.builder()
                     .success(false)
                     .message("No GPS credentials configured")
                     .build();
         }
 
-        String provider = settings.getProvider().toUpperCase();
-        String apiKey = encryptionUtil.decrypt(settings.getApiKeyEncrypted());
+        String provider  = settings.getProvider().toUpperCase();
+        String apiKey    = hasApiKey  ? encryptionUtil.decrypt(settings.getApiKeyEncrypted())  : null;
+        String password  = hasPassword ? encryptionUtil.decrypt(settings.getEncryptedPassword()) : null;
 
         try {
             List<GpsDeviceSyncResponse.GpsDeviceInfo> providerDevices = fetchDevicesFromProvider(
-                    provider, settings.getBaseUrl(), settings.getAppId(), apiKey, settings.getDeviceGroupId()
+                    provider,
+                    settings.getBaseUrl(),
+                    settings.getAppId(),
+                    apiKey,
+                    password,
+                    settings.getDeviceGroupId(),
+                    settings.getAuthHeaderName(),
+                    settings.getAuthPrefix()
             );
 
-            List<Vehicle> existingVehicles = vehicleRepository.findAllByTenantId(tenantId);
-            Map<String, Vehicle> vehicleByDeviceId = existingVehicles.stream()
-                    .filter(v -> v.getGpsDeviceId() != null)
-                    .collect(Collectors.toMap(Vehicle::getGpsDeviceId, v -> v));
-
-            int created = 0;
-            int updated = 0;
-
-            for (GpsDeviceSyncResponse.GpsDeviceInfo device : providerDevices) {
-                Vehicle vehicle = vehicleByDeviceId.get(device.getDeviceId());
-                if (vehicle != null) {
-                    // Update existing vehicle GPS data
-                    vehicle.setGpsImei(device.getImei());
-                    vehicle.setGpsEnabled(true);
-                    if (device.getLatitude() != null) vehicle.setLastLatitude(device.getLatitude());
-                    if (device.getLongitude() != null) vehicle.setLastLongitude(device.getLongitude());
-                    if (device.getSpeed() != null) vehicle.setLastSpeed(device.getSpeed());
-                    vehicle.setLastGpsUpdate(LocalDateTime.now());
-                    updated++;
-                } else {
-                    // Could create a new vehicle here, but for now we only update existing ones
-                    // In a real system, you might want to create placeholder vehicles
-                    created++;
-                }
+            // Build lookup maps for matching vehicles
+            List<Vehicle> vehicles = vehicleRepository.findAllByTenantId(tenantId);
+            Map<String, Vehicle> byGpsDeviceId = new HashMap<>();
+            Map<String, Vehicle> byImei        = new HashMap<>();
+            Map<String, Vehicle> byPlate       = new HashMap<>();
+            for (Vehicle v : vehicles) {
+                if (v.getGpsDeviceId() != null && !v.getGpsDeviceId().isBlank())
+                    byGpsDeviceId.put(v.getGpsDeviceId().trim().toLowerCase(), v);
+                if (v.getGpsImei() != null && !v.getGpsImei().isBlank())
+                    byImei.put(v.getGpsImei().trim().toLowerCase(), v);
+                if (v.getPlate() != null && !v.getPlate().isBlank())
+                    byPlate.put(v.getPlate().trim().toLowerCase(), v);
             }
 
-            vehicleRepository.saveAll(existingVehicles);
+            // Build lookup map for existing gps_device rows
+            List<GpsDevice> existingDevices = gpsDeviceRepository.findAllByTenantId(tenantId);
+            Map<String, GpsDevice> byProviderDeviceId = existingDevices.stream()
+                    .collect(Collectors.toMap(GpsDevice::getProviderDeviceId, d -> d));
 
-            // Update settings sync timestamp
-            settings.setLastSyncAt(LocalDateTime.now());
+            LocalDateTime now = LocalDateTime.now();
+            int created = 0;
+            int updated = 0;
+            int matched = 0;
+
+            List<GpsDevice> toSave = new ArrayList<>();
+            List<Vehicle>   vehiclesToSave = new ArrayList<>();
+            List<GpsDeviceSyncResponse.GpsDeviceInfo> enrichedInfos = new ArrayList<>();
+
+            for (GpsDeviceSyncResponse.GpsDeviceInfo info : providerDevices) {
+                String devId = info.getDeviceId();
+                GpsDevice gd = byProviderDeviceId.get(devId);
+                boolean isNew = gd == null;
+
+                if (isNew) {
+                    gd = GpsDevice.builder()
+                            .tenant(settings.getTenant())
+                            .providerDeviceId(devId)
+                            .status("UNKNOWN")
+                            .ignition(false)
+                            .build();
+                    created++;
+                } else {
+                    updated++;
+                }
+
+                // Update fields from provider
+                gd.setName(info.getName());
+                gd.setImei(info.getImei());
+                gd.setPlateNumber(info.getPlateNumber());
+                gd.setStatus(normalizeStatus(info.getStatus()));
+                gd.setLatitude(info.getLatitude());
+                gd.setLongitude(info.getLongitude());
+                gd.setSpeed(info.getSpeed());
+                gd.setLastSyncedAt(now);
+
+                // Try to match a vehicle
+                Vehicle matchedVehicle = null;
+                if (devId != null)
+                    matchedVehicle = byGpsDeviceId.get(devId.trim().toLowerCase());
+                if (matchedVehicle == null && info.getImei() != null && !info.getImei().isBlank())
+                    matchedVehicle = byImei.get(info.getImei().trim().toLowerCase());
+                if (matchedVehicle == null && info.getPlateNumber() != null && !info.getPlateNumber().isBlank())
+                    matchedVehicle = byPlate.get(info.getPlateNumber().trim().toLowerCase());
+
+                Long linkedVehicleId = null;
+                if (matchedVehicle != null) {
+                    linkedVehicleId = matchedVehicle.getId();
+                    gd.setVehicleId(linkedVehicleId);
+                    // Update vehicle GPS data
+                    matchedVehicle.setGpsEnabled(true);
+                    matchedVehicle.setGpsImei(info.getImei());
+                    if (info.getLatitude()  != null) matchedVehicle.setLastLatitude(info.getLatitude());
+                    if (info.getLongitude() != null) matchedVehicle.setLastLongitude(info.getLongitude());
+                    if (info.getSpeed()     != null) matchedVehicle.setLastSpeed(info.getSpeed());
+                    matchedVehicle.setLastGpsUpdate(now);
+                    vehiclesToSave.add(matchedVehicle);
+                    matched++;
+                }
+
+                toSave.add(gd);
+                enrichedInfos.add(GpsDeviceSyncResponse.GpsDeviceInfo.builder()
+                        .deviceId(devId)
+                        .name(info.getName())
+                        .imei(info.getImei())
+                        .plateNumber(info.getPlateNumber())
+                        .status(normalizeStatus(info.getStatus()))
+                        .latitude(info.getLatitude())
+                        .longitude(info.getLongitude())
+                        .speed(info.getSpeed())
+                        .linkedVehicleId(linkedVehicleId)
+                        .build());
+            }
+
+            gpsDeviceRepository.saveAll(toSave);
+            if (!vehiclesToSave.isEmpty()) vehicleRepository.saveAll(vehiclesToSave);
+
+            settings.setLastSyncAt(now);
             settings.setActiveDevices(providerDevices.size());
 
+            int unmatched = providerDevices.size() - matched;
             return GpsDeviceSyncResponse.builder()
                     .success(true)
                     .message("Devices synchronized successfully")
                     .devicesSynced(providerDevices.size())
                     .devicesCreated(created)
                     .devicesUpdated(updated)
-                    .devices(providerDevices)
+                    .matchedVehicles(matched)
+                    .unmatchedDevices(unmatched)
+                    .devices(enrichedInfos)
                     .build();
 
         } catch (Exception e) {
@@ -183,7 +272,7 @@ public class GpsProviderService {
 
     private GpsConnectionTestResponse testIopgpsConnection(GpsConnectionTestRequest request, long startTime) {
         String baseUrl = Optional.ofNullable(request.getBaseUrl()).orElse("https://www.iopgps.com");
-        
+
         try {
             String token = fetchIopgpsToken(baseUrl, request.getAppId(), request.getApiKey());
             if (token == null) {
@@ -204,21 +293,19 @@ public class GpsProviderService {
                             .build())
                     .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, clientResponse ->
-                            clientResponse.bodyToMono(String.class)
+                    .onStatus(HttpStatusCode::isError, cr ->
+                            cr.bodyToMono(String.class)
                                     .flatMap(body -> Mono.error(new RuntimeException("API error: " + body)))
                     )
                     .bodyToMono(Map.class)
                     .timeout(Duration.ofSeconds(10))
                     .block();
 
-            int deviceCount = extractDeviceCount(response);
-
             return GpsConnectionTestResponse.builder()
                     .success(true)
                     .message("Connected to IOPGPS successfully")
                     .provider("IOPGPS")
-                    .devicesFound(deviceCount)
+                    .devicesFound(extractDeviceCount(response))
                     .responseTime((System.currentTimeMillis() - startTime) + "ms")
                     .build();
         } catch (Exception e) {
@@ -231,15 +318,31 @@ public class GpsProviderService {
         String baseUrl = Optional.ofNullable(request.getBaseUrl()).orElse("http://localhost:8082");
         WebClient client = createWebClient(baseUrl);
 
-        // Traccar uses Basic Auth with email/password or cookie session
-        // For API key integration, we use Authorization header
-        var response = client.get()
+        boolean useBasicAuth = request.getPassword() != null && !request.getPassword().isBlank();
+        String username = request.getAppId(); // appId doubles as Traccar username
+
+        var spec = client.get()
                 .uri("/api/devices")
-                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + request.getApiKey())
+                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+
+        if (useBasicAuth && username != null && !username.isBlank()) {
+            spec = spec.header(HttpHeaders.AUTHORIZATION, basicAuthHeader(username, request.getPassword()));
+        } else if (request.getApiKey() != null && !request.getApiKey().isBlank()) {
+            spec = spec.header(HttpHeaders.AUTHORIZATION, "Bearer " + request.getApiKey());
+        } else {
+            return GpsConnectionTestResponse.builder()
+                    .success(false)
+                    .message("Traccar requires either an API token or username + password")
+                    .provider("TRACCAR")
+                    .errorCode("MISSING_CREDENTIALS")
+                    .responseTime((System.currentTimeMillis() - startTime) + "ms")
+                    .build();
+        }
+
+        var response = spec
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, clientResponse ->
-                        clientResponse.bodyToMono(String.class)
+                .onStatus(HttpStatusCode::isError, cr ->
+                        cr.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(new RuntimeException("API error: " + body)))
                 )
                 .bodyToMono(List.class)
@@ -259,7 +362,6 @@ public class GpsProviderService {
         String baseUrl = Optional.ofNullable(request.getBaseUrl()).orElse("https://hst-api.wialon.com");
         WebClient client = createWebClient(baseUrl);
 
-        // Wialon uses token-based auth via svc=token/login
         var authResponse = client.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/wialon/ajax.html")
@@ -271,40 +373,39 @@ public class GpsProviderService {
                 .timeout(Duration.ofSeconds(10))
                 .block();
 
-        if (authResponse != null && authResponse.containsKey("eid")) {
-            String eid = (String) authResponse.get("eid");
-            // Test fetching units with the session ID
-            var unitsResponse = client.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/wialon/ajax.html")
-                            .queryParam("svc", "core/search_items")
-                            .queryParam("params", "{\"spec\":{\"itemsType\":\"avl_unit\",\"propName\":\"sys_name\",\"propValueMask\":\"*\",\"sortType\":\"sys_name\"},\"force\":1,\"flags\":1,\"from\":0,\"to\":0}")
-                            .queryParam("sid", eid)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .timeout(Duration.ofSeconds(10))
-                    .block();
-
-            int count = 0;
-            if (unitsResponse != null && unitsResponse.get("items") instanceof List) {
-                count = ((List<?>) unitsResponse.get("items")).size();
-            }
-
+        if (authResponse == null || !authResponse.containsKey("eid")) {
             return GpsConnectionTestResponse.builder()
-                    .success(true)
-                    .message("Connected to Wialon successfully")
+                    .success(false)
+                    .message("Wialon authentication failed")
                     .provider("WIALON")
-                    .devicesFound(count)
+                    .errorCode("AUTH_FAILED")
                     .responseTime((System.currentTimeMillis() - startTime) + "ms")
                     .build();
         }
 
+        String eid = (String) authResponse.get("eid");
+        var unitsResponse = client.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/wialon/ajax.html")
+                        .queryParam("svc", "core/search_items")
+                        .queryParam("params", "{\"spec\":{\"itemsType\":\"avl_unit\",\"propName\":\"sys_name\",\"propValueMask\":\"*\",\"sortType\":\"sys_name\"},\"force\":1,\"flags\":1,\"from\":0,\"to\":0}")
+                        .queryParam("sid", eid)
+                        .build())
+                .retrieve()
+                .bodyToMono(Map.class)
+                .timeout(Duration.ofSeconds(10))
+                .block();
+
+        int count = 0;
+        if (unitsResponse != null && unitsResponse.get("items") instanceof List<?> items) {
+            count = items.size();
+        }
+
         return GpsConnectionTestResponse.builder()
-                .success(false)
-                .message("Wialon authentication failed")
+                .success(true)
+                .message("Connected to Wialon successfully")
                 .provider("WIALON")
-                .errorCode("AUTH_FAILED")
+                .devicesFound(count)
                 .responseTime((System.currentTimeMillis() - startTime) + "ms")
                 .build();
     }
@@ -320,21 +421,19 @@ public class GpsProviderService {
                         .build())
                 .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, clientResponse ->
-                        clientResponse.bodyToMono(String.class)
+                .onStatus(HttpStatusCode::isError, cr ->
+                        cr.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(new RuntimeException("API error: " + body)))
                 )
                 .bodyToMono(Map.class)
                 .timeout(Duration.ofSeconds(10))
                 .block();
 
-        int deviceCount = extractDeviceCount(response);
-
         return GpsConnectionTestResponse.builder()
                 .success(true)
                 .message("Connected to GPSWOX successfully")
                 .provider("GPSWOX")
-                .devicesFound(deviceCount)
+                .devicesFound(extractDeviceCount(response))
                 .responseTime((System.currentTimeMillis() - startTime) + "ms")
                 .build();
     }
@@ -351,7 +450,6 @@ public class GpsProviderService {
 
         WebClient client = createWebClient(request.getBaseUrl());
 
-        // For custom APIs, we do a basic HEAD or GET request to validate reachability
         var response = client.get()
                 .uri("/")
                 .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -372,15 +470,21 @@ public class GpsProviderService {
     // ── Provider-specific device fetching ──────────────────────────────────────
 
     private List<GpsDeviceSyncResponse.GpsDeviceInfo> fetchDevicesFromProvider(
-            String provider, String baseUrl, String appId, String apiKey, String deviceGroupId) {
+            String provider,
+            String baseUrl,
+            String appId,
+            String apiKey,
+            String password,
+            String deviceGroupId,
+            String authHeaderName,
+            String authPrefix) {
 
         return switch (provider) {
-            case "IOPGPS" -> fetchIopgpsDevices(baseUrl, appId, apiKey, deviceGroupId);
-            case "TRACCAR" -> fetchTraccarDevices(baseUrl, apiKey);
-            case "WIALON" -> fetchWialonDevices(baseUrl, apiKey);
-            case "GPSWOX" -> fetchGpswoxDevices(baseUrl, apiKey);
-            case "CUSTOM" -> List.of(); // Custom requires provider-specific implementation
-            default -> List.of();
+            case "IOPGPS"  -> fetchIopgpsDevices(baseUrl, appId, apiKey, deviceGroupId);
+            case "TRACCAR" -> fetchTraccarDevices(baseUrl, appId, apiKey, password);
+            case "WIALON"  -> fetchWialonDevices(baseUrl, apiKey);
+            case "GPSWOX"  -> fetchGpswoxDevices(baseUrl, apiKey);
+            default        -> List.of();
         };
     }
 
@@ -393,7 +497,6 @@ public class GpsProviderService {
         if (token == null) return List.of();
 
         WebClient client = createWebClient(url);
-
         var response = client.get()
                 .uri(uriBuilder -> {
                     var builder = uriBuilder.path("/rest/api/v1/devices")
@@ -425,39 +528,25 @@ public class GpsProviderService {
     }
 
     @SuppressWarnings("unchecked")
-    private String fetchIopgpsToken(String baseUrl, String appId, String apiKey) {
-        try {
-            WebClient client = createWebClient(baseUrl);
-            var response = client.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/rest/api/v1/auth/access_token")
-                            .queryParam("account", appId)
-                            .queryParam("password", apiKey)
-                            .queryParam("time", System.currentTimeMillis() / 1000)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .timeout(Duration.ofSeconds(10))
-                    .block();
+    private List<GpsDeviceSyncResponse.GpsDeviceInfo> fetchTraccarDevices(
+            String baseUrl, String username, String apiKey, String password) {
 
-            if (response != null && response.get("data") instanceof Map) {
-                Map<String, Object> data = (Map<String, Object>) response.get("data");
-                return (String) data.get("access_token");
-            }
-            log.warn("IOPGPS token response invalid: {}", response);
-        } catch (Exception e) {
-            log.error("Failed to fetch IOPGPS token: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<GpsDeviceSyncResponse.GpsDeviceInfo> fetchTraccarDevices(String baseUrl, String apiKey) {
         WebClient client = createWebClient(Optional.ofNullable(baseUrl).orElse("http://localhost:8082"));
 
-        List<Map<String, Object>> response = client.get()
+        boolean useBasicAuth = password != null && !password.isBlank()
+                && username != null && !username.isBlank();
+
+        var spec = client.get()
                 .uri("/api/devices")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+
+        if (useBasicAuth) {
+            spec = spec.header(HttpHeaders.AUTHORIZATION, basicAuthHeader(username, password));
+        } else if (apiKey != null && !apiKey.isBlank()) {
+            spec = spec.header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
+        }
+
+        List<Map<String, Object>> response = spec
                 .retrieve()
                 .bodyToMono(List.class)
                 .timeout(Duration.ofSeconds(15))
@@ -471,6 +560,9 @@ public class GpsProviderService {
                         .name(String.valueOf(item.getOrDefault("name", "")))
                         .imei(String.valueOf(item.getOrDefault("uniqueId", "")))
                         .status(String.valueOf(item.getOrDefault("status", "UNKNOWN")))
+                        .latitude(parseDouble(item.get("latitude")))
+                        .longitude(parseDouble(item.get("longitude")))
+                        .speed(parseDouble(item.get("speed")))
                         .build());
             }
         }
@@ -481,7 +573,6 @@ public class GpsProviderService {
     private List<GpsDeviceSyncResponse.GpsDeviceInfo> fetchWialonDevices(String baseUrl, String apiKey) {
         WebClient client = createWebClient(Optional.ofNullable(baseUrl).orElse("https://hst-api.wialon.com"));
 
-        // Authenticate
         var authResponse = client.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/wialon/ajax.html")
@@ -493,9 +584,7 @@ public class GpsProviderService {
                 .timeout(Duration.ofSeconds(10))
                 .block();
 
-        if (authResponse == null || !authResponse.containsKey("eid")) {
-            return List.of();
-        }
+        if (authResponse == null || !authResponse.containsKey("eid")) return List.of();
 
         String eid = (String) authResponse.get("eid");
 
@@ -555,7 +644,45 @@ public class GpsProviderService {
         return devices;
     }
 
+    @SuppressWarnings("unchecked")
+    private String fetchIopgpsToken(String baseUrl, String appId, String apiKey) {
+        try {
+            WebClient client = createWebClient(baseUrl);
+            var response = client.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/rest/api/v1/auth/access_token")
+                            .queryParam("account", appId)
+                            .queryParam("password", apiKey)
+                            .queryParam("time", System.currentTimeMillis() / 1000)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            if (response != null && response.get("data") instanceof Map) {
+                Map<String, Object> data = (Map<String, Object>) response.get("data");
+                return (String) data.get("access_token");
+            }
+            log.warn("IOPGPS token response invalid: {}", response);
+        } catch (Exception e) {
+            log.error("Failed to fetch IOPGPS token: {}", e.getMessage());
+        }
+        return null;
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private String normalizeStatus(String providerStatus) {
+        if (providerStatus == null) return "UNKNOWN";
+        return switch (providerStatus.toUpperCase()) {
+            case "ONLINE", "ACTIVE", "CONNECTED"                     -> "ONLINE";
+            case "OFFLINE", "INACTIVE", "DISCONNECTED", "NOTACTIVE"  -> "OFFLINE";
+            case "MOVING", "INMOTION", "MOTION"                      -> "MOVING";
+            case "STOPPED", "IDLE", "PARKED", "STATIONARY"           -> "STOPPED";
+            default -> "UNKNOWN";
+        };
+    }
 
     private String mapHttpError(HttpStatusCode statusCode, String provider) {
         int code = statusCode.value();
@@ -572,7 +699,7 @@ public class GpsProviderService {
     @SuppressWarnings("unchecked")
     private int extractDeviceCount(Map<String, Object> response) {
         if (response == null) return 0;
-        if (response.get("data") instanceof List) return ((List<?>) response.get("data")).size();
+        if (response.get("data") instanceof List)    return ((List<?>) response.get("data")).size();
         if (response.get("devices") instanceof List) return ((List<?>) response.get("devices")).size();
         if (response.get("count") instanceof Number) return ((Number) response.get("count")).intValue();
         if (response.get("total") instanceof Number) return ((Number) response.get("total")).intValue();
@@ -582,10 +709,7 @@ public class GpsProviderService {
     private Double parseDouble(Object value) {
         if (value == null) return null;
         if (value instanceof Number) return ((Number) value).doubleValue();
-        try {
-            return Double.parseDouble(value.toString());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        try { return Double.parseDouble(value.toString()); }
+        catch (NumberFormatException e) { return null; }
     }
 }

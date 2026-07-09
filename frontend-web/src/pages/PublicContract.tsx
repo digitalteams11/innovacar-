@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { API_BASE_URL, API_ORIGIN } from '../lib/api';
+
+const resolveAsset = (url?: string | null) => {
+  if (!url) return url ?? undefined;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  return `${API_ORIGIN}${url.startsWith('/') ? url : `/${url}`}`;
+};
 
 import SignaturePad from '../components/shared/SignaturePad';
 import {
@@ -76,7 +83,7 @@ export default function PublicContract() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8082/api`;
+  const API_BASE = API_BASE_URL;
 
   // Build the appropriate API URL based on available params
   const getContractUrl = () => {
@@ -160,6 +167,30 @@ export default function PublicContract() {
     }
   };
 
+  const downloadSignedPdf = async () => {
+    if (!contract?.pdfUrl) return;
+    setIsSubmitting(true);
+    try {
+      const apiOrigin = API_BASE.replace(/\/api$/, '');
+      const res = await fetch(`${apiOrigin}${contract.pdfUrl}`);
+      if (!res.ok) throw new Error('Unable to download PDF');
+      const blob = await res.blob();
+      if (!blob || blob.size === 0) throw new Error('PDF file is empty');
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `contract-${(contract.contractNumber || 'contract').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError('Unable to generate contract PDF.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -237,7 +268,7 @@ export default function PublicContract() {
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             {contract.agencyLogo ? (
-              <img src={contract.agencyLogo} alt="" className="w-8 h-8 rounded-lg object-contain" />
+              <img src={resolveAsset(contract.agencyLogo)} alt="" className="w-8 h-8 rounded-lg object-contain" />
             ) : (
               <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
                 <Building2 size={16} className="text-brand-500" />
@@ -379,12 +410,19 @@ export default function PublicContract() {
             </div>
             <div className="flex items-center gap-3 p-3 bg-success-50 rounded-xl">
               <img src={contract.ownerSignature} alt="Agency Signature" className="h-16 bg-white rounded-lg border border-success-200 p-2" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-success-700">{contract.agencyName || 'Agency'}</p>
                 <p className="text-xs text-success-500">
                   Signed on {contract.ownerSignedAt ? new Date(contract.ownerSignedAt).toLocaleString() : 'N/A'}
                 </p>
               </div>
+              {contract.agencyStampUrl && (
+                <img
+                  src={resolveAsset(contract.agencyStampUrl)}
+                  alt="Agency Stamp"
+                  className="h-16 w-16 object-contain rounded-lg border border-success-200 bg-white p-1 shrink-0"
+                />
+              )}
             </div>
             <p className="text-xs text-slate-400">
               This contract has already been signed by the agency. Please review and sign below to complete the agreement.
@@ -534,15 +572,15 @@ export default function PublicContract() {
               </div>
             )}
             {contract.pdfUrl && (
-              <a
-                href={`${API_BASE.replace('/api', '')}${contract.pdfUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={downloadSignedPdf}
+                disabled={isSubmitting}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-success-600 rounded-xl text-sm font-medium border border-success-200 hover:bg-success-100 transition-all"
               >
                 <FileText size={16} />
                 Download Signed Contract
-              </a>
+              </button>
             )}
           </div>
         )}

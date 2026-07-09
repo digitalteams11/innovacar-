@@ -37,6 +37,9 @@ class UserServiceTest {
     @Mock private UserRepository   userRepository;
     @Mock private TenantRepository tenantRepository;
     @Mock private PasswordEncoder  passwordEncoder;
+    @Mock private PasswordPolicyService passwordPolicyService;
+    @Mock private RefreshTokenService refreshTokenService;
+    @Mock private SessionService sessionService;
 
     @InjectMocks
     private UserService userService;

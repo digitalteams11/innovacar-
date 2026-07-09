@@ -14,6 +14,14 @@ const statusOptions = [
   { value: 'CLOSED', label: 'Closed' },
 ];
 
+const channelOptions = [
+  { value: 'CONTACT', label: 'Contact' },
+  { value: 'SUPPORT', label: 'Support' },
+  { value: 'TECHNICAL', label: 'Technical' },
+  { value: 'BILLING', label: 'Billing' },
+  { value: 'SECURITY', label: 'Security' },
+];
+
 const priorityColors: Record<string, any> = {
   LOW: 'default',
   MEDIUM: 'info',
@@ -28,6 +36,7 @@ export default function SuperAdminSupport() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [channelFilter, setChannelFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({ subject: '', description: '', category: 'GENERAL', priority: 'MEDIUM' });
 
@@ -42,7 +51,7 @@ export default function SuperAdminSupport() {
       setTickets(res.data);
     } catch (err) {
       console.error(err);
-      showToast('Failed to load tickets', 'error');
+      showToast('Unable to load tickets. Please try again later.', 'error');
     } finally {
       setLoading(false);
     }
@@ -53,11 +62,11 @@ export default function SuperAdminSupport() {
       await superAdminApi.createTicket(createForm);
       setShowCreateModal(false);
       setCreateForm({ subject: '', description: '', category: 'GENERAL', priority: 'MEDIUM' });
-      showToast('Ticket created successfully');
+      showToast('Ticket created successfully', 'success');
       await fetchTickets();
     } catch (err) {
       console.error(err);
-      showToast('Failed to create ticket', 'error');
+      showToast('Unable to create ticket. Please try again later.', 'error');
     }
   };
 
@@ -71,6 +80,11 @@ export default function SuperAdminSupport() {
           <p className="text-xs text-slate-500 truncate max-w-[200px]">{row.subject}</p>
         </div>
       ),
+    },
+    {
+      key: 'channel',
+      header: 'Channel',
+      render: (row: any) => row.channel ? <Badge variant="default">{row.channel}</Badge> : <span className="text-sm text-slate-500">-</span>,
     },
     {
       key: 'category',
@@ -131,6 +145,13 @@ export default function SuperAdminSupport() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1" />
         <FilterSelect
+          options={channelOptions}
+          value={channelFilter}
+          onChange={setChannelFilter}
+          placeholder="All Channels"
+          className="w-full sm:w-48"
+        />
+        <FilterSelect
           options={statusOptions}
           value={statusFilter}
           onChange={setStatusFilter}
@@ -141,7 +162,7 @@ export default function SuperAdminSupport() {
 
       <DataTable
         columns={columns}
-        data={tickets}
+        data={channelFilter ? tickets.filter((row) => row.channel === channelFilter) : tickets}
         loading={loading}
         keyExtractor={(row) => row.id}
         emptyTitle={t('superAdmin.support.noTickets')}

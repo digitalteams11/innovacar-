@@ -3,6 +3,8 @@ package com.carrental.repository;
 import com.carrental.entity.MaintenanceStatus;
 import com.carrental.entity.VehicleMaintenance;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -13,4 +15,7 @@ public interface VehicleMaintenanceRepository extends JpaRepository<VehicleMaint
     List<VehicleMaintenance> findAllByTenantIdAndVehicleIdOrderByCreatedAtDesc(Long tenantId, Long vehicleId);
     Optional<VehicleMaintenance> findByIdAndTenantId(Long id, Long tenantId);
     boolean existsByTenantIdAndVehicleIdAndStatusIn(Long tenantId, Long vehicleId, Collection<MaintenanceStatus> statuses);
+
+    @Query(value = "SELECT vehicle_id FROM vehicle_maintenance WHERE id = :id", nativeQuery = true)
+    Long findVehicleIdById(@Param("id") Long id);
 }

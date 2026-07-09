@@ -8,6 +8,16 @@ import java.util.List;
 
 @Repository
 public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
+
     List<EmailLog> findTop100ByOrderByCreatedAtDesc();
+
     long countByStatus(String status);
+
+    boolean existsByContractIdAndEmailTypeAndStatus(Long contractId, String emailType, String status);
+
+    List<EmailLog> findAllByContractIdOrderByCreatedAtDesc(Long contractId);
+
+    List<EmailLog> findAllByTenantIdOrderByCreatedAtDesc(Long tenantId);
+
+    List<EmailLog> findTop20ByTenantIdOrderByCreatedAtDesc(Long tenantId);
 }

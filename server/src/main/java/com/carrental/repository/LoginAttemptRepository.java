@@ -17,5 +17,10 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, Long
     List<LoginAttempt> findByEmailAndSuccessfulFalseAndAttemptedAtAfterOrderByAttemptedAtDesc(
             String email, LocalDateTime since);
 
+    List<LoginAttempt> findTop100ByOrderByAttemptedAtDesc();
+    List<LoginAttempt> findByUserIdOrderByAttemptedAtDesc(Long userId);
+    long countBySuccessfulFalseAndAttemptedAtAfter(LocalDateTime since);
+    long countBySuspiciousTrue();
+
     void deleteByAttemptedAtBefore(LocalDateTime date);
 }

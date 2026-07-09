@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 
 /**
  * Central Spring Security configuration.
@@ -38,7 +39,7 @@ public class SecurityConfig {
     private final SubscriptionFilter      subscriptionFilter;
     private final UserDetailsServiceImpl  userDetailsService;
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.194.1:5174}")
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
     private String allowedOrigins;
 
     // ── Password encoder ────────────────────────────────────────────────────
@@ -81,14 +82,44 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+            .exceptionHandling(errors -> errors
+                .authenticationEntryPoint((request, response, exception) -> {
+                    response.setStatus(org.springframework.http.HttpStatus.UNAUTHORIZED.value());
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.getWriter().write(
+                            "{\"success\":false,\"error\":\"UNAUTHORIZED\",\"errorCode\":\"UNAUTHORIZED\","
+                                    + "\"message\":\"Your session has expired. Please sign in again.\",\"data\":null}");
+                })
+                .accessDeniedHandler((request, response, exception) -> {
+                    response.setStatus(org.springframework.http.HttpStatus.FORBIDDEN.value());
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    boolean isSuperAdminRoute = request.getRequestURI().startsWith("/api/super-admin/");
+                    String message = isSuperAdminRoute
+                            ? "You do not have Super Admin permission."
+                            : "You do not have permission to perform this action.";
+                    response.getWriter().write(
+                            "{\"success\":false,\"error\":\"FORBIDDEN\",\"errorCode\":\"PERMISSION_DENIED\","
+                                    + "\"message\":\"" + message + "\",\"data\":null}");
+                }))
+
             // Route-level access control
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/public/**").permitAll()
-                // Allow CORS preflight requests
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers(
+                        "/api/auth/**",
+                        "/api/health",
+                        "/actuator/health",
+                        "/error",
+                        "/api/client-errors",
+                        "/api/client-errors/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/uploads/**").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/webhooks/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/inspections/token/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/inspections/*/upload").permitAll()
+                .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
                 // Actuator health (optional — safe to expose)
-                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/actuator/health", "/api/health").permitAll()
                 // Everything else requires a valid JWT
                 .anyRequest().authenticated())
 
@@ -111,10 +142,24 @@ public class SecurityConfig {
         java.util.Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isBlank())
-                .forEach(configuration::addAllowedOrigin);
-        configuration.addAllowedMethod("*");        // Allow all HTTP methods
-        configuration.addAllowedHeader("*");        // Allow all headers
-        configuration.setAllowCredentials(true);    // Allow credentials
+                .forEach(configuration::addAllowedOriginPattern);
+        configuration.setAllowedMethods(java.util.List.of(
+                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(java.util.List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With",
+                "X-Auth-Transport",
+                "X-Device-Id"));
+        configuration.setExposedHeaders(java.util.List.of(
+                "Token-Expired",
+                "Content-Disposition",
+                "Content-Type",
+                "X-Content-Type-Options"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
         
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

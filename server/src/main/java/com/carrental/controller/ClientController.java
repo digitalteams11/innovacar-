@@ -3,7 +3,9 @@ package com.carrental.controller;
 import com.carrental.dto.client.CreateClientRequest;
 import com.carrental.dto.client.UpdateClientRequest;
 import com.carrental.dto.client.ClientResponse;
+import com.carrental.dto.ApiResponse;
 import com.carrental.service.ClientService;
+import com.carrental.service.PlanLimitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,7 +34,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ClientController {
 
-    private final ClientService clientService;
+    private final ClientService    clientService;
+    private final PlanLimitService planLimitService;
 
     // ── GET /api/clients ─────────────────────────────────────────────────────
 
@@ -40,8 +43,21 @@ public class ClientController {
      * Returns all clients in the caller's tenant.
      */
     @GetMapping
-    public ResponseEntity<List<ClientResponse>> listClients() {
-        return ResponseEntity.ok(clientService.getAllClients());
+    public ResponseEntity<ApiResponse<List<ClientResponse>>> listClients() {
+        List<ClientResponse> clients = clientService.getAllClients();
+        String message = clients.isEmpty() ? "No clients found" : "Clients loaded successfully";
+        return ResponseEntity.ok(ApiResponse.success(clients, message));
+    }
+
+    @GetMapping("/check")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> checkClientDuplicate(
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String cin,
+            @RequestParam(required = false) String passportNumber) {
+        return ResponseEntity.ok(ApiResponse.success(
+                clientService.checkExistingClient(email, phone, cin, passportNumber),
+                "Client duplicate check completed"));
     }
 
     // ── GET /api/clients/{id} ────────────────────────────────────────────────
@@ -62,10 +78,11 @@ public class ClientController {
      */
     @PostMapping
     @PreAuthorize("@rolePermissionService.has('CREATE_CLIENT')")
-    public ResponseEntity<ClientResponse> createClient(
+    public ResponseEntity<ApiResponse<ClientResponse>> createClient(
             @Valid @RequestBody CreateClientRequest request) {
+        planLimitService.assertClientLimit();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(clientService.createClient(request));
+                .body(ApiResponse.success(clientService.createClient(request), "Client created successfully"));
     }
 
     // ── PUT /api/clients/{id} ────────────────────────────────────────────────
@@ -85,13 +102,41 @@ public class ClientController {
     // ── DELETE /api/clients/{id} ─────────────────────────────────────────────
 
     /**
-     * Hard-deletes a client. ADMIN-only.
+     * Soft-deletes a client (archives it — see {@link ClientService#deleteClient}).
+     * ADMIN-only.
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("@rolePermissionService.has('DELETE_CLIENT')")
-    public ResponseEntity<Void> deleteClient(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> deleteClient(@PathVariable Long id) {
         clientService.deleteClient(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(
+                java.util.Map.of("id", id, "deleted", true),
+                "Client deleted successfully."));
+    }
+
+    // ── GET /api/clients/deleted ─────────────────────────────────────────────
+
+    /**
+     * Lists archived (soft-deleted) clients only. ADMIN-only.
+     */
+    @GetMapping("/deleted")
+    @PreAuthorize("@rolePermissionService.has('DELETE_CLIENT')")
+    public ResponseEntity<ApiResponse<List<ClientResponse>>> listDeletedClients() {
+        return ResponseEntity.ok(ApiResponse.success(
+                clientService.getDeletedClients(), "Deleted clients loaded successfully"));
+    }
+
+    // ── POST /api/clients/{id}/restore ───────────────────────────────────────
+
+    /**
+     * Restores a previously soft-deleted client. 409 if an active client in
+     * the same tenant already holds the same phone/CIN/passport/email.
+     */
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("@rolePermissionService.has('DELETE_CLIENT')")
+    public ResponseEntity<ApiResponse<ClientResponse>> restoreClient(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                clientService.restoreClient(id), "Client restored successfully."));
     }
 
     /**

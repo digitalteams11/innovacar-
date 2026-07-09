@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Modal from './Modal';
+import api from '../api/axios';
+import InspectionGallery from './InspectionGallery';
 import {
   User, Car, Calendar, CreditCard,
   MapPin, Clock, CheckCircle2,
@@ -22,12 +26,22 @@ interface ReservationDetailsModalProps {
 }
 
 export default function ReservationDetailsModal({ isOpen, onClose, reservation }: ReservationDetailsModalProps) {
+  const { t } = useTranslation();
+  const [inspections, setInspections] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isOpen || !reservation?.id) return;
+    api.get(`/reservations/${reservation.id}/inspections`)
+      .then(({ data }) => setInspections(Array.isArray(data) ? data : []))
+      .catch(() => setInspections([]));
+  }, [isOpen, reservation?.id]);
+
   if (!reservation) return null;
 
   const duration = Math.ceil((new Date(reservation.dateFin).getTime() - new Date(reservation.dateDebut).getTime()) / (1000 * 3600 * 24));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Reservation Details">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('reservations.detailsModalTitle', 'Reservation Details')}>
       <div className="space-y-6 max-h-[80vh] overflow-y-auto no-scrollbar pr-1">
         {/* Reservation Status Banner */}
         <div className={`p-4 rounded-2xl flex items-center justify-between ${
@@ -46,7 +60,7 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
               <Clock size={20} />
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Current Status</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">{t('reservations.currentStatus', 'Current Status')}</p>
               <h3 className="text-sm font-bold uppercase">{reservation.statut}</h3>
             </div>
           </div>
@@ -60,12 +74,12 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
           {/* Client Details */}
           <div className="card-premium space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 border-b pb-2">
-              <User size={14} /> Client Information
+              <User size={14} /> {t('reservations.clientInformation', 'Client Information')}
             </h4>
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-bold text-slate-900">{reservation.clientNom}</p>
-                <p className="text-xs text-slate-500 italic">Individual Client</p>
+                <p className="text-xs text-slate-500 italic">{t('reservations.individualClient')}</p>
               </div>
               <div className="space-y-1.5 pt-1">
                  <p className="text-xs text-slate-500 flex items-center gap-2"><Mail size={12} /> client@example.com</p>
@@ -77,7 +91,7 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
           {/* Vehicle Details */}
           <div className="card-premium space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 border-b pb-2">
-              <Car size={14} /> Vehicle Details
+              <Car size={14} /> {t('reservations.vehicleDetails', 'Vehicle Details')}
             </h4>
             <div className="space-y-3">
               <div>
@@ -86,7 +100,7 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
               </div>
               <div className="flex items-center gap-2 pt-1">
                  <span className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-mono font-bold text-slate-600">ABC-123-XY</span>
-                 <span className="px-2 py-0.5 bg-brand-50 rounded text-[10px] font-bold text-brand-600">Available</span>
+                 <span className="px-2 py-0.5 bg-brand-50 rounded text-[10px] font-bold text-brand-600">{t('common.available')}</span>
               </div>
             </div>
           </div>
@@ -95,11 +109,11 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
         {/* Rental Period */}
         <div className="card-premium">
            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 border-b pb-2 mb-4">
-              <Calendar size={14} /> Rental Period & Duration
+              <Calendar size={14} /> {t('reservations.rentalPeriodDuration', 'Rental Period & Duration')}
            </h4>
            <div className="flex items-center justify-between">
               <div className="space-y-1 text-center flex-1">
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Pick-up</p>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300">{t('reservations.pickUp', 'Pick-up')}</p>
                  <p className="text-sm font-bold text-slate-900">{new Date(reservation.dateDebut).toLocaleDateString()}</p>
                  <p className="text-xs text-slate-500">09:00 AM</p>
               </div>
@@ -109,7 +123,7 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
                  </div>
               </div>
               <div className="space-y-1 text-center flex-1">
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Drop-off</p>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300">{t('reservations.dropOff', 'Drop-off')}</p>
                  <p className="text-sm font-bold text-slate-900">{new Date(reservation.dateFin).toLocaleDateString()}</p>
                  <p className="text-xs text-slate-500">18:00 PM</p>
               </div>
@@ -124,36 +138,43 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
         <div className="card-premium bg-slate-900 text-white border-none shadow-elevated overflow-hidden relative">
            <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 border-b border-white/10 pb-2 mb-4">
-              <CreditCard size={14} /> Financial Summary
+              <CreditCard size={14} /> {t('reservations.financialSummary', 'Financial Summary')}
            </h4>
            <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                 <span className="text-slate-400">Daily Rate (x{duration} days)</span>
+                 <span className="text-slate-400">{t('reservations.dailyRateForDays', 'Daily Rate (x{{days}} days)', { days: duration })}</span>
                  <span className="font-medium">{Math.round(reservation.prixTotal / duration)} DH</span>
               </div>
               <div className="flex justify-between text-sm">
-                 <span className="text-slate-400">Insurance (Full Coverage)</span>
-                 <span className="font-medium text-emerald-400">Included</span>
+                 <span className="text-slate-400">{t('reservations.insuranceFullCoverage', 'Insurance (Full Coverage)')}</span>
+                 <span className="font-medium text-emerald-400">{t('reservations.includedLabel', 'Included')}</span>
               </div>
               <div className="pt-3 border-t border-white/10 flex justify-between items-end">
                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total Price</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{t('reservations.totalPrice')}</p>
                     <p className="text-2xl font-black text-white">{reservation.prixTotal} DH</p>
                  </div>
                  <div className="text-right">
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-bold uppercase border border-emerald-500/30">Fully Paid</span>
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-bold uppercase border border-emerald-500/30">{t('reservations.fullyPaid', 'Fully Paid')}</span>
                  </div>
               </div>
            </div>
         </div>
 
+        <div className="card-premium space-y-4">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 border-b pb-2">
+            <FileText size={14} /> {t('reservations.vehicleInspectionMedia', 'Vehicle Inspection Media')}
+          </h4>
+          <InspectionGallery inspections={inspections} />
+        </div>
+
         {/* Action Buttons */}
         <div className="flex gap-3">
            <button className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-100 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95">
-              <FileText size={18} /> Invoice
+              <FileText size={18} /> {t('reservations.invoice', 'Invoice')}
            </button>
            <button className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/20 active:scale-95">
-              <CheckCircle2 size={18} /> Manage
+              <CheckCircle2 size={18} /> {t('common.manage', 'Manage')}
            </button>
         </div>
       </div>

@@ -2,8 +2,10 @@ package com.carrental.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +13,7 @@ import java.util.List;
  * Represents a client (customer) with full profile for relational auto-fill.
  */
 @Entity
+@SQLRestriction("coalesce(deleted, false) = false")
 @Table(
     name = "clients",
     indexes = {
@@ -90,6 +93,16 @@ public class Client {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Builder.Default
+    @Column(name = "deleted", columnDefinition = "boolean default false")
+    private Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by", length = 150)
+    private String deletedBy;
+
     // ── Relations ────────────────────────────────────────────────────────────
 
     @OneToMany(mappedBy = "client", fetch = FetchType.LAZY)
@@ -105,4 +118,9 @@ public class Client {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tenant_id", nullable = false)
     private Tenant tenant;
+
+    @PrePersist
+    protected void onCreate() {
+        if (deleted == null) deleted = false;
+    }
 }

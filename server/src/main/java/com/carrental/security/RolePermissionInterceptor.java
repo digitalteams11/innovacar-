@@ -32,22 +32,27 @@ public class RolePermissionInterceptor implements HandlerInterceptor {
         return false;
     }
 
-    private String resolvePermission(String method, String path) {
-        if (path.startsWith("/api/vehicles")) return action(method, "VIEW_VEHICLES", "CREATE_VEHICLE", "EDIT_VEHICLE", "DELETE_VEHICLE");
-        if (path.startsWith("/api/clients")) return action(method, "VIEW_CLIENTS", "CREATE_CLIENT", "EDIT_CLIENT", "DELETE_CLIENT");
-        if (path.startsWith("/api/reservations")) return action(method, "VIEW_RESERVATIONS", "CREATE_RESERVATION", "EDIT_RESERVATION", "CANCEL_RESERVATION");
+    String resolvePermission(String method, String path) {
+        if (path.startsWith("/api/vehicles")) return action(method, "VEHICLE_VIEW", "VEHICLE_CREATE", "VEHICLE_UPDATE", "VEHICLE_DELETE");
+        if (path.startsWith("/api/clients")) return action(method, "CLIENT_VIEW", "CLIENT_CREATE", "CLIENT_UPDATE", "CLIENT_DELETE");
+        if (path.startsWith("/api/reservations")) return action(method, "RESERVATION_VIEW", "RESERVATION_CREATE", "RESERVATION_UPDATE", "RESERVATION_CANCEL");
         if (path.startsWith("/api/contracts")) {
-            if (path.endsWith("/sign") || path.endsWith("/qr")) return "SIGN_CONTRACT";
-            if (path.endsWith("/complete") || path.endsWith("/finalize")) return "COMPLETE_CONTRACT";
-            return action(method, "VIEW_CONTRACTS", "CREATE_CONTRACT", "CREATE_CONTRACT", "CREATE_CONTRACT");
+            if (path.endsWith("/sign") || path.endsWith("/qr")) return "CONTRACT_QR_SIGNATURE";
+            if (path.endsWith("/complete") || path.endsWith("/finalize")) return "CONTRACT_UPDATE";
+            return action(method, "CONTRACT_VIEW", "CONTRACT_CREATE", "CONTRACT_UPDATE", "CONTRACT_DELETE");
         }
-        if (path.startsWith("/api/payments")) return "GET".equals(method) ? "VIEW_PAYMENTS" : "RECORD_PAYMENT";
-        if (path.startsWith("/api/invoices")) return "GET".equals(method) ? "VIEW_INVOICES" : "MANAGE_INVOICES";
-        if (path.startsWith("/api/reports")) return "VIEW_REPORTS";
-        if (path.startsWith("/api/gps")) return "GPS_ACCESS";
-        if (path.startsWith("/api/maintenance")) return "GET".equals(method) ? "VIEW_MAINTENANCE" : "MANAGE_MAINTENANCE";
-        if (path.startsWith("/api/employees")) return "MANAGE_EMPLOYEES";
-        if (path.startsWith("/api/agency")) return "GET".equals(method) ? null : "MANAGE_SETTINGS";
+        if (path.startsWith("/api/payments")) return "GET".equals(method) ? "PAYMENT_VIEW" : "PAYMENT_CREATE";
+        if (path.startsWith("/api/invoices")) return "GET".equals(method) ? "INVOICE_VIEW" : "INVOICE_EXPORT";
+        if (path.startsWith("/api/deposits")) return "GET".equals(method) ? "VIEW_DEPOSITS" : "MANAGE_DEPOSITS";
+        if (path.startsWith("/api/reports")) return "REPORT_VIEW";
+        if (path.startsWith("/api/gps/settings") || path.startsWith("/api/gps-settings")) {
+            return "GET".equals(method) ? "GPS_VIEW" : "GPS_SETTINGS";
+        }
+        if (path.startsWith("/api/gps")) return "GPS_VIEW";
+        if (path.startsWith("/api/maintenance")) return "GET".equals(method) ? "VEHICLE_VIEW" : "VEHICLE_MAINTENANCE_MANAGE";
+        if (path.startsWith("/api/employees")) return action(method, "EMPLOYEE_VIEW", "EMPLOYEE_CREATE", "EMPLOYEE_UPDATE", "EMPLOYEE_DELETE");
+        if (path.startsWith("/api/white-label")) return "AGENCY_SETTINGS_UPDATE";
+        if (path.startsWith("/api/agency")) return "GET".equals(method) ? "AGENCY_SETTINGS_VIEW" : "AGENCY_SETTINGS_UPDATE";
         return null;
     }
 

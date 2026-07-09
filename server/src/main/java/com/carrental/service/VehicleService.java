@@ -12,11 +12,17 @@ import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Vehicle-management business logic.
@@ -38,6 +44,12 @@ public class VehicleService {
     private final VehicleRepository vehicleRepository;
     private final TenantRepository  tenantRepository;
 
+    @Value("${app.vehicles.trash-retention-days:${app.trash.retention-days:30}}")
+    private int trashRetentionDays;
+
+    private static final java.util.Set<VehicleStatus> MAINTENANCE_STATUSES =
+            java.util.Set.of(VehicleStatus.IN_MAINTENANCE, VehicleStatus.MAINTENANCE, VehicleStatus.OUT_OF_SERVICE);
+
     // ── READ ─────────────────────────────────────────────────────────────────
 
     /**
@@ -47,6 +59,10 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public List<VehicleResponse> getAllVehicles(VehicleStatus statut) {
         Long tenantId = TenantContext.getCurrentTenantId();
+        if (tenantId == null) {
+            log.warn("Vehicle list requested without tenant context; returning empty list");
+            return List.of();
+        }
         log.debug("Listing vehicles for tenant [{}], filter statut={}", tenantId, statut);
 
         List<Vehicle> vehicles = (statut != null)
@@ -73,6 +89,7 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public long countAvailable() {
         Long tenantId = TenantContext.getCurrentTenantId();
+        if (tenantId == null) return 0;
         return vehicleRepository.countByTenantIdAndStatut(tenantId, VehicleStatus.AVAILABLE);
     }
 
@@ -174,6 +191,7 @@ public class VehicleService {
             vehicle.setGpsStatus(request.getGpsStatus());
         }
 
+
         Vehicle saved = vehicleRepository.save(vehicle);
         log.info("Updated vehicle [id={}] in tenant [{}]", id, TenantContext.getCurrentTenantId());
         return VehicleResponse.from(saved);
@@ -182,13 +200,13 @@ public class VehicleService {
     // ── DELETE ────────────────────────────────────────────────────────────────
 
     /**
-     * Hard-deletes a vehicle from the caller's tenant fleet. ADMIN-only.
+     * Soft-deletes a vehicle from the caller's tenant fleet. ADMIN-only.
      *
      * @throws ResourceNotFoundException if the vehicle is not found in this tenant
      * @throws IllegalStateException     if the vehicle is currently RENTED
      */
     @Transactional
-    public void deleteVehicle(Long id) {
+    public Map<String, Object> deleteVehicle(Long id) {
         Vehicle vehicle = fetchVehicleInTenant(id);
 
         if (vehicle.getStatut() == VehicleStatus.RENTED) {
@@ -196,9 +214,86 @@ public class VehicleService {
                     "Cannot delete vehicle [id=" + id + "] — it is currently RENTED.");
         }
 
-        vehicleRepository.delete(vehicle);
-        log.info("Deleted vehicle [id={}] from tenant [{}]",
+        VehicleStatus statusBeforeDelete = vehicle.getStatut();
+        LocalDateTime deletedAt = LocalDateTime.now();
+        vehicle.setStatusBeforeDelete(statusBeforeDelete);
+        // Removed from the active fleet — OUT_OF_SERVICE stays within the
+        // vehicles_statut_check constraint and keeps the vehicle out of any
+        // status-based filter even on a path that bypasses @SQLRestriction.
+        vehicle.setStatut(VehicleStatus.OUT_OF_SERVICE);
+        vehicle.setDeleted(true);
+        vehicle.setDeletedAt(deletedAt);
+        vehicle.setDeletedBy(currentUserEmail());
+        Vehicle saved = vehicleRepository.save(vehicle);
+        log.info("Moved vehicle [id={}] to trash in tenant [{}]",
                 id, TenantContext.getCurrentTenantId());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", saved.getId());
+        result.put("deleted", true);
+        result.put("deletedAt", deletedAt);
+        result.put("restorableUntil", deletedAt.plusDays(trashRetentionDays));
+        return result;
+    }
+
+    // ── TRASH / RESTORE ──────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getTrashedVehicles() {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        LocalDateTime now = LocalDateTime.now();
+        return vehicleRepository.findAllTrashedByTenantId(tenantId).stream()
+                .filter(v -> v.getDeletedAt() != null && v.getDeletedAt().plusDays(trashRetentionDays).isAfter(now))
+                .map(this::toTrashItem)
+                .toList();
+    }
+
+    private Map<String, Object> toTrashItem(Vehicle vehicle) {
+        LocalDateTime deletedAt = vehicle.getDeletedAt();
+        LocalDateTime restorableUntil = deletedAt.plusDays(trashRetentionDays);
+        long daysRemaining = Math.max(0, ChronoUnit.DAYS.between(LocalDateTime.now(), restorableUntil));
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", vehicle.getId());
+        item.put("marque", vehicle.getMarque());
+        item.put("plate", vehicle.getPlate());
+        item.put("statut", vehicle.getStatut());
+        item.put("deletedAt", deletedAt);
+        item.put("deletedBy", vehicle.getDeletedBy());
+        item.put("restorableUntil", restorableUntil);
+        item.put("daysRemaining", daysRemaining);
+        return item;
+    }
+
+    @Transactional
+    public Map<String, Object> restoreVehicle(Long id) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        Vehicle vehicle = vehicleRepository.findDeletedByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trashed vehicle not found with id: " + id));
+
+        LocalDateTime deletedAt = vehicle.getDeletedAt();
+        LocalDateTime restorableUntil = deletedAt != null ? deletedAt.plusDays(trashRetentionDays) : null;
+        if (restorableUntil == null || LocalDateTime.now().isAfter(restorableUntil)) {
+            throw new IllegalStateException(
+                    "This vehicle's " + trashRetentionDays
+                            + "-day restore window has expired and it can no longer be restored.");
+        }
+
+        VehicleStatus previous = vehicle.getStatusBeforeDelete();
+        VehicleStatus restoredStatus = previous != null && MAINTENANCE_STATUSES.contains(previous)
+                ? previous : VehicleStatus.AVAILABLE;
+        vehicle.setStatut(restoredStatus);
+        vehicle.setStatusBeforeDelete(null);
+        vehicle.setDeleted(false);
+        vehicle.setDeletedAt(null);
+        vehicle.setDeletedBy(null);
+        Vehicle saved = vehicleRepository.save(vehicle);
+        log.info("Restored vehicle [id={}] in tenant [{}] to status [{}]", id, tenantId, restoredStatus);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", saved.getId());
+        result.put("deleted", false);
+        result.put("statut", saved.getStatut());
+        return result;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -212,5 +307,10 @@ public class VehicleService {
         return vehicleRepository.findByIdAndTenantId(vehicleId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Vehicle not found with id: " + vehicleId));
+    }
+
+    private String currentUserEmail() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null ? authentication.getName() : "system";
     }
 }

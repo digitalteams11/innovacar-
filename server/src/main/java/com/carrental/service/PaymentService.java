@@ -9,6 +9,7 @@ import com.carrental.repository.*;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -320,7 +321,6 @@ public class PaymentService {
 
         if (totalPrice.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(BigDecimal.ZERO) <= 0) {
             contract.setPaymentStatus("PAID");
-            contract.setStatus(ContractStatus.PAID);
         } else if (collected.compareTo(BigDecimal.ZERO) > 0) {
             contract.setPaymentStatus("PARTIALLY_PAID");
         } else {

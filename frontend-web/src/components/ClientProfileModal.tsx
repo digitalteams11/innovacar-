@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import Modal from './Modal';
+import InspectionGallery from './InspectionGallery';
 
 interface Client {
   id: number;
@@ -20,7 +21,7 @@ interface ClientProfileModalProps {
   client: Client | null;
 }
 
-type Tab = 'reservations' | 'contracts' | 'payments' | 'documents';
+type Tab = 'reservations' | 'contracts' | 'payments' | 'documents' | 'inspections';
 
 export default function ClientProfileModal({ isOpen, onClose, client }: ClientProfileModalProps) {
   const [profile, setProfile] = useState<any>(null);
@@ -28,6 +29,7 @@ export default function ClientProfileModal({ isOpen, onClose, client }: ClientPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('reservations');
+  const [inspections, setInspections] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isOpen || !client?.id) return;
@@ -36,10 +38,12 @@ export default function ClientProfileModal({ isOpen, onClose, client }: ClientPr
     Promise.all([
       api.get(`/clients/${client.id}/profile`),
       api.get(`/deposits/client/${client.id}/summary`).catch(() => ({ data: null })),
+      api.get(`/clients/${client.id}/inspections`).catch(() => ({ data: [] })),
     ])
-      .then(([profileResponse, depositResponse]) => {
+      .then(([profileResponse, depositResponse, inspectionsResponse]) => {
         setProfile(profileResponse.data);
         setDeposits(depositResponse.data);
+        setInspections(Array.isArray(inspectionsResponse.data) ? inspectionsResponse.data : []);
       })
       .catch((err) => setError(err.userMessage || 'Failed to load client profile'))
       .finally(() => setLoading(false));
@@ -85,6 +89,7 @@ export default function ClientProfileModal({ isOpen, onClose, client }: ClientPr
               ['reservations', 'Reservations'],
               ['contracts', 'Contracts'],
               ['payments', 'Payments'],
+              ['inspections', 'Inspections'],
               ['documents', 'Documents & Signatures'],
             ] as [Tab, string][]).map(([key, label]) => (
               <button key={key} onClick={() => setTab(key)}
@@ -150,6 +155,9 @@ export default function ClientProfileModal({ isOpen, onClose, client }: ClientPr
                 }))}
               />
             </div>
+          )}
+          {tab === 'inspections' && (
+            <InspectionGallery inspections={inspections} />
           )}
         </div>
       )}

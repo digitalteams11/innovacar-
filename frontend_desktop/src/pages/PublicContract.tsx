@@ -1,269 +1,594 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, Calendar, User, Car, Shield, CheckCircle2, Download, Printer, MapPin, Phone, Mail, Building2, Landmark } from 'lucide-react';
-import SignaturePad from '../components/contracts/SignaturePad';
-import { useToast } from '../context/ToastContext';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { API_BASE_URL } from '../lib/api';
 
-interface ContractData {
-  id: string;
-  clientName: string;
-  clientEmail: string;
-  clientPhone: string;
-  vehicleName: string;
-  vehiclePlate: string;
+import SignaturePad from '../components/shared/SignaturePad';
+import {
+  Calendar, User, Car, Shield, CheckCircle2, Loader2, Building2,
+  MapPin, Phone, Mail, Landmark, AlertCircle, Check, FileText
+} from 'lucide-react';
+
+interface PublicContractData {
+  contractNumber: string;
+  clientFullName?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientCin?: string;
+  clientAddress?: string;
+  vehicleBrand?: string;
+  vehicleModel?: string;
+  vehicleRegistration?: string;
+  vehiclePlate?: string;
+  vehicleCategory?: string;
   startDate: string;
   endDate: string;
-  pricePerDay: number;
-  totalAmount: number;
-  status: 'Draft' | 'Pending Signature' | 'Signed' | 'Expired';
-  ownerSignature: string;
-  clientSignature?: string;
+  status: string;
+  rentalDays?: number;
+  dailyPrice?: number;
+  totalPrice?: number;
+  totalAmount?: number;
+  depositAmount?: number;
+  deliveryFees?: number;
+  returnFees?: number;
+  lateFees?: number;
+  cleaningFees?: number;
+  fuelCharges?: number;
+  discountAmount?: number;
+  fuelLevel?: string;
+  mileageStart?: number;
+  clientSigned?: boolean;
+  ownerSigned?: boolean;
+  termsAccepted?: boolean;
   signedAt?: string;
-  terms: string[];
+  ownerSignature?: string;
+  clientSignature?: string;
+  ownerSignedAt?: string;
+  clientSignedAt?: string;
+  agencyStampUrl?: string;
+  agencyName?: string;
+  pdfUrl?: string;
+  agencyAddress?: string;
+  agencyPhone?: string;
+  agencyEmail?: string;
+  agencyLogo?: string;
+  terms?: string[];
+  deposit?: {
+    depositType?: string;
+    amount?: number;
+    currency?: string;
+    reference?: string;
+    status?: string;
+    conditionsText?: string;
+  };
 }
 
 export default function PublicContract() {
-  const { contractId, token } = useParams<{ contractId?: string; token?: string }>();
-  const contractIdentifier = contractId || token || 'CTR-2026-001';
-  const { showToast } = useToast();
-  const navigate = useNavigate();
-  const [contract, setContract] = useState<ContractData | null>(null);
+  const { contractId, token: qrToken } = useParams<{ contractId?: string; token?: string }>();
+  const { t } = useTranslation();
+
+  const [contract, setContract] = useState<PublicContractData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [depositAcknowledged, setDepositAcknowledged] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const API_BASE = API_BASE_URL;
+
+  // Build the appropriate API URL based on available params
+  const getContractUrl = () => {
+    if (contractId && qrToken) {
+      return `${API_BASE}/public/contracts/${contractId}/${qrToken}`;
+    }
+    return `${API_BASE}/public/contracts/${qrToken}`;
+  };
+
+  const getSignUrl = () => {
+    if (contractId && qrToken) {
+      return `${API_BASE}/public/contracts/${contractId}/${qrToken}/sign`;
+    }
+    return `${API_BASE}/public/contracts/${qrToken}/sign`;
+  };
 
   useEffect(() => {
-    // Mock data for the demonstration
-    // In a real app, this would fetch from an API
-    const mockContract: ContractData = {
-      id: contractIdentifier,
-      clientName: 'Youssef El Mansouri',
-      clientEmail: 'youssef.mansouri@email.com',
-      clientPhone: '+212 612-345678',
-      vehicleName: 'Dacia Logan 2024',
-      vehiclePlate: '12345-A-1',
-      startDate: '2026-05-15',
-      endDate: '2026-05-20',
-      pricePerDay: 350,
-      totalAmount: 1750,
-      status: 'Pending Signature',
-      ownerSignature: 'https://upload.wikimedia.org/wikipedia/commons/3/3a/Jon_Snow_Signature.png', // Placeholder
-      terms: [
-        'The vehicle must be returned with the same fuel level as received.',
-        'Any damage to the vehicle during the rental period is the responsibility of the client.',
-        'Late return will incur additional charges as per the company policy.',
-        'The vehicle is insured for third-party liability only.',
-        'Smoking is strictly prohibited inside the vehicle.'
-      ]
-    };
-    
-    // Check if we have a saved version in localStorage
-    const saved = localStorage.getItem(`contract_${contractIdentifier}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setContract(parsed);
-      if (parsed.status === 'Signed') setIsSigned(true);
-    } else {
-      setContract(mockContract);
+    if (!qrToken) {
+      setError('Invalid contract link');
+      setLoading(false);
+      return;
     }
-  }, [contractIdentifier]);
+    fetchContract();
+  }, [qrToken, contractId]);
 
-  const handleSignatureSave = (signatureDataUrl: string) => {
-    if (!contract) return;
-
-    const updatedContract: ContractData = {
-      ...contract,
-      status: 'Signed',
-      clientSignature: signatureDataUrl,
-      signedAt: new Date().toISOString()
-    };
-
-    setContract(updatedContract);
-    setIsSigned(true);
-    localStorage.setItem(`contract_${token}`, JSON.stringify(updatedContract));
-    showToast('Contract signed successfully!', 'success');
+  const fetchContract = async () => {
+    const url = getContractUrl();
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        let detail = '';
+        try {
+          const body = await res.json();
+          detail = body.error || body.message || '';
+        } catch { /* ignore parse error */ }
+        throw new Error(`HTTP ${res.status}${detail ? ': ' + detail : ''}`);
+      }
+      const data = await res.json();
+      setContract(data);
+      setIsSigned(data.clientSigned || false);
+      setTermsChecked(data.termsAccepted || false);
+    } catch (err: any) {
+      console.error('[PublicContract] fetch failed:', url, err);
+      setError(
+        err?.message?.startsWith('HTTP')
+          ? `Server error (${err.message}). Please try again or contact support.`
+          : 'This contract link is invalid or has expired.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleSignatureSave = async (signatureData: string) => {
+    if (!contract || !termsChecked) return;
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch(getSignUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signatureData,
+          signerType: 'CLIENT',
+          termsAccepted: true,
+          ipAddress: '',
+          userAgent: navigator.userAgent,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save signature');
+
+      const data = await res.json();
+      setContract(data);
+      setIsSigned(true);
+      setShowSuccess(true);
+    } catch (err) {
+      setError('Failed to save your signature. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (!contract) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  const downloadSignedPdf = async () => {
+    if (!contract?.pdfUrl) return;
+    setIsSubmitting(true);
+    try {
+      const apiOrigin = API_BASE.replace(/\/api$/, '');
+      const res = await fetch(`${apiOrigin}${contract.pdfUrl}`);
+      if (!res.ok) throw new Error('Unable to download PDF');
+      const blob = await res.blob();
+      if (!blob || blob.size === 0) throw new Error('PDF file is empty');
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `contract-${(contract.contractNumber || 'contract').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError('Unable to generate contract PDF.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  return (
-    <div className="min-h-screen bg-slate-100 py-6 px-4 md:py-12 md:px-0 font-sans print:bg-white print:p-0 animate-fade">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Status Header - Hide during print */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${isSigned ? 'bg-success-500 animate-pulse' : 'bg-warning-500 animate-pulse'}`}></div>
-            <span className="font-bold text-slate-700">
-              {isSigned ? 'Contract Signed & Secured' : 'Action Required: Please Review & Sign'}
-            </span>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 size={32} className="animate-spin text-brand-500 mx-auto" />
+          <p className="text-sm text-slate-400">Loading contract...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !contract) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-16 h-16 bg-danger-50 rounded-2xl flex items-center justify-center mx-auto">
+            <AlertCircle size={28} className="text-danger-500" />
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 transition-all"
-            >
-              <Printer size={16} /> Print
-            </button>
-            {isSigned && (
-              <button className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all">
-                <Download size={16} /> Download PDF
-              </button>
+          <h1 className="text-xl font-bold text-[#1e293b]">Invalid Link</h1>
+          <p className="text-sm text-slate-400">{error}</p>
+          <p className="text-xs text-slate-300">Please contact your rental agency for assistance.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showSuccess) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="text-center space-y-6 max-w-sm animate-scale-in">
+          <div className="relative w-24 h-24 mx-auto">
+            <div className="absolute inset-0 bg-success-100 rounded-full animate-ping opacity-30" />
+            <div className="relative w-24 h-24 bg-success-50 rounded-full flex items-center justify-center">
+              <CheckCircle2 size={40} className="text-success-500" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-[#1e293b]">Contract Signed!</h1>
+            <p className="text-sm text-slate-400">
+              Your signature has been securely recorded and synced to the agency dashboard.
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-400">Contract</span>
+              <span className="font-mono font-bold text-[#1e293b]">{contract.contractNumber}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-400">Status</span>
+              <span className="font-bold text-success-500">Signed</span>
+            </div>
+            {contract.ownerSigned && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Final Status</span>
+                <span className="font-bold text-success-500">Active</span>
+              </div>
             )}
           </div>
+          <p className="text-xs text-slate-300">
+            You can now close this page. A confirmation email will be sent shortly.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const days = Math.ceil(
+    (new Date(contract.endDate).getTime() - new Date(contract.startDate).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-8 md:pb-0 animate-fade">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {contract.agencyLogo ? (
+              <img src={contract.agencyLogo} alt="" className="w-8 h-8 rounded-lg object-contain" />
+            ) : (
+              <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
+                <Building2 size={16} className="text-brand-500" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-[#1e293b]">{contract.agencyName || 'Agency'}</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Digital Contract</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${contract.ownerSigned ? 'bg-success-500' : 'bg-warning-500'} animate-pulse`} />
+            <span className="text-xs font-medium text-slate-500">
+              {contract.ownerSigned ? 'Active' : 'Pending'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+        {/* Contract Number */}
+        <div className="text-center space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Contract Number</p>
+          <p className="font-mono text-base sm:text-lg font-bold text-[#1e293b]">{contract.contractNumber}</p>
         </div>
 
-        {/* The Contract Document */}
-        <div className="bg-white shadow-2xl rounded-sm border border-slate-200 min-h-[11in] p-8 md:p-16 text-slate-800 relative overflow-hidden print:shadow-none print:border-none print:m-0">
-          {/* Document Header */}
-          <div className="flex flex-col sm:flex-row justify-between gap-8 mb-12 pb-12 border-b border-slate-100">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-brand-600">
-                <Building2 size={32} />
-                <h1 className="text-2xl font-black uppercase tracking-tighter">AutoLink <span className="text-slate-400 font-light">Rental</span></h1>
-              </div>
-              <div className="space-y-1 text-sm text-slate-500">
-                <p className="flex items-center gap-2"><MapPin size={14} /> 123 Business Ave, Casablanca, Morocco</p>
-                <p className="flex items-center gap-2"><Phone size={14} /> +212 522-123456</p>
-                <p className="flex items-center gap-2"><Mail size={14} /> contact@autolink-rental.com</p>
-              </div>
-            </div>
-            <div className="text-right space-y-2">
-              <h2 className="text-3xl font-serif font-bold text-slate-900 italic">Rental Agreement</h2>
-              <div className="inline-block px-3 py-1 bg-slate-100 rounded text-xs font-mono font-bold text-slate-500 uppercase tracking-widest">
-                ID: {contract.id}
-              </div>
-              <p className="text-sm text-slate-400">Date: {new Date().toLocaleDateString()}</p>
-            </div>
+        {/* Client Info Card */}
+        <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 text-brand-500">
+            <User size={14} />
+            <span className="text-xs font-bold uppercase tracking-wider">{t('contracts.client') || 'Client'}</span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-            {/* Client Section */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-brand-600 flex items-center gap-2 border-b border-brand-100 pb-2">
-                <User size={14} /> Client Information
-              </h3>
-              <div className="space-y-2">
-                <p className="font-bold text-lg text-slate-900">{contract.clientName}</p>
-                <p className="text-sm text-slate-600">{contract.clientEmail}</p>
-                <p className="text-sm text-slate-600">{contract.clientPhone}</p>
-              </div>
-            </div>
-
-            {/* Vehicle Section */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-brand-600 flex items-center gap-2 border-b border-brand-100 pb-2">
-                <Car size={14} /> Vehicle Details
-              </h3>
-              <div className="space-y-2">
-                <p className="font-bold text-lg text-slate-900">{contract.vehicleName}</p>
-                <p className="text-sm font-mono bg-slate-100 px-2 py-0.5 rounded inline-block">Plate: {contract.vehiclePlate}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 p-6 bg-slate-50 rounded-2xl border border-slate-100">
-            {/* Rental Period */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Rental Period</p>
-              <div className="flex items-center gap-2 text-slate-700 font-medium">
-                <Calendar size={16} className="text-brand-500" />
-                <span>{new Date(contract.startDate).toLocaleDateString()}</span>
-                <span className="text-slate-300">→</span>
-                <span>{new Date(contract.endDate).toLocaleDateString()}</span>
-              </div>
-            </div>
-            
-            {/* Price Per Day */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Daily Rate</p>
-              <p className="text-lg font-bold text-slate-900">{contract.pricePerDay} MAD <span className="text-sm font-normal text-slate-500">/day</span></p>
-            </div>
-
-            {/* Total Amount */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Amount</p>
-              <p className="text-2xl font-black text-brand-600">{contract.totalAmount} MAD</p>
-            </div>
-          </div>
-
-          {/* Terms and Conditions */}
-          <div className="mb-12 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-900 flex items-center gap-2">
-              <Shield size={14} /> Terms and Conditions
-            </h3>
-            <ul className="space-y-3">
-              {contract.terms.map((term, idx) => (
-                <li key={idx} className="flex gap-3 text-sm text-slate-600 leading-relaxed">
-                  <span className="font-bold text-slate-300">{idx + 1}.</span>
-                  {term}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Signatures Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-16 pt-12 border-t border-slate-100">
-            {/* Owner Signature */}
-            <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Owner Signature</p>
-              <div className="h-24 flex items-center justify-center border-b border-slate-200 bg-slate-50/50 rounded-t-lg">
-                <img src={contract.ownerSignature} alt="Owner Signature" className="max-h-16 grayscale opacity-80" />
-              </div>
-              <div className="text-center">
-                <p className="font-bold text-slate-900">AutoLink Rental Management</p>
-                <p className="text-xs text-slate-400 font-mono uppercase">Authorized Signatory</p>
-              </div>
-            </div>
-
-            {/* Client Signature */}
-            <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Client Signature</p>
-              {isSigned ? (
-                <div className="space-y-4 animate-fade">
-                  <div className="h-24 flex items-center justify-center border-b border-slate-200 bg-emerald-50/30 rounded-t-lg relative overflow-hidden">
-                    <img src={contract.clientSignature} alt="Client Signature" className="max-h-16" />
-                    <div className="absolute top-2 right-2">
-                      <CheckCircle2 size={20} className="text-emerald-500" />
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-bold text-slate-900">{contract.clientName}</p>
-                    <p className="text-xs text-slate-400 font-mono uppercase">Signed on {new Date(contract.signedAt!).toLocaleString()}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-slate-50 p-6 rounded-2xl border-2 border-dashed border-brand-200 print:hidden">
-                  <SignaturePad onSave={handleSignatureSave} title="Please sign to complete the agreement" />
-                </div>
+          <div>
+            <p className="text-base sm:text-lg font-bold text-[#1e293b]">{contract.clientFullName || contract.clientName || 'Client'}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
+              {contract.clientEmail && (
+                <span className="flex items-center gap-1"><Mail size={11} /> {contract.clientEmail}</span>
+              )}
+              {contract.clientPhone && (
+                <span className="flex items-center gap-1"><Phone size={11} /> {contract.clientPhone}</span>
+              )}
+              {contract.clientCin && (
+                <span className="flex items-center gap-1"><User size={11} /> CIN: {contract.clientCin}</span>
+              )}
+              {contract.clientAddress && (
+                <span className="flex items-center gap-1 w-full mt-1"><MapPin size={11} className="shrink-0"/> {contract.clientAddress}</span>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Footer watermark */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-[0.03] pointer-events-none select-none">
-             <Landmark size={400} />
+        {/* Vehicle Info Card */}
+        <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 text-brand-500">
+            <Car size={14} />
+            <span className="text-xs font-bold uppercase tracking-wider">{t('contracts.vehicle') || 'Vehicle'}</span>
+          </div>
+          <div>
+            <p className="text-base sm:text-lg font-bold text-[#1e293b]">{contract.vehicleBrand || contract.vehicleModel || 'Vehicle'}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
+              {(contract.vehicleRegistration || contract.vehiclePlate) && (
+                <span className="flex items-center gap-1"><Shield size={11} /> {contract.vehicleRegistration || contract.vehiclePlate}</span>
+              )}
+              {contract.vehicleCategory && (
+                <span className="flex items-center gap-1"><Car size={11} /> {contract.vehicleCategory}</span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Verification Section */}
-        <div className="bg-white/50 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 print:hidden">
+        {/* Rental Period Card */}
+        <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 text-brand-500">
+            <Calendar size={14} />
+            <span className="text-xs font-bold uppercase tracking-wider">{t('contracts.period') || 'Rental Period'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-center">
+              <p className="text-xs text-slate-400">Start</p>
+              <p className="text-sm font-bold text-[#1e293b]">{new Date(contract.startDate).toLocaleDateString()}</p>
+            </div>
+            <div className="flex-1 flex items-center justify-center px-4">
+              <div className="h-px bg-slate-200 flex-1" />
+              <div className="px-3 py-1 bg-brand-50 rounded-full text-xs font-bold text-brand-500 whitespace-nowrap">
+                {days} days
+              </div>
+              <div className="h-px bg-slate-200 flex-1" />
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-400">End</p>
+              <p className="text-sm font-bold text-[#1e293b]">{new Date(contract.endDate).toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Pricing Card */}
+        <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 text-brand-500">
+            <Landmark size={14} />
+            <span className="text-xs font-bold uppercase tracking-wider">Payment Summary</span>
+          </div>
           <div className="space-y-2">
-            <h4 className="font-bold text-slate-800 flex items-center gap-2">
-              <Shield size={18} className="text-brand-500" /> Blockchain Verified
-            </h4>
-            <p className="text-xs text-slate-500 max-w-md">
-              This document is cryptographically signed and timestamped. Any alteration will invalidate the signature. 
-              Verification ID: <span className="font-mono bg-slate-100 px-1 rounded">{contract.id.replace('-', '')}f7a9c2</span>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Rental Price ({days} days)</span>
+              <span className="font-medium text-[#1e293b]">{(contract.dailyPrice || 0) * days} MAD</span>
+            </div>
+            {(contract.depositAmount || 0) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Deposit</span>
+                <span className="font-medium text-[#1e293b]">{contract.depositAmount} MAD</span>
+              </div>
+            )}
+            {((contract.deliveryFees || 0) + (contract.returnFees || 0) + (contract.cleaningFees || 0) + (contract.lateFees || 0) + (contract.fuelCharges || 0)) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Additional Fees</span>
+                <span className="font-medium text-[#1e293b]">{((contract.deliveryFees || 0) + (contract.returnFees || 0) + (contract.cleaningFees || 0) + (contract.lateFees || 0) + (contract.fuelCharges || 0))} MAD</span>
+              </div>
+            )}
+            {(contract.discountAmount || 0) > 0 && (
+              <div className="flex justify-between text-sm text-success-600">
+                <span>Discount</span>
+                <span className="font-medium">-{contract.discountAmount} MAD</span>
+              </div>
+            )}
+            <div className="h-px bg-slate-100 my-2" />
+            <div className="flex justify-between text-base">
+              <span className="font-bold text-slate-800">Total Amount</span>
+              <span className="font-black text-brand-600">{contract.totalPrice || contract.totalAmount || 0} MAD</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Agency Signature */}
+        {contract.ownerSigned && contract.ownerSignature && (
+          <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+            <div className="flex items-center gap-2 text-success-500">
+              <CheckCircle2 size={14} />
+              <span className="text-xs font-bold uppercase tracking-wider">Agency Signed</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-success-50 rounded-xl">
+              <img src={contract.ownerSignature} alt="Agency Signature" className="h-16 bg-white rounded-lg border border-success-200 p-2" />
+              <div>
+                <p className="text-sm font-bold text-success-700">{contract.agencyName || 'Agency'}</p>
+                <p className="text-xs text-success-500">
+                  Signed on {contract.ownerSignedAt ? new Date(contract.ownerSignedAt).toLocaleString() : 'N/A'}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400">
+              This contract has already been signed by the agency. Please review and sign below to complete the agreement.
             </p>
           </div>
-          {isSigned && (
-             <div className="flex items-center gap-3 bg-emerald-50 text-emerald-700 px-5 py-3 rounded-2xl font-bold text-sm border border-emerald-100">
-               <CheckCircle2 size={20} />
-               Valid Document
-             </div>
+        )}
+
+        {/* Security Deposit */}
+        {contract.deposit && contract.deposit.amount && contract.deposit.amount > 0 && (
+          <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+            <div className="flex items-center gap-2 text-brand-500">
+              <Landmark size={14} />
+              <span className="text-xs font-bold uppercase tracking-wider">Security Deposit</span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Type</span>
+                <span className="font-medium text-[#1e293b]">{contract.deposit.depositType || 'Cash'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Amount</span>
+                <span className="font-bold text-brand-600">{contract.deposit.amount} {contract.deposit.currency || 'MAD'}</span>
+              </div>
+              {contract.deposit.reference && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Reference</span>
+                  <span className="font-medium text-[#1e293b]">{contract.deposit.reference}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Status</span>
+                <span className="font-medium text-[#1e293b]">{contract.deposit.status || 'Pending'}</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-xl">
+              {contract.deposit.conditionsText || 'The deposit will be returned after inspection of the vehicle and validation of all contractual obligations.'}
+            </p>
+            {!isSigned && (
+              <label className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl cursor-pointer transition-all hover:bg-amber-100 border border-amber-200">
+                <div className="relative mt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={depositAcknowledged}
+                    onChange={(e) => setDepositAcknowledged(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="w-5 h-5 border-2 border-amber-300 rounded-md peer-checked:bg-brand-500 peer-checked:border-brand-500 transition-all" />
+                  {depositAcknowledged && (
+                    <Check size={12} className="absolute inset-0 m-auto text-white pointer-events-none" />
+                  )}
+                </div>
+                <span className="text-sm text-amber-800 font-medium">
+                  I understand and accept the deposit conditions.
+                </span>
+              </label>
+            )}
+          </div>
+        )}
+
+        {/* Terms & Conditions */}
+        <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 text-brand-500">
+            <Shield size={14} />
+            <span className="text-xs font-bold uppercase tracking-wider">Terms & Conditions</span>
+          </div>
+          <ul className="space-y-3">
+            {(contract.terms || []).map((term, idx) => (
+              <li key={idx} className="flex gap-3 text-sm text-slate-600 leading-relaxed">
+                <span className="font-bold text-slate-300 shrink-0">{idx + 1}.</span>
+                {term}
+              </li>
+            ))}
+          </ul>
+
+          {/* Terms Checkbox */}
+          {!isSigned && (
+            <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer transition-all hover:bg-slate-100">
+              <div className="relative mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={termsChecked}
+                  onChange={(e) => setTermsChecked(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="w-5 h-5 border-2 border-slate-300 rounded-md peer-checked:bg-brand-500 peer-checked:border-brand-500 transition-all" />
+                {termsChecked && (
+                  <Check size={12} className="absolute inset-0 m-auto text-white pointer-events-none" />
+                )}
+              </div>
+              <span className="text-sm text-slate-600">
+                I have read and agree to the terms and conditions above.
+              </span>
+            </label>
           )}
+        </div>
+
+        {/* Signature Section */}
+        {!isSigned ? (
+          <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
+            <div className="flex items-center gap-2 text-brand-500">
+              <Shield size={14} />
+              <span className="text-xs font-bold uppercase tracking-wider">Your Signature</span>
+            </div>
+
+            {!termsChecked && (
+              <div className="flex items-center gap-2 p-3 bg-warning-50 text-warning-600 rounded-xl text-xs">
+                <AlertCircle size={14} />
+                <span>Please accept the terms and conditions above before signing.</span>
+              </div>
+            )}
+
+            {!depositAcknowledged && contract.deposit && contract.deposit.amount && contract.deposit.amount > 0 && (
+              <div className="flex items-center gap-2 p-3 bg-warning-50 text-warning-600 rounded-xl text-xs">
+                <AlertCircle size={14} />
+                <span>Please acknowledge the security deposit conditions above before signing.</span>
+              </div>
+            )}
+            <div className={termsChecked && (!contract.deposit || !contract.deposit.amount || depositAcknowledged) ? '' : 'opacity-50 pointer-events-none'}>
+              <SignaturePad
+                onSave={handleSignatureSave}
+                label="Sign with your finger or stylus"
+                penColor="#0f172a"
+                autoSaveKey={`public_contract_${qrToken}`}
+              />
+            </div>
+
+            {isSubmitting && (
+              <div className="flex items-center justify-center gap-2 py-3 text-sm text-brand-500">
+                <Loader2 size={16} className="animate-spin" />
+                <span>Syncing your signature...</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-success-50 rounded-2xl p-3 sm:p-5 border border-success-100 text-center space-y-4">
+            <CheckCircle2 size={32} className="text-success-500 mx-auto" />
+            <div>
+              <p className="text-sm font-bold text-success-600">Contract Signed!</p>
+              <p className="text-xs text-success-400 mt-1">
+                You signed this contract on {contract.clientSignedAt ? new Date(contract.clientSignedAt).toLocaleString() : 'N/A'}
+              </p>
+            </div>
+            {contract.clientSignature && (
+              <div className="p-2 bg-white rounded-xl border border-success-200 mx-auto max-w-xs">
+                <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase">Your Signature</p>
+                <img src={contract.clientSignature} alt="Your Signature" className="h-16 w-full object-contain" />
+              </div>
+            )}
+            {contract.pdfUrl && (
+              <button
+                type="button"
+                onClick={downloadSignedPdf}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-success-600 rounded-xl text-sm font-medium border border-success-200 hover:bg-success-100 transition-all"
+              >
+                <FileText size={16} />
+                Download Signed Contract
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Agency Footer */}
+        <div className="text-center space-y-2 pt-4 border-t border-slate-200">
+          <p className="text-xs font-bold text-slate-400">{contract.agencyName || 'Agency'}</p>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-slate-300">
+            {contract.agencyAddress && (
+              <span className="flex items-center gap-1"><MapPin size={9} /> {contract.agencyAddress}</span>
+            )}
+            {contract.agencyPhone && (
+              <span className="flex items-center gap-1"><Phone size={9} /> {contract.agencyPhone}</span>
+            )}
+            {contract.agencyEmail && (
+              <span className="flex items-center gap-1"><Mail size={9} /> {contract.agencyEmail}</span>
+            )}
+          </div>
+          <p className="text-[10px] text-slate-300 mt-2">
+            This document is digitally signed and timestamped.
+          </p>
         </div>
       </div>
     </div>

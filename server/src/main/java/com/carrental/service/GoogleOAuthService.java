@@ -4,6 +4,7 @@ import com.carrental.dto.AuthResponse;
 import com.carrental.entity.Role;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
+import com.carrental.entity.UserSession;
 import com.carrental.repository.TenantRepository;
 import com.carrental.repository.UserRepository;
 import com.carrental.security.JwtTokenProvider;
@@ -34,6 +35,7 @@ public class GoogleOAuthService {
     private final RefreshTokenService refreshTokenService;
     private final SessionService sessionService;
     private final EmailService emailService;
+    private final TwoFactorService twoFactorService;
 
     @Value("${app.google.client-id:}")
     private String googleClientId;
@@ -59,7 +61,7 @@ public class GoogleOAuthService {
         Optional<User> existingByGoogle = userRepository.findByGoogleId(userInfo.sub);
         if (existingByGoogle.isPresent()) {
             User user = existingByGoogle.get();
-            return buildAuthResponse(user);
+            return buildAuthResponseOrChallenge(user);
         }
 
         // Check if user exists by email (link Google account)
@@ -67,10 +69,10 @@ public class GoogleOAuthService {
         if (existingByEmail.isPresent()) {
             User user = existingByEmail.get();
             user.setGoogleId(userInfo.sub);
-            user.setEmailVerified(true);
+            if (Boolean.TRUE.equals(userInfo.emailVerified)) user.setEmailVerified(true);
             userRepository.save(user);
             log.info("Linked Google account to existing user: {}", user.getEmail());
-            return buildAuthResponse(user);
+            return buildAuthResponseOrChallenge(user);
         }
 
         // Create new tenant + admin user for Google signup
@@ -106,10 +108,32 @@ public class GoogleOAuthService {
         return buildAuthResponse(user);
     }
 
+    /** If user has 2FA enabled, issue a challenge token instead of a full JWT. */
+    private AuthResponse buildAuthResponseOrChallenge(User user) {
+        if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            String challengeToken = jwtTokenProvider.generateChallengeToken(user);
+            log.info("Google OAuth: 2FA required for user [id={}] '{}'", user.getId(), user.getEmail());
+            return AuthResponse.builder()
+                    .twoFactorRequired(true)
+                    .twoFactorMethod("TOTP")
+                    .challengeToken(challengeToken)
+                    .email(user.getEmail())
+                    .build();
+        }
+        return buildAuthResponse(user);
+    }
+
     private AuthResponse buildAuthResponse(User user) {
-        String accessToken = jwtTokenProvider.generateToken(user);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user);
         refreshTokenService.saveRefreshToken(user.getId(), refreshToken);
+        UserSession session = sessionService.createSession(
+                user.getId(),
+                RefreshTokenService.hashToken(refreshToken),
+                null,
+                "Google OAuth",
+                jwtTokenProvider.getRefreshExpirationMs() / 60000
+        );
+        String accessToken = jwtTokenProvider.generateToken(user, session.getId());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)

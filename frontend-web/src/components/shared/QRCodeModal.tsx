@@ -1,9 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Copy, Check, MessageCircle, Mail, Smartphone, Download } from 'lucide-react';
-import { useState } from 'react';
+import { X, Copy, Check, MessageCircle, Mail, Smartphone, Download, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../context/ToastContext';
+import api from '../../api/axios';
 
 interface QRCodeModalProps {
   isOpen: boolean;
@@ -13,6 +13,8 @@ interface QRCodeModalProps {
   contractNumber: string;
   clientName: string;
   contractId?: string | number;
+  clientSigned?: boolean;
+  signedAt?: string;
 }
 
 export default function QRCodeModal({
@@ -23,11 +25,45 @@ export default function QRCodeModal({
   contractNumber,
   clientName,
   contractId,
+  clientSigned = false,
+  signedAt,
 }: QRCodeModalProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [internalSigned, setInternalSigned] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const isSigned = clientSigned || internalSigned;
+
+  // Polling fallback: every 3 s while modal open and not yet signed
+  useEffect(() => {
+    if (!isOpen || !contractId || isSigned) {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      return;
+    }
+    pollRef.current = setInterval(async () => {
+      try {
+        const { data } = await api.get(`/contracts/${contractId}`);
+        const payload = data?.data ?? data;
+        if (payload?.clientSigned || payload?.signatureStatus === 'FULLY_SIGNED') {
+          setInternalSigned(true);
+          showToast(t('contracts.contractSignedByClient') || 'Contract signed by client!', 'success');
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        }
+      } catch {
+        // silently fail — page-level SSE/polling is the primary signal
+      }
+    }, 3000);
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, contractId, isSigned]);
+
+  // Reset internal state when modal closes
+  useEffect(() => {
+    if (!isOpen) setInternalSigned(false);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -87,10 +123,10 @@ export default function QRCodeModal({
     const success = await copyToClipboard(fullUrl);
     if (success) {
       setCopied(true);
-      showToast(t('contracts.linkCopied') || 'Link copied to clipboard');
+      showToast(t('contracts.linkCopied') || 'Link copied to clipboard', 'success');
       setTimeout(() => setCopied(false), 2000);
     } else {
-      showToast(t('contracts.copyFailed') || 'Failed to copy link');
+      showToast(t('contracts.copyFailed') || 'Unable to copy link. Please try again later.', 'error');
     }
   };
 
@@ -142,7 +178,7 @@ export default function QRCodeModal({
       a.href = png;
       a.download = `contract-qr-${contractNumber}.png`;
       a.click();
-      showToast(t('contracts.qrDownloaded') || 'QR code downloaded');
+      showToast(t('contracts.qrDownloaded') || 'QR code downloaded', 'success');
     };
     img.src = url;
   };
@@ -174,6 +210,23 @@ export default function QRCodeModal({
             <X size={18} />
           </button>
         </div>
+
+        {/* Signed success banner */}
+        {isSigned && (
+          <div className="mx-6 mt-4 flex items-center gap-3 rounded-2xl bg-success-50 border border-success-200 px-4 py-3">
+            <CheckCircle2 size={22} className="shrink-0 text-success-500" />
+            <div>
+              <p className="text-sm font-semibold text-success-700">
+                {t('contracts.contractSigned') || 'Contract Signed'}
+              </p>
+              {signedAt && (
+                <p className="text-xs text-success-600 mt-0.5">
+                  {new Date(signedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="p-6 space-y-6">
           {/* QR Code */}

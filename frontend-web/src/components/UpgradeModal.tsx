@@ -1,4 +1,5 @@
 import { X, Sparkles, ArrowRight, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export default function UpgradeModal({
   currentPlan,
   onUpgrade,
 }: UpgradeModalProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -50,22 +52,22 @@ export default function UpgradeModal({
             </div>
             <div>
               <p className="text-sm font-medium text-[#1e293b]">
-                Available in <span className="text-brand-600 font-bold">{requiredPlan}</span>
+                {t('subscription.availableInPlan', 'Available in')} <span className="text-brand-600 font-bold">{requiredPlan}</span>
               </p>
               <p className="text-xs text-slate-500">
-                Your current plan: {currentPlan || 'Trial'}
+                {t('subscription.yourCurrentPlan', 'Your current plan')}: {currentPlan || t('subscription.trial')}
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">What you get:</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('subscription.whatYouGet', 'What you get:')}</p>
             <ul className="space-y-2">
               {[
-                'Unlimited access to ' + featureName,
-                'Priority support included',
-                'Advanced analytics & reports',
-                'Team collaboration tools',
+                t('subscription.unlimitedAccessTo', 'Unlimited access to {{feature}}', { feature: featureName }),
+                t('subscription.prioritySupportIncluded', 'Priority support included'),
+                t('subscription.advancedAnalyticsReports', 'Advanced analytics & reports'),
+                t('subscription.teamCollaborationTools', 'Team collaboration tools'),
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
@@ -80,13 +82,13 @@ export default function UpgradeModal({
               onClick={onUpgrade}
               className="flex-1 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
             >
-              Upgrade Now <ArrowRight size={16} />
+              {t('subscription.upgradeNow')} <ArrowRight size={16} />
             </button>
             <button
               onClick={onClose}
               className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-3 rounded-xl text-sm font-semibold transition-colors"
             >
-              Maybe Later
+              {t('subscription.maybeLater')}
             </button>
           </div>
         </div>

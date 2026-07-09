@@ -4,6 +4,7 @@ import com.carrental.dto.employee.CreateEmployeeRequest;
 import com.carrental.dto.employee.UpdateEmployeeRequest;
 import com.carrental.dto.employee.EmployeeResponse;
 import com.carrental.service.EmployeeService;
+import com.carrental.service.PlanLimitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Employee-management REST controller.
@@ -33,6 +35,7 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final PlanLimitService planLimitService;
 
     // ── GET /api/employees ───────────────────────────────────────────────────
 
@@ -40,6 +43,7 @@ public class EmployeeController {
      * Returns all employees in the caller's tenant.
      */
     @GetMapping
+    @PreAuthorize("@rolePermissionService.has('EMPLOYEE_VIEW')")
     public ResponseEntity<List<EmployeeResponse>> listEmployees() {
         return ResponseEntity.ok(employeeService.getAllEmployees());
     }
@@ -51,6 +55,7 @@ public class EmployeeController {
      * tenants (prevents cross-tenant enumeration).
      */
     @GetMapping("/{id}")
+    @PreAuthorize("@rolePermissionService.has('EMPLOYEE_VIEW')")
     public ResponseEntity<EmployeeResponse> getEmployee(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.getEmployeeById(id));
     }
@@ -61,11 +66,16 @@ public class EmployeeController {
      * Registers a new employee in the caller's tenant. ADMIN-only.
      */
     @PostMapping
-    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
-    public ResponseEntity<EmployeeResponse> createEmployee(
+    @PreAuthorize("@rolePermissionService.has('EMPLOYEE_CREATE')")
+    public ResponseEntity<Map<String, Object>> createEmployee(
             @Valid @RequestBody CreateEmployeeRequest request) {
+        planLimitService.assertEmployeeLimit();
+        EmployeeResponse employee = employeeService.createEmployee(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(employeeService.createEmployee(request));
+                .body(Map.of(
+                        "success", true,
+                        "message", "Employee created successfully.",
+                        "data", employee));
     }
 
     // ── PUT /api/employees/{id} ──────────────────────────────────────────────
@@ -75,7 +85,7 @@ public class EmployeeController {
      * ADMIN-only.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
+    @PreAuthorize("@rolePermissionService.has('EMPLOYEE_UPDATE')")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @PathVariable Long id,
             @Valid @RequestBody UpdateEmployeeRequest request) {
@@ -88,9 +98,11 @@ public class EmployeeController {
      * Hard-deletes an employee. ADMIN-only.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("@rolePermissionService.has('MANAGE_EMPLOYEES')")
+    @PreAuthorize("@rolePermissionService.has('EMPLOYEE_DELETE')")
     public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
         employeeService.deleteEmployee(id);
         return ResponseEntity.noContent().build();
     }
 }
+
+

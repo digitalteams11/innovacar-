@@ -56,6 +56,30 @@ public class TenantSettings {
     @Column(name = "notification_push", nullable = false)
     private Boolean notificationPush;
 
+    @Builder.Default
+    @Column(name = "inspection_retention_days", nullable = false, columnDefinition = "integer default 7")
+    private Integer inspectionRetentionDays = 7;
+
+    public Integer getInspectionRetentionDays() {
+        return inspectionRetentionDays;
+    }
+
+    public void setInspectionRetentionDays(Integer inspectionRetentionDays) {
+        this.inspectionRetentionDays = inspectionRetentionDays;
+    }
+
+    @Lob
+    @Column(name = "appearance_json")
+    private String appearanceJson;
+
+    @Lob
+    @Column(name = "sound_settings_json")
+    private String soundSettingsJson;
+
+    @Lob
+    @Column(name = "security_settings_json")
+    private String securitySettingsJson;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
@@ -69,6 +93,7 @@ public class TenantSettings {
         if (notificationInApp == null) notificationInApp = true;
         if (notificationEmail == null) notificationEmail = true;
         if (notificationPush == null) notificationPush = false;
+        if (inspectionRetentionDays == null) inspectionRetentionDays = 7;
         updatedAt = LocalDateTime.now();
     }
 }

@@ -25,6 +25,8 @@ public class EmployeeResponse {
     private Long          tenantId;
     private Long          userId;
     private Boolean       loginEnabled;
+    private Boolean       mustChangePassword;
+    private java.time.LocalDateTime lastLoginAt;
 
     // ── Static factory ───────────────────────────────────────────────────────
 
@@ -41,6 +43,8 @@ public class EmployeeResponse {
                 .tenantId(employee.getTenant().getId())
                 .userId(employee.getUser() != null ? employee.getUser().getId() : null)
                 .loginEnabled(employee.getUser() != null ? employee.getUser().getAccountEnabled() : false)
+                .mustChangePassword(employee.getUser() != null ? employee.getUser().getMustChangePassword() : false)
+                .lastLoginAt(employee.getUser() != null ? employee.getUser().getLastLoginAt() : null)
                 .build();
     }
 }

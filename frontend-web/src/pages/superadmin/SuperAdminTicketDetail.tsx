@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { superAdminApi } from '../../api/superAdminApi';
-import { ArrowLeft, Clock, User, Tag, Send, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, User, Tag, Send, CheckCircle, Mail, RefreshCw } from 'lucide-react';
 import { PageHeader, Badge, TextArea, TabGroup } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
 
@@ -14,8 +14,11 @@ export default function SuperAdminTicketDetail() {
   const [ticket, setTicket] = useState<any>(null);
   const [notes, setNotes] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
+  const [messages, setMessages] = useState<any[]>([]);
+  const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (id) fetchTicket();
@@ -24,12 +27,14 @@ export default function SuperAdminTicketDetail() {
   const fetchTicket = async () => {
     setLoading(true);
     try {
-      const [ticketRes, notesRes] = await Promise.all([
+      const [ticketRes, notesRes, messagesRes] = await Promise.all([
         superAdminApi.getTicket(Number(id)),
         superAdminApi.getTicketNotes(Number(id)).catch(() => ({ data: [] })),
+        superAdminApi.getTicketMessages(Number(id)).catch(() => ({ data: [] })),
       ]);
       setTicket(ticketRes.data);
       setNotes(notesRes.data);
+      setMessages(messagesRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -37,13 +42,41 @@ export default function SuperAdminTicketDetail() {
     }
   };
 
+  const handleReply = async () => {
+    if (!reply.trim()) return;
+    try {
+      await superAdminApi.sendTicketMessage(Number(id), { message: reply });
+      setReply('');
+      await fetchTicket();
+      showToast('Reply sent successfully', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Unable to send this reply.', 'error');
+    }
+  };
+
   const handleStatusChange = async (status: string) => {
     try {
       await superAdminApi.updateTicket(Number(id), { status });
       fetchTicket();
-      showToast(`Ticket marked as ${status.toLowerCase()}`);
+      showToast(`Ticket marked as ${status.toLowerCase()}`, 'success');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setResending(true);
+    try {
+      const res = await superAdminApi.resendTicketEmail(Number(id));
+      const status = (res.data as { emailStatus?: string })?.emailStatus;
+      showToast(status === 'SENT' ? 'Email resent successfully' : 'Resend attempted — delivery still failing', status === 'SENT' ? 'success' : 'warning');
+      await fetchTicket();
+    } catch (err) {
+      console.error(err);
+      showToast('Unable to resend this email.', 'error');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -53,7 +86,7 @@ export default function SuperAdminTicketDetail() {
       await superAdminApi.addTicketNote(Number(id), { content: newNote, isInternal: true });
       setNewNote('');
       fetchTicket();
-      showToast('Note added successfully');
+      showToast('Note added successfully', 'success');
     } catch (err) {
       console.error(err);
     }
@@ -77,6 +110,7 @@ export default function SuperAdminTicketDetail() {
 
   const tabs = [
     { id: 'details', label: 'Details' },
+    { id: 'conversation', label: `Conversation (${messages.length})` },
     { id: 'notes', label: `Internal Notes (${notes.length})` },
   ];
 
@@ -102,7 +136,7 @@ export default function SuperAdminTicketDetail() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: 'From', value: ticket.agencyName || ticket.createdBy || '-', icon: User },
-          { label: 'Category', value: ticket.category || '-', icon: Tag },
+          { label: 'Channel / Category', value: [ticket.channel, ticket.category].filter(Boolean).join(' / ') || '-', icon: Tag },
           { label: 'Assigned To', value: ticket.assignedTo || 'Unassigned', icon: User },
           { label: 'Created', value: ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '-', icon: Clock },
         ].map((item) => (
@@ -115,6 +149,27 @@ export default function SuperAdminTicketDetail() {
           </div>
         ))}
       </div>
+
+      {/* Routing / Email delivery */}
+      {(ticket.destinationEmail || ticket.emailStatus) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e8e6e1]/80 bg-white p-4 shadow-soft dark:border-white/5 dark:bg-[#1a2332]/70">
+          <div className="flex items-center gap-2 text-sm">
+            <Mail size={15} className="text-slate-400" />
+            <span className="text-slate-500">Routed to</span>
+            <span className="font-medium text-[#1e293b] dark:text-white">{ticket.destinationEmail || '-'}</span>
+            {ticket.emailStatus && (
+              <Badge variant={ticket.emailStatus === 'SENT' ? 'success' : ticket.emailStatus === 'FAILED' ? 'danger' : 'default'}>{ticket.emailStatus}</Badge>
+            )}
+          </div>
+          <button
+            onClick={handleResendEmail}
+            disabled={resending}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#e8e6e1] px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+          >
+            <RefreshCw size={13} className={resending ? 'animate-spin' : ''} /> Resend email
+          </button>
+        </div>
+      )}
 
       {/* Status Actions */}
       <div className="flex flex-wrap gap-2">
@@ -181,6 +236,32 @@ export default function SuperAdminTicketDetail() {
                   <p className="text-sm text-slate-600 dark:text-slate-300">{note.content}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'conversation' && (
+          <div className="space-y-4">
+            <div className="max-h-[430px] space-y-3 overflow-auto rounded-lg bg-slate-50 p-4 dark:bg-white/5">
+              {messages.length === 0 && <p className="py-8 text-center text-sm text-slate-400">No conversation messages yet.</p>}
+              {messages.map((message: any) => (
+                <div key={message.id} className={`flex ${message.senderType === 'SUPPORT' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-lg px-4 py-3 ${message.senderType === 'SUPPORT' ? 'bg-[#b69152] text-[#171817]' : 'bg-white text-slate-700 shadow-sm dark:bg-[#242c38] dark:text-slate-200'}`}>
+                    <p className="text-[11px] font-bold opacity-60">{message.senderName}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{message.message}</p>
+                    {message.attachmentData && (
+                      <a href={message.attachmentData} download={message.attachmentName} className="mt-2 block text-xs font-semibold underline">
+                        {message.attachmentName}
+                      </a>
+                    )}
+                    <p className="mt-2 text-[10px] opacity-50">{message.createdAt ? new Date(message.createdAt).toLocaleString() : ''}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1"><TextArea value={reply} onChange={setReply} placeholder="Reply to the agency..." rows={3} /></div>
+              <button onClick={handleReply} disabled={!reply.trim()} className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#b69152] text-[#171817] disabled:opacity-40"><Send size={16} /></button>
             </div>
           </div>
         )}

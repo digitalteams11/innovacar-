@@ -4,6 +4,7 @@ import com.carrental.entity.Payment;
 import com.carrental.entity.PaymentStatus;
 import com.carrental.entity.PaymentType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -21,6 +22,27 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     /** All payments for a tenant. */
     List<Payment> findAllByTenantId(Long tenantId);
+
+    /** Count of all payments for a tenant — used by the Super Admin data-reset preview. */
+    long countByTenantId(Long tenantId);
+
+    /** Deletes every payment for a tenant — used by the Super Admin data-reset execute. */
+    void deleteAllByTenantId(Long tenantId);
+
+    /** Deletes every payment linked to a contract — used by contract trash purge. */
+    void deleteAllByContractId(Long contractId);
+
+    /**
+     * Native bulk DELETE that bypasses @SQLRestriction on Contract.
+     * Spring Data's derived deleteAllByContractId navigates p.contract.id via JPQL,
+     * which causes Hibernate to JOIN contracts and apply the soft-delete filter
+     * (coalesce(deleted,false)=false) — returning 0 rows for trashed contracts and
+     * leaving payment rows behind to cause FK violations on the final contract DELETE.
+     * This native query sidesteps all of that.
+     */
+    @Modifying
+    @Query(value = "DELETE FROM payments WHERE contract_id = :contractId", nativeQuery = true)
+    int deleteNativeByContractId(@Param("contractId") Long contractId);
 
     /** All payments for a tenant ordered by date desc. */
     List<Payment> findAllByTenantIdOrderByPaymentDateDesc(Long tenantId);

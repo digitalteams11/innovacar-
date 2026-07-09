@@ -1,7 +1,5 @@
 package com.carrental.dto.contract;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -10,13 +8,17 @@ import lombok.Data;
 @Data
 public class ContractSignatureRequest {
 
-    @NotBlank(message = "Signature data is required")
     private String signatureData;
 
-    @NotNull(message = "Signer type is required")
     private SignerType signerType;
 
+    private SignatureType signatureType;
+
     private Boolean termsAccepted;
+
+    private String signedBy;
+
+    private String deviceInfo;
 
     /** Client IP address for audit trail */
     private String ipAddress;
@@ -31,5 +33,24 @@ public class ContractSignatureRequest {
         CLIENT,
         OWNER,
         EMPLOYEE
+    }
+
+    public enum SignatureType {
+        AGENCY,
+        CLIENT,
+        EMPLOYEE,
+        AGENCY_SIGNATURE,
+        CLIENT_SIGNATURE,
+        EMPLOYEE_SIGNATURE
+    }
+
+    public SignerType getResolvedSignerType() {
+        if (signerType != null) return signerType;
+        if (signatureType == null) return null;
+        return switch (signatureType) {
+            case AGENCY, AGENCY_SIGNATURE -> SignerType.OWNER;
+            case CLIENT, CLIENT_SIGNATURE -> SignerType.CLIENT;
+            case EMPLOYEE, EMPLOYEE_SIGNATURE -> SignerType.EMPLOYEE;
+        };
     }
 }

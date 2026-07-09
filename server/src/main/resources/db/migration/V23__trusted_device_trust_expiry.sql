@@ -1,0 +1,5 @@
+ALTER TABLE trusted_devices
+    ADD COLUMN IF NOT EXISTS trusted_at   TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS expires_at   TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS revoked_at   TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP;

@@ -31,6 +31,7 @@ public class SaasBillingController {
     private final SubscriptionInvoiceRepository subscriptionInvoiceRepository;
     private final PaymentRepository paymentRepository;
     private final com.carrental.service.EmailService emailService;
+    private final com.carrental.service.SubscriptionService subscriptionService;
 
     @PostMapping("/checkout/prepare")
     @PreAuthorize("hasRole('ADMIN')")
@@ -115,11 +116,6 @@ public class SaasBillingController {
                 .notes("Subscription invoice " + invoice.getInvoiceNumber())
                 .build());
 
-        tenant.setPlanName(activatedPlan.getName());
-        tenant.setSubscriptionActive(true);
-        tenant.setStatus("ACTIVE");
-        LocalDate baseDate = tenant.getSubscriptionEndDate() != null && tenant.getSubscriptionEndDate().isAfter(LocalDate.now())
-                ? tenant.getSubscriptionEndDate() : LocalDate.now();
         int subscriptionMonths = "yearly".equalsIgnoreCase(billingCycle) ? 12 : 1;
         if (promotion != null && "FREE_MONTHS".equalsIgnoreCase(promotion.getPromotionType())) {
             subscriptionMonths += Optional.ofNullable(promotion.getFreeMonths()).orElse(1);
@@ -127,13 +123,7 @@ public class SaasBillingController {
         if (promotion != null && "PLAN_TRIAL".equalsIgnoreCase(promotion.getPromotionType())) {
             subscriptionMonths = Optional.ofNullable(promotion.getFreeMonths()).orElse(1);
         }
-        tenant.setSubscriptionEndDate(baseDate.plusMonths(subscriptionMonths));
-        tenant.setMaxVehicles(activatedPlan.getMaxVehicles());
-        tenant.setMaxEmployees(activatedPlan.getMaxEmployees());
-        tenant.setMaxGpsDevices(activatedPlan.getMaxGpsDevices());
-        tenant.setMaxReservations(activatedPlan.getMaxReservations());
-        tenant.setStorageLimitMb(activatedPlan.getStorageLimitMb());
-        tenantRepository.save(tenant);
+        tenant = subscriptionService.activatePaidPlan(tenant, activatedPlan, subscriptionMonths);
 
         if (promotion != null) {
             promotion.setUsedCount(Optional.ofNullable(promotion.getUsedCount()).orElse(0) + 1);

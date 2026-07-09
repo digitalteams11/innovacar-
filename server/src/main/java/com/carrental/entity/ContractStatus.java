@@ -5,6 +5,9 @@ package com.carrental.entity;
  */
 public enum ContractStatus {
     DRAFT,
+    WAITING_SIGNATURE,
+    WAITING_CLIENT_SIGNATURE,
+    // Legacy values retained for existing rows.
     PENDING_SIGNATURE,
     PARTIALLY_SIGNED,
     SIGNED,

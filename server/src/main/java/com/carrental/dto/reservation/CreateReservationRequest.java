@@ -4,7 +4,6 @@ import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -39,9 +38,4 @@ public class CreateReservationRequest {
 
     // ── Security Deposit ─────────────────────────────────────────────────────
 
-    private Boolean depositRequired;
-    private String depositType;
-    private BigDecimal depositAmount;
-    private String depositReference;
-    private String depositNotes;
 }

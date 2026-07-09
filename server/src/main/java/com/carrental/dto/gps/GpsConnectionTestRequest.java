@@ -20,6 +20,10 @@ public class GpsConnectionTestRequest {
     @Size(max = 500)
     private String apiKey;
 
+    /** Traccar basic-auth password (only used for test-raw, never stored). */
+    @Size(max = 500)
+    private String password;
+
     @Size(max = 300)
     private String baseUrl;
 

@@ -11,15 +11,15 @@ export default function ThemeToggle() {
   ];
 
   return (
-    <div className="flex items-center gap-1 bg-white/50 rounded-xl px-1 py-1">
+    <div className="flex items-center gap-0.5 rounded-lg p-0.5 bg-[var(--bg-card)] border border-[var(--border-subtle)]">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => setTheme(opt.value)}
-          className={`p-1.5 rounded-lg transition-all ${
+          className={`p-1.5 rounded-md transition-all ${
             theme === opt.value
-              ? 'bg-brand-500 text-white shadow-sm'
-              : 'text-slate-400 hover:text-slate-600'
+              ? 'bg-[var(--bg-active)] text-[#477d91]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
           }`}
           title={opt.label}
         >

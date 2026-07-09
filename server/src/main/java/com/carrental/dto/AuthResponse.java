@@ -4,6 +4,9 @@ import com.carrental.entity.Role;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+import java.util.Set;
+
 /**
  * Response body returned by authentication endpoints.
  */
@@ -22,7 +25,19 @@ public class AuthResponse {
     private String firstName;
     private String lastName;
     private Role   role;
+    private String roleCode;
     private Long   tenantId;
+    private Long   employeeId;
+    private List<String> permissions;
     private String tenantName;
     private Boolean emailVerified;
+    private Boolean passwordExpired;
+    private Boolean mustChangePassword;
+    private String verificationStatus;
+    private Boolean twoFactorRequired;
+    private String twoFactorMethod;
+    private String challengeToken;
+    /** All 2FA methods available for the challenge (e.g. ["AUTHENTICATOR","EMAIL"]). */
+    private Set<String> availableTwoFactorMethods;
+    private Boolean emailOtpEnabled;
 }

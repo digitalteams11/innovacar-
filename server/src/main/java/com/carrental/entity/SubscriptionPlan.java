@@ -86,6 +86,54 @@ public class SubscriptionPlan {
     @Column(name = "display_order")
     private Integer displayOrder;
 
+    /** Whop checkout link for monthly billing */
+    @Column(name = "whop_checkout_url_monthly", length = 500)
+    private String whopCheckoutUrlMonthly;
+
+    /** Whop checkout link for yearly billing */
+    @Column(name = "whop_checkout_url_yearly", length = 500)
+    private String whopCheckoutUrlYearly;
+
+    /** Whop product ID — used to build dynamic checkout sessions */
+    @Column(name = "whop_product_id", length = 200)
+    private String whopProductId;
+
+    /** Whop plan ID (price node) for monthly billing */
+    @Column(name = "whop_plan_id", length = 200)
+    private String whopPlanId;
+
+    /** Whop price ID for yearly billing */
+    @Column(name = "whop_price_id", length = 200)
+    private String whopPriceId;
+
+    /** Billing currency (default MAD) */
+    @Column(length = 10)
+    private String currency;
+
+    /** Free trial period in days (0 = no trial) */
+    @Column(name = "trial_days")
+    private Integer trialDays;
+
+    /** Max clients (contacts) allowed */
+    @Column(name = "client_limit")
+    private Integer clientLimit;
+
+    /** Max contracts allowed */
+    @Column(name = "contract_limit")
+    private Integer contractLimit;
+
+    /** Whether monthly billing cycle is available for this plan */
+    @Column(name = "billing_cycle_allowed_monthly")
+    private Boolean billingCycleAllowedMonthly;
+
+    /** Whether yearly billing cycle is available for this plan */
+    @Column(name = "billing_cycle_allowed_yearly")
+    private Boolean billingCycleAllowedYearly;
+
+    /** Whether this plan should be highlighted as popular/recommended */
+    @Column(name = "highlighted")
+    private Boolean highlighted;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -100,6 +148,10 @@ public class SubscriptionPlan {
         if (apiAccess == null) apiAccess = false;
         if (whiteLabel == null) whiteLabel = false;
         if (prioritySupport == null) prioritySupport = false;
+        if (currency == null || currency.isBlank()) currency = "MAD";
+        if (trialDays == null) trialDays = 0;
+        if (billingCycleAllowedMonthly == null) billingCycleAllowedMonthly = true;
+        if (billingCycleAllowedYearly == null) billingCycleAllowedYearly = true;
     }
 
     @PreUpdate

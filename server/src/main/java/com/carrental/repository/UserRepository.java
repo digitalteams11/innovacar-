@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** Standard Spring Security lookup (tenantId resolved from JWT). */
     Optional<User> findByEmail(String email);
 
+    Optional<User> findFirstByEmailIgnoreCaseOrderByIdAsc(String email);
+
     /** All users belonging to a tenant — used by admin list endpoint. */
     List<User> findAllByTenantId(Long tenantId);
 
@@ -42,4 +44,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Check if phone number exists. */
     boolean existsByPhoneNumber(String phoneNumber);
+
+    /** All Innovax platform staff accounts (Super Admin control center). */
+    List<User> findAllByRole(Role role);
+
+    /** Active staff currently holding a given platform sub-role — used to guard the last SUPER_OWNER. */
+    long countByRoleAndSuperAdminRole_CodeAndAccountEnabledTrue(Role role, String superAdminRoleCode);
 }

@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
@@ -39,8 +40,7 @@ public class Reservation {
     @JoinColumn(name = "client_id")
     private Client client;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "contract_id")
+    @OneToOne(mappedBy = "reservation", fetch = FetchType.LAZY)
     private Contract contract;
 
     @Column(name = "date_start", nullable = false)
@@ -74,11 +74,28 @@ public class Reservation {
     @Column(length = 20)
     private ReservationStatus status;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", length = 30)
+    private ReservationSource source = ReservationSource.MANUAL;
+
     @Column(name = "payment_status", length = 20)
     private String paymentStatus;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    // ── Soft delete ────────────────────────────────────────────────────────
+
+    @Builder.Default
+    @Column(name = "deleted", nullable = false, columnDefinition = "boolean default false")
+    private Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by", length = 255)
+    private String deletedBy;
 
     // ── Multi-tenancy link ──────────────────────────────────────────────────
 
@@ -91,7 +108,7 @@ public class Reservation {
         if (startTime == null) startTime = LocalTime.of(9, 0);
         if (endTime == null) endTime = LocalTime.of(18, 0);
         if (status == null) status = ReservationStatus.PENDING;
-        if (paymentStatus == null) paymentStatus = "PENDING";
+        if (source == null) source = ReservationSource.MANUAL;
         if (paidAmount == null) paidAmount = BigDecimal.ZERO;
     }
 }

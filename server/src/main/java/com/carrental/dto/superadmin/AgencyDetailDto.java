@@ -20,6 +20,9 @@ public class AgencyDetailDto {
     private String taxId;
 
     private String status;
+    private String verificationStatus;
+    private LocalDateTime verifiedAt;
+    private Long verifiedBy;
     private String planName;
     private boolean subscriptionActive;
     private LocalDate subscriptionEndDate;
@@ -40,6 +43,9 @@ public class AgencyDetailDto {
 
     private BigDecimal totalPayments;
     private BigDecimal totalRevenue;
+    private BigDecimal balance;
+    private LocalDate freeAccessUntil;
+    private String freeAccessReason;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

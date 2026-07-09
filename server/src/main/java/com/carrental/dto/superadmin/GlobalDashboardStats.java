@@ -17,6 +17,7 @@ public class GlobalDashboardStats {
     private long trialAgencies;
     private long expiredAgencies;
     private long suspendedAgencies;
+    private long blockedAgencies;
 
     private long totalUsers;
     private long activeUsers;

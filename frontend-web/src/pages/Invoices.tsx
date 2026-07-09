@@ -4,7 +4,10 @@ import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import SmartClientSearch from '../components/shared/SmartClientSearch';
 import api from '../api/axios';
-import { Search, Plus, Download, FileText, Trash2, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, Download, FileText, Trash2, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { GlassPageHeader } from '../components/GlassPageHeader';
+import { SearchInput } from '../components/SearchInput';
+import { FilterChips } from '../components/FilterChips';
 
 interface Invoice {
   id: number;
@@ -115,7 +118,7 @@ export default function Invoices() {
       setIsModalOpen(false);
       fetchInvoices();
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Failed to save invoice');
+      showToast((err as any).userMessage || 'Unable to save invoice. Please try again later.', 'error');
     }
   };
 
@@ -124,9 +127,9 @@ export default function Invoices() {
       try {
         await api.delete(`/invoices/${id}`);
         fetchInvoices();
-        showToast(t('invoices.delete'));
+        showToast('Invoice deleted successfully', 'success');
       } catch (err) {
-        showToast('Failed to delete invoice');
+        showToast('Unable to delete invoice. Please try again later.', 'error');
       }
     }
   };
@@ -137,59 +140,47 @@ export default function Invoices() {
       fetchInvoices();
       showToast(t('toast.success', { action: 'Invoice marked as paid' }));
     } catch (err) {
-      showToast('Failed to mark invoice as paid');
+      showToast('Unable to mark invoice as paid. Please try again later.', 'error');
     }
   };
 
   return (
-    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('invoices.title')}</h1>
-          <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('invoices.subtitle')}</p>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <button onClick={exportCSV} className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] rounded-xl text-[#1e293b] font-medium text-sm hover:bg-[#f5f5f0] active:scale-95 transition-all">
+    <div className="space-y-5 animate-fade">
+      <GlassPageHeader
+        title={t('invoices.title')}
+        subtitle={t('invoices.subtitle')}
+        icon={FileText}
+        actions={<>
+          <button onClick={exportCSV} className="surface-control flex items-center gap-2 h-10 px-4 font-medium text-sm active:scale-95">
             <Download size={18} /> {t('invoices.export')}
           </button>
-          <button onClick={openCreate} className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">
+          <button onClick={openCreate} className="premium-action flex items-center gap-2 h-10 px-4 font-medium text-sm active:scale-95">
             <Plus size={18} /> {t('invoices.newInvoice')}
           </button>
-        </div>
-      </div>
+        </>}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 sm:p-5">
+        <div className="metric-surface">
           <p className="text-slate-500 text-xs font-medium mb-1 tracking-wide">{t('invoices.totalPaid')}</p>
           <h3 className="text-xl font-bold text-success-500">{totalPaid.toLocaleString()} MAD</h3>
           <p className="text-[10px] text-slate-400 mt-1">{data.filter((i) => i.status === 'PAID').length} {t('invoices.invoices')}</p>
         </div>
-        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 sm:p-5">
+        <div className="metric-surface">
           <p className="text-slate-500 text-xs font-medium mb-1 tracking-wide">{t('invoices.totalPending')}</p>
           <h3 className="text-xl font-bold text-warning-500">{totalPending.toLocaleString()} MAD</h3>
           <p className="text-[10px] text-slate-400 mt-1">{data.filter((i) => i.status === 'PENDING').length} {t('invoices.invoices')}</p>
         </div>
-        <div className="card-premium hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-3 sm:p-5">
+        <div className="metric-surface">
           <p className="text-slate-500 text-xs font-medium mb-1 tracking-wide">{t('invoices.totalOverdue')}</p>
           <h3 className="text-xl font-bold text-danger-500">{totalOverdue.toLocaleString()} MAD</h3>
           <p className="text-[10px] text-slate-400 mt-1">{data.filter((i) => i.status === 'OVERDUE').length} {t('invoices.invoices')}</p>
         </div>
       </div>
 
-      <div className="card-premium flex flex-col sm:flex-row sm:items-center gap-3 p-3">
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar p-1 bg-[#f5f5f0] rounded-xl">
-          {tabs.map((tab) => (
-            <button key={tab.key} onClick={() => { setActiveTab(tab.key); }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all active:scale-95 whitespace-nowrap flex-shrink-0 ${activeTab === tab.key ? 'bg-white text-brand-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 relative group">
-          <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
-          <input type="text" placeholder={t('invoices.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
-        </div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <FilterChips options={tabs.map((tab) => ({ id: tab.key, label: tab.label }))} activeId={activeTab} onChange={setActiveTab} />
+        <SearchInput className="w-full lg:w-[360px]" placeholder={t('invoices.searchPlaceholder')} value={searchQuery} onChange={setSearchQuery} />
       </div>
 
       {loading ? (
@@ -197,7 +188,7 @@ export default function Invoices() {
           <Loader2 size={32} className="animate-spin text-brand-500" />
         </div>
       ) : (
-        <div className="card-premium overflow-hidden p-0">
+        <div className="data-surface">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left">
               <thead>

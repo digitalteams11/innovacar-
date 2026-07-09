@@ -1,6 +1,10 @@
 package com.carrental.service;
 
+import com.carrental.dto.maintenance.CreateMaintenanceRequest;
 import com.carrental.entity.*;
+import com.carrental.dto.maintenance.MaintenanceResponse;
+import com.carrental.repository.ContractRepository;
+import com.carrental.repository.ReservationRepository;
 import com.carrental.repository.VehicleMaintenanceRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
@@ -13,7 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,6 +29,8 @@ import static org.mockito.Mockito.*;
 class VehicleMaintenanceServiceTest {
     @Mock private VehicleMaintenanceRepository maintenanceRepository;
     @Mock private VehicleRepository vehicleRepository;
+    @Mock private ReservationRepository reservationRepository;
+    @Mock private ContractRepository contractRepository;
     @Mock private NotificationService notificationService;
     @InjectMocks private VehicleMaintenanceService service;
 
@@ -52,14 +59,16 @@ class VehicleMaintenanceServiceTest {
             return value;
         });
 
-        Map<String, Object> result = service.create(Map.of(
-                "vehicleId", 10,
-                "title", "Oil service",
-                "status", "IN_PROGRESS"
-        ));
+        CreateMaintenanceRequest request = new CreateMaintenanceRequest();
+        request.setVehicleId(10L);
+        request.setTitle("Oil service");
+        request.setScheduledDate(LocalDateTime.of(2026, 6, 15, 14, 53));
+        request.setStatus(MaintenanceStatus.IN_PROGRESS);
 
-        assertThat(result.get("status")).isEqualTo(MaintenanceStatus.IN_PROGRESS);
-        assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.IN_MAINTENANCE);
+        MaintenanceResponse result = service.create(request);
+
+        assertThat(result.getStatus()).isEqualTo(MaintenanceStatus.IN_PROGRESS);
+        assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.MAINTENANCE);
         verify(vehicleRepository).save(vehicle);
     }
 
@@ -68,11 +77,11 @@ class VehicleMaintenanceServiceTest {
         VehicleMaintenance maintenance = VehicleMaintenance.builder()
                 .id(20L).tenant(tenant).vehicle(vehicle).title("Oil service")
                 .status(MaintenanceStatus.IN_PROGRESS).build();
-        vehicle.setStatut(VehicleStatus.IN_MAINTENANCE);
+        vehicle.setStatut(VehicleStatus.MAINTENANCE);
         when(maintenanceRepository.findByIdAndTenantId(20L, 1L)).thenReturn(Optional.of(maintenance));
         when(vehicleRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(vehicle));
-        when(maintenanceRepository.existsByTenantIdAndVehicleIdAndStatusIn(eq(1L), eq(10L), anyCollection()))
-                .thenReturn(false);
+        when(maintenanceRepository.findAllByTenantIdAndVehicleIdOrderByCreatedAtDesc(1L, 10L))
+                .thenReturn(List.of(maintenance));
         when(maintenanceRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.updateStatus(20L, MaintenanceStatus.COMPLETED);

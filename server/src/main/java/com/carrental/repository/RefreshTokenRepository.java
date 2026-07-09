@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
+    java.util.List<RefreshToken> findByUserIdAndRevokedFalseOrderByCreatedAtAsc(Long userId);
 
     void deleteByUserId(Long userId);
 
