@@ -172,10 +172,12 @@ whop:
   # encrypted in the database) is the source of truth. The key is never read
   # by, or exposed to, the frontend.
   ai:
+    dev-mode: "${AI_DEV_MODE:false}"
+    groq:
+      api-key: "${GROQ_API_KEY:}"
+      default-model: "${GROQ_MODEL_TEXT:llama-3.3-70b-versatile}"
+    # Legacy Gemini env vars are no longer read at startup — the V51 migration
+    # carries any existing DB-stored Gemini config forward into ai_providers.
+    # Kept here only as documentation for already-migrated installs.
     gemini:
       api-key: "${GEMINI_API_KEY:}"
-      model-text: "${GEMINI_MODEL_TEXT:gemini-2.0-flash}"
-      model-vision: "${GEMINI_MODEL_VISION:gemini-2.0-flash}"
-      enabled: "${GEMINI_ENABLED:false}"
-      timeout-seconds: "${GEMINI_TIMEOUT_SECONDS:30}"
-      max-tokens: "${GEMINI_MAX_TOKENS:4096}"

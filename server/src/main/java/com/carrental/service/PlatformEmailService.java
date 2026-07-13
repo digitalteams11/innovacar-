@@ -181,12 +181,44 @@ public class PlatformEmailService {
      * Returns a user-safe result message.
      */
     public SmtpMailService.SmtpResult sendTestEmail(String toEmail) {
-        String subject = "RentCar SaaS — SMTP Test";
-        String body    = "This is a test email sent from the RentCar SaaS platform SMTP configuration.\n\n" +
-                         "If you received this email, your SMTP settings are working correctly.\n\n" +
-                         "— RentCar / Innovax Technologies";
+        String subject = "Innovacar SMTP Test";
+        String plainBody =
+                "This is a test email sent from the Innovacar / RentCar SaaS platform SMTP configuration.\n\n" +
+                "If you received this email, your SMTP settings are working correctly.\n\n" +
+                "— RentCar / Innovax Technologies";
+        String htmlBody = """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+            <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:40px 0;">
+                <tr><td align="center">
+                  <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                    <tr><td style="background:#1a56db;padding:32px 40px;">
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                    </td></tr>
+                    <tr><td style="padding:40px;">
+                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">SMTP Test Successful</h2>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+                        This is a test email sent from the Innovacar / RentCar SaaS platform SMTP configuration.
+                      </p>
+                      <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">
+                        If you received this email, your SMTP settings are working correctly.
+                      </p>
+                    </td></tr>
+                    <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
+                      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                        &copy; 2025 RentCar SaaS &mdash; Innovax Technologies. All rights reserved.
+                      </p>
+                    </td></tr>
+                  </table>
+                </td></tr>
+              </table>
+            </body>
+            </html>
+            """;
 
-        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, body);
+        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody);
 
         emailLogRepository.save(EmailLog.builder()
                 .recipient(toEmail)

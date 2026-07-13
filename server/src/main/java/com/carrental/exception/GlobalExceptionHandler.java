@@ -177,8 +177,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Normalized AI/Gemini error — the raw Gemini exception/response never
-     * reaches the client (see {@link com.carrental.service.GeminiClientService}).
+     * Normalized AI provider error — the raw provider exception/response never
+     * reaches the client (see {@code com.carrental.service.provider.*ProviderClient}).
      */
     @ExceptionHandler(AiServiceException.class)
     public ResponseEntity<Map<String, Object>> handleAiService(AiServiceException ex) {
@@ -190,10 +190,35 @@ public class GlobalExceptionHandler {
                  "AI_KEY_NOT_CONFIGURED", "AI_NOT_CONFIGURED",
                  "AI_KEY_DECRYPTION_FAILED", "AI_INVALID_API_KEY",
                  "AI_SERVICE_UNAVAILABLE", "AI_MODEL_NOT_FOUND",
-                 "AI_PROVIDER_ERROR" -> HttpStatus.SERVICE_UNAVAILABLE;
+                 "AI_PROVIDER_ERROR", "AI_NO_ACTIVE_PROVIDER",
+                 "AI_PROVIDER_DISABLED", "AI_MODEL_DISABLED" -> HttpStatus.SERVICE_UNAVAILABLE;
+            case "AI_AUTOMATION_NOT_FOUND", "AI_PROVIDER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            case "AI_AUTOMATION_DISABLED", "AI_AUTOMATION_NOT_WIRED",
+                 "AI_INVALID_CUSTOM_ENDPOINT" -> HttpStatus.BAD_REQUEST;
+            // "In use" errors describe a conflict with the resource's current
+            // state (still active / still referenced), not a malformed
+            // request — 409 matches this codebase's convention elsewhere
+            // (AdminLockoutException, VehicleConflictException, IllegalStateException).
+            case "AI_PROVIDER_IN_USE" -> HttpStatus.CONFLICT;
+            case "AI_CROSS_AGENCY_DENIED" -> HttpStatus.FORBIDDEN;
             default -> HttpStatus.SERVICE_UNAVAILABLE;
         };
         return bodyWithCode(status, ex.getMessage(), "warning", ex.getErrorCode());
+    }
+
+    /**
+     * A path/query parameter couldn't be converted to its target type (e.g. a
+     * non-numeric {@code id} in {@code DELETE /api/.../providers/{id}}).
+     * Without this handler, Spring's default resolver returns a bare 400
+     * with no JSON body — indistinguishable from a real backend failure and
+     * impossible for the frontend to explain to the user.
+     */
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+        log.warn("Invalid request parameter [{}={}]", ex.getName(), ex.getValue());
+        return bodyWithCode(HttpStatus.BAD_REQUEST,
+                "Invalid value for '" + ex.getName() + "'.", "warning", "INVALID_PATH_PARAMETER");
     }
 
     @ExceptionHandler(PlanLimitException.class)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
-import api from '../../api/axios';
+import api, { translateApiError } from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import {
@@ -57,7 +57,7 @@ interface LoginHistoryItem {
 
 export default function SecurityTab() {
   const { t } = useTranslation();
-  const { user, profile } = useAuth();
+  const { user, profile, updateCurrentUser } = useAuth();
   const { showToast } = useToast();
 
   // ── Password ──────────────────────────────────────────────────────────────
@@ -104,6 +104,14 @@ export default function SecurityTab() {
   const [showDisableEmailOtp, setShowDisableEmailOtp] = useState(false);
   const [disableEmailOtpPassword, setDisableEmailOtpPassword] = useState('');
   const [disableEmailOtpBusy, setDisableEmailOtpBusy] = useState(false);
+
+  // ── Verify email address (gate for Email OTP) ────────────────────────────
+  const [verifyEmailOpen, setVerifyEmailOpen] = useState(false);
+  const [verifyEmailCodeSent, setVerifyEmailCodeSent] = useState(false);
+  const [verifyEmailCode, setVerifyEmailCode] = useState('');
+  const [verifyEmailBusy, setVerifyEmailBusy] = useState(false);
+  const [verifyEmailError, setVerifyEmailError] = useState('');
+  const [verifyEmailCountdown, setVerifyEmailCountdown] = useState(0);
 
   // ── Devices & history ─────────────────────────────────────────────────────
   const [devices, setDevices] = useState<DeviceItem[]>([]);
@@ -374,6 +382,60 @@ export default function SecurityTab() {
       showToast(err?.userMessage || err?.response?.data?.message || 'Incorrect password.', 'error');
     } finally {
       setDisableEmailOtpBusy(false);
+    }
+  };
+
+  // ── Verify email address handlers ────────────────────────────────────────
+
+  const startVerifyEmailCountdown = () => {
+    setVerifyEmailCountdown(60);
+    const timer = setInterval(() => {
+      setVerifyEmailCountdown((prev) => {
+        if (prev <= 1) { clearInterval(timer); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const openVerifyEmail = () => {
+    setVerifyEmailOpen(true);
+    setVerifyEmailCodeSent(false);
+    setVerifyEmailCode('');
+    setVerifyEmailError('');
+    sendVerifyEmailCode();
+  };
+
+  const sendVerifyEmailCode = async () => {
+    setVerifyEmailBusy(true);
+    setVerifyEmailError('');
+    try {
+      await api.post('/auth/send-email-verification-code');
+      setVerifyEmailCodeSent(true);
+      startVerifyEmailCountdown();
+    } catch (err: any) {
+      setVerifyEmailError(translateApiError(err, t));
+    } finally {
+      setVerifyEmailBusy(false);
+    }
+  };
+
+  const submitVerifyEmailCode = async () => {
+    if (verifyEmailCode.trim().length < 6) return;
+    setVerifyEmailBusy(true);
+    setVerifyEmailError('');
+    try {
+      await api.post('/auth/verify-email-code', { code: verifyEmailCode.trim() });
+      setVerifyEmailOpen(false);
+      setVerifyEmailCodeSent(false);
+      setVerifyEmailCode('');
+      updateCurrentUser({ emailVerified: true });
+      setEmailOtpStatus((prev) => ({ ...prev, emailVerified: true }));
+      showToast(t('settings.securityTab.emailVerifiedSuccess', 'Email verified successfully.'), 'success');
+      fetchSecurityData();
+    } catch (err: any) {
+      setVerifyEmailError(translateApiError(err, t));
+    } finally {
+      setVerifyEmailBusy(false);
     }
   };
 
@@ -717,11 +779,62 @@ export default function SecurityTab() {
             </p>
           )}
 
-          {/* Email unverified */}
+          {/* Email unverified — actionable verify flow */}
           {emailOtpStatus.smtpConfigured && !emailOtpStatus.emailVerified && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              {t('settings.securityTab.verifyEmailHint')}
-            </p>
+            <div className="space-y-2">
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {t('settings.securityTab.verifyEmailHint')}
+              </p>
+              {!verifyEmailOpen ? (
+                <button
+                  onClick={openVerifyEmail}
+                  disabled={verifyEmailBusy}
+                  className="text-xs px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+                >
+                  {verifyEmailBusy ? t('settings.securityTab.sending') : t('settings.securityTab.verifyEmailAddress')}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  {verifyEmailCodeSent && (
+                    <p className="text-xs text-slate-600">
+                      {t('settings.securityTab.enterCodeSentToColon', { email: emailOtpStatus.maskedEmail })}
+                    </p>
+                  )}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={verifyEmailCode}
+                    onChange={(e) => { setVerifyEmailCode(e.target.value.replace(/\D/g, '')); setVerifyEmailError(''); }}
+                    placeholder="000000"
+                    className={`${inputCls} tracking-widest text-center text-lg font-mono`}
+                  />
+                  {verifyEmailError && <p className="text-xs text-red-600">{verifyEmailError}</p>}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={submitVerifyEmailCode}
+                      disabled={verifyEmailBusy || verifyEmailCode.length < 6}
+                      className="px-3 py-1.5 text-xs bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {verifyEmailBusy ? t('settings.securityTab.verifying') : t('settings.securityTab.verify')}
+                    </button>
+                    <button
+                      onClick={sendVerifyEmailCode}
+                      disabled={verifyEmailBusy || verifyEmailCountdown > 0}
+                      className="text-xs text-brand-600 hover:underline disabled:opacity-40"
+                    >
+                      {verifyEmailCountdown > 0 ? t('settings.securityTab.resendIn', { seconds: verifyEmailCountdown }) : t('settings.securityTab.resendCode')}
+                    </button>
+                    <button
+                      onClick={() => { setVerifyEmailOpen(false); setVerifyEmailCode(''); setVerifyEmailError(''); }}
+                      className="text-xs text-slate-500 hover:underline"
+                    >
+                      {t('settings.securityTab.cancel')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Enabled — show disable option */}

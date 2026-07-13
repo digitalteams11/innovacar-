@@ -2025,37 +2025,74 @@ public class ContractService {
 
     // ── CREATE FROM RESERVATION ──────────────────────────────────────────────
 
+    /** Result of {@link #createFromReservation}: the contract plus whether it already existed (idempotent replay). */
+    public record FromReservationResult(ContractResponse contract, boolean alreadyExisted) {}
+
     @Transactional
-    public ContractResponse createFromReservation(Long reservationId) {
+    public FromReservationResult createFromReservation(Long reservationId) {
         Long tenantId = TenantContext.getCurrentTenantId();
+        Long currentUserId = null;
+        try {
+            currentUserId = ((com.carrental.entity.User) org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getPrincipal()).getId();
+        } catch (Exception ignored) { /* system/anonymous context */ }
+        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] endpointHit=true reservationId={} currentUserId={} tenantId={}",
+                reservationId, currentUserId, tenantId);
+
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
 
-        Reservation reservation = reservationRepository.findByIdAndTenantId(reservationId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with id: " + reservationId));
-        if (reservation.getContract() != null) {
-            return ContractResponse.from(reservation.getContract());
-        }
-        if (reservation.getStatus() == ReservationStatus.CONVERTED_TO_CONTRACT) {
-            throw new IllegalStateException("Reservation has already been converted to a contract.");
-        }
-        if (reservation.getStatus() != ReservationStatus.PENDING
-                && reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new IllegalStateException("Only pending or confirmed reservations can be converted.");
+        Reservation reservation = reservationRepository.findByIdAndTenantId(reservationId, tenantId).orElse(null);
+        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} reservationFound={} reservationTenantId={}",
+                reservationId, reservation != null, reservation != null ? reservation.getTenant().getId() : null);
+        if (reservation == null) {
+            throw new ResourceNotFoundException("Reservation not found with id: " + reservationId);
         }
 
         Client client = reservation.getClient();
         Vehicle vehicle = reservation.getVehicle();
+        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} clientId={} clientFound={} vehicleId={} vehicleFound={} "
+                        + "reservationStatus={} dateStart={} startTime={} dateEnd={} endTime={} totalPrice={} depositAmount={} "
+                        + "paidAmount={} paymentStatus={} existingContractId={}",
+                reservationId,
+                client != null ? client.getId() : null, client != null,
+                vehicle != null ? vehicle.getId() : null, vehicle != null,
+                reservation.getStatus(), reservation.getDateStart(), reservation.getStartTime(),
+                reservation.getDateEnd(), reservation.getEndTime(), reservation.getTotalPrice(),
+                reservation.getDepositAmount(), reservation.getPaidAmount(), reservation.getPaymentStatus(),
+                reservation.getContract() != null ? reservation.getContract().getId() : null);
+
+        if (reservation.getContract() != null) {
+            log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} result=ALREADY_EXISTS existingContractId={}",
+                    reservationId, reservation.getContract().getId());
+            return new FromReservationResult(ContractResponse.from(reservation.getContract()), true);
+        }
+        if (reservation.getStatus() == ReservationStatus.CONVERTED_TO_CONTRACT) {
+            // The reservation is marked converted but the reservation→contract link
+            // wasn't found above (e.g. the contract was later deleted) — still a
+            // conflict, never silently create a second contract for it.
+            throw new IllegalStateException("CONTRACT_ALREADY_EXISTS");
+        }
+        if (reservation.getStatus() != ReservationStatus.PENDING
+                && reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new IllegalStateException("INVALID_RESERVATION_STATUS_FOR_CONTRACT");
+        }
 
         if (client == null) {
-            throw new IllegalArgumentException("Reservation has no linked client. Please assign a client first.");
+            throw new IllegalArgumentException("RESERVATION_CLIENT_MISSING");
         }
         if (vehicle == null) {
-            throw new IllegalArgumentException("Reservation has no linked vehicle.");
+            throw new IllegalArgumentException("RESERVATION_VEHICLE_MISSING");
+        }
+        if (reservation.getDateStart() == null || reservation.getDateEnd() == null) {
+            throw new IllegalArgumentException("INVALID_RESERVATION_PERIOD");
         }
 
+        java.time.LocalTime startTime = reservation.getStartTime() != null ? reservation.getStartTime() : java.time.LocalTime.of(9, 0);
+        java.time.LocalTime endTime = reservation.getEndTime() != null ? reservation.getEndTime() : java.time.LocalTime.of(18, 0);
+
         long days = java.time.temporal.ChronoUnit.DAYS.between(reservation.getDateStart(), reservation.getDateEnd()) + 1;
-        java.math.BigDecimal totalPrice = reservation.getTotalPrice();
+        java.math.BigDecimal totalPrice = reservation.getTotalPrice() != null ? reservation.getTotalPrice() : java.math.BigDecimal.ZERO;
         java.math.BigDecimal deposit = vehicle.getDepositAmount() != null ? vehicle.getDepositAmount() : java.math.BigDecimal.ZERO;
 
         String contractNumber = generateContractNumber();
@@ -2070,8 +2107,8 @@ public class ContractService {
                 .vehicle(vehicle)
                 .startDate(reservation.getDateStart())
                 .endDate(reservation.getDateEnd())
-                .pickupTime(reservation.getStartTime())
-                .returnTime(reservation.getEndTime())
+                .pickupTime(startTime)
+                .returnTime(endTime)
                 .pickupLocation(reservation.getPickupLocation())
                 .returnLocation(reservation.getReturnLocation())
                 .clientFirstName(client.getName() != null ? client.getName().split(" ", 2)[0] : null)
@@ -2135,8 +2172,9 @@ public class ContractService {
         }
 
         logAudit(saved, "CREATE", "Contract auto-generated from reservation " + reservationId, null, null);
-        log.info("Created contract [id={}] from reservation [id={}] in tenant [{}]", saved.getId(), reservationId, tenantId);
-        return ContractResponse.from(saved);
+        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} result=CREATED contractId={} contractNumber={}",
+                reservationId, saved.getId(), saved.getContractNumber());
+        return new FromReservationResult(ContractResponse.from(saved), false);
     }
 
     // ── AUTO GENERATION ──────────────────────────────────────────────────────

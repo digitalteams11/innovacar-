@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
@@ -70,6 +70,7 @@ const unwrapArray = <T,>(payload: unknown): T[] => {
 /* ── Sub-components ───────────────────────────────────────────────────── */
 
 function ClientCard({ data, onClear }: { data: any; onClear?: () => void }) {
+  const { t } = useTranslation();
   const initials = data.clientFullName
     ?.split(' ')
     .map((n: string) => n[0])
@@ -93,7 +94,7 @@ function ClientCard({ data, onClear }: { data: any; onClear?: () => void }) {
           </div>
         </div>
         {onClear && (
-          <button onClick={onClear} className="p-1.5 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all" title="Clear">
+          <button onClick={onClear} className="p-1.5 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all" title={t('contracts.card.clear')}>
             <X size={14} />
           </button>
         )}
@@ -103,49 +104,49 @@ function ClientCard({ data, onClear }: { data: any; onClear?: () => void }) {
         {data.clientCin && (
           <div className="flex items-center gap-1.5">
             <Shield size={10} className="text-brand-400" />
-            <span className="text-slate-400">CIN:</span>
+            <span className="text-slate-400">{t('contracts.card.cin')}</span>
             <span className="font-medium text-[#1e293b]">{data.clientCin}</span>
           </div>
         )}
         {data.clientPassportNumber && (
           <div className="flex items-center gap-1.5">
             <Shield size={10} className="text-brand-400" />
-            <span className="text-slate-400">Passport:</span>
+            <span className="text-slate-400">{t('contracts.card.passport')}</span>
             <span className="font-medium text-[#1e293b]">{data.clientPassportNumber}</span>
           </div>
         )}
         {data.clientDriverLicense && (
           <div className="flex items-center gap-1.5">
             <Car size={10} className="text-brand-400" />
-            <span className="text-slate-400">License:</span>
+            <span className="text-slate-400">{t('contracts.card.license')}</span>
             <span className="font-medium text-[#1e293b]">{data.clientDriverLicense}</span>
           </div>
         )}
         {data.clientNationality && (
           <div className="flex items-center gap-1.5">
             <MapPin size={10} className="text-brand-400" />
-            <span className="text-slate-400">Nationality:</span>
+            <span className="text-slate-400">{t('contracts.card.nationality')}</span>
             <span className="font-medium text-[#1e293b]">{data.clientNationality}</span>
           </div>
         )}
         {data.clientCity && (
           <div className="flex items-center gap-1.5">
             <MapPin size={10} className="text-brand-400" />
-            <span className="text-slate-400">City:</span>
+            <span className="text-slate-400">{t('contracts.card.city')}</span>
             <span className="font-medium text-[#1e293b]">{data.clientCity}</span>
           </div>
         )}
         {data.clientBirthDate && (
           <div className="flex items-center gap-1.5">
             <Calendar size={10} className="text-brand-400" />
-            <span className="text-slate-400">Birth:</span>
+            <span className="text-slate-400">{t('contracts.card.birth')}</span>
             <span className="font-medium text-[#1e293b]">{new Date(data.clientBirthDate).toLocaleDateString()}</span>
           </div>
         )}
         {data.emergencyContactName && (
           <div className="flex items-center gap-1.5 col-span-2">
             <Phone size={10} className="text-brand-400" />
-            <span className="text-slate-400">Emergency:</span>
+            <span className="text-slate-400">{t('contracts.card.emergency')}</span>
             <span className="font-medium text-[#1e293b]">{data.emergencyContactName} {data.emergencyContactPhone && `(${data.emergencyContactPhone})`}</span>
           </div>
         )}
@@ -155,6 +156,7 @@ function ClientCard({ data, onClear }: { data: any; onClear?: () => void }) {
 }
 
 function VehicleCard({ vehicle }: { vehicle: any }) {
+  const { t } = useTranslation();
   return (
     <div className="p-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200 space-y-3 animate-fade">
       <div className="flex items-start justify-between">
@@ -168,42 +170,42 @@ function VehicleCard({ vehicle }: { vehicle: any }) {
           </div>
         </div>
         <span className="px-2 py-0.5 bg-brand-50 text-brand-500 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-          {vehicle.status || 'Available'}
+          {vehicle.status || t('common.available')}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
         <div className="flex items-center gap-1.5">
           <Hash size={10} className="text-slate-400" />
-          <span className="text-slate-400">Plate:</span>
+          <span className="text-slate-400">{t('contracts.card.plate')}</span>
           <span className="font-medium text-[#1e293b]">{vehicle.plate}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Fuel size={10} className="text-slate-400" />
-          <span className="text-slate-400">Fuel:</span>
+          <span className="text-slate-400">{t('contracts.card.fuel')}</span>
           <span className="font-medium text-[#1e293b]">{vehicle.fuel}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Gauge size={10} className="text-slate-400" />
-          <span className="text-slate-400">Trans:</span>
+          <span className="text-slate-400">{t('contracts.card.trans')}</span>
           <span className="font-medium text-[#1e293b]">{vehicle.transmission}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Wallet size={10} className="text-slate-400" />
-          <span className="text-slate-400">Day:</span>
+          <span className="text-slate-400">{t('contracts.card.day')}</span>
           <span className="font-medium text-[#1e293b]">{vehicle.prixJour} MAD</span>
         </div>
         {vehicle.depositAmount > 0 && (
           <div className="flex items-center gap-1.5">
             <Shield size={10} className="text-slate-400" />
-            <span className="text-slate-400">Deposit:</span>
+            <span className="text-slate-400">{t('contracts.card.deposit')}</span>
             <span className="font-medium text-[#1e293b]">{vehicle.depositAmount} MAD</span>
           </div>
         )}
         {vehicle.gpsEnabled && (
           <div className="flex items-center gap-1">
             <CheckCircle2 size={10} className="text-success-500" />
-            <span className="text-[10px] font-bold text-success-500 uppercase tracking-wider">GPS Enabled</span>
+            <span className="text-[10px] font-bold text-success-500 uppercase tracking-wider">{t('contracts.card.gpsEnabled')}</span>
           </div>
         )}
       </div>
@@ -213,6 +215,7 @@ function VehicleCard({ vehicle }: { vehicle: any }) {
 
 export default function Contracts() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<Contract[]>([]);
@@ -600,8 +603,11 @@ export default function Contracts() {
           });
         }).catch(() => {});
       }
-      // Auto-populate vehicle
+      // Auto-populate vehicle — set a minimal card immediately so the UI and
+      // validation don't wait on the network round trip, then replace it with
+      // full details (plate, daily price, etc.) once they arrive.
       if (res.vehicleId) {
+        setSelectedVehicle({ id: res.vehicleId, marque: res.vehicleMarque || res.vehicleName || '' });
         api.get(`/vehicles/${res.vehicleId}`).then(({ data }) => {
           setSelectedVehicle(data);
         }).catch(() => {});
@@ -620,6 +626,72 @@ export default function Contracts() {
       setSelectedVehicle(null);
     }
   };
+
+  // Opens the New Contract modal already filled from a reservation — used when
+  // the contract icon is clicked on the Reservations page (source of truth is
+  // the read-only /contract-prefill endpoint, then reuses handleSelectReservation
+  // so client/vehicle full details and the reservationId link all populate the
+  // same way the in-modal "select reservation" dropdown already does).
+  const openCreateFromReservation = async (reservationId: number) => {
+    await openCreate();
+    try {
+      const { data: response } = await api.get(`/reservations/${reservationId}/contract-prefill`);
+      const p = response?.data || {};
+      const reservationLike = {
+        id: p.reservationId,
+        clientId: p.clientId,
+        clientName: p.clientName,
+        vehicleId: p.vehicleId,
+        vehicleMarque: p.vehicleName,
+        dateStart: p.startDate,
+        startTime: p.startTime,
+        dateEnd: p.endDate,
+        endTime: p.endTime,
+        pickupLocation: p.pickupLocation,
+        returnLocation: p.returnLocation,
+        notes: p.notes,
+      };
+      // The reservation-select dropdown only lists reservations from the
+      // filtered /reservations fetch — inject this one so the dropdown shows
+      // it as selected even if it was filtered out or hasn't loaded yet.
+      setReservations((prev) => (prev.some((r) => r.id === reservationLike.id) ? prev : [reservationLike, ...prev]));
+      handleSelectReservation(reservationLike);
+      if (p.depositAmount != null) setDepositAmount(String(p.depositAmount));
+      if (p.paidAmount != null) setPaidAmount(String(p.paidAmount));
+      if (import.meta.env.DEV) {
+        console.log('[CONTRACT_PREFILL_DEBUG]', {
+          source: 'reservation-icon',
+          reservationId: p.reservationId,
+          clientId: p.clientId,
+          clientName: p.clientName,
+          vehicleId: p.vehicleId,
+          vehicleName: p.vehicleName,
+          startDate: p.startDate,
+          startTime: p.startTime,
+          endDate: p.endDate,
+          endTime: p.endTime,
+          totalAmount: p.totalAmount,
+          modalPrefilled: true,
+        });
+      }
+      showToast(t('contracts.fromReservation.prefilledNotice'), 'info');
+    } catch (err: any) {
+      const errorCode = err?.response?.data?.errorCode || err?.errorCode;
+      showToast(
+        errorCode ? t(`errors.${errorCode}`, { defaultValue: t('contracts.prefillLoadFailed') }) : t('contracts.prefillLoadFailed'),
+        'error',
+      );
+    }
+  };
+
+  useEffect(() => {
+    const fromReservationId = searchParams.get('fromReservationId');
+    if (fromReservationId) {
+      openCreateFromReservation(Number(fromReservationId));
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Normalize any date string to ISO yyyy-MM-dd (handles HTML date inputs which already return this format)
   const toIsoDate = (value: string): string => {
@@ -652,14 +724,6 @@ export default function Contracts() {
     if (saving) return;
     try {
       setSaving(true);
-      if (selectedReservation) {
-        const { data } = await api.post(`/contracts/from-reservation/${selectedReservation.id}`);
-        showToast('Reservation converted to contract successfully', 'success');
-        setIsModalOpen(false);
-        fetchContracts();
-        if (data?.id) navigate(`/contracts/${data.id}`);
-        return;
-      }
 
       // Validate client mode
       if (clientMode === 'existing') {
@@ -720,6 +784,9 @@ export default function Contracts() {
           documentType: d.documentType, documentName: d.documentName, isPresent: d.isPresent,
         })),
       };
+      if (selectedReservation) {
+        payload.reservationId = selectedReservation.id;
+      }
       if (clientMode === 'existing') {
         payload.clientId = clientData.clientId;
       } else {
@@ -737,6 +804,14 @@ export default function Contracts() {
       }
       if (import.meta.env.DEV) {
         console.log('[DIRECT_CREATE_PAYLOAD]', JSON.stringify(payload, null, 2));
+        console.log('[CONTRACT_SUBMIT_DEBUG]', {
+          reservationId: payload.reservationId,
+          clientId: payload.clientId,
+          vehicleId: payload.vehicleId,
+          startDate: payload.startDate,
+          endDate: payload.endDate,
+          totalAmount: (selectedVehicle.prixJour || 0) * daysCount(),
+        });
       }
       const { data } = await api.post('/contracts/direct-create', payload);
       const contractId = data?.data?.contractId || data?.contractId || data?.id;
@@ -744,7 +819,7 @@ export default function Contracts() {
       const clientWasCreated = data?.data?.clientCreated === true;
       const msg = clientWasCreated
         ? `Contract created and new client "${data?.data?.clientName}" saved.`
-        : (data?.message || 'Contract and reservation created successfully');
+        : (isExisting ? t('contracts.fromReservation.alreadyExists') : (data?.message || 'Contract and reservation created successfully'));
       showToast(msg, isExisting ? 'info' : 'success');
       setIsModalOpen(false);
       fetchContracts();
@@ -1144,8 +1219,8 @@ export default function Contracts() {
                     <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-medium text-[#1e293b]">
                       {contract.clientFullName || 'N/A'}
                       {contract.vehicleMissing && (
-                        <span className="ml-2 inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700" title="The vehicle linked to this contract was removed">
-                          Vehicle removed
+                        <span className="ml-2 inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700" title={t('contracts.card.vehicleRemovedDesc')}>
+                          {t('contracts.card.vehicleRemoved')}
                         </span>
                       )}
                     </td>
@@ -1154,7 +1229,7 @@ export default function Contracts() {
                     <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-bold text-[#1e293b]">{contract.totalPrice || 0} MAD</td>
                     <td className="px-3 sm:px-5 py-3 sm:py-4 text-right">
                       <div className="flex items-center justify-end gap-0.5 sm:gap-1">
-                        <button onClick={() => navigate(`/contracts/${contract.id}`)} className="p-1.5 sm:p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all" title="View">
+                        <button onClick={() => navigate(`/contracts/${contract.id}`)} className="p-1.5 sm:p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all" title={t('contracts.view')}>
                           <Eye size={15} className="sm:hidden" />
                           <Eye size={17} className="hidden sm:block" />
                         </button>
@@ -1167,7 +1242,7 @@ export default function Contracts() {
                             onClick={() => cancelContract(contract.id)}
                             disabled={cancellingId === contract.id}
                             className="p-1.5 sm:p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all disabled:opacity-50"
-                            title="Cancel contract"
+                            title={t('contracts.form.cancelContract')}
                           >
                             {cancellingId === contract.id
                               ? <Loader2 size={15} className="animate-spin" />
@@ -1184,7 +1259,7 @@ export default function Contracts() {
                   </tr>
                 ))}
                 {filteredData.length === 0 && (
-                  <tr><td colSpan={6} className="px-3 sm:px-5 py-6 sm:py-8 text-center text-slate-400 text-xs sm:text-sm">No contracts found</td></tr>
+                  <tr><td colSpan={6} className="px-3 sm:px-5 py-6 sm:py-8 text-center text-slate-400 text-xs sm:text-sm">{t('common.noResults')}</td></tr>
                 )}
               </tbody>
             </table>
@@ -1193,16 +1268,25 @@ export default function Contracts() {
       )}
 
       {/* Create Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create Contract" maxWidth="5xl">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('contracts.form.createContractTitle')} maxWidth="5xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-5 pr-1">
+
+            {selectedReservation && (
+              <div className="p-3.5 bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl text-white shadow-sm">
+                <p className="text-sm font-bold">
+                  {t('contracts.fromReservation.title')} #RES-{selectedReservation.id}
+                </p>
+                <p className="text-xs text-white/80 mt-0.5">{t('contracts.fromReservation.subtitle')}</p>
+              </div>
+            )}
 
             {/* Section 0: Select Reservation */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <FileText size={14} className="text-brand-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">Select Reservation (Optional)</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">{t('contracts.form.selectReservationOptional')}</span>
               </div>
               <select
                 value={selectedReservation?.id || ''}
@@ -1212,7 +1296,7 @@ export default function Contracts() {
                 }}
                 className="w-full px-3 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               >
-                <option value="">-- Walk-in (no reservation) --</option>
+                <option value="">{t('contracts.form.walkInNoReservation')}</option>
                 {reservations.map((res) => (
                   <option key={res.id} value={res.id}>
                     #{res.id} — {res.clientName} — {res.vehicleMarque} ({res.dateStart} to {res.dateEnd})
@@ -1222,7 +1306,7 @@ export default function Contracts() {
               {selectedReservation && (
                 <div className="p-3 bg-brand-50/50 rounded-xl border border-brand-100 text-sm flex items-center gap-2 text-brand-600">
                   <CheckCircle2 size={14} />
-                  Reservation selected. Client, vehicle, and dates are auto-filled.
+                  {t('contracts.form.reservationSelectedHint')}
                 </div>
               )}
             </div>
@@ -1249,7 +1333,7 @@ export default function Contracts() {
                 onClick={generateNumber}
                 className="px-4 py-2.5 bg-brand-50 text-brand-500 rounded-xl text-sm font-medium hover:bg-brand-100 transition-all whitespace-nowrap"
               >
-                Auto Generate
+                {t('contracts.form.autoGenerate')}
               </button>
             </div>
 
@@ -1257,14 +1341,14 @@ export default function Contracts() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <User size={14} className="text-brand-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">Client <span className="text-danger-500">*</span></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">{t('contracts.client')} <span className="text-danger-500">*</span></span>
               </div>
 
               {selectedReservation ? (
                 clientData.clientFullName ? (
                   <ClientCard data={clientData} onClear={() => handleSelectReservation(null)} />
                 ) : (
-                  <div className="p-3 bg-warning-50 rounded-xl text-sm text-warning-600">Loading client data from reservation...</div>
+                  <div className="p-3 bg-warning-50 rounded-xl text-sm text-warning-600">{t('contracts.form.loadingClientFromReservation')}</div>
                 )
               ) : (
                 <>
@@ -1275,14 +1359,14 @@ export default function Contracts() {
                       onClick={() => { setClientMode('existing'); setNewClientErrors({}); setDuplicateClientAlert(null); }}
                       className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition-all ${clientMode === 'existing' ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-slate-500 border-slate-200 hover:border-brand-300'}`}
                     >
-                      Search Existing Client
+                      {t('contracts.form.searchExistingClient')}
                     </button>
                     <button
                       type="button"
                       onClick={() => { setClientMode('new'); setClientData({}); setDuplicateClientAlert(null); }}
                       className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition-all ${clientMode === 'new' ? 'bg-success-500 text-white border-success-500' : 'bg-white text-slate-500 border-slate-200 hover:border-success-300'}`}
                     >
-                      + New Client
+                      {t('contracts.form.newClientToggle')}
                     </button>
                   </div>
 
@@ -1299,70 +1383,70 @@ export default function Contracts() {
                   {/* Inline new client form */}
                   {clientMode === 'new' && (
                     <div className="rounded-xl border border-success-200 bg-success-50/40 p-3 space-y-3">
-                      <p className="text-xs font-semibold text-success-700 uppercase tracking-wide">New Client Information</p>
+                      <p className="text-xs font-semibold text-success-700 uppercase tracking-wide">{t('contracts.form.newClientInfo')}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Full Name <span className="text-danger-500">*</span></label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.fullName')} <span className="text-danger-500">*</span></label>
                           <input
-                            type="text" value={newClientForm.fullName} placeholder="Full name"
+                            type="text" value={newClientForm.fullName} placeholder={t('contracts.form.fullNamePlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, fullName: e.target.value }))}
                             className={`w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 transition-all ${newClientErrors.fullName ? 'border-danger-400' : 'border-slate-200 focus:border-success-400'}`}
                           />
                           {newClientErrors.fullName && <p className="text-xs text-danger-500 mt-0.5">{newClientErrors.fullName}</p>}
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Phone <span className="text-danger-500">*</span></label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.phone')} <span className="text-danger-500">*</span></label>
                           <input
-                            type="tel" value={newClientForm.phone} placeholder="Phone number"
+                            type="tel" value={newClientForm.phone} placeholder={t('contracts.form.phoneNumberPlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, phone: e.target.value }))}
                             className={`w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 transition-all ${newClientErrors.phone ? 'border-danger-400' : 'border-slate-200 focus:border-success-400'}`}
                           />
                           {newClientErrors.phone && <p className="text-xs text-danger-500 mt-0.5">{newClientErrors.phone}</p>}
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">CIN</label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.cinLabel')}</label>
                           <input
-                            type="text" value={newClientForm.cin} placeholder="CIN number"
+                            type="text" value={newClientForm.cin} placeholder={t('contracts.form.cinNumberPlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, cin: e.target.value }))}
                             className={`w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 transition-all ${newClientErrors.cin ? 'border-danger-400' : 'border-slate-200 focus:border-success-400'}`}
                           />
                           {newClientErrors.cin && <p className="text-xs text-danger-500 mt-0.5">{newClientErrors.cin}</p>}
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Passport (optional)</label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.passportOptional')}</label>
                           <input
-                            type="text" value={newClientForm.passportNumber} placeholder="Passport number"
+                            type="text" value={newClientForm.passportNumber} placeholder={t('contracts.form.passportNumberPlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, passportNumber: e.target.value }))}
                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 focus:border-success-400 transition-all"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Driver License No. <span className="text-danger-500">*</span></label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.driverLicenseNo')} <span className="text-danger-500">*</span></label>
                           <input
-                            type="text" value={newClientForm.driverLicenseNumber} placeholder="License number"
+                            type="text" value={newClientForm.driverLicenseNumber} placeholder={t('contracts.form.licenseNumberPlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, driverLicenseNumber: e.target.value }))}
                             className={`w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 transition-all ${newClientErrors.driverLicenseNumber ? 'border-danger-400' : 'border-slate-200 focus:border-success-400'}`}
                           />
                           {newClientErrors.driverLicenseNumber && <p className="text-xs text-danger-500 mt-0.5">{newClientErrors.driverLicenseNumber}</p>}
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Email (optional)</label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.emailOptional')}</label>
                           <input
-                            type="email" value={newClientForm.email} placeholder="Email address"
+                            type="email" value={newClientForm.email} placeholder={t('contracts.form.emailAddressPlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, email: e.target.value }))}
                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 focus:border-success-400 transition-all"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Address (optional)</label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.addressOptional')}</label>
                           <input
-                            type="text" value={newClientForm.address} placeholder="Street address"
+                            type="text" value={newClientForm.address} placeholder={t('contracts.form.streetAddressPlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, address: e.target.value }))}
                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 focus:border-success-400 transition-all"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Date of Birth (optional)</label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.dobOptional')}</label>
                           <input
                             type="date" value={newClientForm.dateOfBirth}
                             onChange={e => setNewClientForm(p => ({ ...p, dateOfBirth: e.target.value }))}
@@ -1370,9 +1454,9 @@ export default function Contracts() {
                           />
                         </div>
                         <div className="sm:col-span-2">
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Nationality (optional)</label>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.nationalityOptional')}</label>
                           <input
-                            type="text" value={newClientForm.nationality} placeholder="e.g. Moroccan"
+                            type="text" value={newClientForm.nationality} placeholder={t('contracts.form.moroccanExamplePlaceholder')}
                             onChange={e => setNewClientForm(p => ({ ...p, nationality: e.target.value }))}
                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 ring-success-100 focus:border-success-400 transition-all"
                           />
@@ -1384,10 +1468,10 @@ export default function Contracts() {
                   {/* Duplicate client conflict banner */}
                   {duplicateClientAlert && (
                     <div className="rounded-xl border border-warning-300 bg-warning-50 p-3 space-y-2">
-                      <p className="text-sm font-semibold text-warning-800">Client already exists</p>
+                      <p className="text-sm font-semibold text-warning-800">{t('contracts.form.clientAlreadyExists')}</p>
                       <p className="text-xs text-warning-700">
-                        A client matching{' '}
-                        <strong>{duplicateClientAlert.matchedFields?.join(', ') || duplicateClientAlert.field}</strong> was found:{' '}
+                        {t('contracts.form.duplicateMatchPrefix')}{' '}
+                        <strong>{duplicateClientAlert.matchedFields?.join(', ') || duplicateClientAlert.field}</strong> {t('contracts.form.duplicateMatchSuffix')}{' '}
                         <strong>{duplicateClientAlert.existingClientName}</strong>
                         {duplicateClientAlert.existingClientPhone ? ` — ${duplicateClientAlert.existingClientPhone}` : ''}
                       </p>
@@ -1400,7 +1484,7 @@ export default function Contracts() {
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-warning-600 text-white text-xs font-semibold rounded-lg hover:bg-warning-700 transition-colors"
                       >
-                        Use Existing Client
+                        {t('contracts.form.useExistingClient')}
                       </button>
                     </div>
                   )}
@@ -1408,31 +1492,31 @@ export default function Contracts() {
                   {/* Vehicle availability conflict banner */}
                   {vehicleConflictAlert && (
                     <div className="rounded-xl border border-danger-300 bg-danger-50 p-3 space-y-1.5">
-                      <p className="text-sm font-semibold text-danger-800">Vehicle not available</p>
+                      <p className="text-sm font-semibold text-danger-800">{t('contracts.form.vehicleNotAvailable')}</p>
                       <p className="text-xs text-danger-700">{vehicleConflictAlert.message}</p>
                       {vehicleConflictAlert.conflictStartDate && vehicleConflictAlert.conflictEndDate && (
                         <p className="text-xs text-danger-600">
-                          Conflict: {vehicleConflictAlert.conflictStartDate} → {vehicleConflictAlert.conflictEndDate}
+                          {t('contracts.form.conflictLabel')} {vehicleConflictAlert.conflictStartDate} → {vehicleConflictAlert.conflictEndDate}
                           {vehicleConflictAlert.conflictSource ? ` (${vehicleConflictAlert.conflictSource.toLowerCase()})` : ''}
                         </p>
                       )}
-                      <p className="text-xs text-danger-600">Choose different dates or another vehicle.</p>
+                      <p className="text-xs text-danger-600">{t('contracts.form.chooseDifferentDates')}</p>
                     </div>
                   )}
 
                   {/* Paid amount exceeds total banner */}
                   {paidAmountAlert && (
                     <div className="rounded-xl border border-danger-300 bg-danger-50 p-3 space-y-1.5">
-                      <p className="text-sm font-semibold text-danger-800">Amount paid exceeds total</p>
+                      <p className="text-sm font-semibold text-danger-800">{t('contracts.form.amountPaidExceedsTotal')}</p>
                       <p className="text-xs text-danger-700">
-                        Amount paid ({paidAmountAlert.paidAmount.toLocaleString()} MAD) cannot exceed the contract total ({paidAmountAlert.totalAmount.toLocaleString()} MAD).
+                        {t('contracts.form.amountPaidExceedsMsg', { paid: paidAmountAlert.paidAmount.toLocaleString(), total: paidAmountAlert.totalAmount.toLocaleString() })}
                       </p>
                       <button
                         type="button"
                         onClick={() => { setPaidAmount(String(paidAmountAlert.totalAmount)); setPaidAmountAlert(null); }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-danger-600 text-white text-xs font-semibold rounded-lg hover:bg-danger-700 transition-colors"
                       >
-                        Set to max ({paidAmountAlert.totalAmount.toLocaleString()} MAD)
+                        {t('contracts.form.setToMax', { amount: paidAmountAlert.totalAmount.toLocaleString() })}
                       </button>
                     </div>
                   )}
@@ -1440,16 +1524,16 @@ export default function Contracts() {
                   {/* Contract number conflict banner */}
                   {contractNumberAlert && (
                     <div className="rounded-xl border border-warning-300 bg-warning-50 p-3 space-y-1.5">
-                      <p className="text-sm font-semibold text-warning-800">Contract number already exists</p>
+                      <p className="text-sm font-semibold text-warning-800">{t('contracts.form.contractNumberExists')}</p>
                       <p className="text-xs text-warning-700">
-                        Contract number <strong>{contractNumber}</strong> is already in use. Generate a new one.
+                        {t('contracts.form.contractNumberInUse', { number: contractNumber })}
                       </p>
                       <button
                         type="button"
                         onClick={async () => { setContractNumberAlert(false); await generateNumber(); }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-warning-600 text-white text-xs font-semibold rounded-lg hover:bg-warning-700 transition-colors"
                       >
-                        Generate new number
+                        {t('contracts.form.generateNewNumber')}
                       </button>
                     </div>
                   )}
@@ -1457,12 +1541,12 @@ export default function Contracts() {
                   {/* Data conflict banner (fallback) */}
                   {dataConflictAlert && (
                     <div className="rounded-xl border border-danger-300 bg-danger-50 p-3 space-y-1.5">
-                      <p className="text-sm font-semibold text-danger-800">Save failed</p>
+                      <p className="text-sm font-semibold text-danger-800">{t('contracts.form.saveFailed')}</p>
                       <p className="text-xs text-danger-700">{dataConflictAlert.message}</p>
                       {dataConflictAlert.requestId && (
-                        <p className="text-xs text-danger-500 font-mono">Request ID: {dataConflictAlert.requestId}</p>
+                        <p className="text-xs text-danger-500 font-mono">{t('contracts.form.requestIdLabel')} {dataConflictAlert.requestId}</p>
                       )}
-                      <p className="text-xs text-danger-600">Check your input and try again, or contact support with the request ID.</p>
+                      <p className="text-xs text-danger-600">{t('contracts.form.checkInputTryAgain')}</p>
                     </div>
                   )}
                 </>
@@ -1475,29 +1559,29 @@ export default function Contracts() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Calendar size={14} className="text-brand-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">Rental Period & Vehicle</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">{t('contracts.form.rentalPeriodVehicle')}</span>
                 {daysCount() > 0 && (
                   <span className="ms-auto text-xs font-bold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-lg">{daysCount()} {t('contracts.days')}</span>
                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Start Date <span className="text-danger-500">*</span></label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.startDate')} <span className="text-danger-500">*</span></label>
                   <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={!!selectedReservation}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Start Time <span className="text-danger-500">*</span></label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.startTime')} <span className="text-danger-500">*</span></label>
                   <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} disabled={!!selectedReservation}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">End Date <span className="text-danger-500">*</span></label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.endDate')} <span className="text-danger-500">*</span></label>
                   <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={!!selectedReservation}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">End Time <span className="text-danger-500">*</span></label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.endTime')} <span className="text-danger-500">*</span></label>
                   <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} disabled={!!selectedReservation}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
                 </div>
@@ -1522,7 +1606,7 @@ export default function Contracts() {
                   }}
                   onUnavailable={() => {
                     setSelectedVehicle(null);
-                    showToast('Selected vehicle is no longer available for these dates', 'warning');
+                    showToast(t('contracts.form.vehicleNoLongerAvailable'), 'warning');
                   }}
                 />
               )}
@@ -1535,35 +1619,35 @@ export default function Contracts() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Wallet size={14} className="text-brand-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">Pricing & Rental Details</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">{t('contracts.form.pricingRentalDetails')}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Discount (MAD)</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.discountMad')}</label>
                   <input type="number" autoComplete="off" value={discountAmount} onChange={(e) => { setDiscountAmount(e.target.value); setDiscountPercent(''); }}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Discount (%)</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.discountPct')}</label>
                   <input type="number" autoComplete="off" value={discountPercent} onChange={(e) => { setDiscountPercent(e.target.value); setDiscountAmount(''); }}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Payment Method</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('common.paymentMethod')}</label>
                   <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
-                    <option value="CASH">Cash</option>
-                    <option value="CHECK">Check</option>
-                    <option value="BANK_TRANSFER">Bank Transfer</option>
-                    <option value="CARD">Card</option>
-                    <option value="ONLINE">Online Payment</option>
-                    <option value="OTHER">Other</option>
+                    <option value="CASH">{t('contracts.form.paymentMethodCash')}</option>
+                    <option value="CHECK">{t('contracts.form.paymentMethodCheck')}</option>
+                    <option value="BANK_TRANSFER">{t('contracts.form.paymentMethodBankTransfer')}</option>
+                    <option value="CARD">{t('contracts.form.paymentMethodCard')}</option>
+                    <option value="ONLINE">{t('contracts.form.paymentMethodOnline')}</option>
+                    <option value="OTHER">{t('contracts.form.paymentMethodOther')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Amount Paid (MAD)</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.amountPaidMad')}</label>
                   <input type="number" min="0" autoComplete="off" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
                 </div>
@@ -1571,48 +1655,48 @@ export default function Contracts() {
               {/* Deposit / Guarantee */}
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">
-                  Deposit / Guarantee Amount (MAD)
+                  {t('contracts.form.depositGuaranteeAmount')}
                 </label>
                 <input
                   type="number" min="0" autoComplete="off"
-                  placeholder="e.g. 5000, 10000, 20000"
+                  placeholder={t('contracts.form.depositExamplePlaceholder')}
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
                   className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Refundable guarantee/caution held by the agency. Separate from the rental price.
+                  {t('contracts.form.depositGuaranteeDesc')}
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Pickup Location</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.pickupLocation')}</label>
                   <input type="text" autoComplete="off" value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Return Location</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.returnLocation')}</label>
                   <input type="text" autoComplete="off" value={returnLocation} onChange={(e) => setReturnLocation(e.target.value)}
                     className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Contract Template</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.contractTemplate')}</label>
                 <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)}
                   className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
-                  <option value="">System default</option>
+                  <option value="">{t('contracts.form.systemDefault')}</option>
                   {templates.map((tpl: any) => (
                     <option key={tpl.id} value={tpl.id}>
-                      {tpl.name}{tpl.default ? ' (agency default)' : ''}{tpl.templateType === 'SYSTEM_DEFAULT' ? ' - system' : ''}
+                      {tpl.name}{tpl.default ? t('contracts.form.agencyDefaultSuffix') : ''}{tpl.templateType === 'SYSTEM_DEFAULT' ? t('contracts.form.systemSuffix') : ''}
                     </option>
                   ))}
                 </select>
                 {templates.length === 0 && (
-                  <p className="text-xs text-slate-400 mt-1">No agency contract template configured. System default will be used.</p>
+                  <p className="text-xs text-slate-400 mt-1">{t('contracts.form.noTemplateConfigured')}</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.notes')}</label>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
                   className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm resize-none focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
               </div>
@@ -1624,7 +1708,7 @@ export default function Contracts() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <FileText size={14} className="text-brand-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">Required Documents</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-500">{t('contracts.form.requiredDocuments')}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {documents.map((doc, idx) => (
@@ -1644,7 +1728,7 @@ export default function Contracts() {
               className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-brand-500 transition-colors"
             >
               {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              Advanced Options
+              {t('contracts.form.advancedOptions')}
             </button>
 
             {showAdvanced && (
@@ -1654,21 +1738,21 @@ export default function Contracts() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <User size={14} className="text-slate-400" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Additional Drivers</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('contracts.form.additionalDrivers')}</span>
                     </div>
-                    <button onClick={addDriver} className="text-xs text-brand-500 hover:text-brand-600 font-medium">+ Add Driver</button>
+                    <button onClick={addDriver} className="text-xs text-brand-500 hover:text-brand-600 font-medium">{t('contracts.form.addDriver')}</button>
                   </div>
                   {additionalDrivers.length === 0 && (
-                    <p className="text-xs text-slate-400">No additional drivers</p>
+                    <p className="text-xs text-slate-400">{t('contracts.form.noAdditionalDrivers')}</p>
                   )}
                   {additionalDrivers.map((driver, idx) => (
                     <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input placeholder="Full Name" value={driver.fullName} onChange={(e) => updateDriver(idx, 'fullName', e.target.value)}
+                      <input placeholder={t('contracts.form.fullNamePlaceholder')} value={driver.fullName} onChange={(e) => updateDriver(idx, 'fullName', e.target.value)}
                         className="px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm" />
-                      <input placeholder="License #" value={driver.driverLicenseNumber} onChange={(e) => updateDriver(idx, 'driverLicenseNumber', e.target.value)}
+                      <input placeholder={t('contracts.form.driverLicensePlaceholder')} value={driver.driverLicenseNumber} onChange={(e) => updateDriver(idx, 'driverLicenseNumber', e.target.value)}
                         className="px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm" />
                       <div className="flex gap-2">
-                        <input placeholder="Phone" value={driver.phone} onChange={(e) => updateDriver(idx, 'phone', e.target.value)}
+                        <input placeholder={t('contracts.form.phone')} value={driver.phone} onChange={(e) => updateDriver(idx, 'phone', e.target.value)}
                           className="flex-1 px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm" />
                         <button onClick={() => removeDriver(idx)} className="p-2 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all">
                           <Trash2 size={14} />
@@ -1682,7 +1766,7 @@ export default function Contracts() {
                 <div className="border border-slate-100 rounded-2xl p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Shield size={14} className="text-slate-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Vehicle Inspection</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('contracts.form.vehicleInspection')}</span>
                   </div>
                   <VehicleInspection value={inspectionZones} onChange={setInspectionZones} />
                 </div>
@@ -1697,7 +1781,7 @@ export default function Contracts() {
               <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-2xl p-5 text-white space-y-4">
                 <div className="flex items-center gap-2 text-white/70">
                   <FileText size={14} />
-                  <span className="text-xs font-bold uppercase tracking-wider">Reservation Summary</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">{t('contracts.form.reservationSummary')}</span>
                 </div>
 
                 {clientData.clientFullName && (
@@ -1707,7 +1791,7 @@ export default function Contracts() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{clientData.clientFullName}</p>
-                      <p className="text-xs text-white/50">{clientData.clientPhone || 'No phone'}</p>
+                      <p className="text-xs text-white/50">{clientData.clientPhone || t('contracts.form.noPhone')}</p>
                     </div>
                   </div>
                 )}
@@ -1715,7 +1799,7 @@ export default function Contracts() {
                 {clientData.clientFullName && selectedVehicle && (
                   <div className="flex items-center justify-center">
                     <div className="h-px bg-white/20 flex-1" />
-                    <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider">rents</div>
+                    <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider">{t('contracts.form.rentsBadge')}</div>
                     <div className="h-px bg-white/20 flex-1" />
                   </div>
                 )}
@@ -1736,7 +1820,7 @@ export default function Contracts() {
                   <div className="pt-2 border-t border-white/10">
                     <div className="flex justify-between text-xs text-white/50">
                       <span>{new Date(startDate).toLocaleDateString()} → {new Date(endDate).toLocaleDateString()}</span>
-                      <span className="font-bold text-white">{daysCount()} days</span>
+                      <span className="font-bold text-white">{daysCount()} {t('contracts.days')}</span>
                     </div>
                   </div>
                 )}
@@ -1758,9 +1842,9 @@ export default function Contracts() {
               {saving ? (
                 <span className="inline-flex items-center justify-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
-                  Creating contract...
+                  {t('contracts.form.creatingContract')}
                 </span>
-              ) : 'Create Contract'}
+              ) : t('contracts.form.createContractTitle')}
             </button>
           </div>
         </div>
@@ -1784,19 +1868,19 @@ export default function Contracts() {
                 <AlertTriangle size={20} className="text-danger-500" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#1e293b]">Vehicle Already Booked</h3>
+                <h3 className="text-base font-bold text-[#1e293b]">{t('contracts.form.vehicleAlreadyBooked')}</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Contract <span className="font-mono font-bold text-slate-600">{restoreConflict.contractNumber}</span> cannot be restored.
+                  {t('contracts.contract')} <span className="font-mono font-bold text-slate-600">{restoreConflict.contractNumber}</span> {t('contracts.form.cannotBeRestored')}
                 </p>
               </div>
             </div>
 
             <div className="bg-[#f8f8f6] rounded-xl p-4 space-y-3 mb-5 text-xs">
-              <p className="text-slate-500">This vehicle is already booked for the same dates by another active booking:</p>
+              <p className="text-slate-500">{t('contracts.form.alreadyBookedDesc')}</p>
               <div className="grid grid-cols-2 gap-2">
                 {restoreConflict.conflictSource && (
                   <div>
-                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">Type</span>
+                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">{t('contracts.form.type')}</span>
                     <p className="font-bold text-[#1e293b] mt-0.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                         restoreConflict.conflictSource === 'CONTRACT' ? 'bg-brand-50 text-brand-600' :
@@ -1808,19 +1892,19 @@ export default function Contracts() {
                 )}
                 {restoreConflict.conflictNumber && (
                   <div>
-                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">Number</span>
+                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">{t('contracts.form.number')}</span>
                     <p className="font-mono font-bold text-[#1e293b] mt-0.5">{restoreConflict.conflictNumber}</p>
                   </div>
                 )}
                 {restoreConflict.conflictStatus && (
                   <div>
-                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">Status</span>
+                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">{t('contracts.status')}</span>
                     <p className="font-bold text-[#1e293b] mt-0.5">{restoreConflict.conflictStatus.replace(/_/g, ' ')}</p>
                   </div>
                 )}
                 {(restoreConflict.conflictStartDate || restoreConflict.conflictEndDate) && (
                   <div className="col-span-2">
-                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">Conflict Dates</span>
+                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">{t('contracts.form.conflictDates')}</span>
                     <p className="font-medium text-[#1e293b] mt-0.5">
                       {restoreConflict.conflictStartDate} → {restoreConflict.conflictEndDate}
                     </p>
@@ -1828,7 +1912,7 @@ export default function Contracts() {
                 )}
                 {(restoreConflict.requestedStartDate || restoreConflict.requestedEndDate) && (
                   <div className="col-span-2">
-                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">Requested Dates</span>
+                    <span className="text-slate-400 uppercase tracking-wider text-[10px]">{t('contracts.form.requestedDates')}</span>
                     <p className="font-medium text-[#1e293b] mt-0.5">
                       {restoreConflict.requestedStartDate} → {restoreConflict.requestedEndDate}
                     </p>
@@ -1838,8 +1922,8 @@ export default function Contracts() {
             </div>
 
             <div className="bg-warning-50 border border-warning-200 rounded-xl p-3 mb-5 text-xs text-warning-700">
-              <p className="font-semibold mb-1">Restore as Draft</p>
-              <p>Restores the contract in DRAFT status without reserving the vehicle. Use this to recover the record for editing or historical reference — it will not affect vehicle availability.</p>
+              <p className="font-semibold mb-1">{t('contracts.form.restoreAsDraft')}</p>
+              <p>{t('contracts.form.restoreAsDraftDesc')}</p>
             </div>
 
             <div className="flex gap-2">
@@ -1847,7 +1931,7 @@ export default function Contracts() {
                 onClick={() => setRestoreConflict({ open: false })}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-[#e8e6e1] text-sm font-medium text-slate-600 hover:bg-[#f5f5f0] transition-all"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => restoreContract(restoreConflict.contractId!, 'DRAFT_ONLY')}
@@ -1857,7 +1941,7 @@ export default function Contracts() {
                 {restoringId === restoreConflict.contractId
                   ? <Loader2 size={15} className="animate-spin" />
                   : <RotateCcw size={15} />}
-                Restore as Draft
+                {t('contracts.form.restoreAsDraft')}
               </button>
             </div>
           </div>

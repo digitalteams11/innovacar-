@@ -120,6 +120,42 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getReservationById(id));
     }
 
+    // ── GET /api/reservations/{id}/contract-prefill ─────────────────────────
+
+    /**
+     * Read-only data for prefilling the "New Contract" modal when it's opened
+     * from a reservation. Never creates a contract or modifies the reservation.
+     */
+    @GetMapping("/{id}/contract-prefill")
+    @PreAuthorize("@rolePermissionService.has('CREATE_CONTRACT')")
+    public ResponseEntity<Map<String, Object>> getContractPrefill(@PathVariable Long id) {
+        try {
+            Map<String, Object> data = reservationService.getContractPrefill(id);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("data", data);
+            return ResponseEntity.ok(body);
+        } catch (com.carrental.exception.ResourceNotFoundException ex) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", false);
+            body.put("errorCode", "RESERVATION_NOT_FOUND");
+            body.put("message", "Reservation not found.");
+            body.put("data", Map.of("reservationId", id));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+        } catch (IllegalArgumentException ex) {
+            String code = ex.getMessage();
+            String message = "RESERVATION_CLIENT_MISSING".equals(code)
+                    ? "This reservation has no linked client."
+                    : "This reservation has no linked vehicle.";
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", false);
+            body.put("errorCode", code);
+            body.put("message", message);
+            body.put("data", Map.of("reservationId", id));
+            return ResponseEntity.badRequest().body(body);
+        }
+    }
+
     // ── POST /api/reservations ───────────────────────────────────────────────
 
     /**

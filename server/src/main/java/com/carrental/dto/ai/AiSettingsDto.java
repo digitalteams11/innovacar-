@@ -5,30 +5,28 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 /**
- * Super Admin-facing AI settings. The API key is NEVER included raw —
- * only {@code apiKeyConfigured} (boolean) and a fixed mask are exposed.
+ * Global AI settings — cross-cutting flags/limits only. Provider/model/key
+ * configuration lives on {@link AiProviderDto}/{@link AiModelDto}.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiSettingsDto {
-    private Boolean enabled;
-    private String provider;
-    private boolean apiKeyConfigured;
-    /**
-     * Human-readable status: MISSING | CONFIGURED | DECRYPTION_FAILED | EMPTY_AFTER_DECRYPT
-     */
-    private String apiKeyStatus;
-    private String apiKeyMasked;
-    private String textModel;
-    private String visionModel;
-    private Integer timeoutSeconds;
-    private Integer maxTokens;
+    private Boolean globalEnabled;
+    private Long activeProviderId;
+    private String activeProviderName;
+    private Long activeModelId;
+    private String activeModelName;
+    private Long fallbackProviderId;
+    private Long fallbackModelId;
+    private Boolean fallbackEnabled;
     private Double temperature;
+    private Integer maxOutputTokens;
+    private Integer requestTimeoutSeconds;
+    private Integer maxRetries;
+    private String systemPrompt;
     private Boolean enableChat;
     private Boolean enableReports;
     private Boolean enableTranslations;
@@ -39,9 +37,4 @@ public class AiSettingsDto {
     private Long monthlyTokenLimit;
     private Integer dailyRequestLimit;
     private Boolean auditAllActions;
-    private LocalDateTime lastTestedAt;
-    private Boolean lastTestSuccess;
-    private String lastTestMessage;
-    private String lastTestErrorCode;
-    private LocalDateTime updatedAt;
 }

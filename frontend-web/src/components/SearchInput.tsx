@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { Search, X } from 'lucide-react';
 
@@ -13,14 +14,16 @@ interface SearchInputProps {
 }
 
 export function SearchInput({
-  placeholder = 'Search...',
+  placeholder,
   value,
   onChange,
   className,
   autoFocus,
   size = 'md',
 }: SearchInputProps) {
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
+  const resolvedPlaceholder = placeholder ?? t('common.search');
 
   const sizeClasses = {
     sm: 'px-3 py-2 text-xs',
@@ -54,7 +57,7 @@ export function SearchInput({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         autoFocus={autoFocus}
         className="bg-transparent border-none outline-none w-full text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
         onFocus={() => setFocused(true)}

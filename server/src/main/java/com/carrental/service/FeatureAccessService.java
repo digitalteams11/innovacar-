@@ -5,12 +5,14 @@ import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.*;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FeatureAccessService {
@@ -114,11 +116,31 @@ public class FeatureAccessService {
         return row;
     }
 
+    /**
+     * Resolves a tenant's plan by matching {@link Tenant#getPlanName()} against
+     * {@link SubscriptionPlan#getName()} (falling back to {@code code}).
+     *
+     * <p>{@code Tenant} has no {@code planId} foreign key — the link is a plain
+     * string, so any drift between the two (a plan renamed, a tenant seeded with
+     * a plan name that was never actually inserted into {@code subscription_plans})
+     * makes this return {@code null} silently. Since every plan-gated feature
+     * check treats "no plan" as "no premium features enabled" (see {@link #isEnabled}),
+     * such drift disables ALL gated features for that tenant at once — including
+     * ones the tenant is actually entitled to — with no error anywhere in the
+     * request path. Log it loudly so this class of misconfiguration is
+     * diagnosable instead of silently eating every feature check.
+     */
     private SubscriptionPlan resolveTenantPlan(Tenant tenant) {
         if (tenant.getPlanName() == null) return null;
-        return planRepository.findByName(tenant.getPlanName())
-                .or(() -> planRepository.findByCode(tenant.getPlanName().toLowerCase(Locale.ROOT)))
-                .orElse(null);
+        Optional<SubscriptionPlan> plan = planRepository.findByName(tenant.getPlanName())
+                .or(() -> planRepository.findByCode(tenant.getPlanName().toLowerCase(Locale.ROOT)));
+        if (plan.isEmpty()) {
+            log.warn("[FEATURE_ACCESS] Tenant id={} has planName='{}' which does not match any subscription_plans "
+                            + "row (by name or code) — every plan-gated feature will resolve as disabled for this "
+                            + "tenant until the plan name is corrected or the missing plan is seeded.",
+                    tenant.getId(), tenant.getPlanName());
+        }
+        return plan.orElse(null);
     }
 
     private List<Map<String, Object>> buildAccessRows(Long tenantId, SubscriptionPlan plan) {

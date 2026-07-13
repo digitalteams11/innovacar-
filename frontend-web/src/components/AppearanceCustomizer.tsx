@@ -118,8 +118,8 @@ export default function AppearanceCustomizer() {
                   <span className="flex-1" style={{ background: definition.secondaryColor }} />
                   <span className="flex-1" style={{ background: definition.accentColor }} />
                 </span>
-                <span className="block mt-2 text-xs font-semibold text-[var(--text-primary)]">{definition.label}</span>
-                <span className="block mt-0.5 text-[10px] leading-snug text-[var(--text-muted)] line-clamp-2">{definition.description}</span>
+                <span className="block mt-2 text-xs font-semibold text-[var(--text-primary)]">{t(`appearance.themes.${key}.label`, definition.label)}</span>
+                <span className="block mt-0.5 text-[10px] leading-snug text-[var(--text-muted)] line-clamp-2">{t(`appearance.themes.${key}.description`, definition.description)}</span>
                 {selected && <Check size={13} className="absolute top-2 right-2 text-[var(--brand-primary)]" />}
               </button>
             );

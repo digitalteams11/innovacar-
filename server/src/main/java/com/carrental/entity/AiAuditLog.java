@@ -6,13 +6,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * Records every AI call made through the platform. Deliberately does NOT
- * store the raw prompt/response — only a safe category/summary — so this
- * table can never leak whatever sensitive context was sent to or received
- * from Gemini for a given call.
+ * @deprecated Superseded by {@link AiUsageLog}, written by {@code AiGatewayService}.
+ * Retained only for historical read access to {@code ai_audit_logs_legacy} —
+ * no new code writes to this table after the V51 migration renamed it.
  */
+@Deprecated
 @Entity
-@Table(name = "ai_audit_logs", indexes = {
+@Table(name = "ai_audit_logs_legacy", indexes = {
         @Index(name = "idx_ai_audit_tenant", columnList = "agency_id"),
         @Index(name = "idx_ai_audit_user", columnList = "user_id"),
         @Index(name = "idx_ai_audit_created", columnList = "created_at")

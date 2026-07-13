@@ -99,11 +99,51 @@ public class ContractController {
 
     @PostMapping("/contracts/from-reservation/{reservationId}")
     @PreAuthorize("@rolePermissionService.has('CREATE_CONTRACT')")
-    public ResponseEntity<ContractResponse> createContractFromReservation(
+    public ResponseEntity<Map<String, Object>> createContractFromReservation(
             @PathVariable Long reservationId) {
-        // Idempotent: returns the existing contract with 200 if this reservation
-        // was already converted, or the newly created contract with 200 otherwise.
-        return ResponseEntity.ok(contractService.createFromReservation(reservationId));
+        try {
+            planLimitService.assertContractLimit();
+            // Idempotent: returns the existing contract with 200 if this reservation
+            // was already converted, or the newly created contract with 201 otherwise.
+            ContractService.FromReservationResult result = contractService.createFromReservation(reservationId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("message", result.alreadyExisted()
+                    ? "Contract already exists for this reservation."
+                    : "Contract created from reservation successfully.");
+            body.put("data", result.contract());
+            return ResponseEntity.status(result.alreadyExisted() ? HttpStatus.OK : HttpStatus.CREATED).body(body);
+        } catch (com.carrental.exception.ResourceNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(
+                    "Reservation not found.", "RESERVATION_NOT_FOUND", Map.of("reservationId", reservationId)));
+        } catch (IllegalArgumentException ex) {
+            String code = ex.getMessage();
+            String message = switch (code) {
+                case "RESERVATION_CLIENT_MISSING" -> "This reservation has no linked client.";
+                case "RESERVATION_VEHICLE_MISSING" -> "This reservation has no linked vehicle.";
+                default -> "This reservation cannot be converted to a contract.";
+            };
+            String errorCode = ("RESERVATION_CLIENT_MISSING".equals(code) || "RESERVATION_VEHICLE_MISSING".equals(code))
+                    ? code : "INVALID_RESERVATION_PERIOD";
+            return ResponseEntity.badRequest().body(errorBody(
+                    message, errorCode, Map.of("reservationId", reservationId)));
+        } catch (IllegalStateException ex) {
+            String code = ex.getMessage();
+            if ("CONTRACT_ALREADY_EXISTS".equals(code)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody(
+                        "This reservation has already been converted to a contract.",
+                        "CONTRACT_ALREADY_EXISTS", Map.of("reservationId", reservationId)));
+            }
+            return ResponseEntity.badRequest().body(errorBody(
+                    "Only pending or confirmed reservations can be converted to a contract.",
+                    "INVALID_RESERVATION_STATUS_FOR_CONTRACT", Map.of("reservationId", reservationId)));
+        } catch (Exception ex) {
+            log.error("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} result=FAILED exceptionClass={} exceptionMessage={}",
+                    reservationId, ex.getClass().getName(), ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorBody(
+                    "Unable to create the contract from this reservation. Please try again.",
+                    "CONTRACT_FROM_RESERVATION_FAILED", Map.of("reservationId", reservationId)));
+        }
     }
 
     @PutMapping("/contracts/{id}")

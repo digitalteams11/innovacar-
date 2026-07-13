@@ -94,6 +94,67 @@ public class AiServiceException extends RuntimeException {
                 "AI_FEATURE_NOT_AVAILABLE");
     }
 
+    // ── New provider-independent-architecture error codes ─────────────────────
+
+    public static AiServiceException noActiveProvider() {
+        return new AiServiceException(
+                "No AI provider is active. Configure and activate a provider in Super Admin → AI & Automation → Providers.",
+                "AI_NO_ACTIVE_PROVIDER");
+    }
+
+    public static AiServiceException providerDisabled() {
+        return new AiServiceException(
+                "The active AI provider is disabled. Enable it or activate another provider.",
+                "AI_PROVIDER_DISABLED");
+    }
+
+    public static AiServiceException modelDisabled() {
+        return new AiServiceException(
+                "The selected AI model is disabled. Choose another model in AI & Automation → Models.",
+                "AI_MODEL_DISABLED");
+    }
+
+    public static AiServiceException automationNotFound() {
+        return new AiServiceException(
+                "Unknown AI automation code.",
+                "AI_AUTOMATION_NOT_FOUND");
+    }
+
+    public static AiServiceException automationDisabled() {
+        return new AiServiceException(
+                "This AI automation is currently disabled.",
+                "AI_AUTOMATION_DISABLED");
+    }
+
+    /** The automation exists in the catalog but no real backend flow triggers it yet. */
+    public static AiServiceException automationNotWired() {
+        return new AiServiceException(
+                "This AI automation is configurable but not yet connected to a live feature.",
+                "AI_AUTOMATION_NOT_WIRED");
+    }
+
+    public static AiServiceException crossAgencyDenied() {
+        return new AiServiceException(
+                "You are not authorized to access AI data for another agency.",
+                "AI_CROSS_AGENCY_DENIED");
+    }
+
+    public static AiServiceException invalidCustomEndpoint(String reason) {
+        return new AiServiceException(
+                "Custom AI provider endpoint rejected: " + reason,
+                "AI_INVALID_CUSTOM_ENDPOINT");
+    }
+
+    public static AiServiceException providerNotFound() {
+        return new AiServiceException("AI provider not found.", "AI_PROVIDER_NOT_FOUND");
+    }
+
+    public static AiServiceException providerInUse() {
+        return new AiServiceException(
+                "This provider cannot be deleted while it is active or referenced by usage logs. Disable it instead.",
+                "AI_PROVIDER_IN_USE");
+    }
+
     // ── Deprecated aliases — kept to avoid breaking callers in tests ──────────
 
     /** @deprecated use {@link #keyNotConfigured()} */

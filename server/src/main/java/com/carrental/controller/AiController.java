@@ -1,9 +1,11 @@
 package com.carrental.controller;
 
+import com.carrental.entity.AiProvider;
 import com.carrental.entity.AiSettings;
 import com.carrental.entity.User;
+import com.carrental.repository.AiProviderRepository;
+import com.carrental.repository.AiSettingsRepository;
 import com.carrental.service.AiAssistantService;
-import com.carrental.service.GeminiClientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,39 +15,34 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Tenant-facing AI endpoints. The frontend talks only to these — never to
- * Gemini directly. The API key never appears in any response from this class.
- *
- * <p>Request format for chat:
- * <pre>
- * {
- *   "message": "How do I create a contract?",
- *   "conversationId": "optional-uuid",
- *   "pageContext": { "route": "/contracts", "module": "contracts" }
- * }
- * </pre>
+ * Tenant-facing AI endpoints. The frontend talks only to these — never to a
+ * provider directly. No API key ever appears in any response from this class.
  */
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
 public class AiController {
 
-    private final GeminiClientService geminiClientService;
+    private final AiSettingsRepository aiSettingsRepository;
+    private final AiProviderRepository aiProviderRepository;
     private final AiAssistantService aiAssistantService;
 
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> status() {
-        AiSettings settings = geminiClientService.loadSettings();
-        boolean enabled = Boolean.TRUE.equals(settings.getEnabled());
-        boolean configured = settings.getApiKeyEncrypted() != null && !settings.getApiKeyEncrypted().isBlank();
-        boolean reachable = enabled && configured && Boolean.TRUE.equals(settings.getLastTestSuccess());
+        AiSettings settings = aiSettingsRepository.findAll().stream().findFirst().orElse(null);
+        boolean enabled = settings != null && Boolean.TRUE.equals(settings.getGlobalEnabled());
+
+        AiProvider activeProvider = enabled && settings.getActiveProviderId() != null
+                ? aiProviderRepository.findById(settings.getActiveProviderId()).orElse(null) : null;
+        boolean configured = activeProvider != null && Boolean.TRUE.equals(activeProvider.getEnabled());
+        boolean reachable = configured && activeProvider.getConnectionStatus() == com.carrental.entity.AiConnectionStatus.CONNECTED;
         boolean fallbackMode = !enabled || !configured || !reachable;
 
         String message;
         if (!enabled) {
             message = "AI features are currently disabled.";
-        } else if (!configured) {
-            message = "Gemini API key is not configured.";
+        } else if (activeProvider == null) {
+            message = "No AI provider is configured.";
         } else if (!reachable) {
             message = "AI is unavailable. Local fallback is active.";
         } else {
@@ -57,6 +54,7 @@ public class AiController {
         data.put("configured", configured);
         data.put("reachable", reachable);
         data.put("fallbackMode", fallbackMode);
+        data.put("provider", activeProvider != null ? activeProvider.getProviderType().name() : null);
         data.put("message", message);
         return ResponseEntity.ok(data);
     }
@@ -69,7 +67,6 @@ public class AiController {
         String message = stringOf(body, "message");
         String conversationId = stringOf(body, "conversationId");
 
-        // pageContext: { "route": "/contracts", "module": "contracts" }
         String module = null;
         String route = null;
         Object pageContextObj = body != null ? body.get("pageContext") : null;
@@ -79,7 +76,6 @@ public class AiController {
             if (moduleVal != null) module = moduleVal.toString();
             if (routeVal != null) route = routeVal.toString();
         }
-        // Legacy fallback: "module" at top level
         if (module == null && body != null && body.get("module") != null) {
             module = body.get("module").toString();
         }

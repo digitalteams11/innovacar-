@@ -68,6 +68,23 @@ function findExtra(targetKeys, sourceKeys) {
   });
 }
 
+// Keys whose value is an empty/whitespace-only string — a key that exists
+// but was never actually filled in, which the plain missing-key check can't
+// catch since the key itself is present.
+function findEmptyValues(obj, prefix = '') {
+  let empties = [];
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+    const full = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      empties = empties.concat(findEmptyValues(value, full));
+    } else if (typeof value === 'string' && value.trim() === '') {
+      empties.push(full);
+    }
+  }
+  return empties;
+}
+
 function main() {
   const en = loadJson('en.json');
   const fr = loadJson('fr.json');
@@ -83,9 +100,29 @@ function main() {
   const extraFr = findExtra(frKeys, enKeys);
   const extraAr = findExtra(arKeys, enKeys);
 
+  const emptyEn = findEmptyValues(en);
+  const emptyFr = findEmptyValues(fr);
+  const emptyAr = findEmptyValues(ar);
+
   console.log(`en: ${enKeys.length} keys, fr: ${frKeys.length} keys, ar: ${arKeys.length} keys`);
 
   let hasError = false;
+
+  if (emptyEn.length > 0) {
+    hasError = true;
+    console.error(`\n${emptyEn.length} empty value(s) in en.json:`);
+    emptyEn.forEach((k) => console.error(`  - ${k}`));
+  }
+  if (emptyFr.length > 0) {
+    hasError = true;
+    console.error(`\n${emptyFr.length} empty value(s) in fr.json:`);
+    emptyFr.forEach((k) => console.error(`  - ${k}`));
+  }
+  if (emptyAr.length > 0) {
+    hasError = true;
+    console.error(`\n${emptyAr.length} empty value(s) in ar.json:`);
+    emptyAr.forEach((k) => console.error(`  - ${k}`));
+  }
 
   if (missingFr.length > 0) {
     hasError = true;

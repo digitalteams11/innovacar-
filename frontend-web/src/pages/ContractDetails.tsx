@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -137,6 +138,7 @@ const safePdfFileName = (contractNumber: string) =>
   `contract-${(contractNumber || 'contract').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
 
 export default function ContractDetails() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -566,9 +568,9 @@ export default function ContractDetails() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400">
         <AlertCircle size={48} className="mb-4" />
-        <p className="text-lg font-medium">Contract not found</p>
+        <p className="text-lg font-medium">{t('contractDetails.notFound')}</p>
         <button onClick={() => navigate('/contracts')} className="mt-4 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-brand-600 transition-all w-full sm:w-auto">
-          Back to Contracts
+          {t('contractDetails.backToContracts')}
         </button>
       </div>
     );
@@ -584,14 +586,14 @@ export default function ContractDetails() {
   const selectedPdfTemplate = templates.find((tpl) => tpl.id === selectedTemplateId) || null;
 
   const detailTabs = [
-    { key: 'overview', label: 'Overview', icon: FileText },
-    { key: 'client', label: 'Client', icon: User },
-    { key: 'vehicle', label: 'Vehicle', icon: Car },
-    { key: 'payment', label: 'Payment', icon: CreditCard },
-    { key: 'inspection', label: 'Inspection', icon: Shield },
-    { key: 'documents', label: 'Documents', icon: ClipboardCheck },
-    { key: 'drivers', label: 'Drivers', icon: Users },
-    { key: 'activity', label: 'Activity', icon: History },
+    { key: 'overview', label: t('contractDetails.tabs.overview'), icon: FileText },
+    { key: 'client', label: t('contractDetails.tabs.client'), icon: User },
+    { key: 'vehicle', label: t('contractDetails.tabs.vehicle'), icon: Car },
+    { key: 'payment', label: t('contractDetails.tabs.payment'), icon: CreditCard },
+    { key: 'inspection', label: t('contractDetails.tabs.inspection'), icon: Shield },
+    { key: 'documents', label: t('contractDetails.tabs.documents'), icon: ClipboardCheck },
+    { key: 'drivers', label: t('contractDetails.tabs.drivers'), icon: Users },
+    { key: 'activity', label: t('contractDetails.tabs.activity'), icon: History },
   ];
 
   return (
@@ -611,12 +613,12 @@ export default function ContractDetails() {
           )}
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-[#1e293b] truncate">{contract.contractNumber}</h1>
-            <p className="text-slate-500 text-xs sm:text-sm">{tenant?.name || 'Contract Details'}</p>
+            <p className="text-slate-500 text-xs sm:text-sm">{tenant?.name || t('contractDetails.pageTitle')}</p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <span className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider ${getStatusBadge(displayedStatus)}`}>
-            {displayedStatus.replace('_', ' ')}
+            {t(`contracts.statusLabel.${displayedStatus}`, displayedStatus.replace('_', ' '))}
           </span>
           <select
             value={selectedTemplateId ?? 'system'}

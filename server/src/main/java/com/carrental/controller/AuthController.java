@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
  * POST /api/auth/resend-verify   – Resend verification email
  * </pre>
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -257,10 +259,53 @@ public class AuthController {
             HttpServletRequest httpRequest) {
         String ip = resolveClientIp(httpRequest);
         String ua = httpRequest.getHeader("User-Agent");
-        authService.requestPasswordReset(request, ip, ua);
+        try {
+            authService.requestPasswordReset(request, ip, ua);
+        } catch (IllegalStateException e) {
+            // Email genuinely could not be delivered (SMTP down/misconfigured) for
+            // a real account — surface a clean errorCode instead of faking success.
+            return emailFailureResponse(e.getMessage());
+        } catch (Exception e) {
+            // Whatever this is (DB/schema issue, unexpected NPE, etc.), it must never
+            // reach the client as an opaque "service unavailable" 500. Log the real
+            // cause server-side (class + message only — no OTP/SMTP secrets ever
+            // appear in these fields) and return a clean, machine-readable errorCode.
+            log.error("[FORGOT_PASSWORD_DEBUG] Unexpected failure — exceptionClass={} exceptionMessage={}",
+                    e.getClass().getName(), e.getMessage(), e);
+            return emailFailureResponse("EMAIL_SEND_FAILED");
+        }
         // Always return same success message — never reveal whether email exists
         return ResponseEntity.ok(ApiResponse.success(null,
                 "If an account exists with that email, a reset code has been sent."));
+    }
+
+    /**
+     * Normalizes the internal SmtpMailService errorCode (which also feeds other,
+     * unrelated callers like the Email Center test-send and OTP flows) into the
+     * clean, stable taxonomy the forgot-password frontend expects.
+     */
+    private static String normalizeSmtpErrorCode(String rawCode) {
+        return switch (rawCode == null ? "" : rawCode) {
+            case "SMTP_NOT_CONFIGURED"                                    -> "SMTP_NOT_CONFIGURED";
+            case "SMTP_AUTH_FAILED", "EMAIL_AUTH_FAILED"                  -> "SMTP_AUTH_FAILED";
+            case "EMAIL_FROM_REJECTED", "SMTP_FROM_EMAIL_INVALID"         -> "SMTP_FROM_EMAIL_INVALID";
+            case "EMAIL_TLS_FAILED", "EMAIL_PROVIDER_TIMEOUT",
+                 "EMAIL_PROVIDER_UNREACHABLE", "SMTP_CONNECTION_FAILED"   -> "SMTP_CONNECTION_FAILED";
+            default                                                       -> "EMAIL_SEND_FAILED";
+        };
+    }
+
+    private ResponseEntity<ApiResponse<Void>> emailFailureResponse(String rawCode) {
+        String code = normalizeSmtpErrorCode(rawCode);
+        String userMsg = switch (code) {
+            case "SMTP_NOT_CONFIGURED"     -> "Email sending is not configured yet. Please contact the platform administrator.";
+            case "SMTP_AUTH_FAILED"        -> "SMTP authentication failed. Check the Zoho app password.";
+            case "SMTP_FROM_EMAIL_INVALID" -> "The sender email address does not match the configured SMTP account. Please check Email Center settings.";
+            case "SMTP_CONNECTION_FAILED"  -> "Could not connect to the email server. Please try again later.";
+            default                        -> "The email could not be sent. Please try again.";
+        };
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(userMsg, "error", null, code));
     }
 
     @PostMapping("/verify-reset-code")
@@ -277,7 +322,12 @@ public class AuthController {
                 case "TOO_MANY_ATTEMPTS"  -> "Too many incorrect attempts. Please request a new code.";
                 default                   -> "Invalid or incorrect code. Please try again.";
             };
-            return ResponseEntity.badRequest().body(ApiResponse.error(userMsg, "error", null));
+            return ResponseEntity.badRequest().body(ApiResponse.error(userMsg, "error", null, code));
+        } catch (Exception e) {
+            log.error("[VERIFY_RESET_CODE_DEBUG] Unexpected failure — exceptionClass={} exceptionMessage={}",
+                    e.getClass().getName(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(ApiResponse.error("Unable to verify the code right now. Please try again.", "error", null, "SERVER_ERROR"));
         }
     }
 
@@ -294,7 +344,12 @@ public class AuthController {
                 case "WEAK_PASSWORD"         -> "Password does not meet the strength requirements.";
                 default                      -> e.getMessage();
             };
-            return ResponseEntity.badRequest().body(ApiResponse.error(userMsg, "error", null));
+            return ResponseEntity.badRequest().body(ApiResponse.error(userMsg, "error", null, code));
+        } catch (Exception e) {
+            log.error("[RESET_PASSWORD_DEBUG] Unexpected failure — exceptionClass={} exceptionMessage={}",
+                    e.getClass().getName(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(ApiResponse.error("Unable to reset the password right now. Please try again.", "error", null, "SERVER_ERROR"));
         }
     }
 
@@ -327,15 +382,24 @@ public class AuthController {
     // ── Code-based email verification (authenticated) ───────────────────────
 
     @PostMapping("/send-email-verification-code")
-    public ResponseEntity<MessageResponse> sendEmailVerificationCode(
+    public ResponseEntity<ApiResponse<Void>> sendEmailVerificationCode(
             @AuthenticationPrincipal User currentUser) {
         if (currentUser == null) return ResponseEntity.status(401)
-                .body(MessageResponse.builder().message("Unauthorized").success(false).build());
-        authService.sendEmailVerificationCode(currentUser);
-        return ResponseEntity.ok(MessageResponse.builder()
-                .message("Verification code sent to " + currentUser.getEmail())
-                .success(true)
-                .build());
+                .body(ApiResponse.error("Unauthorized", "error", null, "UNAUTHORIZED"));
+        try {
+            authService.sendEmailVerificationCode(currentUser);
+        } catch (IllegalStateException e) {
+            if ("ALREADY_VERIFIED".equals(e.getMessage())) {
+                return ResponseEntity.ok(ApiResponse.success(null, "Email is already verified."));
+            }
+            // Email genuinely could not be delivered — never fake success.
+            return emailFailureResponse(e.getMessage());
+        } catch (Exception e) {
+            log.error("[SEND_EMAIL_VERIFICATION_CODE_DEBUG] Unexpected failure — exceptionClass={} exceptionMessage={}",
+                    e.getClass().getName(), e.getMessage(), e);
+            return emailFailureResponse("EMAIL_SEND_FAILED");
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "Verification code sent to " + currentUser.getEmail()));
     }
 
     @PostMapping("/verify-email-code")
@@ -351,13 +415,19 @@ public class AuthController {
         } catch (IllegalStateException e) {
             return ResponseEntity.ok(ApiResponse.success(null, "Email is already verified."));
         } catch (IllegalArgumentException e) {
-            String userMsg = switch (e.getMessage()) {
+            String errorCode = e.getMessage();
+            String userMsg = switch (errorCode) {
                 case "CODE_EXPIRED"       -> "This code has expired. Request a new one.";
                 case "TOO_MANY_ATTEMPTS"  -> "Too many incorrect attempts. Request a new code.";
                 case "CODE_NOT_FOUND"     -> "No verification code found. Request a new one.";
                 default                   -> "Invalid verification code. Please try again.";
             };
-            return ResponseEntity.badRequest().body(ApiResponse.error(userMsg, e.getMessage(), null));
+            return ResponseEntity.badRequest().body(ApiResponse.error(userMsg, "error", null, errorCode));
+        } catch (Exception e) {
+            log.error("[VERIFY_EMAIL_CODE_DEBUG] Unexpected failure — exceptionClass={} exceptionMessage={}",
+                    e.getClass().getName(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(ApiResponse.error("Unable to verify the code right now. Please try again.", "error", null, "SERVER_ERROR"));
         }
     }
 

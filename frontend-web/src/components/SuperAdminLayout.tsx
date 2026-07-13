@@ -10,6 +10,9 @@ interface PlatformBranding {
   platformLogoUrl?: string;
 }
 
+const DEFAULT_BRAND_LOGO = '/brand/innovacar-logo.png';
+const DEFAULT_PLATFORM_NAME = 'InnovaCar';
+
 import { superAdminApi } from '../api/superAdminApi';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
@@ -17,7 +20,7 @@ import {
   LayoutDashboard, Building2, CreditCard, Satellite,
   Users, Receipt, LifeBuoy, Bell, BarChart3, Settings,
   Shield, LogOut, Search, Menu, X, ChevronLeft, ChevronRight,
-  Globe, Zap, Mail, Megaphone, FileText, ClipboardList, KeyRound, DatabaseBackup,
+  Globe, Mail, Megaphone, FileText, ClipboardList, KeyRound, DatabaseBackup,
   UserCog, ShieldCheck, XCircle, Sparkles, Database
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -85,7 +88,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   }, []);
 
   useEffect(() => {
-    // Defense in depth only — the backend enforces STAFF_MANAGE on every
+    // Defense in depth only Ã¢â‚¬â€ the backend enforces STAFF_MANAGE on every
     // staff/role endpoint regardless of what this sidebar shows.
     if (user?.role !== 'SUPER_ADMIN') {
       setCanManageStaff(false);
@@ -123,6 +126,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     if (!notifOpen) fetchNotifications();
     setNotifOpen(!notifOpen);
   };
+
+  const platformLogoUrl = resolveMediaUrl(branding.platformLogoUrl) || DEFAULT_BRAND_LOGO;
+  const platformName = branding.platformName || DEFAULT_PLATFORM_NAME;
 
   const menuSections = [
     {
@@ -168,10 +174,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           { to: '/super-admin/roles', icon: ShieldCheck, label: t('superAdmin.nav.roles') },
         ] : []),
         { to: '/super-admin/settings', icon: Settings, label: t('superAdmin.nav.settings') },
-        { to: '/super-admin/ai-settings', icon: Sparkles, label: 'AI & Automation' },
+        { to: '/super-admin/ai-settings', icon: Sparkles, label: t('superAdmin.nav.aiSettings') },
         { to: '/super-admin/backups', icon: DatabaseBackup, label: t('superAdmin.nav.backups') },
         ...(canManageStaff ? [
-          { to: '/super-admin/data-reset', icon: Database, label: 'Data Reset Center' },
+          { to: '/super-admin/data-reset', icon: Database, label: t('superAdmin.nav.dataReset') },
         ] : []),
         { to: '/super-admin/reports', icon: ClipboardList, label: t('superAdmin.nav.reports') },
         { to: '/super-admin/marketing', icon: Megaphone, label: t('superAdmin.nav.marketing') },
@@ -195,21 +201,14 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         {/* Logo */}
         <div className={`p-5 mb-2 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            {branding.platformLogoUrl ? (
-              <img
-                src={resolveMediaUrl(branding.platformLogoUrl) || ''}
-                alt={branding.platformName || 'Logo'}
-                className="w-9 h-9 rounded-lg object-contain bg-white shrink-0"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-            ) : (
-              <div className="w-9 h-9 rounded-lg bg-accent-400 flex items-center justify-center shadow-lg shrink-0">
-                <Zap size={18} className="text-[#0a0f2c]" strokeWidth={2.5} />
-              </div>
-            )}
+            <img
+              src={platformLogoUrl}
+              alt={platformName}
+              className="w-10 h-10 rounded-xl object-contain bg-white shrink-0 shadow-sm p-0.5"
+            />
             {!sidebarCollapsed && (
               <div className="text-white">
-                <h1 className="text-base font-bold tracking-tight leading-tight">{branding.platformName || 'Innovax'}</h1>
+                <h1 className="text-base font-bold tracking-tight leading-tight">{platformName}</h1>
                 <p className="text-[9px] text-slate-400 font-medium uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
               </div>
             )}
@@ -294,20 +293,13 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           <div className="app-sidebar fixed inset-y-0 start-0 w-[260px] z-[70] lg:hidden flex flex-col">
             <div className="p-5 mb-2 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {branding.platformLogoUrl ? (
-                  <img
-                    src={resolveMediaUrl(branding.platformLogoUrl) || ''}
-                    alt={branding.platformName || 'Logo'}
-                    className="w-9 h-9 rounded-lg object-contain bg-white"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-lg bg-accent-400 flex items-center justify-center shadow-lg">
-                    <Zap size={18} className="text-[#0a0f2c]" strokeWidth={2.5} />
-                  </div>
-                )}
+                <img
+              src={platformLogoUrl}
+              alt={platformName}
+              className="w-10 h-10 rounded-xl object-contain bg-white shrink-0 shadow-sm p-0.5"
+            />
                 <div className="text-white">
-                  <h1 className="text-base font-bold tracking-tight">{branding.platformName || 'Innovax'}</h1>
+                  <h1 className="text-base font-bold tracking-tight">{platformName}</h1>
                   <p className="text-[9px] text-slate-400 uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
                 </div>
               </div>
@@ -433,7 +425,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             >
               <img
                 src={resolveMediaUrl(profile?.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.fullName || user?.email?.split('@')[0] || 'U')}&background=4318ff&color=fff`}
-                alt="Profile"
+                alt={t('common.profile')}
                 className="w-8 h-8 rounded-full object-cover border border-white shadow-sm"
               />
               <div className="text-end hidden sm:block">

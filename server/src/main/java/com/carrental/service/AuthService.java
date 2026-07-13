@@ -47,6 +47,7 @@ public class AuthService {
     private final RateLimitService         rateLimitService;
     private final RefreshTokenService      refreshTokenService;
     private final EmailService             emailService;
+    private final SmtpMailService          smtpMailService;
     private final SessionService           sessionService;
     private final PasswordPolicyService    passwordPolicyService;
     private final DeviceSecurityService    deviceSecurityService;
@@ -358,7 +359,10 @@ public class AuthService {
 
     @Transactional
     public void requestPasswordReset(PasswordResetRequest request, String ipAddress, String userAgent) {
-        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+        String normalizedEmail = normalizeEmail(request.getEmail());
+        Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
+        log.info("[FORGOT_PASSWORD_DEBUG] endpointHit=true emailMasked={} userExists={}",
+                maskEmail(normalizedEmail), userOpt.isPresent());
         if (userOpt.isEmpty()) {
             // Never reveal whether email exists
             log.info("[PWD_RESET] Reset requested for unknown email");
@@ -390,8 +394,49 @@ public class AuthService {
                 .build());
 
         String userName = user.getFirstName() != null ? user.getFirstName() : user.getEmail();
-        emailService.sendPasswordResetCodeEmail(user.getEmail(), userName, rawCode, 10);
+
+        // Safe, non-secret snapshot of which SMTP config will actually be used —
+        // logged before the send attempt so a misconfiguration is diagnosable
+        // without ever touching the password or the generated code.
+        SmtpMailService.PlatformSmtpDiagnostics diag = smtpMailService.describePlatformConfig();
+        log.info("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} userExists=true smtpSettingsSource={} "
+                        + "smtpHost={} smtpPort={} smtpUsernamePresent={} fromEmail={} fromName={} "
+                        + "startTls={} passwordPresent={} sendAttempted=true",
+                maskEmail(user.getEmail()), diag.source(), diag.host(), diag.port(), diag.usernamePresent(),
+                diag.fromEmail(), diag.fromName(), diag.startTls(), diag.passwordPresent());
+
+        SmtpMailService.SmtpResult result;
+        try {
+            result = emailService.sendPasswordResetCodeEmail(user.getEmail(), userName, rawCode, 10, user.getLanguage());
+        } catch (Exception ex) {
+            // Never let an unexpected exception here (template formatting, NPE, etc.)
+            // masquerade as a generic SMTP failure — log the real cause and re-throw
+            // as a clean errorCode the controller can map to a specific message.
+            log.error("[FORGOT_PASSWORD_EMAIL_DEBUG] sendResult=false errorCode=EMAIL_SEND_FAILED "
+                            + "exceptionClass={} exceptionMessage={}",
+                    ex.getClass().getName(), ex.getMessage(), ex);
+            throw new IllegalStateException("EMAIL_SEND_FAILED");
+        }
+
+        // Never log the OTP code or SMTP password — only the outcome.
+        log.info("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} sendResult={} errorCode={}",
+                maskEmail(user.getEmail()), result.sent(), result.errorCode());
+        if (!result.sent()) {
+            // Never claim the code was sent when it wasn't — surface a clean,
+            // machine-readable error instead of a fake success response.
+            log.error("[PWD_RESET] Failed to deliver code to user [id={}]: errorCode={} detail={}",
+                    user.getId(), result.errorCode(), result.errorMessage());
+            throw new IllegalStateException(result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED");
+        }
         log.info("[PWD_RESET] 6-digit code sent to user [id={}]", user.getId());
+    }
+
+    private static String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return "***";
+        String[] parts = email.split("@", 2);
+        String local = parts[0];
+        String domain = parts[1];
+        return (local.length() <= 3 ? local.charAt(0) + "***" : local.substring(0, 3) + "****") + "@" + domain;
     }
 
     /**
@@ -400,7 +445,7 @@ public class AuthService {
      */
     @Transactional
     public String verifyResetCode(String email, String code) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        Optional<User> userOpt = userRepository.findByEmail(normalizeEmail(email));
         if (userOpt.isEmpty()) {
             throw new IllegalArgumentException("INVALID_CODE");
         }
@@ -557,7 +602,7 @@ public class AuthService {
     @Transactional
     public void sendEmailVerificationCode(User user) {
         if (Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new IllegalStateException("Email is already verified.");
+            throw new IllegalStateException("ALREADY_VERIFIED");
         }
 
         // Reuse or create EmailVerificationToken row for this user
@@ -585,8 +630,15 @@ public class AuthService {
 
         String displayName = (user.getFirstName() != null && !user.getFirstName().isBlank())
                 ? user.getFirstName() : user.getEmail();
-        emailService.sendEmailVerificationCodeEmail(user.getEmail(), displayName, rawCode);
-        log.info("[EMAIL_VERIFY_CODE] Code sent to user [id={}] '{}'", user.getId(), user.getEmail());
+        SmtpMailService.SmtpResult result =
+                emailService.sendEmailVerificationCodeEmail(user.getEmail(), displayName, rawCode);
+        if (!result.sent()) {
+            // Never claim the code was sent when it wasn't.
+            log.error("[EMAIL_VERIFY_CODE] Failed to deliver code to user [id={}]: errorCode={} detail={}",
+                    user.getId(), result.errorCode(), result.errorMessage());
+            throw new IllegalStateException(result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED");
+        }
+        log.info("[EMAIL_VERIFY_CODE] Code sent to user [id={}]", user.getId());
     }
 
     /**

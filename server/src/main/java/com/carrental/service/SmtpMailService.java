@@ -34,20 +34,54 @@ public class SmtpMailService {
     private final TenantSettingsRepository tenantSettingsRepository;
     private final EncryptionUtil encryptionUtil;
 
-    public record SmtpResult(boolean sent, String providerUsed, String errorMessage, String errorCode) {
+    public record SmtpResult(boolean sent, String providerUsed, String errorMessage, String errorCode,
+                              String exceptionClass) {
         public static SmtpResult unconfigured() {
-            return new SmtpResult(false, null, "No SMTP provider is configured.", "SMTP_NOT_CONFIGURED");
+            return new SmtpResult(false, null, "No SMTP provider is configured.", "SMTP_NOT_CONFIGURED", null);
         }
         public static SmtpResult failure(String provider, String message, String code) {
-            return new SmtpResult(false, provider, message, code);
+            return new SmtpResult(false, provider, message, code, null);
+        }
+        public static SmtpResult failure(String provider, String message, String code, String exceptionClass) {
+            return new SmtpResult(false, provider, message, code, exceptionClass);
         }
         public static SmtpResult success(String provider) {
-            return new SmtpResult(true, provider, null, null);
+            return new SmtpResult(true, provider, null, null, null);
         }
     }
 
     private record SmtpConfig(String host, int port, String username, String password,
-                               boolean tls, String fromEmail, String label) {
+                               boolean tls, String fromEmail, String fromName, String label) {
+    }
+
+    /** Non-secret snapshot of the platform SMTP config — safe to log (never includes the password). */
+    public record PlatformSmtpDiagnostics(boolean configured, String source, String host, Integer port,
+                                           boolean usernamePresent, String fromEmail, String fromName,
+                                           boolean startTls, boolean passwordPresent) {
+        public static PlatformSmtpDiagnostics none() {
+            return new PlatformSmtpDiagnostics(false, "NONE", null, null, false, null, null, false, false);
+        }
+    }
+
+    /** Describes the currently resolved platform SMTP config for safe debug logging. */
+    @Transactional(readOnly = true)
+    public PlatformSmtpDiagnostics describePlatformConfig() {
+        return platformSettingsRepository.findAll().stream()
+                .findFirst()
+                .map(settings -> new PlatformSmtpDiagnostics(
+                        StringUtils.hasText(settings.getSmtpHost())
+                                && StringUtils.hasText(settings.getSmtpUsername())
+                                && settings.getSmtpPasswordEncrypted() != null
+                                && !Boolean.FALSE.equals(settings.getSmtpEnabled()),
+                        "DATABASE",
+                        normalizeSmtpHost(settings.getSmtpHost()),
+                        settings.getSmtpPort() != null ? settings.getSmtpPort() : 587,
+                        StringUtils.hasText(settings.getSmtpUsername()),
+                        settings.getFromEmail(),
+                        settings.getFromName(),
+                        settings.getSmtpUseTls() == null || settings.getSmtpUseTls(),
+                        settings.getSmtpPasswordEncrypted() != null))
+                .orElse(PlatformSmtpDiagnostics.none());
     }
 
     /**
@@ -123,9 +157,20 @@ public class SmtpMailService {
         if (!StringUtils.hasText(to)) {
             return SmtpResult.failure(config.label(), "Recipient email is required.", "EMAIL_NO_RECIPIENT");
         }
+        // Zoho rejects (or silently rewrites) a From address that doesn't match the
+        // authenticated mailbox unless it's a configured alias — catch this up front
+        // instead of letting it surface as an opaque SMTP error after a real connection.
+        String effectiveFrom = StringUtils.hasText(config.fromEmail()) ? config.fromEmail() : config.username();
+        if (config.host() != null && config.host().toLowerCase().contains("zoho")
+                && StringUtils.hasText(config.username())
+                && !config.username().equalsIgnoreCase(effectiveFrom)) {
+            return SmtpResult.failure(config.label(),
+                    "From email (" + effectiveFrom + ") does not match the authenticated SMTP account (" + config.username() + ").",
+                    "SMTP_FROM_EMAIL_INVALID");
+        }
         try {
             JavaMailSenderImpl sender = new JavaMailSenderImpl();
-            sender.setHost(config.host());
+            sender.setHost(normalizeSmtpHost(config.host()));
             sender.setPort(config.port());
             sender.setUsername(config.username());
             sender.setPassword(config.password());
@@ -149,11 +194,19 @@ public class SmtpMailService {
             props.put("mail.smtp.writetimeout", "10000");
 
             boolean hasAttachment = attachmentBytes != null && attachmentBytes.length > 0 && StringUtils.hasText(attachmentName);
+            // MimeMessageHelper.setText(plain, html) requires multipart mode even without
+            // an attachment — it builds a multipart/alternative body. Non-multipart mode
+            // only works for a single plain-text or single HTML part.
+            boolean needsMultipart = hasAttachment || StringUtils.hasText(htmlBody);
 
             MimeMessage message = sender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, hasAttachment, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, needsMultipart, "UTF-8");
             helper.setTo(to);
-            helper.setFrom(StringUtils.hasText(config.fromEmail()) ? config.fromEmail() : config.username());
+            if (StringUtils.hasText(config.fromName())) {
+                helper.setFrom(effectiveFrom, config.fromName());
+            } else {
+                helper.setFrom(effectiveFrom);
+            }
             helper.setSubject(subject != null ? subject : "");
 
             boolean hasHtml  = StringUtils.hasText(htmlBody);
@@ -180,8 +233,9 @@ public class SmtpMailService {
             return SmtpResult.success(config.label());
         } catch (Exception ex) {
             String errorCode = classifySmtpException(ex);
-            log.warn("[SMTP] Send via {} to {} failed [{}]: {}", config.label(), to, errorCode, ex.getMessage());
-            return SmtpResult.failure(config.label(), ex.getMessage(), errorCode);
+            log.warn("[SMTP] Send via {} to {} failed [{}]: exceptionClass={} exceptionMessage={}",
+                    config.label(), to, errorCode, ex.getClass().getName(), ex.getMessage());
+            return SmtpResult.failure(config.label(), ex.getMessage(), errorCode, ex.getClass().getName());
         }
     }
 
@@ -210,6 +264,21 @@ public class SmtpMailService {
                 .trim();
     }
 
+    /**
+     * Zoho exposes two SMTP hosts — {@code smtp.zoho.com} (the standard, globally
+     * reliable endpoint) and {@code smtppro.zoho.com} (Zoho Mail Premium/legacy,
+     * region-pinned and known to reject standard-plan accounts). If a stored config
+     * points at smtppro but the account isn't actually provisioned for it, sends fail
+     * even though the credentials are correct. Since smtp.zoho.com works for every
+     * Zoho Mail plan, always prefer it over smtppro for the real send.
+     */
+    private static String normalizeSmtpHost(String host) {
+        if (host != null && host.trim().equalsIgnoreCase("smtppro.zoho.com")) {
+            return "smtp.zoho.com";
+        }
+        return host;
+    }
+
     private String classifySmtpException(Exception ex) {
         String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
         String type = ex.getClass().getSimpleName().toLowerCase();
@@ -217,6 +286,11 @@ public class SmtpMailService {
                 || msg.contains("auth") || msg.contains("credentials") || msg.contains("invalid login")
                 || msg.contains("username and password not accepted") || msg.contains("invalid credentials")) {
             return "EMAIL_AUTH_FAILED";
+        }
+        if (msg.contains("sender address rejected") || msg.contains("553") || msg.contains("501")
+                || msg.contains("not allowed to send") || msg.contains("does not match authenticated user")
+                || msg.contains("relay not permitted") || msg.contains("from address")) {
+            return "EMAIL_FROM_REJECTED";
         }
         if (msg.contains("tls") || msg.contains("ssl") || msg.contains("handshake")) {
             return "EMAIL_TLS_FAILED";
@@ -238,14 +312,26 @@ public class SmtpMailService {
                 .filter(settings -> StringUtils.hasText(settings.getSmtpHost())
                         && StringUtils.hasText(settings.getSmtpUsername())
                         && settings.getSmtpPasswordEncrypted() != null)
-                .map(settings -> new SmtpConfig(
-                        settings.getSmtpHost(),
-                        settings.getSmtpPort() != null ? settings.getSmtpPort() : 587,
-                        settings.getSmtpUsername(),
-                        encryptionUtil.decrypt(settings.getSmtpPasswordEncrypted()),
-                        settings.getSmtpTls() == null || settings.getSmtpTls(),
-                        settings.getSmtpUsername(),
-                        "tenant SMTP"))
+                .map(settings -> {
+                    // tryDecrypt (not decrypt): a decrypt failure here — e.g. because
+                    // APP_ENCRYPTION_SECRET changed since the password was stored — must
+                    // never crash the caller (e.g. a public forgot-password request) with
+                    // a 500. Treat it the same as "not configured" instead.
+                    String password = encryptionUtil.tryDecrypt(settings.getSmtpPasswordEncrypted());
+                    if (password == null) {
+                        log.warn("[SMTP] Tenant [id={}] SMTP password could not be decrypted — treating as unconfigured", tenantId);
+                        return null;
+                    }
+                    return new SmtpConfig(
+                            settings.getSmtpHost(),
+                            settings.getSmtpPort() != null ? settings.getSmtpPort() : 587,
+                            settings.getSmtpUsername(),
+                            password,
+                            settings.getSmtpTls() == null || settings.getSmtpTls(),
+                            settings.getSmtpUsername(),
+                            null,
+                            "tenant SMTP");
+                })
                 .orElse(null);
     }
 
@@ -258,14 +344,22 @@ public class SmtpMailService {
                         // Treat null as enabled (backward-compatible with pre-V24 rows);
                         // explicit FALSE means the Super Admin deliberately disabled platform email.
                         && !Boolean.FALSE.equals(settings.getSmtpEnabled()))
-                .map(settings -> new SmtpConfig(
-                        settings.getSmtpHost(),
-                        settings.getSmtpPort() != null ? settings.getSmtpPort() : 587,
-                        settings.getSmtpUsername(),
-                        encryptionUtil.decrypt(settings.getSmtpPasswordEncrypted()),
-                        settings.getSmtpUseTls() == null || settings.getSmtpUseTls(),
-                        StringUtils.hasText(settings.getFromEmail()) ? settings.getFromEmail() : settings.getSmtpUsername(),
-                        "platform SMTP"))
+                .map(settings -> {
+                    String password = encryptionUtil.tryDecrypt(settings.getSmtpPasswordEncrypted());
+                    if (password == null) {
+                        log.warn("[SMTP] Platform SMTP password could not be decrypted — treating as unconfigured");
+                        return null;
+                    }
+                    return new SmtpConfig(
+                            settings.getSmtpHost(),
+                            settings.getSmtpPort() != null ? settings.getSmtpPort() : 587,
+                            settings.getSmtpUsername(),
+                            password,
+                            settings.getSmtpUseTls() == null || settings.getSmtpUseTls(),
+                            StringUtils.hasText(settings.getFromEmail()) ? settings.getFromEmail() : settings.getSmtpUsername(),
+                            StringUtils.hasText(settings.getFromName()) ? settings.getFromName() : "RentCar",
+                            "platform SMTP");
+                })
                 .orElse(null);
     }
 }

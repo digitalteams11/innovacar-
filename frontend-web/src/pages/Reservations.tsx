@@ -13,6 +13,7 @@ import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
 import { FilterChips } from '../components/FilterChips';
 import { StatusBadge } from '../components/StatusBadge';
+import { translateReservationStatus } from '../utils/statusLabels';
 import {
   Plus, Download, ChevronRight, Clock, MapPin, CreditCard,
   Trash2, Edit3, FileText, Car, Shield, X, Calendar
@@ -81,15 +82,6 @@ const unwrapArray = <T,>(payload: unknown): T[] => {
   return [];
 };
 
-const unwrapObject = <T extends Record<string, unknown>>(payload: unknown): Partial<T> => {
-  if (!payload || typeof payload !== 'object') return {};
-  const response = payload as Record<string, unknown>;
-  if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
-    return response.data as Partial<T>;
-  }
-  return response as Partial<T>;
-};
-
 const statusVariantMap: Record<string, import('../components/StatusBadge').StatusVariant> = {
   CONFIRMED: 'confirmed',
   PENDING: 'pending',
@@ -121,7 +113,6 @@ export default function Reservations() {
   const [notes, setNotes] = useState('');
 
   const [saving, setSaving] = useState(false);
-  const [actionId, setActionId] = useState<number | null>(null);
 
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -326,26 +317,31 @@ export default function Reservations() {
     }
   };
 
-  const generateContract = async (res: Reservation) => {
-    try {
-      setActionId(res.id);
-      if (res.contractId) {
-        navigate(`/contracts/${res.contractId}`);
-      } else {
-        const { data: response } = await api.post<unknown>(`/contracts/from-reservation/${res.id}`);
-        const contract = unwrapObject<{ id: number }>(response);
-        showToast('Contract generated successfully', 'success');
-        if (contract.id) {
-          navigate(`/contracts/${contract.id}`);
-        } else {
-          await fetchReservations();
-        }
-      }
-    } catch (error: unknown) {
-      showToast(apiErrorMessage(error, 'Unable to generate contract. Please try again later.'), 'error');
-    } finally {
-      setActionId(null);
+  // Opens the Create Contract modal on the Contracts page, prefilled from this
+  // reservation's client/vehicle/dates — never silently auto-creates the
+  // contract, so the user always reviews the prefilled form before saving.
+  const openCreateContractModalFromReservation = (res: Reservation) => {
+    if (res.contractId) {
+      navigate(`/contracts/${res.contractId}`);
+      return;
     }
+    if (import.meta.env.DEV) {
+      console.log('[CONTRACT_PREFILL_DEBUG]', {
+        source: 'reservation-icon',
+        reservationId: res.id,
+        clientId: res.clientId,
+        clientName: res.clientName,
+        vehicleId: res.vehicleId,
+        vehicleName: res.vehicleMarque,
+        startDate: res.dateStart,
+        startTime: res.startTime,
+        endDate: res.dateEnd,
+        endTime: res.endTime,
+        totalAmount: res.estimatedPrice,
+        modalPrefilled: true,
+      });
+    }
+    navigate(`/contracts?fromReservationId=${res.id}`);
   };
 
   const calendarToday = new Date();
@@ -499,7 +495,7 @@ export default function Reservations() {
                   </p>
                 </div>
                 <StatusBadge variant={statusVariantMap[res.status] || 'neutral'} dot size="sm">
-                  {res.status}
+                  {translateReservationStatus(res.status)}
                 </StatusBadge>
               </div>
               <div className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 text-sm text-[var(--text-secondary)]">
@@ -514,8 +510,8 @@ export default function Reservations() {
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-end gap-2">
-                <button type="button" onClick={() => generateContract(res)} disabled={actionId === res.id} className="glass-button rounded-2xl p-2 text-[var(--text-muted)]" aria-label={res.contractId ? t('reservations.openContract') : t('reservations.convertToContract')}>
-                  {actionId === res.id ? <Clock size={17} className="animate-spin" /> : <FileText size={17} />}
+                <button type="button" onClick={() => openCreateContractModalFromReservation(res)} className="glass-button rounded-2xl p-2 text-[var(--text-muted)]" aria-label={res.contractId ? t('reservations.openContract') : t('reservations.convertToContract')}>
+                  <FileText size={17} />
                 </button>
                 <button type="button" onClick={() => openEdit(res)} disabled={res.readOnly} className="glass-button rounded-2xl p-2 text-[var(--text-muted)] disabled:opacity-40" aria-label={t('reservations.editAria')}>
                   <Edit3 size={17} />
@@ -648,7 +644,7 @@ export default function Reservations() {
                           dot
                           size="md"
                         >
-                          {res.status}
+                          {translateReservationStatus(res.status)}
                         </StatusBadge>
                       </td>
                       <td className="px-5 py-4">
@@ -661,8 +657,7 @@ export default function Reservations() {
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => generateContract(res)}
-                            disabled={actionId === res.id}
+                            onClick={() => openCreateContractModalFromReservation(res)}
                             className="p-2 rounded-lg transition-all"
                             style={{ color: 'var(--text-muted)' }}
                             onMouseEnter={(e) => {
@@ -675,7 +670,7 @@ export default function Reservations() {
                             }}
                             title={res.contractId ? 'Open contract' : 'Convert to contract'}
                           >
-                            {actionId === res.id ? <Clock size={17} className="animate-spin" /> : <FileText size={17} />}
+                            <FileText size={17} />
                           </motion.button>
                           <motion.button
                             whileHover={{ scale: 1.1 }}

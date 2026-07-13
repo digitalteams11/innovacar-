@@ -22,6 +22,8 @@ import SubscriptionBadge from './shared/SubscriptionBadge';
 import { GlobalSearchBar } from './search/GlobalSearchBar';
 import { cn } from '../lib/utils';
 
+const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
+
 interface NavigationItem {
   to: string;
   icon: LucideIcon;
@@ -95,7 +97,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const menuItems = useMemo(() => [...primaryMenuItems, ...adminToolItems], [primaryMenuItems, adminToolItems]);
 
   // A blocked/suspended agency is redirected out of every page except
-  // /subscription and /settings (see App.tsx ProtectedRoute) Ã¢â‚¬â€ the sidebar
+  // /subscription and /settings (see App.tsx ProtectedRoute) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the sidebar
   // must match that, not dangle links to pages the user will immediately
   // bounce out of.
   const filterVisible = (items: NavigationItem[]) => items
@@ -149,13 +151,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       )}>
         <div className={cn('h-[68px] px-4 flex items-center', appearance.sidebarStyle === 'compact' || sidebarCollapsed ? 'justify-center' : 'justify-between')}>
           <Link to="/" className="flex items-center gap-3 min-w-0">
-            <span className="w-9 h-9 rounded-lg border border-[color-mix(in_srgb,var(--text-sidebar)_12%,transparent)] bg-[color-mix(in_srgb,var(--text-sidebar)_8%,transparent)] flex items-center justify-center shrink-0">
-              <Car size={19} className="text-[var(--brand-accent)]" />
+            <span className="w-10 h-10 rounded-xl border border-[color-mix(in_srgb,var(--text-sidebar)_12%,transparent)] bg-white/95 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+              <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
             </span>
             {appearance.sidebarStyle !== 'compact' && !sidebarCollapsed && (
               <span className="min-w-0">
-                <strong className="block text-base text-[var(--text-sidebar)] tracking-tight">Rent<span className="text-[var(--brand-accent)]">Car</span></strong>
-                <span className="block text-[9px] uppercase tracking-[0.16em] text-[var(--text-sidebar-muted)]">{t('layout.brandSubtitle')}</span>
+                <strong className="block text-base text-[var(--text-sidebar)] tracking-tight">Innova<span className="text-[var(--brand-accent)]">Car</span></strong>
+                <span className="block text-[9px] uppercase tracking-[0.16em] text-[var(--text-sidebar-muted)]">by Innovax Technologies</span>
               </span>
             )}
           </Link>
@@ -226,10 +228,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <TrialBanner />
         <header className="app-topbar sticky top-2 lg:top-4 z-40 h-[58px] lg:h-[64px] mx-2 lg:mx-4 px-3 sm:px-4 lg:px-5 flex items-center gap-3 rounded-lg">
           <Link to="/" className="lg:hidden flex items-center gap-2 shrink-0">
-            <span className="w-8 h-8 rounded-lg bg-[var(--brand-primary)] flex items-center justify-center">
-              <Car size={16} className="text-[#171817]" />
+            <span className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
+              <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
             </span>
-            <strong className="hidden min-[375px]:block text-sm">RentCar</strong>
+            <strong className="hidden min-[375px]:block text-sm">InnovaCar</strong>
           </Link>
 
           <GlobalSearchBar />

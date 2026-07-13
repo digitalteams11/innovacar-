@@ -6,10 +6,10 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * Platform-wide Gemini AI configuration (singleton row, Super-Admin managed
- * only â€” never exposed to tenants). The API key is stored encrypted at rest
- * via {@link com.carrental.util.EncryptionUtil} and is never returned raw by
- * any endpoint.
+ * Platform-wide global AI settings (singleton row, Super-Admin managed only).
+ * Provider/model/credential configuration now lives on {@link AiProvider} /
+ * {@link AiModel} — this row only holds cross-cutting flags and limits that
+ * apply regardless of which provider is active.
  */
 @Entity
 @Table(name = "ai_settings")
@@ -24,37 +24,44 @@ public class AiSettings {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Builder.Default
-    @Column(name = "enabled", nullable = false)
-    private Boolean enabled = false;
+    @Column(name = "active_provider_id")
+    private Long activeProviderId;
+
+    @Column(name = "active_model_id")
+    private Long activeModelId;
+
+    @Column(name = "fallback_provider_id")
+    private Long fallbackProviderId;
+
+    @Column(name = "fallback_model_id")
+    private Long fallbackModelId;
 
     @Builder.Default
-    @Column(name = "provider", nullable = false, length = 40)
-    private String provider = "GEMINI";
-
-    /** AES-256-GCM encrypted Gemini API key. Never serialized raw. */
-    @Column(name = "api_key_encrypted", columnDefinition = "TEXT")
-    private String apiKeyEncrypted;
+    @Column(name = "fallback_enabled", nullable = false)
+    private Boolean fallbackEnabled = false;
 
     @Builder.Default
-    @Column(name = "text_model", length = 80)
-    private String textModel = "gemini-1.5-flash";
-
-    @Builder.Default
-    @Column(name = "vision_model", length = 80)
-    private String visionModel = "gemini-1.5-flash";
-
-    @Builder.Default
-    @Column(name = "timeout_seconds")
-    private Integer timeoutSeconds = 30;
-
-    @Builder.Default
-    @Column(name = "max_tokens")
-    private Integer maxTokens = 4096;
+    @Column(name = "global_enabled", nullable = false)
+    private Boolean globalEnabled = false;
 
     @Builder.Default
     @Column(name = "temperature")
     private Double temperature = 0.4;
+
+    @Builder.Default
+    @Column(name = "max_output_tokens")
+    private Integer maxOutputTokens = 4096;
+
+    @Builder.Default
+    @Column(name = "request_timeout_seconds")
+    private Integer requestTimeoutSeconds = 30;
+
+    @Builder.Default
+    @Column(name = "max_retries")
+    private Integer maxRetries = 1;
+
+    @Column(name = "system_prompt", columnDefinition = "TEXT")
+    private String systemPrompt;
 
     @Builder.Default
     @Column(name = "enable_chat", nullable = false)
@@ -96,21 +103,11 @@ public class AiSettings {
     @Column(name = "audit_all_actions", nullable = false)
     private Boolean auditAllActions = true;
 
-    @Column(name = "last_tested_at")
-    private LocalDateTime lastTestedAt;
-
-    @Builder.Default
-    @Column(name = "last_test_success")
-    private Boolean lastTestSuccess = false;
-
-    @Column(name = "last_test_message", length = 500)
-    private String lastTestMessage;
-
-    @Column(name = "last_test_error_code", length = 50)
-    private String lastTestErrorCode;
-
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
 
     @PrePersist
     @PreUpdate
@@ -118,4 +115,3 @@ public class AiSettings {
         updatedAt = LocalDateTime.now();
     }
 }
-

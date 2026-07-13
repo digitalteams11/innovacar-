@@ -194,7 +194,7 @@ export default function NotificationBell() {
               {browserPermission !== 'unsupported' && browserPermission !== 'granted' && (
                 <button
                   onClick={requestBrowserPermission}
-                  title="Enable browser notifications"
+                  title={t('notifications.enablePush')}
                   className="p-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ color: 'var(--text-muted)' }}
                 >
@@ -202,7 +202,7 @@ export default function NotificationBell() {
                 </button>
               )}
               {browserPermission === 'granted' && (
-                <span title="Browser notifications enabled" style={{ color: 'var(--text-muted)' }}>
+                <span title={t('notifications.pushEnabled')} style={{ color: 'var(--text-muted)' }}>
                   <BellRing size={13} className="text-emerald-500" />
                 </span>
               )}
@@ -210,7 +210,7 @@ export default function NotificationBell() {
               {readCount > 0 && (
                 <button
                   onClick={() => clearReadNotifications()}
-                  title={`Clear ${readCount} read`}
+                  title={t('notifications.clearReadCount', { count: readCount })}
                   className="p-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ color: 'var(--text-muted)' }}
                 >
@@ -235,7 +235,7 @@ export default function NotificationBell() {
             {loading && notifications.length === 0 ? (
               <div className="p-6 text-center flex items-center justify-center gap-2" style={{ color: 'var(--text-muted)' }}>
                 <RefreshCw size={14} className="animate-spin" />
-                <span className="text-sm">Loading…</span>
+                <span className="text-sm">{t('common.loading')}</span>
               </div>
             ) : notifications.length === 0 ? (
               <div className="p-6 text-center">
@@ -294,7 +294,7 @@ export default function NotificationBell() {
                     {/* Delete button — appears on hover */}
                     <button
                       onClick={() => deleteNotification(n.id)}
-                      title="Delete notification"
+                      title={t('notifications.deleteNotification')}
                       className="opacity-0 group-hover:opacity-100 transition-opacity p-3 self-stretch flex items-center"
                       style={{ color: 'var(--text-muted)' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#ef4444'}

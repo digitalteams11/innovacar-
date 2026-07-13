@@ -30,12 +30,37 @@ public class EmailService {
     }
 
     /**
-     * Sends a 6-digit password reset code email (new code-based flow).
+     * Sends a 6-digit password reset code email (new code-based flow), localized to English.
      */
-    public void sendPasswordResetCodeEmail(String toEmail, String userName, String code, int expiresInMinutes) {
-        String subject = "Your RentCar password reset code";
-        String body = buildPasswordResetCodeEmail(userName, code, expiresInMinutes);
-        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
+    public SmtpMailService.SmtpResult sendPasswordResetCodeEmail(String toEmail, String userName, String code, int expiresInMinutes) {
+        return sendPasswordResetCodeEmail(toEmail, userName, code, expiresInMinutes, "en");
+    }
+
+    /**
+     * Sends a 6-digit password reset code email (new code-based flow), localized to the
+     * user's preferred language (en / fr / ar).
+     */
+    public SmtpMailService.SmtpResult sendPasswordResetCodeEmail(String toEmail, String userName, String code,
+                                                                   int expiresInMinutes, String language) {
+        String lang = normalizeLanguage(language);
+        String subject = switch (lang) {
+            case "fr" -> "Code de réinitialisation du mot de passe RentCar";
+            case "ar" -> "رمز إعادة تعيين كلمة مرور RentCar";
+            default   -> "RentCar Password Reset Code";
+        };
+        String body = buildPasswordResetCodeEmail(userName, code, expiresInMinutes, lang);
+        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, body);
+        deliver(result, toEmail, subject);
+        return result;
+    }
+
+    private static String normalizeLanguage(String language) {
+        if (language == null) return "en";
+        String l = language.trim().toLowerCase();
+        return switch (l) {
+            case "fr", "ar" -> l;
+            default -> "en";
+        };
     }
 
     /**
@@ -72,10 +97,12 @@ public class EmailService {
     /**
      * Sends a 6-digit email verification code (code-based flow for authenticated users).
      */
-    public void sendEmailVerificationCodeEmail(String toEmail, String userName, String code) {
+    public SmtpMailService.SmtpResult sendEmailVerificationCodeEmail(String toEmail, String userName, String code) {
         String subject = "Your Email Verification Code";
         String body = buildEmailVerificationCodeEmail(userName, code);
-        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
+        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, body);
+        deliver(result, toEmail, subject);
+        return result;
     }
 
     /**
@@ -147,11 +174,34 @@ public class EmailService {
 
     // ── Email templates ─────────────────────────────────────────────────────
 
-    private String buildPasswordResetCodeEmail(String userName, String code, int expiresInMinutes) {
-        String name = (userName != null && !userName.isBlank()) ? userName : "there";
+    private String buildPasswordResetCodeEmail(String userName, String code, int expiresInMinutes, String lang) {
+        record Copy(String htmlLang, String dir, String greetingName, String heading, String intro,
+                    String expiry, String ignore, String footer) {}
+        Copy c = switch (lang) {
+            case "fr" -> new Copy("fr", "ltr", "Bonjour",
+                    "Réinitialisez votre mot de passe",
+                    "Nous avons reçu une demande de réinitialisation de votre mot de passe RentCar. Utilisez le code de vérification ci-dessous :",
+                    "Ce code expire dans <strong>%d minutes</strong>. Ne le partagez avec personne.",
+                    "Si vous n'avez pas demandé de réinitialisation, vous pouvez ignorer cet e-mail en toute sécurité. Votre mot de passe ne sera pas modifié.",
+                    "&copy; 2025 RentCar SaaS — Innovacar. Tous droits réservés.");
+            case "ar" -> new Copy("ar", "rtl", "مرحباً",
+                    "إعادة تعيين كلمة المرور",
+                    "تلقينا طلبًا لإعادة تعيين كلمة مرور حساب RentCar الخاص بك. استخدم رمز التحقق أدناه:",
+                    "تنتهي صلاحية هذا الرمز خلال <strong>%d دقيقة</strong>. لا تشاركه مع أي شخص.",
+                    "إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذا البريد الإلكتروني بأمان. لن يتم تغيير كلمة المرور الخاصة بك.",
+                    "&copy; 2025 RentCar SaaS — Innovacar. جميع الحقوق محفوظة.");
+            default -> new Copy("en", "ltr", "Hi",
+                    "Reset your password",
+                    "We received a request to reset your RentCar password. Use the verification code below:",
+                    "This code expires in <strong>%d minutes</strong>. Do not share it with anyone.",
+                    "If you did not request a password reset, you can safely ignore this email. Your password will not change.",
+                    "&copy; 2025 RentCar SaaS — Innovacar. All rights reserved.");
+        };
+        String name = (userName != null && !userName.isBlank()) ? userName : (lang.equals("fr") ? "cher utilisateur" : lang.equals("ar") ? "عزيزي المستخدم" : "there");
+        String expiryLine = c.expiry().formatted(expiresInMinutes);
         return """
             <!DOCTYPE html>
-            <html lang="en">
+            <html lang="%s" dir="%s">
             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
             <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
               <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:40px 0;">
@@ -161,24 +211,24 @@ public class EmailService {
                       <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
                     </td></tr>
                     <tr><td style="padding:40px;">
-                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Reset your password</h2>
-                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">Hi %s,</p>
+                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">%s</h2>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">%s %s,</p>
                       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
-                        We received a request to reset your RentCar password. Use the verification code below:
+                        %s
                       </p>
                       <div style="background:#f0f4ff;border:2px dashed #1a56db;border-radius:8px;padding:24px;text-align:center;margin:0 0 24px;">
                         <span style="font-size:42px;font-weight:700;letter-spacing:12px;color:#1a56db;font-family:monospace;">%s</span>
                       </div>
                       <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
-                        This code expires in <strong>%d minutes</strong>. Do not share it with anyone.
+                        %s
                       </p>
                       <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">
-                        If you did not request a password reset, you can safely ignore this email. Your password will not change.
+                        %s
                       </p>
                     </td></tr>
                     <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
                       <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
-                        &copy; 2025 RentCar SaaS. All rights reserved.
+                        %s
                       </p>
                     </td></tr>
                   </table>
@@ -186,7 +236,7 @@ public class EmailService {
               </table>
             </body>
             </html>
-            """.formatted(name, code, expiresInMinutes);
+            """.formatted(c.htmlLang(), c.dir(), c.heading(), c.greetingName(), name, c.intro(), code, expiryLine, c.ignore(), c.footer());
     }
 
     private String buildPasswordChangedEmail(String userName) {

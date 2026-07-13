@@ -24,6 +24,8 @@ import DashboardVehicleCard, { type VehicleCardData } from '../components/shared
 import ContractReturnModal from '../components/shared/ContractReturnModal';
 import DashboardCustomizeModal from '../components/dashboard/DashboardCustomizeModal';
 import { useDashboardLayout } from '../hooks/useDashboardLayout';
+import { formatMonthYear, formatShortDate, getWeekdayLabels, resolveLocale } from '../utils/dateFormat';
+import { translateReservationStatus, translateFleetHealthStatus } from '../utils/statusLabels';
 import type {
   DashboardStats, DashboardVehicle, DashboardReservation,
   ClientItem, MaintenanceItem, HealthScore,
@@ -199,15 +201,16 @@ function TopStat({
 
 /* ─── VStatusBadge ───────────────────────────────────────────────── */
 function VStatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   const cfg: Record<string, { label: string; cls: string }> = {
-    AVAILABLE:      { label: 'Available',     cls: 'bg-emerald-500/10 text-emerald-500' },
-    RENTED:         { label: 'Rented',        cls: 'bg-blue-500/10 text-blue-500' },
-    RESERVED:       { label: 'Reserved',      cls: 'bg-amber-500/10 text-amber-500' },
-    MAINTENANCE:    { label: 'Maintenance',   cls: 'bg-red-500/10 text-red-500' },
-    IN_MAINTENANCE: { label: 'Maintenance',   cls: 'bg-red-500/10 text-red-500' },
-    OUT_OF_SERVICE: { label: 'Out of Service',cls: 'bg-gray-500/10 text-gray-400' },
-    SOLD:           { label: 'Sold',          cls: 'bg-gray-500/10 text-gray-400' },
-    ARCHIVED:       { label: 'Archived',      cls: 'bg-gray-500/10 text-gray-400' },
+    AVAILABLE:      { label: t('common.available'),   cls: 'bg-emerald-500/10 text-emerald-500' },
+    RENTED:         { label: t('common.rented'),      cls: 'bg-blue-500/10 text-blue-500' },
+    RESERVED:       { label: t('common.reserved'),    cls: 'bg-amber-500/10 text-amber-500' },
+    MAINTENANCE:    { label: t('common.maintenance'), cls: 'bg-red-500/10 text-red-500' },
+    IN_MAINTENANCE: { label: t('common.maintenance'), cls: 'bg-red-500/10 text-red-500' },
+    OUT_OF_SERVICE: { label: t('common.outOfService'),cls: 'bg-gray-500/10 text-gray-400' },
+    SOLD:           { label: t('common.sold'),        cls: 'bg-gray-500/10 text-gray-400' },
+    ARCHIVED:       { label: t('common.archived'),    cls: 'bg-gray-500/10 text-gray-400' },
   };
   const c = cfg[status] ?? { label: status, cls: 'bg-gray-500/10 text-gray-400' };
   return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.cls}`}>{c.label}</span>;
@@ -256,7 +259,7 @@ function StatusLegend({ data, total }: { data: { name: string; count: number; co
         <div key={item.name} className="flex items-center justify-between text-[11px]">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-            <span style={{ color: 'var(--text-secondary)' }}>{item.name}</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{translateReservationStatus(item.name)}</span>
           </div>
           <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
             {item.count}&nbsp;
@@ -280,7 +283,8 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
   const month = view.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = view.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthLabel = formatMonthYear(view);
+  const weekdayLetters = useMemo(() => getWeekdayLabels('narrow'), [t]);
 
   // Map date → list of reservation statuses for that day
   const dayMap = useMemo(() => {
@@ -329,7 +333,7 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-          Reservations Calendar
+          {t('dashboard.reservationsCalendar')}
         </h3>
         <div className="flex items-center gap-0.5">
           <button
@@ -354,14 +358,14 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
             className="ml-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
             style={{ backgroundColor: 'var(--brand-primary)', color: '#fff', opacity: 0.85 }}
           >
-            TODAY
+            {t('calendar.today')}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-7">
-        {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-          <div key={d} className="text-center text-[10px] font-bold uppercase pb-2" style={{ color: 'var(--text-muted)' }}>
+        {weekdayLetters.map((d, i) => (
+          <div key={i} className="text-center text-[10px] font-bold uppercase pb-2" style={{ color: 'var(--text-muted)' }}>
             {d}
           </div>
         ))}
@@ -422,7 +426,7 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
           >
             <div className="pt-2 pb-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
               <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
-                {new Date(year, month, selectedDay).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+                {new Intl.DateTimeFormat(resolveLocale(), { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(year, month, selectedDay))}
               </p>
               {dayAgenda.length === 0 ? (
                 <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>{t('dashboard.noReservationsThisDay')}</p>
@@ -435,7 +439,7 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
                       <div key={r.id} className="flex items-center gap-2 text-[11px]">
                         <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
                         <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                          {isPickup ? '↑ Pickup' : '↓ Return'}
+                          {isPickup ? `↑ ${t('dashboard.pickupLabel')}` : `↓ ${t('dashboard.returnLabel')}`}
                         </span>
                         <span className="truncate" style={{ color: 'var(--text-secondary)' }}>
                           {r.vehicleMarque ?? '—'}
@@ -454,10 +458,10 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-3 pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
         {[
-          { label: 'Confirmed', color: '#10b981' },
-          { label: 'Pending',   color: '#f59e0b' },
-          { label: 'Cancelled', color: '#ef4444' },
-          { label: 'Return',    color: '#f97316' },
+          { label: t('dashboard.confirmed'), color: '#10b981' },
+          { label: t('dashboard.pending'),   color: '#f59e0b' },
+          { label: t('dashboard.cancelled'), color: '#ef4444' },
+          { label: t('dashboard.returnLabel'), color: '#f97316' },
         ].map(({ label, color }) => (
           <div key={label} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
@@ -606,10 +610,11 @@ function SetupChecklist({ steps, navigate }: { steps: ChecklistStep[]; navigate:
 
 /* ─── PremiumFleetEmpty ──────────────────────────────────────────── */
 function PremiumFleetEmpty({ navigate }: { navigate: (p: string) => void }) {
+  const { t } = useTranslation();
   const steps = [
-    { n: 1, icon: Car,      label: 'Add vehicles',   desc: 'Register your fleet',       action: () => navigate('/vehicles') },
-    { n: 2, icon: Users,    label: 'Add clients',    desc: 'Build your client base',    action: () => navigate('/clients') },
-    { n: 3, icon: Calendar, label: 'Start booking',  desc: 'Create your first rental',  action: () => navigate('/reservations') },
+    { n: 1, icon: Car,      label: t('dashboard.addVehiclesStep'),  desc: t('dashboard.addVehiclesStepDesc'),  action: () => navigate('/vehicles') },
+    { n: 2, icon: Users,    label: t('dashboard.addClientsStep'),   desc: t('dashboard.addClientsStepDesc'),   action: () => navigate('/clients') },
+    { n: 3, icon: Calendar, label: t('dashboard.startBookingStep'), desc: t('dashboard.startBookingStepDesc'), action: () => navigate('/reservations') },
   ];
   return (
     <motion.div
@@ -623,10 +628,10 @@ function PremiumFleetEmpty({ navigate }: { navigate: (p: string) => void }) {
           <Car size={32} className="text-blue-500" />
         </div>
         <h3 className="text-base font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-          Build your fleet
+          {t('dashboard.buildYourFleet')}
         </h3>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          Add vehicles to start managing bookings, contracts, fuel, mileage, and availability.
+          {t('dashboard.buildYourFleetDesc')}
         </p>
         <button
           onClick={() => navigate('/vehicles')}
@@ -634,7 +639,7 @@ function PremiumFleetEmpty({ navigate }: { navigate: (p: string) => void }) {
           style={{ backgroundColor: 'var(--brand-primary)' }}
         >
           <Car size={15} />
-          Add first vehicle
+          {t('dashboard.addFirstVehicle')}
         </button>
       </div>
 
@@ -787,7 +792,7 @@ function GPSStatusWidget({
         style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
       >
         <MapPin size={12} />
-        View GPS Map
+        {t('dashboard.viewGpsMap')}
       </button>
     </div>
   );
@@ -797,14 +802,14 @@ function GPSStatusWidget({
 function QuickActions({ navigate }: { navigate: (path: string) => void }) {
   const { t } = useTranslation();
   const actions = [
-    { label: t('dashboard.newReservation', 'New Reservation'), icon: Calendar,   color: 'bg-blue-500/10 text-blue-500',   to: '/reservations', desc: 'Book a vehicle' },
-    { label: t('dashboard.addVehicle',     'Add Vehicle'),     icon: Car,         color: 'bg-emerald-500/10 text-emerald-500', to: '/vehicles', desc: 'Expand fleet' },
-    { label: t('dashboard.addClient',      'Add Client'),      icon: Users,       color: 'bg-violet-500/10 text-violet-500', to: '/clients', desc: 'Register client' },
-    { label: t('dashboard.createContract', 'Create Contract'), icon: FileText,    color: 'bg-orange-500/10 text-orange-500', to: '/contracts', desc: 'New contract' },
-    { label: t('dashboard.invoices',       'Invoices'),        icon: CreditCard,  color: 'bg-pink-500/10 text-pink-500',   to: '/invoices', desc: 'Manage payments' },
-    { label: t('dashboard.reports',        'Reports'),         icon: BarChart3,   color: 'bg-cyan-500/10 text-cyan-500',   to: '/reports', desc: 'View analytics' },
-    { label: 'GPS Dashboard',                                    icon: MapPin,      color: 'bg-teal-500/10 text-teal-500',   to: '/gps', desc: 'Track fleet' },
-    { label: 'Maintenance',                                      icon: Wrench,      color: 'bg-red-500/10 text-red-500',     to: '/maintenance', desc: 'Schedule work' },
+    { label: t('dashboard.newReservation', 'New Reservation'), icon: Calendar,   color: 'bg-blue-500/10 text-blue-500',   to: '/reservations', desc: t('dashboard.newReservationDesc') },
+    { label: t('dashboard.addVehicle',     'Add Vehicle'),     icon: Car,         color: 'bg-emerald-500/10 text-emerald-500', to: '/vehicles', desc: t('dashboard.addVehicleDesc') },
+    { label: t('dashboard.addClient',      'Add Client'),      icon: Users,       color: 'bg-violet-500/10 text-violet-500', to: '/clients', desc: t('dashboard.addClientDesc') },
+    { label: t('dashboard.createContract', 'Create Contract'), icon: FileText,    color: 'bg-orange-500/10 text-orange-500', to: '/contracts', desc: t('dashboard.createContractDesc') },
+    { label: t('dashboard.invoices',       'Invoices'),        icon: CreditCard,  color: 'bg-pink-500/10 text-pink-500',   to: '/invoices', desc: t('dashboard.invoicesDesc') },
+    { label: t('dashboard.reports',        'Reports'),         icon: BarChart3,   color: 'bg-cyan-500/10 text-cyan-500',   to: '/reports', desc: t('dashboard.reportsDesc') },
+    { label: t('dashboard.gpsDashboardAction'),                  icon: MapPin,      color: 'bg-teal-500/10 text-teal-500',   to: '/gps', desc: t('dashboard.gpsDashboardActionDesc') },
+    { label: t('common.maintenance'),                            icon: Wrench,      color: 'bg-red-500/10 text-red-500',     to: '/maintenance', desc: t('dashboard.maintenanceActionDesc') },
   ];
   return (
     <div>
@@ -856,7 +861,7 @@ export default function Dashboard() {
   const [gpsStatus,      setGpsStatus]      = useState<{ configured: boolean; online?: number; offline?: number; total?: number } | null>(null);
   const [agencyConfigured, setAgencyConfigured] = useState(false);
 
-  const { t } = useTranslation();
+  const { t, i18n: i18nInstance } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -947,8 +952,8 @@ export default function Dashboard() {
         else setReservations([]);
 
         if (healthRes.status === 'fulfilled')
-          setHealth(unwrapApiData<HealthScore>(healthRes.value.data, { score: 20, label: 'Getting Started', risk: 'GETTING_STARTED' }));
-        else setHealth({ score: 20, label: 'Getting Started', risk: 'GETTING_STARTED' });
+          setHealth(unwrapApiData<HealthScore>(healthRes.value.data, { score: 20, label: t('dashboard.gettingStarted'), risk: 'GETTING_STARTED' }));
+        else setHealth({ score: 20, label: t('dashboard.gettingStarted'), risk: 'GETTING_STARTED' });
 
         if (clientsRes.status === 'fulfilled')
           setClients(unwrapApiArray<ClientItem>(clientsRes.value.data));
@@ -992,14 +997,19 @@ export default function Dashboard() {
   const paymentsToday     = stats?.paymentsToday ?? 0;
   const totalClients      = stats?.totalClients ?? 0;
 
-  const bookingTrendData = useMemo(() =>
-    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((name, i) => ({
-      name,
+  const bookingTrendData = useMemo(() => {
+    // getWeekdayLabels() is Sunday-first; the chart itself starts on Monday,
+    // so remap indices 0..6 (Mon..Sun) to the Sunday-first label array.
+    const sundayFirstLabels = getWeekdayLabels('short');
+    const mondayFirstOrder = [1, 2, 3, 4, 5, 6, 0];
+    return mondayFirstOrder.map((sundayFirstIndex, i) => ({
+      name: sundayFirstLabels[sundayFirstIndex],
       bookings: reservations.filter(r => r.dateStart && new Date(r.dateStart).getDay() === (i + 1) % 7).length,
       revenue:  reservations
         .filter(r => r.dateStart && new Date(r.dateStart).getDay() === (i + 1) % 7)
         .reduce((s, r) => s + (r.totalPrice || 0), 0),
-    })), [reservations]);
+    }));
+  }, [reservations, i18nInstance.language]);
 
   const statusData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1009,11 +1019,11 @@ export default function Dashboard() {
   const statusTotal = statusData.reduce((s, d) => s + d.count, 0);
 
   const vehicleDistData = useMemo(() => [
-    { name: 'Available', value: availableVehicles, color: '#10b981' },
-    { name: 'Rented',    value: rentedVehicles,    color: '#3b82f6' },
-    { name: 'Reserved',  value: reservedVehicles,  color: '#f59e0b' },
-    { name: 'Other',     value: Math.max(0, totalVehicles - availableVehicles - rentedVehicles - reservedVehicles), color: '#ef4444' },
-  ].filter(d => d.value > 0), [availableVehicles, rentedVehicles, reservedVehicles, totalVehicles]);
+    { name: t('common.available'), value: availableVehicles, color: '#10b981' },
+    { name: t('common.rented'),    value: rentedVehicles,    color: '#3b82f6' },
+    { name: t('common.reserved'),  value: reservedVehicles,  color: '#f59e0b' },
+    { name: t('common.other', 'Other'), value: Math.max(0, totalVehicles - availableVehicles - rentedVehicles - reservedVehicles), color: '#ef4444' },
+  ].filter(d => d.value > 0), [availableVehicles, rentedVehicles, reservedVehicles, totalVehicles, t]);
 
   const upcoming7 = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -1038,6 +1048,11 @@ export default function Dashboard() {
   const revenueSparkData = bookingTrendData.map(d => d.revenue);
   const healthScore = Math.min(health?.score ?? 0, 100);
   const healthColor = healthScore >= 80 ? '#10b981' : healthScore >= 60 ? '#f59e0b' : '#ef4444';
+  // The backend's `label` field is free-text English prose (see
+  // SaasHealthController) with no stable code — deriving the tier from the
+  // score locally (using the same thresholds) avoids ever rendering that
+  // untranslated backend string.
+  const healthTierCode = healthScore <= 20 ? 'GETTING_STARTED' : healthScore <= 60 ? 'GROWING' : healthScore <= 80 ? 'GOOD' : 'EXCELLENT';
 
   /* Setup checklist steps (visible when DB is empty/new) */
   const checklistSteps: ChecklistStep[] = [
@@ -1171,9 +1186,9 @@ export default function Dashboard() {
             {t('dashboard.fleetOverview', 'Fleet Overview')}
           </h2>
           {[
-            { label: 'Available', count: availableVehicles, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' },
-            { label: 'Rented',    count: rentedVehicles,    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-300' },
-            { label: 'Reserved',  count: reservedVehicles,  color: 'bg-amber-500/10 text-amber-600 dark:text-amber-300' },
+            { label: t('common.available'), count: availableVehicles, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' },
+            { label: t('common.rented'),    count: rentedVehicles,    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-300' },
+            { label: t('common.reserved'),  count: reservedVehicles,  color: 'bg-amber-500/10 text-amber-600 dark:text-amber-300' },
           ].filter(p => p.count > 0).map(p => (
             <span key={p.label} className={`text-[10px] font-bold px-2 py-0.5 rounded-full hidden sm:inline ${p.color}`}>
               {p.count} {p.label}
@@ -1235,9 +1250,9 @@ export default function Dashboard() {
         <EnhancedCalendar reservations={reservations} />
         <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
           {[
-            { label: 'Pickup',  value: upcoming7.length,        color: 'text-emerald-500' },
-            { label: 'Return',  value: upcomingReturns7.length, color: 'text-orange-400' },
-            { label: 'Total',   value: reservations.length,     color: 'text-blue-500' },
+            { label: t('dashboard.pickupLabel'), value: upcoming7.length,        color: 'text-emerald-500' },
+            { label: t('dashboard.returnLabel'), value: upcomingReturns7.length, color: 'text-orange-400' },
+            { label: t('dashboard.total'),       value: reservations.length,     color: 'text-blue-500' },
           ].map(({ label, value, color }) => (
             <div key={label} className="text-center">
               <p className={`text-lg font-bold ${color}`}>{value}</p>
@@ -1293,7 +1308,7 @@ export default function Dashboard() {
                     contentStyle={{ borderRadius: 12, border: 'none', backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(12px)', boxShadow: 'var(--shadow-elevated)', padding: '10px 14px' }}
                     labelStyle={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 12, marginBottom: 4 }}
                   />
-                  <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#gbookings)" name="Bookings" />
+                  <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#gbookings)" name={t('dashboard.bookingsLabel')} />
                 </AreaChart>
               </ResponsiveContainer>
             </SafeChartContainer>
@@ -1301,7 +1316,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-4 mt-3">
             <div className="flex items-center gap-1.5 text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
-              <div className="w-2 h-2 rounded-full bg-blue-500" /> Bookings
+              <div className="w-2 h-2 rounded-full bg-blue-500" /> {t('dashboard.bookingsLabel')}
             </div>
           </div>
         </DCard>
@@ -1311,7 +1326,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dashboard.reservationStatus')}</h3>
             <span className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-              {statusTotal} total
+              {t('dashboard.totalCount', { count: statusTotal })}
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -1347,15 +1362,15 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dashboard.contractsSummary')}</h3>
             <button onClick={() => navigate('/contracts')} className="text-[11px] font-semibold hover:underline" style={{ color: 'var(--brand-primary)' }}>
-              View All
+              {t('dashboard.viewAll')}
             </button>
           </div>
           <div className="space-y-3">
             {[
-              { label: 'Active Contracts',  value: activeContracts,  icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-              { label: 'Pending Signature', value: pendingContracts, icon: Clock,       color: 'text-amber-500',  bg: 'bg-amber-500/10'  },
-              { label: 'Signed',            value: signedContracts,  icon: FileText,    color: 'text-blue-500',   bg: 'bg-blue-500/10'   },
-              { label: 'Total Clients',     value: totalClients,     icon: Users,       color: 'text-violet-500', bg: 'bg-violet-500/10' },
+              { label: t('dashboard.activeContracts'),      value: activeContracts,  icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+              { label: t('dashboard.pendingSignatureLabel'), value: pendingContracts, icon: Clock,       color: 'text-amber-500',  bg: 'bg-amber-500/10'  },
+              { label: t('dashboard.signedLabel'),           value: signedContracts,  icon: FileText,    color: 'text-blue-500',   bg: 'bg-blue-500/10'   },
+              { label: t('dashboard.totalClientsLabel'),     value: totalClients,     icon: Users,       color: 'text-violet-500', bg: 'bg-violet-500/10' },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className="flex items-center gap-3 p-2.5 rounded-xl transition-colors hover:bg-[var(--bg-hover)]">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
@@ -1380,7 +1395,7 @@ export default function Dashboard() {
           </div>
           <div className="text-center mb-3">
             <p className="text-3xl font-bold" style={{ color: healthColor }}>{healthScore}</p>
-            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{health?.label ?? 'Loading'}</p>
+            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{health ? translateFleetHealthStatus(healthTierCode) : t('common.loading')}</p>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-hover)' }}>
             <motion.div
@@ -1393,7 +1408,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
-              Fleet Distribution
+              {t('dashboard.fleetDistribution')}
             </p>
             {vehicleDistData.length > 0 ? (
               <div className="space-y-1.5">
@@ -1445,7 +1460,7 @@ export default function Dashboard() {
         {vehicles.length > 5 && (
           <div className="p-3 border-t text-center" style={{ borderColor: 'var(--border-subtle)' }}>
             <button onClick={() => navigate('/vehicles')} className="text-[11px] font-medium flex items-center gap-1 mx-auto hover:gap-2 transition-all" style={{ color: 'var(--brand-primary)' }}>
-              See all <ArrowRight size={12} />
+              {t('dashboard.seeAll')} <ArrowRight size={12} />
             </button>
           </div>
         )}
@@ -1469,7 +1484,7 @@ export default function Dashboard() {
                 </div>
                 {(c.totalContracts ?? 0) > 0 && (
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-500 shrink-0">
-                    {c.totalContracts} rentals
+                    {t('dashboard.rentalsCount', { count: c.totalContracts ?? 0 })}
                   </span>
                 )}
               </div>
@@ -1485,7 +1500,7 @@ export default function Dashboard() {
         {clients.length > 5 && (
           <div className="p-3 border-t text-center" style={{ borderColor: 'var(--border-subtle)' }}>
             <button onClick={() => navigate('/clients')} className="text-[11px] font-medium flex items-center gap-1 mx-auto hover:gap-2 transition-all" style={{ color: 'var(--brand-primary)' }}>
-              See all clients <ArrowRight size={12} />
+              {t('dashboard.seeAll')} <ArrowRight size={12} />
             </button>
           </div>
         )}
@@ -1554,7 +1569,7 @@ export default function Dashboard() {
                 </p>
                 <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {r.vehicleMarque && <span>{r.vehicleMarque} · </span>}
-                  {r.dateStart ? new Date(r.dateStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}
+                  {r.dateStart ? formatShortDate(r.dateStart) : '—'}
                 </p>
               </div>
               {r.pickupLocation && (
@@ -1594,7 +1609,7 @@ export default function Dashboard() {
                 </p>
                 <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {r.vehicleMarque && <span>{r.vehicleMarque} · </span>}
-                  {r.dateEnd ? new Date(r.dateEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}
+                  {r.dateEnd ? formatShortDate(r.dateEnd) : '—'}
                 </p>
               </div>
               {r.returnLocation && (
@@ -1624,7 +1639,7 @@ export default function Dashboard() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} dy={5} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} />
                 <Tooltip contentStyle={{ borderRadius: 10, border: 'none', backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(12px)' }} />
-                <Bar dataKey="revenue" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} name="Revenue" />
+                <Bar dataKey="revenue" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} name={t('dashboard.revenue')} />
               </BarChart>
             </ResponsiveContainer>
           </SafeChartContainer>
@@ -1632,10 +1647,10 @@ export default function Dashboard() {
 
         <div className="mt-4 grid grid-cols-2 gap-2 pt-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
           {[
-            { label: 'Deposits Held',     value: `${fmt(stats?.totalDepositsHeld)} MAD`, color: 'text-amber-500' },
-            { label: 'Pending Returns',   value: stats?.pendingReturns ?? 0,             color: 'text-orange-500' },
-            { label: 'Returned',          value: `${fmt(stats?.returnedDeposits)} MAD`,  color: 'text-emerald-500' },
-            { label: 'Deductions',        value: `${fmt(stats?.depositDeductions)} MAD`, color: 'text-red-500' },
+            { label: t('dashboard.depositsHeld'),      value: `${fmt(stats?.totalDepositsHeld)} MAD`, color: 'text-amber-500' },
+            { label: t('dashboard.pendingReturns'),    value: stats?.pendingReturns ?? 0,             color: 'text-orange-500' },
+            { label: t('dashboard.returnedDeposits'),  value: `${fmt(stats?.returnedDeposits)} MAD`,  color: 'text-emerald-500' },
+            { label: t('dashboard.deductions'),        value: `${fmt(stats?.depositDeductions)} MAD`, color: 'text-red-500' },
           ].map(({ label, value, color }) => (
             <div key={label} className="p-2.5 rounded-xl" style={{ backgroundColor: 'var(--bg-hover)' }}>
               <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>{label}</p>
@@ -1672,10 +1687,10 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { label: 'Available',    count: availableVehicles, color: '#10b981', bg: 'bg-emerald-500/10' },
-            { label: 'Rented',       count: rentedVehicles,    color: '#3b82f6', bg: 'bg-blue-500/10'   },
-            { label: 'Reserved',     count: reservedVehicles,  color: '#f59e0b', bg: 'bg-amber-500/10'  },
-            { label: 'Maintenance',  count: Math.max(0, totalVehicles - availableVehicles - rentedVehicles - reservedVehicles), color: '#ef4444', bg: 'bg-red-500/10' },
+            { label: t('common.available'),    count: availableVehicles, color: '#10b981', bg: 'bg-emerald-500/10' },
+            { label: t('common.rented'),       count: rentedVehicles,    color: '#3b82f6', bg: 'bg-blue-500/10'   },
+            { label: t('common.reserved'),     count: reservedVehicles,  color: '#f59e0b', bg: 'bg-amber-500/10'  },
+            { label: t('common.maintenance'),  count: Math.max(0, totalVehicles - availableVehicles - rentedVehicles - reservedVehicles), color: '#ef4444', bg: 'bg-red-500/10' },
           ].map(({ label, count, color, bg }) => (
             <div key={label} className={`flex items-center gap-3 p-3 rounded-xl ${bg} cursor-pointer hover:opacity-90 transition-opacity`}
               onClick={() => navigate('/vehicles')}>
@@ -1744,7 +1759,7 @@ export default function Dashboard() {
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {greeting},{' '}
             <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{userName}</span>
-            {' — '}{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            {' — '}{new Intl.DateTimeFormat(resolveLocale(), { weekday: 'long', month: 'long', day: 'numeric' }).format(now)}
           </p>
         </div>
 

@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogIn, Lock, Mail, Car, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Lock, Mail, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
+
+const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
 
 declare global {
   interface Window {
@@ -156,7 +158,7 @@ export default function Login() {
     setError('');
     try {
       const userData = await googleLogin(response.credential);
-      // 2FA required after Google auth — reuse the same 2FA challenge flow
+      // 2FA required after Google auth Ã¢â‚¬â€ reuse the same 2FA challenge flow
       if (userData?.twoFactorRequired) {
         const methods: string[] = userData.availableTwoFactorMethods ?? ['AUTHENTICATOR'];
         setChallengeToken(userData.challengeToken || '');
@@ -198,7 +200,7 @@ export default function Login() {
     setError('');
 
     try {
-      // ── 2FA second-leg: challenge token already issued ─────────────────
+      // Ã¢â€â‚¬Ã¢â€â‚¬ 2FA second-leg: challenge token already issued Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
       if (twoFactorRequired && challengeToken) {
         const userData = await verify2FA(
           challengeToken,
@@ -214,7 +216,7 @@ export default function Login() {
         return;
       }
 
-      // ── First-leg: email + password ────────────────────────────────────
+      // Ã¢â€â‚¬Ã¢â€â‚¬ First-leg: email + password Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
       await api.get('/health', { timeout: 5000 });
       const userData = await login({ email, password });
 
@@ -327,11 +329,11 @@ export default function Login() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="flex items-center justify-center gap-3 mb-10"
         >
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-300 to-accent-500 flex items-center justify-center shadow-lg shadow-accent-400/20">
-            <Car size={24} className="text-brand-900" strokeWidth={2.5} />
+          <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-accent-400/20 overflow-hidden">
+            <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-1" />
           </div>
           <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            Rent<span className="text-accent-500">Car</span>
+            Innova<span className="text-accent-500">Car</span>
           </span>
         </motion.div>
 
@@ -389,7 +391,7 @@ export default function Login() {
                 onSubmit={handleEmailSubmit}
                 className="space-y-4"
               >
-                  {/* ── 2FA challenge step ──────────────────────────────── */}
+                  {/* Ã¢â€â‚¬Ã¢â€â‚¬ 2FA challenge step Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
                   {twoFactorRequired ? (
                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                       <div className="text-center space-y-2">
@@ -401,7 +403,7 @@ export default function Login() {
                         <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('login.twoFactorTitle')}</p>
                       </div>
 
-                      {/* Method tabs — shown only when both methods are available */}
+                      {/* Method tabs Ã¢â‚¬â€ shown only when both methods are available */}
                       {availableMethods.length > 1 && (
                         <div className="flex rounded-xl overflow-hidden border border-[var(--border-subtle)]">
                           {availableMethods.includes('AUTHENTICATOR') && (
@@ -514,7 +516,7 @@ export default function Login() {
                         </>
                       )}
 
-                      {/* Trust device — shared */}
+                      {/* Trust device Ã¢â‚¬â€ shared */}
                       <label className="flex items-start gap-3 cursor-pointer select-none pt-1">
                         <input
                           type="checkbox"
@@ -528,7 +530,7 @@ export default function Login() {
                         </span>
                       </label>
 
-                      {/* Submit button — only for AUTHENTICATOR tab (EMAIL uses its own button) */}
+                      {/* Submit button Ã¢â‚¬â€ only for AUTHENTICATOR tab (EMAIL uses its own button) */}
                       {activeMethod === 'AUTHENTICATOR' && (
                         <motion.button
                           type="submit"
@@ -552,7 +554,7 @@ export default function Login() {
                       </button>
                     </motion.div>
                   ) : (
-                    /* ── Email + password step ─────────────────────────── */
+                    /* Ã¢â€â‚¬Ã¢â€â‚¬ Email + password step Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
                     <>
                       <div>
                         <label className="block text-sm font-medium mb-2 ml-1" style={{ color: 'var(--text-primary)' }}>{t('login.email')}</label>
@@ -571,7 +573,7 @@ export default function Login() {
                           type={showPassword ? 'text' : 'password'}
                           value={password}
                           onChange={setPassword}
-                          placeholder="••••••••"
+                          placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
                           required
                           rightElement={
                             <button type="button" onClick={() => setShowPassword(v => !v)} className="text-[var(--text-muted)] hover:text-brand-500 transition-colors" tabIndex={-1}>

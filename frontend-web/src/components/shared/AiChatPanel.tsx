@@ -22,7 +22,12 @@ const QUICK_PROMPTS = [
   'How do subscriptions work?',
 ];
 
-/** Returns a user-facing message for each AI error code. */
+/**
+ * Returns a user-facing message for each AI error code. The backend AI
+ * provider is configurable per platform (Groq by default, or Gemini/OpenAI/
+ * OpenRouter/a custom endpoint — see Super Admin → AI & Automation), so these
+ * messages must stay provider-neutral rather than naming a specific vendor.
+ */
 function errorMessage(code: string | undefined, raw?: string): string {
   switch (code) {
     case 'AI_DISABLED':
@@ -30,32 +35,36 @@ function errorMessage(code: string | undefined, raw?: string): string {
     case 'AI_API_KEY_MISSING':
     case 'AI_KEY_NOT_CONFIGURED':
     case 'AI_NOT_CONFIGURED':
-      return 'Gemini API key is not configured. The Super Admin needs to enter and save a valid API key.';
+    case 'AI_NO_ACTIVE_PROVIDER':
+      return 'No AI provider is configured. The Super Admin needs to set up and activate a provider in AI & Automation.';
     case 'AI_KEY_DECRYPTION_FAILED':
-      return 'Saved Gemini API key is corrupted. The Super Admin needs to re-enter and save the API key.';
+      return 'The saved AI provider API key is corrupted. The Super Admin needs to re-enter and save it.';
     case 'AI_CHAT_DISABLED':
       return 'AI Chat Assistant is disabled. The Super Admin can enable it in AI & Automation settings.';
     case 'AI_API_KEY_INVALID':
     case 'AI_INVALID_API_KEY':
-      return 'The Gemini API key was rejected by Google. Super Admin should check the key and re-save it.';
+      return 'The AI provider rejected the configured API key. Super Admin should check the key and re-save it.';
     case 'AI_PROVIDER_AUTH_FORBIDDEN':
-      return 'Gemini access is forbidden. The API key may lack required permissions. Super Admin should verify the key.';
+      return 'AI provider access is forbidden. The API key may lack required permissions. Super Admin should verify the key.';
     case 'AI_MODEL_NOT_FOUND':
-      return 'The configured Gemini model is not available. Super Admin should update the model to gemini-1.5-flash in AI settings.';
+    case 'AI_MODEL_DISABLED':
+      return 'The configured AI model is not available. Super Admin should choose another model in AI & Automation.';
     case 'AI_QUOTA_EXCEEDED':
-      return 'Google AI quota has been exceeded. Try again later or contact the platform administrator.';
+      return 'The AI provider quota has been exceeded. Try again later or contact the platform administrator.';
     case 'AI_PROVIDER_TIMEOUT':
-      return 'Gemini did not respond in time. Try again, or the Super Admin can increase the timeout in AI settings.';
+      return 'The AI provider did not respond in time. Try again, or the Super Admin can increase the timeout in AI settings.';
     case 'AI_LIMIT_REACHED':
       return 'You have reached the daily AI usage limit. Try again tomorrow.';
     case 'AI_NETWORK_ERROR':
-      return 'The server cannot reach Gemini. The Super Admin should check outbound internet access.';
+      return 'The server cannot reach the AI provider. The Super Admin should check outbound internet access.';
     case 'AI_PROVIDER_UNREACHABLE':
-      return 'Connection to Gemini was refused. The Super Admin should check the server\'s firewall and outbound access.';
+    case 'AI_PROVIDER_DISABLED':
+      return 'The AI provider connection was refused or is disabled. The Super Admin should check AI & Automation settings.';
     case 'AI_SERVICE_UNAVAILABLE':
-      return 'Gemini service is currently unavailable. Please try again later.';
+      return 'The AI service is currently unavailable. Please try again later.';
     case 'AI_FEATURE_NOT_AVAILABLE':
-      return 'AI Chat is not available on your current subscription plan.';
+    case 'FEATURE_NOT_INCLUDED_IN_PLAN':
+      return 'AI Assistant is not included in your current subscription plan. Upgrade your plan to unlock it.';
     default:
       return raw || 'AI is currently unavailable. Please try again later.';
   }
@@ -67,15 +76,21 @@ const SETTINGS_ERROR_CODES = new Set([
   'AI_API_KEY_MISSING',
   'AI_KEY_NOT_CONFIGURED',
   'AI_NOT_CONFIGURED',
+  'AI_NO_ACTIVE_PROVIDER',
   'AI_KEY_DECRYPTION_FAILED',
   'AI_CHAT_DISABLED',
   'AI_API_KEY_INVALID',
   'AI_INVALID_API_KEY',
   'AI_PROVIDER_AUTH_FORBIDDEN',
   'AI_MODEL_NOT_FOUND',
+  'AI_MODEL_DISABLED',
   'AI_NETWORK_ERROR',
   'AI_PROVIDER_UNREACHABLE',
+  'AI_PROVIDER_DISABLED',
 ]);
+
+/** Error codes that mean "upgrade your plan" — worth a distinct CTA rather than a dead-end message. */
+const PLAN_UPGRADE_ERROR_CODES = new Set(['AI_FEATURE_NOT_AVAILABLE', 'FEATURE_NOT_INCLUDED_IN_PLAN']);
 
 interface Props {
   module?: string;
@@ -212,6 +227,17 @@ export default function AiChatPanel({ module, onClose, onThinkingChange }: Props
                 >
                   <Settings size={10} />
                   Open AI Settings
+                </button>
+              )}
+
+              {/* "Upgrade plan" shortcut for non-Super-Admin users blocked by plan entitlement */}
+              {msg.role === 'error' && !isSuperAdmin && msg.errorCode && PLAN_UPGRADE_ERROR_CODES.has(msg.errorCode) && (
+                <button
+                  onClick={() => { navigate('/subscription'); onClose(); }}
+                  className="mt-1.5 ml-1 flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-300 border border-brand-100 dark:border-brand-400/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors"
+                >
+                  <ArrowRight size={10} />
+                  View Plans
                 </button>
               )}
 

@@ -49,7 +49,7 @@ function addRefreshSubscriber(callback: (error?: any) => void) {
 
 
 function isAuthEntryRequest(url: string): boolean {
-  return /\/auth\/(login|signup|register|google|refresh|logout|phone\/verify-otp)/.test(url);
+  return /\/auth\/(login|signup|register|google|refresh|logout|phone\/verify-otp|forgot-password|verify-reset-code|reset-password)/.test(url);
 }
 
 function isPublicRequest(url: string): boolean {
@@ -382,6 +382,19 @@ api.interceptors.response.use(
 
 // Offline detection
 window.addEventListener('offline', notifyNetworkFailure);
+
+/**
+ * Extracts the best available user-facing message from a caught API error.
+ * Prefers the errorCode-translated message the response interceptor already
+ * computed (`error.userMessage`) over a generic fallback, so a specific
+ * backend errorCode (e.g. SMTP_NOT_CONFIGURED, INVALID_CODE) is never masked
+ * behind a generic "service unavailable" string.
+ */
+export function translateApiError(error: unknown, t: (...args: any[]) => unknown): string {
+  const err = error as NormalizedApiError;
+  return err?.userMessage
+    || (t('errors.REQUEST_FAILED', 'We could not complete this request. Please try again.') as string);
+}
 
 export default api;
 

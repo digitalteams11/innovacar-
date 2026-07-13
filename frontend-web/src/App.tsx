@@ -17,6 +17,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import PremiumLoader from './components/PremiumLoader';
 import SplashScreen from './components/SplashScreen';
 import ErrorBoundary from './components/ErrorBoundary';
+import Login from './pages/Login';
 const AccountSuspended = React.lazy(() => import('./pages/AccountSuspended'));
 const Layout = React.lazy(() => import('./components/Layout'));
 const SuperAdminLayout = React.lazy(() => import('./components/SuperAdminLayout'));
@@ -25,7 +26,6 @@ const Vehicles = React.lazy(() => import('./pages/Vehicles'));
 const Reservations = React.lazy(() => import('./pages/Reservations'));
 const Clients = React.lazy(() => import('./pages/Clients'));
 const Payments = React.lazy(() => import('./pages/Payments'));
-const Login = React.lazy(() => import('./pages/Login'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const Contracts = React.lazy(() => import('./pages/Contracts'));
 const ContractDetails = React.lazy(() => import('./pages/ContractDetails'));
@@ -48,6 +48,7 @@ const TicketDetail = React.lazy(() => import('./pages/TicketDetail'));
 const PublicContact = React.lazy(() => import('./pages/PublicContact'));
 const Register = React.lazy(() => import('./pages/Register'));
 const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
+const VerifyResetCode = React.lazy(() => import('./pages/VerifyResetCode'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
 const SuperAdminDashboard = React.lazy(() => import('./pages/superadmin/SuperAdminDashboard'));
@@ -76,7 +77,7 @@ const SuperAdminRoles = React.lazy(() => import('./pages/superadmin/SuperAdminRo
 const SuperAdminCancellationRequests = React.lazy(() => import('./pages/superadmin/SuperAdminCancellationRequests'));
 const SuperAdminAiSettings = React.lazy(() => import('./pages/superadmin/SuperAdminAiSettings'));
 
-// ── Route Guards ───────────────────────────────────────────────────────────
+// â”€â”€ Route Guards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const AuthenticatedAppProviders = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider>
@@ -131,7 +132,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// Authenticated-only, no Layout/sidebar — used for the full-screen lock state itself.
+// Authenticated-only, no Layout/sidebar â€” used for the full-screen lock state itself.
 const AuthOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isSuperAdmin, loading } = useAuth();
   if (loading) return <PremiumLoader fullScreen />;
@@ -157,7 +158,7 @@ const SuperAdminRoute = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// ── App Routes ─────────────────────────────────────────────────────────────
+// â”€â”€ App Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AppRoutes() {
   const { isSuperAdmin } = useAuth();
@@ -169,16 +170,17 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+      <Route path="/verify-reset-code" element={<PublicRoute><VerifyResetCode /></PublicRoute>} />
       <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
 
       <Route path="/admin" element={<Navigate to="/" replace />} />
       <Route path="/superadmin" element={<Navigate to="/super-admin" replace />} />
-      {/* Public Contract Signing — isolated from all auth guards */}
+      {/* Public Contract Signing â€” isolated from all auth guards */}
       <Route path="/contract-sign/:contractId/:token" element={<PublicContract />} />
       <Route path="/contract-sign/:token" element={<PublicContract />} />
       <Route path="/inspection/:token" element={<InspectionCapture />} />
-      {/* Public Contact — no login required */}
+      {/* Public Contact â€” no login required */}
       <Route path="/contact" element={<PublicContact />} />
 
       {/* Super Admin Routes */}
@@ -210,7 +212,7 @@ function AppRoutes() {
       <Route path="/super-admin/cancellation-requests" element={<SuperAdminRoute><SuperAdminCancellationRequests /></SuperAdminRoute>} />
       <Route path="/super-admin/ai-settings" element={<SuperAdminRoute><SuperAdminAiSettings /></SuperAdminRoute>} />
 
-      {/* Account lock screen — intentionally outside ProtectedRoute's Layout wrap (no sidebar) */}
+      {/* Account lock screen â€” intentionally outside ProtectedRoute's Layout wrap (no sidebar) */}
       <Route path="/account-suspended" element={
         <AuthOnlyRoute><AccountSuspended /></AuthOnlyRoute>
       } />
@@ -252,10 +254,10 @@ function AppRoutes() {
   );
 }
 
-// ── Backend reachability gate ────────────────────────────────────────────────
+// â”€â”€ Backend reachability gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // This is the ONLY thing allowed to block the whole app behind a full-screen
 // message. It only fires when /api/health itself can't be reached at all
-// (server down / connection refused) — any other endpoint failing is a
+// (server down / connection refused) â€” any other endpoint failing is a
 // per-component concern (empty state, inline error), never a global one.
 
 function MaintenanceScreen({ onRetryNow }: { onRetryNow: () => void }) {
@@ -314,7 +316,7 @@ function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // App rendered successfully — clear ErrorBoundary's one-shot auto-reload
+  // App rendered successfully â€” clear ErrorBoundary's one-shot auto-reload
   // guard so a later, unrelated stale-module error still gets one reload
   // attempt instead of being permanently disabled for the rest of the tab session.
   useEffect(() => {

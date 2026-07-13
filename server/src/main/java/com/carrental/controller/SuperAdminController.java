@@ -1872,7 +1872,6 @@ public class SuperAdminController {
         if (updates.containsKey("smtpPort"))     ps.setSmtpPort(toInt(updates.get("smtpPort")));
         if (updates.containsKey("smtpUsername")) ps.setSmtpUsername(trimStr(updates.get("smtpUsername")));
         boolean newPasswordProvided = false;
-        int newPasswordLength = 0;
         if (updates.containsKey("smtpPassword")) {
             String pw = toStr(updates.get("smtpPassword"));
             if (pw != null) {
@@ -1881,7 +1880,6 @@ public class SuperAdminController {
                 if (!pw.isBlank()) {
                     ps.setSmtpPasswordEncrypted(encryptionUtil.encrypt(pw));
                     newPasswordProvided = true;
-                    newPasswordLength = pw.length();
                     // Never log the password value
                 }
             }
@@ -1892,10 +1890,10 @@ public class SuperAdminController {
         if (updates.containsKey("fromName"))     ps.setFromName(trimStr(updates.get("fromName")));
         if (updates.containsKey("smtpReplyTo"))  ps.setSmtpReplyTo(trimStr(updates.get("smtpReplyTo")));
         platformSettingsRepository.save(ps);
-        log.info("[SMTP_SAVE_DEBUG] host={} port={} username={} fromEmail={} smtpReplyTo={} useTls={} enabled={} newPasswordProvided={} passwordLength={}",
+        boolean passwordStored = ps.getSmtpPasswordEncrypted() != null && !ps.getSmtpPasswordEncrypted().isBlank();
+        log.info("[SMTP_SAVE_DEBUG] host={} port={} username={} fromEmail={} passwordProvided={} passwordStored={}",
                 ps.getSmtpHost(), ps.getSmtpPort(), ps.getSmtpUsername(), ps.getFromEmail(),
-                ps.getSmtpReplyTo(), ps.getSmtpUseTls(), ps.getSmtpEnabled(),
-                newPasswordProvided, newPasswordLength);
+                newPasswordProvided, passwordStored);
         return getSmtpSettings();
     }
 
@@ -1987,8 +1985,37 @@ public class SuperAdminController {
                 psCheck.getSmtpUseTls(), psCheck.getSmtpEnabled(),
                 true, pwDecryptOk, pwLen, recipient);
 
+        // ── Same host normalization the actual send path applies: Zoho's smtppro
+        // host is region-pinned and can reject standard-plan accounts even with
+        // correct credentials, so the effective send always prefers smtp.zoho.com. ──
+        String password = encryptionUtil.tryDecrypt(psCheck.getSmtpPasswordEncrypted());
+        String effectiveHost = isZoho && "smtppro.zoho.com".equalsIgnoreCase(psCheck.getSmtpHost().trim())
+                ? "smtp.zoho.com" : psCheck.getSmtpHost();
+        int effectivePort = psCheck.getSmtpPort() != null ? psCheck.getSmtpPort() : 587;
+        boolean startTls = psCheck.getSmtpUseTls() == null || psCheck.getSmtpUseTls();
+
+        // Re-verify connection+auth right before the real send so the debug log
+        // reflects current reality, not a stale earlier Diagnose run.
+        boolean authOkFromDiagnose = false;
+        if (password != null) {
+            Map<String, Object> preCheck = probeSmtpHost(effectiveHost, effectivePort, psCheck.getSmtpUsername(),
+                    org.springframework.util.StringUtils.hasText(psCheck.getFromEmail()) ? psCheck.getFromEmail() : psCheck.getSmtpUsername(),
+                    password);
+            authOkFromDiagnose = "OK".equals(preCheck.get("auth"));
+        }
+
+        log.info("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
+                        + "startTls={} authOkFromDiagnose={} sendAttempted=true",
+                effectiveHost, effectivePort, psCheck.getSmtpUsername(), psCheck.getFromEmail(),
+                password != null, recipient, startTls, authOkFromDiagnose);
+
         // ── Attempt send ──────────────────────────────────────────────────────
         com.carrental.service.SmtpMailService.SmtpResult result = platformEmailService.sendTestEmail(recipient);
+
+        log.info("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
+                        + "sendAttempted=true exceptionClass={} exceptionMessage={} errorCode={}",
+                effectiveHost, effectivePort, psCheck.getSmtpUsername(), psCheck.getFromEmail(),
+                password != null, recipient, result.exceptionClass(), result.errorMessage(), result.errorCode());
 
         if (result.sent()) {
             log.info("[SMTP_DIAG_DEBUG] connectionResult=OK authResult=OK errorCode=null testRecipient={}", recipient);
@@ -2014,8 +2041,11 @@ public class SuperAdminController {
             case "EMAIL_TLS_FAILED"          -> "TLS/STARTTLS negotiation failed. Ensure 'Use TLS' is enabled and port 587 is selected.";
             case "EMAIL_PROVIDER_TIMEOUT"    -> "Connection to " + psCheck.getSmtpHost() + ":" + psCheck.getSmtpPort() + " timed out. Check that outbound port " + psCheck.getSmtpPort() + " is not blocked by a firewall.";
             case "EMAIL_PROVIDER_UNREACHABLE"-> "Could not reach " + psCheck.getSmtpHost() + ":" + psCheck.getSmtpPort() + ". Verify the host name and ensure the port is not blocked.";
+            case "EMAIL_FROM_REJECTED", "SMTP_FROM_EMAIL_INVALID"
+                                              -> "From Email (" + psCheck.getFromEmail() + ") does not match the SMTP account (" + psCheck.getSmtpUsername() + "). Zoho requires them to match unless it's a verified alias.";
+            case "EMAIL_NO_RECIPIENT"        -> "The test recipient address is missing or invalid.";
             case "SMTP_NOT_CONFIGURED"       -> "No SMTP configuration found. Save your settings first.";
-            default                          -> "Test email could not be sent. Verify all SMTP settings and try again.";
+            default                          -> "Test email could not be sent (" + errorCode + "). Verify all SMTP settings and try again.";
         };
 
         psCheck.setLastSmtpTestStatus("FAILED");

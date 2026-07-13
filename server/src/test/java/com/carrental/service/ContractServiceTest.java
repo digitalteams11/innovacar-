@@ -153,8 +153,10 @@ class ContractServiceTest {
             return value;
         });
 
-        ContractResponse response = contractService.createFromReservation(20L);
+        ContractService.FromReservationResult result = contractService.createFromReservation(20L);
+        ContractResponse response = result.contract();
 
+        assertThat(result.alreadyExisted()).isFalse();
         assertThat(response.getReservationId()).isEqualTo(20L);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONVERTED_TO_CONTRACT);
         assertThat(reservation.getContract()).isNotNull();

@@ -139,6 +139,59 @@ public class ReservationService {
         return ReservationResponse.from(reservation);
     }
 
+    /**
+     * Read-only data for prefilling the "New Contract" modal when it's opened
+     * from a reservation (icon click or manual reservation-select-in-modal) —
+     * never creates or modifies anything.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getContractPrefill(Long id) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        Reservation reservation = reservationRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with id: " + id));
+
+        Client client = reservation.getClient();
+        if (client == null) {
+            throw new IllegalArgumentException("RESERVATION_CLIENT_MISSING");
+        }
+        Vehicle vehicle = reservation.getVehicle();
+        if (vehicle == null) {
+            throw new IllegalArgumentException("RESERVATION_VEHICLE_MISSING");
+        }
+
+        LocalTime startTime = reservation.getStartTime() != null ? reservation.getStartTime() : LocalTime.of(9, 0);
+        LocalTime endTime = reservation.getEndTime() != null ? reservation.getEndTime() : LocalTime.of(18, 0);
+        long durationDays = ChronoUnit.DAYS.between(reservation.getDateStart(), reservation.getDateEnd()) + 1;
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("reservationId", reservation.getId());
+        data.put("reservationNumber", "RES-" + reservation.getId());
+        data.put("clientId", client.getId());
+        data.put("clientName", client.getName());
+        data.put("clientType", client.getCompanyName() != null && !client.getCompanyName().isBlank()
+                ? "Company Client" : "Individual Client");
+        data.put("clientPhone", client.getPhone());
+        data.put("clientEmail", client.getEmail());
+        data.put("vehicleId", vehicle.getId());
+        data.put("vehicleName", vehicle.getMarque());
+        data.put("vehiclePlate", vehicle.getPlate());
+        data.put("startDate", reservation.getDateStart());
+        data.put("startTime", startTime);
+        data.put("endDate", reservation.getDateEnd());
+        data.put("endTime", endTime);
+        data.put("pickupLocation", reservation.getPickupLocation());
+        data.put("returnLocation", reservation.getReturnLocation());
+        data.put("durationDays", durationDays);
+        data.put("totalAmount", reservation.getTotalPrice());
+        data.put("depositAmount", reservation.getDepositAmount() != null
+                ? reservation.getDepositAmount()
+                : java.util.Optional.ofNullable(vehicle.getDepositAmount()).orElse(BigDecimal.ZERO));
+        data.put("paidAmount", reservation.getPaidAmount() != null ? reservation.getPaidAmount() : BigDecimal.ZERO);
+        data.put("paymentStatus", reservation.getPaymentStatus() != null ? reservation.getPaymentStatus() : "UNPAID");
+        data.put("notes", reservation.getNotes());
+        return data;
+    }
+
     // ── CREATE ────────────────────────────────────────────────────────────────
 
     /**

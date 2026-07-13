@@ -25,6 +25,7 @@ public class ApiResponse<T> {
     private String severity;
     private String requestId;
     private String timestamp;
+    private String errorCode;
 
     /**
      * Create a success response with data payload.
@@ -60,6 +61,22 @@ public class ApiResponse<T> {
                 .message(message)
                 .severity(severity)
                 .requestId(requestId)
+                .timestamp(Instant.now().toString())
+                .build();
+    }
+
+    /**
+     * Create an error response carrying a machine-readable errorCode, so the
+     * frontend can show a fully translated message via {@code errors.<CODE>}
+     * instead of relying on the (English-only) message string.
+     */
+    public static ApiResponse<Void> error(String message, String severity, String requestId, String errorCode) {
+        return ApiResponse.<Void>builder()
+                .success(false)
+                .message(message)
+                .severity(severity)
+                .requestId(requestId)
+                .errorCode(errorCode)
                 .timestamp(Instant.now().toString())
                 .build();
     }
