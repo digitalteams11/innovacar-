@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
 import UsageBar from '../UsageBar';
@@ -34,6 +35,7 @@ interface InvoiceData {
 }
 
 export default function BillingTab() {
+  const { t, i18n } = useTranslation();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<any>(null);
@@ -64,7 +66,7 @@ export default function BillingTab() {
       setInvoices(invoicesRes.data?.data || []);
     } catch (err) {
       console.error('Failed to load billing data', err);
-      showToast('Unable to load billing information. Please try again later.', 'error');
+      showToast(t('settings.billingTab.billingLoadFailed'), 'error');
     } finally {
       setLoading(false);
     }
@@ -82,7 +84,7 @@ export default function BillingTab() {
     if (!selectedPlan) return;
     const checkoutUrl = getCheckoutUrl(selectedPlan);
     if (!checkoutUrl) {
-      showToast('Payment provider not configured for this plan. Please contact support.', 'error');
+      showToast(t('settings.billingTab.paymentProviderNotConfigured'), 'error');
       return;
     }
     window.location.href = checkoutUrl;
@@ -90,18 +92,18 @@ export default function BillingTab() {
 
   const handleCancelSubscription = async () => {
     if (cancelConfirmText.trim().toUpperCase() !== 'CANCEL') {
-      showToast('Type CANCEL to confirm.', 'warning');
+      showToast(t('settings.billingTab.typeCancelToConfirm'), 'warning');
       return;
     }
     setCancelling(true);
     try {
       const { data } = await api.post('/subscriptions/cancel');
-      showToast(data?.message || 'Subscription cancelled.', 'success');
+      showToast(data?.message || t('settings.billingTab.subscriptionCancelled'), 'success');
       setShowCancelModal(false);
       setCancelConfirmText('');
       fetchData();
     } catch (err: any) {
-      showToast(err?.userMessage || 'Unable to cancel subscription. Please try again later.', 'error');
+      showToast(err?.userMessage || t('settings.billingTab.cancelFailed'), 'error');
     } finally {
       setCancelling(false);
     }
@@ -115,6 +117,15 @@ export default function BillingTab() {
     );
   }
 
+  const locale = i18n.resolvedLanguage || i18n.language || undefined;
+  const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString(locale) : t('common.notAvailable', 'N/A');
+  const formatPlanName = (planName?: string, planCode?: string) => {
+    const key = (planCode || planName || 'trial').toLowerCase();
+    return t(`subscription.planNames.${key}`, planName || t('subscription.planNames.trial'));
+  };
+  const formatStatus = (value?: string) => value ? t(`subscription.statuses.${value}`, value) : t('subscription.statuses.TRIAL');
+  const formatCycle = (value?: string) => value ? t(`settings.billingTab.cycles.${value.toLowerCase()}`, value) : '';
+
   return (
     <div className="space-y-6">
       {/* Current Plan */}
@@ -126,17 +137,17 @@ export default function BillingTab() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-[#1e293b]">{status?.planName || 'Trial'}</h3>
+                <h3 className="text-base font-bold text-[#1e293b]">{formatPlanName(status?.planName, status?.planCode)}</h3>
                 <span className="px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-semibold border border-slate-200">
-                  {status?.status || 'TRIAL'}
+                  {formatStatus(status?.status)}
                 </span>
               </div>
               <p className="text-sm text-slate-500 mt-0.5">
                 {status?.isTrial
-                  ? `Trial ends on ${status?.trialEndsAt ? new Date(status.trialEndsAt).toLocaleDateString() : 'N/A'} (${status?.remainingTrialDays ?? 0} days left)`
+                  ? t('settings.billingTab.trialEndsOn', { date: formatDate(status?.trialEndsAt), days: status?.remainingTrialDays ?? 0 })
                   : status?.subscriptionActive
-                    ? `Renews on ${status?.currentPeriodEnd ? new Date(status.currentPeriodEnd).toLocaleDateString() : 'N/A'}`
-                    : 'Subscription is not active'}
+                    ? t('settings.billingTab.renewsOn', { date: formatDate(status?.currentPeriodEnd) })
+                    : t('settings.billingTab.subscriptionInactive')}
               </p>
             </div>
           </div>
@@ -147,16 +158,16 @@ export default function BillingTab() {
             }}
             className="bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
           >
-            {status?.isTrial ? 'Upgrade Plan' : 'Change Plan'} <ArrowRight size={16} />
+            {status?.isTrial ? t('settings.billingTab.upgradePlan') : t('settings.billingTab.changePlan')} <ArrowRight size={16} />
           </button>
         </div>
 
         {/* Usage */}
         <div className="mt-6 pt-6 border-t border-[#e8e6e1]/60 grid grid-cols-1 md:grid-cols-2 gap-5">
-          <UsageBar label="Vehicles" current={status?.vehicleCount ?? 0} max={status?.maxVehicles ?? 0} icon={<Car size={16} />} />
-          <UsageBar label="Employees" current={status?.employeeCount ?? 0} max={status?.maxEmployees ?? 0} icon={<Users size={16} />} />
-          <UsageBar label="GPS Devices" current={status?.gpsCount ?? 0} max={status?.maxGpsDevices ?? 0} icon={<MapPin size={16} />} />
-          <UsageBar label="Reservations" current={status?.reservationCount ?? 0} max={status?.maxReservations ?? 0} icon={<Calendar size={16} />} />
+          <UsageBar label={t('subscription.vehicles')} current={status?.vehicleCount ?? 0} max={status?.maxVehicles ?? 0} icon={<Car size={16} />} />
+          <UsageBar label={t('subscription.employees')} current={status?.employeeCount ?? 0} max={status?.maxEmployees ?? 0} icon={<Users size={16} />} />
+          <UsageBar label={t('subscription.gpsDevices')} current={status?.gpsCount ?? 0} max={status?.maxGpsDevices ?? 0} icon={<MapPin size={16} />} />
+          <UsageBar label={t('subscription.reservations')} current={status?.reservationCount ?? 0} max={status?.maxReservations ?? 0} icon={<Calendar size={16} />} />
         </div>
       </div>
 
@@ -167,27 +178,27 @@ export default function BillingTab() {
             <Receipt size={20} className="text-brand-500" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#1e293b]">Billing History</h3>
-            <p className="text-sm text-slate-400 font-normal">Invoices issued for your subscription</p>
+            <h3 className="text-base font-bold text-[#1e293b]">{t('settings.billingTab.history')}</h3>
+            <p className="text-sm text-slate-400 font-normal">{t('settings.billingTab.invoicesIssued')}</p>
           </div>
         </div>
 
         {invoices.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">No invoices yet.</p>
+          <p className="text-sm text-slate-400 text-center py-6">{t('settings.billingTab.noInvoicesYet')}</p>
         ) : (
           <div className="divide-y divide-[#e8e6e1]/40">
             {invoices.map((invoice) => (
               <div key={invoice.id} className="flex items-center justify-between py-3">
                 <div>
                   <p className="text-sm font-semibold text-[#1e293b]">{invoice.invoiceNumber}</p>
-                  <p className="text-xs text-slate-400">{invoice.planName} · {invoice.billingCycle} · {invoice.issuedAt ? new Date(invoice.issuedAt).toLocaleDateString() : '—'}</p>
+                  <p className="text-xs text-slate-400">{formatPlanName(invoice.planName)} · {formatCycle(invoice.billingCycle)} · {invoice.issuedAt ? new Date(invoice.issuedAt).toLocaleDateString(locale) : '—'}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-[#1e293b]">{invoice.total} {invoice.currency}</span>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-lg ${invoice.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                    {invoice.status}
+                    {formatStatus(invoice.status)}
                   </span>
-                  <button className="text-slate-400 hover:text-brand-500" title="Download not yet available">
+                  <button className="text-slate-400 hover:text-brand-500" title={t('settings.billingTab.downloadNotAvailable')}>
                     <Download size={14} />
                   </button>
                 </div>
@@ -204,12 +215,12 @@ export default function BillingTab() {
             <CreditCard size={20} className="text-accent-500" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#1e293b]">Payment Method</h3>
-            <p className="text-sm text-slate-400 font-normal">Subscription payments are processed externally</p>
+            <h3 className="text-base font-bold text-[#1e293b]">{t('settings.billingTab.paymentMethod')}</h3>
+            <p className="text-sm text-slate-400 font-normal">{t('settings.billingTab.paymentsProcessedExternally')}</p>
           </div>
         </div>
         <p className="text-sm text-slate-500">
-          Payment and checkout are managed securely by our payment provider. Update or remove your payment method from the checkout portal you used to subscribe.
+          {t('settings.billingTab.paymentMethodManagedExternally')}
         </p>
       </div>
 
@@ -221,8 +232,8 @@ export default function BillingTab() {
               <ShieldAlert size={20} className="text-slate-500" />
             </div>
             <div className="text-left">
-              <h3 className="text-base font-bold text-[#1e293b]">Manage Subscription</h3>
-              <p className="text-sm text-slate-400 font-normal">Plan changes, billing cycle, and cancellation</p>
+              <h3 className="text-base font-bold text-[#1e293b]">{t('settings.billingTab.manageSubscription')}</h3>
+              <p className="text-sm text-slate-400 font-normal">{t('settings.billingTab.manageSubscriptionDesc')}</p>
             </div>
           </div>
           <ChevronDown size={18} className={`text-slate-400 transition-transform ${showManage ? 'rotate-180' : ''}`} />
@@ -235,13 +246,13 @@ export default function BillingTab() {
                 onClick={() => setBillingCycle('monthly')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium ${billingCycle === 'monthly' ? 'bg-[#0a0f2c] text-white' : 'bg-slate-50 text-slate-500'}`}
               >
-                Monthly
+                {t('settings.billingTab.monthly')}
               </button>
               <button
                 onClick={() => setBillingCycle('yearly')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium ${billingCycle === 'yearly' ? 'bg-[#0a0f2c] text-white' : 'bg-slate-50 text-slate-500'}`}
               >
-                Yearly
+                {t('settings.billingTab.yearly')}
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -250,14 +261,14 @@ export default function BillingTab() {
                 const price = billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
                 return (
                   <div key={plan.id} className={`p-4 rounded-xl border ${isCurrent ? 'border-brand-500 bg-brand-50/40' : 'border-[#e8e6e1]'}`}>
-                    <p className="text-sm font-bold text-[#1e293b]">{plan.name}</p>
-                    <p className="text-lg font-bold text-[#1e293b] mt-1">{price ? `${price} MAD` : 'Free'}</p>
+                    <p className="text-sm font-bold text-[#1e293b]">{formatPlanName(plan.name, plan.code)}</p>
+                    <p className="text-lg font-bold text-[#1e293b] mt-1">{price ? `${price} MAD` : t('settings.billingTab.free')}</p>
                     <button
                       onClick={() => !isCurrent && openUpgrade(plan)}
                       disabled={isCurrent}
                       className={`mt-3 w-full py-2 rounded-lg text-xs font-semibold ${isCurrent ? 'bg-slate-100 text-slate-400' : 'bg-[#0a0f2c] text-white hover:bg-[#0a0f2c]/90'}`}
                     >
-                      {isCurrent ? 'Current Plan' : 'Select'}
+                      {isCurrent ? t('settings.billingTab.currentPlanButton') : t('settings.billingTab.select')}
                     </button>
                   </div>
                 );
@@ -266,7 +277,7 @@ export default function BillingTab() {
 
             <div className="pt-4 border-t border-[#e8e6e1]/60 flex justify-end">
               <button onClick={() => setShowCancelModal(true)} className="text-xs font-medium text-rose-500 hover:text-rose-600">
-                Cancel subscription
+                {t('settings.billingTab.cancelSubscription')}
               </button>
             </div>
           </div>
@@ -278,13 +289,12 @@ export default function BillingTab() {
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-elevated w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-[#1e293b] mb-2">Confirm Plan Change</h3>
+            <h3 className="text-lg font-bold text-[#1e293b] mb-2">{t('settings.billingTab.confirmPlanChange')}</h3>
             <p className="text-sm text-slate-500 mb-4">
-              You are subscribing to <span className="font-semibold text-[#1e293b]">{selectedPlan.name}</span> with{' '}
-              <span className="font-semibold text-[#1e293b]">{billingCycle}</span> billing. You will be redirected to our secure checkout to complete payment.
+              {t('settings.billingTab.subscribingTo', { plan: formatPlanName(selectedPlan.name, selectedPlan.code), cycle: formatCycle(billingCycle) })}
             </p>
             {!getCheckoutUrl(selectedPlan) && (
-              <p className="text-sm text-rose-600 mb-4">Payment provider not configured for this plan yet. Please contact support.</p>
+              <p className="text-sm text-rose-600 mb-4">{t('settings.billingTab.paymentProviderNotConfigured')}</p>
             )}
             <div className="flex gap-3">
               <button
@@ -292,10 +302,10 @@ export default function BillingTab() {
                 disabled={!getCheckoutUrl(selectedPlan)}
                 className="flex-1 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
               >
-                Continue to Checkout
+                {t('settings.billingTab.continueToCheckout')}
               </button>
               <button onClick={() => setShowUpgradeModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                Cancel
+                {t('settings.billingTab.cancel')}
               </button>
             </div>
           </div>
@@ -307,11 +317,11 @@ export default function BillingTab() {
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-elevated w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-[#1e293b] mb-2">Cancel Subscription</h3>
+            <h3 className="text-lg font-bold text-[#1e293b] mb-2">{t('settings.billingTab.cancelSubscription')}</h3>
             <p className="text-sm text-slate-500 mb-4">
-              Cancelling will deactivate your subscription immediately. You will lose access to paid features until you resubscribe. This does not delete your data.
+              {t('settings.billingTab.cancelImmediateWarning')}
             </p>
-            <label className="block text-sm font-medium text-[#1e293b] mb-2">Type CANCEL to confirm</label>
+            <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.billingTab.typeCancelLabel')}</label>
             <input
               type="text"
               value={cancelConfirmText}
@@ -325,10 +335,10 @@ export default function BillingTab() {
                 disabled={cancelling}
                 className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
               >
-                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+                {cancelling ? t('settings.billingTab.cancelling') : t('settings.billingTab.confirmCancellation')}
               </button>
               <button onClick={() => { setShowCancelModal(false); setCancelConfirmText(''); }} className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                Keep Subscription
+                {t('settings.billingTab.keepSubscription')}
               </button>
             </div>
           </div>

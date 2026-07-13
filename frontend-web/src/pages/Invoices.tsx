@@ -29,6 +29,7 @@ export default function Invoices() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [clientData, setClientData] = useState<any>({});
   const [form, setForm] = useState({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -81,6 +82,7 @@ export default function Invoices() {
   const openCreate = () => {
     setEditingId(null);
     setClientData({});
+    setFieldErrors({});
     setForm({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
     setIsModalOpen(true);
   };
@@ -88,13 +90,21 @@ export default function Invoices() {
   const openEdit = (invoice: Invoice) => {
     setEditingId(invoice.id);
     setClientData({ clientId: invoice.clientId, clientFullName: invoice.clientName });
+    setFieldErrors({});
     setForm({ invoiceNumber: invoice.invoiceNumber, issueDate: invoice.issueDate, dueDate: invoice.dueDate, amount: String(invoice.amount), status: invoice.status });
     setIsModalOpen(true);
   };
 
   const saveInvoice = async () => {
-    if (!form.invoiceNumber || !form.issueDate || !form.dueDate || !form.amount) {
-      showToast('Please fill all required fields');
+    const errors: Record<string, string> = {};
+    if (!clientData.clientId) errors.client = 'Client is required.';
+    if (!form.invoiceNumber.trim()) errors.invoiceNumber = 'Invoice number is required.';
+    if (!form.issueDate) errors.issueDate = 'Issue date is required.';
+    if (!form.dueDate) errors.dueDate = 'Due date is required.';
+    if (!form.amount.trim()) errors.amount = 'Amount is required.';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      showToast('Please fill all required fields', 'warning');
       return;
     }
     try {
@@ -116,11 +126,41 @@ export default function Invoices() {
         showToast(t('toast.success', { action: 'Invoice created' }));
       }
       setIsModalOpen(false);
+      setFieldErrors({});
       fetchInvoices();
     } catch (err: any) {
       showToast((err as any).userMessage || 'Unable to save invoice. Please try again later.', 'error');
     }
   };
+
+  const updateFormField = (field: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const selectClient = (client: any) => {
+    setClientData(client);
+    setFieldErrors((prev) => {
+      if (!prev.client) return prev;
+      const next = { ...prev };
+      delete next.client;
+      return next;
+    });
+  };
+
+  const inputClass = (field: string) =>
+    `w-full px-4 py-2.5 bg-[#f5f5f0] border rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white transition-all ${
+      fieldErrors[field] ? 'border-danger-500 focus:border-danger-500' : 'border-[#e8e6e1] focus:border-brand-300'
+    }`;
+
+  const fieldError = (field: string) => (
+    fieldErrors[field] ? <p className="mt-1 text-xs font-medium text-danger-500">{fieldErrors[field]}</p> : null
+  );
 
   const deleteInvoice = async (id: number) => {
     if (confirm(t('invoices.deleteConfirm') || 'Delete this invoice?')) {
@@ -245,21 +285,22 @@ export default function Invoices() {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Edit Invoice' : t('invoices.newInvoice')}>
         <div className="space-y-4">
-          <SmartClientSearch value={clientData} onSelect={setClientData} required />
+          <SmartClientSearch value={clientData} onSelect={selectClient} required />
+          {fieldError('client')}
           {clientData.clientFullName && (
             <div className="p-3 bg-brand-50/50 rounded-xl border border-brand-100 text-sm">
               <span className="text-brand-500 font-medium">{clientData.clientFullName}</span>
             </div>
           )}
-          <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Invoice Number *</label><input type="text" value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
+          <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Invoice Number *</label><input type="text" value={form.invoiceNumber} onChange={(e) => updateFormField('invoiceNumber', e.target.value)} aria-invalid={Boolean(fieldErrors.invoiceNumber)} className={inputClass('invoiceNumber')} />{fieldError('invoiceNumber')}</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.date')} *</label><input type="date" value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.dueDate')} *</label><input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
+            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.date')} *</label><input type="date" value={form.issueDate} onChange={(e) => updateFormField('issueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.issueDate)} className={inputClass('issueDate')} />{fieldError('issueDate')}</div>
+            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.dueDate')} *</label><input type="date" value={form.dueDate} onChange={(e) => updateFormField('dueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.dueDate)} className={inputClass('dueDate')} />{fieldError('dueDate')}</div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.amount')} (MAD) *</label><input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" /></div>
+            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.amount')} (MAD) *</label><input type="number" value={form.amount} onChange={(e) => updateFormField('amount', e.target.value)} aria-invalid={Boolean(fieldErrors.amount)} className={inputClass('amount')} />{fieldError('amount')}</div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.status')}</label>
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
+              <select value={form.status} onChange={(e) => updateFormField('status', e.target.value)} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
                 <option value="PENDING">{t('invoices.pending')}</option><option value="PAID">{t('invoices.paid')}</option><option value="OVERDUE">{t('invoices.overdue')}</option>
               </select>
             </div>

@@ -16,6 +16,7 @@ import com.carrental.repository.ClientRepository;
 import com.carrental.repository.ContractAuditLogRepository;
 import com.carrental.repository.ContractDocumentRepository;
 import com.carrental.repository.ContractRepository;
+import com.carrental.repository.ContractTemplateRepository;
 import com.carrental.repository.DepositRepository;
 import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.ReservationRepository;
@@ -57,11 +58,16 @@ class ContractServiceTest {
     @Mock private ContractAuditLogRepository contractAuditLogRepository;
     @Mock private DepositRepository depositRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private ContractTemplateRepository contractTemplateRepository;
+    @Mock private ContractTemplateService contractTemplateService;
     @Mock private PdfService pdfService;
     @Mock private NotificationService notificationService;
+    @Mock private SseService sseService;
     @Mock private EmailService emailService;
+    @Mock private PlatformEmailService platformEmailService;
     @Mock private DepositService depositService;
     @Mock private AvailabilityService availabilityService;
+    @Mock private VehicleStatusSyncService vehicleStatusSyncService;
 
     @InjectMocks private ContractService contractService;
 
@@ -105,6 +111,8 @@ class ContractServiceTest {
                 3L, request.getStartDate(), request.getPickupTime(), request.getEndDate(), request.getReturnTime(), null))
                 .thenReturn(true);
         when(contractRepository.existsByContractNumberIncludingDeleted(any())).thenReturn(false);
+        when(contractTemplateRepository.findFirstByTenantIdAndDefaultTemplateTrueAndActiveTrueOrderByUpdatedAtDesc(1L))
+                .thenReturn(Optional.empty());
         when(reservationRepository.save(any())).thenAnswer(invocation -> {
             Reservation value = invocation.getArgument(0);
             if (value.getId() == null) {

@@ -3,6 +3,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { X, Copy, Check, MessageCircle, Mail, Smartphone, Download, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { resolveMediaUrl } from '../../lib/utils';
 import api from '../../api/axios';
 
 interface QRCodeModalProps {
@@ -30,12 +32,15 @@ export default function QRCodeModal({
 }: QRCodeModalProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { tenant } = useAuth();
   const [copied, setCopied] = useState(false);
   const [internalSigned, setInternalSigned] = useState(false);
+  const [qrLogoSrc, setQrLogoSrc] = useState('');
   const qrRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isSigned = clientSigned || internalSigned;
+  const brandingLogoUrl = resolveMediaUrl(tenant?.logoUrl) || '';
 
   // Polling fallback: every 3 s while modal open and not yet signed
   useEffect(() => {
@@ -64,6 +69,40 @@ export default function QRCodeModal({
   useEffect(() => {
     if (!isOpen) setInternalSigned(false);
   }, [isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isOpen) return;
+    if (!brandingLogoUrl) {
+      setQrLogoSrc('');
+      return;
+    }
+    if (brandingLogoUrl.startsWith('data:')) {
+      setQrLogoSrc(brandingLogoUrl);
+      return;
+    }
+
+    fetch(brandingLogoUrl)
+      .then((response) => {
+        if (!response.ok) throw new Error('Logo fetch failed');
+        return response.blob();
+      })
+      .then((blob) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }))
+      .then((dataUrl) => {
+        if (!cancelled) setQrLogoSrc(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setQrLogoSrc('');
+      });
+
+    return () => { cancelled = true; };
+  }, [brandingLogoUrl, isOpen]);
 
   if (!isOpen) return null;
 
@@ -240,12 +279,12 @@ export default function QRCodeModal({
                 size={200}
                 level="H"
                 includeMargin={false}
-                imageSettings={{
-                  src: '/favicon.svg',
-                  height: 24,
-                  width: 24,
+                imageSettings={qrLogoSrc ? {
+                  src: qrLogoSrc,
+                  height: 30,
+                  width: 30,
                   excavate: true,
-                }}
+                } : undefined}
               />
             </div>
             <button

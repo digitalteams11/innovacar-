@@ -509,17 +509,17 @@ export default function Settings() {
           {/* Agency Logo */}
           <div className="pt-6 border-t border-[#e8e6e1]/60">
             <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
-              <Image size={16} className="text-brand-500" /> Agency Logo
+              <Image size={16} className="text-brand-500" /> {t('settings.agencyLogo')}
             </label>
             <div className="flex items-center gap-4">
               {agency.logoUrl ? (
-                <img src={resolveMediaUrl(agency.logoUrl) || undefined} alt="Agency Logo" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
+                <img src={resolveMediaUrl(agency.logoUrl) || undefined} alt={t('settings.agencyLogo')} className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
               ) : (
-                <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">No Logo</div>
+                <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">{t('settings.noLogo')}</div>
               )}
               <label className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-500 rounded-xl text-sm font-medium cursor-pointer hover:bg-brand-100 transition-all">
                 <Camera size={14} />
-                Upload Logo
+                {t('settings.uploadLogo')}
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
@@ -529,9 +529,9 @@ export default function Settings() {
                     const { data } = await api.post('/agency/settings/logo', formData);
                     setAgency(prev => ({ ...prev, logoUrl: data.url || data.logoUrl || '' }));
                     window.dispatchEvent(new Event('tenant-updated'));
-                    showToast('Logo uploaded successfully', 'success');
+                    showToast(t('settings.logoUploadSuccess'), 'success');
                   } catch (err: any) {
-                    showToast((err as any).userMessage || 'Failed to upload logo. Please try again.', 'error');
+                    showToast((err as any).userMessage || t('settings.logoUploadFailed'), 'error');
                   }
                   e.target.value = '';
                 }} />
@@ -542,12 +542,12 @@ export default function Settings() {
                     await api.delete('/agency/settings/logo');
                     setAgency(prev => ({ ...prev, logoUrl: '' }));
                     window.dispatchEvent(new Event('tenant-updated'));
-                    showToast('Logo removed', 'success');
+                    showToast(t('settings.logoRemoved'), 'success');
                   } catch {
-                    showToast('Failed to remove logo', 'error');
+                    showToast(t('settings.logoRemoveFailed'), 'error');
                   }
                 }} className="text-xs text-danger-500 hover:text-danger-600 font-medium">
-                  Remove
+                  {t('common.remove', 'Remove')}
                 </button>
               )}
             </div>
@@ -556,24 +556,24 @@ export default function Settings() {
           {/* Agency Signature */}
           <div className="pt-6 border-t border-[#e8e6e1]/60">
             <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
-              <Signature size={16} className="text-brand-500" /> Agency Digital Signature
+              <Signature size={16} className="text-brand-500" /> {t('settings.agencyDigitalSignature')}
             </label>
-            <p className="text-xs text-slate-400 mb-3">This signature will be automatically applied to all future contracts.</p>
+            <p className="text-xs text-slate-400 mb-3">{t('settings.agencySignatureDesc')}</p>
             {agency.agencySignature ? (
               <div className="space-y-3">
-                <img src={agency.agencySignature} alt="Agency Signature" className="h-24 border border-[#e8e6e1] rounded-xl bg-white p-2" />
+                <img src={agency.agencySignature} alt={t('settings.agencyDigitalSignature')} className="h-24 border border-[#e8e6e1] rounded-xl bg-white p-2" />
                 <button
                   onClick={() => setAgency(prev => ({ ...prev, agencySignature: '' }))}
                   className="text-xs text-danger-500 hover:text-danger-600 font-medium"
                 >
-                  Clear & Redraw
+                  {t('settings.clearRedraw')}
                 </button>
               </div>
             ) : (
               <div className="bg-white border border-[#e8e6e1] rounded-xl p-2">
                 <SignaturePad
                   onSave={(sig) => setAgency(prev => ({ ...prev, agencySignature: sig }))}
-                  label="Draw agency signature here"
+                  label={t('settings.drawAgencySignature')}
                   showWatermark={false}
                 />
               </div>
@@ -583,17 +583,17 @@ export default function Settings() {
           {/* Agency Stamp */}
           <div className="pt-6 border-t border-[#e8e6e1]/60">
             <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
-              <Stamp size={16} className="text-brand-500" /> Agency Stamp (Optional)
+              <Stamp size={16} className="text-brand-500" /> {t('settings.agencyStampOptional')}
             </label>
             <div className="flex items-center gap-4">
               {agency.agencyStampUrl ? (
-                <img src={resolveMediaUrl(agency.agencyStampUrl) || undefined} alt="Agency Stamp" className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
+                <img src={resolveMediaUrl(agency.agencyStampUrl) || undefined} alt={t('settings.agencyStamp')} className="w-20 h-20 rounded-xl object-contain border border-[#e8e6e1] bg-white" />
               ) : (
-                <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">No Stamp</div>
+                <div className="w-20 h-20 rounded-xl bg-[#f5f5f0] border border-[#e8e6e1] flex items-center justify-center text-slate-400 text-xs">{t('settings.noStamp')}</div>
               )}
               <label className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-500 rounded-xl text-sm font-medium cursor-pointer hover:bg-brand-100 transition-all">
                 <Camera size={14} />
-                Upload Stamp
+                {t('settings.uploadStamp')}
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
@@ -603,9 +603,9 @@ export default function Settings() {
                     const { data } = await api.post('/agency/settings/stamp', formData);
                     setAgency(prev => ({ ...prev, agencyStampUrl: data.url || data.stampUrl || '' }));
                     window.dispatchEvent(new Event('tenant-updated'));
-                    showToast('Stamp uploaded successfully', 'success');
+                    showToast(t('settings.stampUploadSuccess'), 'success');
                   } catch (err: any) {
-                    showToast((err as any).userMessage || 'Failed to upload stamp. Please try again.', 'error');
+                    showToast((err as any).userMessage || t('settings.stampUploadFailed'), 'error');
                   }
                   e.target.value = '';
                 }} />
@@ -616,11 +616,11 @@ export default function Settings() {
                     await api.delete('/agency/settings/stamp');
                     setAgency(prev => ({ ...prev, agencyStampUrl: '' }));
                     window.dispatchEvent(new Event('tenant-updated'));
-                    showToast('Stamp removed', 'success');
+                    showToast(t('settings.stampRemoved'), 'success');
                   } catch {
-                    showToast('Failed to remove stamp', 'error');
+                    showToast(t('settings.stampRemoveFailed'), 'error');
                   }
-                }} className="text-xs text-danger-500 hover:text-danger-600 font-medium">Remove</button>
+                }} className="text-xs text-danger-500 hover:text-danger-600 font-medium">{t('common.remove', 'Remove')}</button>
               )}
             </div>
           </div>
@@ -628,13 +628,13 @@ export default function Settings() {
           {/* Terms & Conditions */}
           <div className="pt-6 border-t border-[#e8e6e1]/60">
             <label className="block text-sm font-medium text-[#1e293b] mb-3 flex items-center gap-2">
-              <FileCheck size={16} className="text-brand-500" /> Terms & Conditions
+              <FileCheck size={16} className="text-brand-500" /> {t('settings.termsConditions')}
             </label>
-            <p className="text-xs text-slate-400 mb-3">These terms will be displayed on every contract signing page. Leave blank to use defaults.</p>
+            <p className="text-xs text-slate-400 mb-3">{t('settings.termsConditionsDesc')}</p>
             <textarea
               value={agency.termsAndConditions}
               onChange={(e) => handleAgencyChange('termsAndConditions', e.target.value)}
-              placeholder="Enter your agency's terms and conditions here..."
+              placeholder={t('settings.termsConditionsPlaceholder')}
               rows={6}
               className="w-full px-4 py-3 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all resize-none"
             />
@@ -664,17 +664,17 @@ export default function Settings() {
               <Server size={20} className="text-brand-500" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1e293b]">Operational Settings</h3>
-              <p className="text-sm text-slate-400">Regional, email, and notification configuration</p>
+              <h3 className="text-base font-bold text-[#1e293b]">{t('settings.operationsTab.title')}</h3>
+              <p className="text-sm text-slate-400">{t('settings.operationsTab.subtitle')}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <SettingSelect label="Currency" value={operations.currency}
+            <SettingSelect label={t('settings.operationsTab.currency')} value={operations.currency}
               options={['MAD', 'EUR', 'USD']} onChange={(value) => setOperations({ ...operations, currency: value })} />
-            <SettingSelect label="Language" value={operations.language}
+            <SettingSelect label={t('settings.operationsTab.language')} value={operations.language}
               options={['fr', 'en', 'ar']} onChange={(value) => setOperations({ ...operations, language: value })} />
-            <SettingSelect label="Timezone" value={operations.timezone}
+            <SettingSelect label={t('settings.operationsTab.timezone')} value={operations.timezone}
               options={['Africa/Casablanca', 'Europe/Paris', 'UTC']}
               onChange={(value) => setOperations({ ...operations, timezone: value })} />
           </div>
@@ -682,10 +682,10 @@ export default function Settings() {
           <div className="pt-5 border-t border-[#e8e6e1]/60 space-y-3">
             <div className="flex items-center gap-2">
               <ShieldCheck size={16} className="text-brand-500" />
-              <h4 className="text-sm font-bold text-[#1e293b]">Vehicle Inspection Media</h4>
+              <h4 className="text-sm font-bold text-[#1e293b]">{t('settings.operationsTab.vehicleInspectionMedia')}</h4>
             </div>
             <p className="text-xs text-slate-500">
-              Keep inspection photos and videos until reservation end date plus this retention period.
+              {t('settings.operationsTab.vehicleInspectionMediaDesc')}
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[7, 15, 30].map((days) => (
@@ -695,22 +695,22 @@ export default function Settings() {
                       ? 'border-brand-500 bg-brand-50 text-brand-600'
                       : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
                   }`}>
-                  {days} days
+                  {t('settings.operationsTab.days', { count: days })}
                 </button>
               ))}
-              <SettingInput label="Custom days" value={String(operations.inspectionRetentionDays)} type="number"
+              <SettingInput label={t('settings.operationsTab.customDays')} value={String(operations.inspectionRetentionDays)} type="number"
                 onChange={(value) => setOperations({ ...operations, inspectionRetentionDays: Number(value) })} />
             </div>
           </div>
 
           <div className="pt-5 border-t border-[#e8e6e1]/60 space-y-2">
-            <h4 className="text-sm font-bold text-[#1e293b]">More operations tools</h4>
+            <h4 className="text-sm font-bold text-[#1e293b]">{t('settings.operationsTab.moreOperationsTools')}</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <QuickLinkCard
                 to="/operations-center"
                 icon={HelpCircle}
                 label={t('nav.operationsCenter')}
-                description="Track support tickets and operational issues."
+                description={t('settings.operationsTab.operationsCenterDesc')}
               />
             </div>
           </div>
@@ -719,7 +719,7 @@ export default function Settings() {
             <button onClick={saveOperations} disabled={operationsLoading}
               className="flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium disabled:opacity-60">
               {operationsLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
-              Save Settings
+              {t('settings.operationsTab.saveSettings')}
             </button>
           </div>
         </div>

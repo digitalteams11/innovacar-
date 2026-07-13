@@ -150,35 +150,16 @@ class SuperAdminControllerTest {
     }
 
     @Test
-    void sendTestEmailCreatesEmailLogFromTemplate() {
-        EmailTemplate template = EmailTemplate.builder()
-                .id(7L)
-                .name("Welcome")
-                .subject("Welcome to RentCar")
-                .isActive(true)
-                .build();
-        when(emailTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
-        when(emailLogRepository.save(any(EmailLog.class))).thenAnswer(invocation -> {
-            EmailLog log = invocation.getArgument(0);
-            log.setId(55L);
-            log.setCreatedAt(LocalDateTime.of(2026, 6, 13, 12, 0));
-            return log;
-        });
+    void sendTestEmailRejectsMissingSmtpHost() {
+        when(platformSettingsRepository.findAll()).thenReturn(List.of(PlatformSettings.builder().build()));
 
         Map<String, Object> response = superAdminController
-                .sendTestEmail(Map.of("to", " admin@example.com ", "templateId", "7"))
+                .sendTestEmail(Map.of("to", " admin@example.com "))
                 .getBody();
 
-        ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);
-        verify(emailLogRepository).save(logCaptor.capture());
-        EmailLog saved = logCaptor.getValue();
-        assertThat(saved.getTemplateId()).isEqualTo(7L);
-        assertThat(saved.getTemplateName()).isEqualTo("Welcome");
-        assertThat(saved.getRecipient()).isEqualTo("admin@example.com");
-        assertThat(saved.getSubject()).isEqualTo("Welcome to RentCar");
-        assertThat(saved.getStatus()).isEqualTo("SENT");
-        assertThat(response).containsEntry("success", true);
-        assertThat((EmailLog) response.get("item")).isSameAs(saved);
+        assertThat(response)
+                .containsEntry("success", false)
+                .containsEntry("errorCode", "SMTP_HOST_MISSING");
     }
 
     @Test

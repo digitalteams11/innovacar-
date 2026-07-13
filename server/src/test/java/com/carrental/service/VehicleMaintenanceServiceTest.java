@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -43,17 +45,23 @@ class VehicleMaintenanceServiceTest {
         tenant = Tenant.builder().id(1L).name("Agency").email("agency@test.com").build();
         vehicle = Vehicle.builder().id(10L).tenant(tenant).marque("Dacia Duster")
                 .prixJour(new BigDecimal("500")).statut(VehicleStatus.AVAILABLE).build();
+        User user = User.builder().id(5L).email("admin@test.com").role(Role.ADMIN).tenant(tenant).build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, List.of()));
     }
 
     @AfterEach
     void tearDown() {
         TenantContext.clear();
+        SecurityContextHolder.clearContext();
     }
 
     @Test
-    void createInProgressMovesVehicleToMaintenance() {
+    void createSchedulesWorkOrderAndMovesVehicleToMaintenance() {
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
         when(vehicleRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(vehicle));
-        when(maintenanceRepository.save(any())).thenAnswer(invocation -> {
+        when(vehicleRepository.saveAndFlush(vehicle)).thenReturn(vehicle);
+        when(maintenanceRepository.saveAndFlush(any())).thenAnswer(invocation -> {
             VehicleMaintenance value = invocation.getArgument(0);
             value.setId(20L);
             return value;
@@ -67,9 +75,9 @@ class VehicleMaintenanceServiceTest {
 
         MaintenanceResponse result = service.create(request);
 
-        assertThat(result.getStatus()).isEqualTo(MaintenanceStatus.IN_PROGRESS);
+        assertThat(result.getStatus()).isEqualTo(MaintenanceStatus.SCHEDULED);
         assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.MAINTENANCE);
-        verify(vehicleRepository).save(vehicle);
+        verify(vehicleRepository).saveAndFlush(vehicle);
     }
 
     @Test
@@ -79,6 +87,7 @@ class VehicleMaintenanceServiceTest {
                 .status(MaintenanceStatus.IN_PROGRESS).build();
         vehicle.setStatut(VehicleStatus.MAINTENANCE);
         when(maintenanceRepository.findByIdAndTenantId(20L, 1L)).thenReturn(Optional.of(maintenance));
+        when(maintenanceRepository.findVehicleIdById(20L)).thenReturn(10L);
         when(vehicleRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(vehicle));
         when(maintenanceRepository.findAllByTenantIdAndVehicleIdOrderByCreatedAtDesc(1L, 10L))
                 .thenReturn(List.of(maintenance));

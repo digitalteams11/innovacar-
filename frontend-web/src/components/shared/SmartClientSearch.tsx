@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, User, Phone, Mail, Shield, Check, Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import api from '../../api/axios';
 
 export interface ClientData {
@@ -67,10 +68,11 @@ export default function SmartClientSearch({
   value,
   onSelect,
   onCreateNew,
-  label = 'Search Client',
-  placeholder = 'Search by name, phone, CIN, passport, email...',
+  label,
+  placeholder,
   required = false,
 }: SmartClientSearchProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [clients, setClients] = useState<ClientData[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -169,11 +171,13 @@ export default function SmartClientSearch({
   };
 
   const showCreateOption = query.length >= 2 && clients.length === 0 && !loading && onCreateNew;
+  const labelText = label ?? t('clientSearch.label');
+  const placeholderText = placeholder ?? t('clientSearch.placeholder');
 
   return (
     <div ref={containerRef} className="relative">
       <label className="block text-xs font-medium text-slate-500 mb-1">
-        {label}{required && <span className="text-danger-500 ml-0.5">*</span>}
+        {labelText}{required && <span className="text-danger-500 ml-0.5">*</span>}
       </label>
       <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -184,7 +188,7 @@ export default function SmartClientSearch({
           autoCapitalize="off"
           spellCheck="false"
           name="client_search"
-          placeholder={placeholder}
+          placeholder={placeholderText}
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => {
@@ -197,7 +201,7 @@ export default function SmartClientSearch({
       {showDropdown && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-72 overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-center text-sm text-slate-400">Searching...</div>
+            <div className="p-4 text-center text-sm text-slate-400">{t('clientSearch.searching')}</div>
           ) : clients.length > 0 ? (
             clients.map((client) => (
               <button
@@ -230,11 +234,11 @@ export default function SmartClientSearch({
               <div className="w-9 h-9 bg-brand-50 rounded-lg flex items-center justify-center shrink-0">
                 <Plus size={16} />
               </div>
-              <span className="text-sm font-medium">Create new client "{query}"</span>
+              <span className="text-sm font-medium">{t('clientSearch.createNew', { name: query })}</span>
             </button>
           ) : (
             <div className="p-4 text-center text-sm text-slate-400">
-              {query.length < 2 ? 'Type at least 2 characters' : 'No clients found'}
+              {query.length < 2 ? t('clientSearch.minChars') : t('clientSearch.noResults')}
             </div>
           )}
         </div>

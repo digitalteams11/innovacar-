@@ -12,6 +12,7 @@ import { Plus, Download, ChevronRight, Fuel, Shield, Users as UsersIcon, Camera,
 import api from '../api/axios';
 import { useSubscription } from '../hooks/useSubscription';
 import ApiErrorState from '../components/ApiErrorState';
+import { normalizeStatusCode, translateFuelType, translateTransmission, translateVehicleCategory, translateVehicleStatus } from '../utils/statusLabels';
 
 interface Vehicle {
   id: number;
@@ -49,6 +50,11 @@ const statusVariantMap: Record<string, 'available' | 'rented' | 'maintenance' | 
   ARCHIVED: 'neutral',
 };
 
+const normalizeVehicle = (vehicle: Vehicle): Vehicle => ({
+  ...vehicle,
+  statut: normalizeStatusCode(vehicle.statut) || 'AVAILABLE',
+});
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -76,6 +82,7 @@ export default function Vehicles() {
   const [loadError, setLoadError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     marque: '',
     category: '',
@@ -107,7 +114,7 @@ export default function Vehicles() {
         : Array.isArray(data?.data)
           ? data.data
           : [];
-      setData(vehicles);
+      setData(vehicles.map(normalizeVehicle));
     } catch (err: any) {
       console.error('Failed to fetch vehicles', err);
       setData([]);
@@ -127,7 +134,10 @@ export default function Vehicles() {
       setTrashLoadError('');
       const { data } = await api.get('/vehicles/trash');
       const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-      setTrashData(items);
+      setTrashData(items.map((vehicle: TrashedVehicle) => ({
+        ...vehicle,
+        statut: normalizeStatusCode(vehicle.statut) || 'AVAILABLE',
+      })));
     } catch (err: any) {
       console.error('Failed to fetch vehicle trash', err);
       setTrashLoadError(err?.userMessage || 'Unable to load trashed vehicles. Please try again later.');
@@ -176,9 +186,9 @@ export default function Vehicles() {
     { id: 'Available', label: t('vehicles.available') },
     { id: 'Rented', label: t('vehicles.rented') },
     { id: 'In_Maintenance', label: t('vehicles.maintenance') },
-    { id: 'Out_Of_Service', label: 'Out of service' },
-    { id: 'Archived', label: 'Archived' },
-    { id: 'Trash', label: 'Trash' },
+    { id: 'Out_Of_Service', label: t('vehicles.outOfService') },
+    { id: 'Archived', label: t('vehicles.archived') },
+    { id: 'Trash', label: t('vehicles.trash') },
   ];
 
   const filteredData = data.filter((v) => {
@@ -189,8 +199,17 @@ export default function Vehicles() {
   });
 
   const exportFleet = () => {
-    const headers = ['ID', 'Brand', 'Category', 'Plate', 'Status', 'Price/Day', 'Fuel', 'Transmission'];
-    const rows = filteredData.map((v) => [v.id, v.marque, v.category, v.plate, v.statut, v.prixJour, v.fuel, v.transmission]);
+    const headers = ['ID', t('vehicles.brandModel'), t('vehicles.category'), t('vehicles.plate'), t('vehicles.status'), t('vehicles.pricePerDay'), t('vehicles.fuel'), t('vehicles.transmission')];
+    const rows = filteredData.map((v) => [
+      v.id,
+      v.marque,
+      translateVehicleCategory(v.category),
+      v.plate,
+      translateVehicleStatus(v.statut),
+      v.prixJour,
+      translateFuelType(v.fuel),
+      translateTransmission(v.transmission),
+    ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -208,6 +227,7 @@ export default function Vehicles() {
       return;
     }
     setEditingId(null);
+    setFieldErrors({});
     setForm({ marque: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: 'Essence', transmission: 'Manual', imageUrl: '' });
     setImagePreview(null);
     setIsModalOpen(true);
@@ -215,6 +235,7 @@ export default function Vehicles() {
 
   const openEdit = (vehicle: Vehicle) => {
     setEditingId(vehicle.id);
+    setFieldErrors({});
     setForm({
       marque: vehicle.marque || '',
       category: vehicle.category || '',
@@ -227,6 +248,25 @@ export default function Vehicles() {
     });
     setImagePreview(vehicle.imageUrl || null);
     setIsModalOpen(true);
+  };
+
+  const updateFormField = (field: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateVehicleForm = () => {
+    const errors: Record<string, string> = {};
+    if (!form.marque.trim()) errors.marque = t('vehicles.validation.brandRequired');
+    if (!form.plate.trim()) errors.plate = t('vehicles.validation.plateRequired');
+    if (!form.prixJour.trim()) errors.prixJour = t('vehicles.validation.dailyPriceRequired');
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -243,8 +283,8 @@ export default function Vehicles() {
   };
 
   const saveVehicle = async () => {
-    if (!form.marque || !form.prixJour || !form.plate) {
-      showToast('Brand, license plate and daily price are required.', 'warning');
+    if (!validateVehicleForm()) {
+      showToast(t('vehicles.validation.requiredSummary'), 'warning');
       return;
     }
     try {
@@ -261,7 +301,7 @@ export default function Vehicles() {
       if (editingId) {
         const { data: updated } = await api.put(`/vehicles/${editingId}`, payload);
         setData((prev) => prev.map((v) => (v.id === editingId ? updated : v)));
-        showToast(t('toast.success', { action: 'Update' }));
+        showToast(t('toast.success', { action: t('common.update') }));
       } else {
         const { data: newVehicle } = await api.post('/vehicles', payload);
         setData((prev) => [...prev, newVehicle]);
@@ -269,10 +309,11 @@ export default function Vehicles() {
       }
       setIsModalOpen(false);
       setEditingId(null);
+      setFieldErrors({});
     } catch (err: any) {
       const details = (err as any).response?.data?.details;
-      const msg = (err as any).userMessage || 'Failed to save vehicle';
-      let fullMsg = 'Error: ' + msg;
+      const msg = (err as any).userMessage || t('vehicles.saveFailed');
+      let fullMsg = `${t('common.error')}: ${msg}`;
       if (details && typeof details === 'object') {
         const fieldErrors = Object.entries(details).map(([field, error]) => `${field}: ${error}`).join(', ');
         fullMsg += ' - ' + fieldErrors;
@@ -282,6 +323,14 @@ export default function Vehicles() {
     }
   };
 
+  const fieldError = (field: string) => (
+    fieldErrors[field] ? <p className="mt-1 text-xs font-medium text-danger-500">{fieldErrors[field]}</p> : null
+  );
+
+  const fieldBorder = (field: string) => (
+    fieldErrors[field] ? '1px solid #ef4444' : '1px solid var(--border-subtle)'
+  );
+
   const deleteVehicle = async (id: number) => {
     if (!confirm('Move this vehicle to trash?')) return;
     try {
@@ -289,7 +338,7 @@ export default function Vehicles() {
       showToast(response?.message || 'Vehicle moved to trash', 'success');
       fetchVehicles();
     } catch (err: any) {
-      showToast(err?.userMessage || 'Unable to delete vehicle. Please try again later.', 'error');
+      showToast(err?.userMessage || t('vehicles.deleteFailed'), 'error');
     }
   };
 
@@ -462,7 +511,7 @@ export default function Vehicles() {
                       variant={statusVariantMap[vehicle.statut] || 'neutral'}
                       size="sm"
                     >
-                      {vehicle.statut}
+                      {translateVehicleStatus(vehicle.statut)}
                     </StatusBadge>
                   </div>
                   <motion.button
@@ -484,7 +533,7 @@ export default function Vehicles() {
                     <div className="min-w-0">
                       <h3 className="text-sm font-semibold group-hover:text-brand-500 transition-colors" style={{ color: 'var(--text-primary)' }}>{vehicle.marque}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{vehicle.category || 'Economy'}</span>
+                        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{translateVehicleCategory(vehicle.category || 'Economy')}</span>
                         <div className="w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--border-subtle)' }}></div>
                         <span className="text-[11px] font-mono font-medium" style={{ color: 'var(--text-muted)' }}>{vehicle.plate || `PLT-${vehicle.id}`}</span>
                       </div>
@@ -507,11 +556,11 @@ export default function Vehicles() {
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <Fuel size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.fuel || 'Diesel'}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateFuelType(vehicle.fuel || 'Diesel')}</span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <Shield size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.transmission || 'Manual'}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateTransmission(vehicle.transmission || 'Manual')}</span>
                     </div>
                   </div>
 
@@ -535,10 +584,10 @@ export default function Vehicles() {
           {filteredData.length === 0 && (
             <div className="col-span-full py-12 text-center" style={{ color: 'var(--text-muted)' }}>
               <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {data.length === 0 ? 'No vehicles yet.' : 'No vehicles match your filters.'}
+                {data.length === 0 ? t('vehicles.emptyTitle') : t('vehicles.noFilterResults')}
               </p>
               <p className="mt-1 text-xs">
-                {data.length === 0 ? 'Add your first vehicle to start managing your fleet.' : 'Try changing the search or status filter.'}
+                {data.length === 0 ? t('vehicles.emptyHint') : t('vehicles.noFilterHint')}
               </p>
             </div>
           )}
@@ -555,7 +604,7 @@ export default function Vehicles() {
               border: '1px solid var(--border-subtle)',
             }}
           >
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>📷 Vehicle Image</label>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>📷 {t('vehicles.vehicleImage')}</label>
             <div className="relative">
               <input
                 type="file"
@@ -591,25 +640,27 @@ export default function Vehicles() {
 
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.brandModel')}</label>
-            <input type="text" value={form.marque} onChange={(e) => setForm({ ...form, marque: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+            <input type="text" value={form.marque} onChange={(e) => updateFormField('marque', e.target.value)} aria-invalid={Boolean(fieldErrors.marque)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('marque'), color: 'var(--text-primary)' }} />
+            {fieldError('marque')}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.category')}</label>
-              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+              <select value={form.category} onChange={(e) => updateFormField('category', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
                 <option value="">{t('vehicles.selectCategory')}</option>
-                {vehicleCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                {vehicleCategories.map((category) => <option key={category} value={category}>{translateVehicleCategory(category)}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.plate')}</label>
-              <input type="text" value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+              <input type="text" value={form.plate} onChange={(e) => updateFormField('plate', e.target.value)} aria-invalid={Boolean(fieldErrors.plate)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('plate'), color: 'var(--text-primary)' }} />
+              {fieldError('plate')}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.status')}</label>
-              <select value={form.statut} onChange={(e) => setForm({ ...form, statut: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+              <select value={form.statut} onChange={(e) => updateFormField('statut', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
                 <option value="AVAILABLE">{t('common.available')}</option>
                 <option value="RESERVED">{t('common.reserved')}</option>
                 <option value="RENTED">{t('common.rented')}</option>
@@ -621,13 +672,14 @@ export default function Vehicles() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.pricePerDay')}</label>
-              <input type="number" value={form.prixJour} onChange={(e) => setForm({ ...form, prixJour: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+              <input type="number" value={form.prixJour} onChange={(e) => updateFormField('prixJour', e.target.value)} aria-invalid={Boolean(fieldErrors.prixJour)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('prixJour'), color: 'var(--text-primary)' }} />
+              {fieldError('prixJour')}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.fuel')}</label>
-              <select value={form.fuel} onChange={(e) => setForm({ ...form, fuel: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+              <select value={form.fuel} onChange={(e) => updateFormField('fuel', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
                 <option value="Essence">{t('vehicles.essence')}</option>
                 <option value="Diesel">{t('vehicles.diesel')}</option>
                 <option value="Hybrid">{t('vehicles.hybrid')}</option>
@@ -636,7 +688,7 @@ export default function Vehicles() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.transmission')}</label>
-              <select value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+              <select value={form.transmission} onChange={(e) => updateFormField('transmission', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
                 <option value="Manual">{t('vehicles.manual')}</option>
                 <option value="Automatic">{t('vehicles.automatic')}</option>
               </select>

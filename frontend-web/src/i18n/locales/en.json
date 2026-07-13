@@ -7,6 +7,29 @@
     "serviceUnavailableDesc": "We can't reach the RentCar server right now. We'll keep retrying automatically every 10 seconds.",
     "retryNow": "Retry now"
   },
+  "vehicleSelector": {
+    "availableCount": "{{count}} available vehicles",
+    "period": "From {{startDate}} at {{startTime}} to {{endDate}} at {{endTime}}",
+    "searchPlaceholder": "Search by brand, model or license plate...",
+    "allCategories": "All categories",
+    "allTransmissions": "All transmissions",
+    "manual": "Manual",
+    "automatic": "Automatic",
+    "selectPeriodFirst": "Choose a period to display available vehicles.",
+    "loading": "Loading available vehicles...",
+    "unavailableTitle": "Vehicle availability is unavailable",
+    "retry": "Retry availability",
+    "noAvailable": "No vehicles available for this period.",
+    "changePeriodHint": "Change the dates or times to search other availabilities.",
+    "noMatches": "No vehicles match your criteria.",
+    "resetFilters": "Reset filters",
+    "selected": "Selected",
+    "madPerDay": "MAD / day",
+    "estimatedTotal": "Estimated total: {{amount}} MAD",
+    "sessionExpired": "Session expired. Please sign in again.",
+    "permissionDenied": "You do not have permission to view available vehicles.",
+    "loadFailed": "Available vehicles could not be loaded. Please retry."
+  },
   "nav": {
     "dashboard": "Dashboard",
     "reservations": "Reservations",
@@ -379,7 +402,47 @@
     "filters": "Filters",
     "reservations": "reservations",
     "viewProfile": "View Profile",
-    "book": "Book"
+    "book": "Book",
+    "identityNotProvided": "Identity not provided",
+    "emptyTitle": "No clients available",
+    "emptyHint": "Get started by adding your first client.",
+    "updateAction": "Update",
+    "deleteAction": "Delete",
+    "saveFailed": "Unable to save client. Please try again later.",
+    "deleteFailed": "Unable to delete client. Please try again later.",
+    "deleteConfirm": "Delete this client?",
+    "form": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "phone": "Phone",
+      "secondaryPhone": "Secondary Phone",
+      "cinPassport": "CIN / Passport",
+      "passportNumber": "Passport Number",
+      "drivingLicense": "Driving License",
+      "nationality": "Nationality",
+      "gender": "Gender",
+      "birthDate": "Birth Date",
+      "address": "Address",
+      "city": "City",
+      "country": "Country",
+      "postalCode": "Postal Code",
+      "companyName": "Company Name",
+      "notes": "Notes"
+    },
+    "gender": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "validation": {
+      "fullNameRequired": "Full name is required.",
+      "phoneRequired": "Phone is required.",
+      "cinPassportRequired": "CIN or Passport is required.",
+      "nationalityRequired": "Nationality is required.",
+      "addressRequired": "Address is required.",
+      "cityRequired": "City is required.",
+      "countryRequired": "Country is required.",
+      "requiredSummary": "Please fill required fields: Full Name, Phone, CIN or Passport, Address, City, Country, and Nationality."
+    }
   },
   "vehicles": {
     "title": "Fleet Management",
@@ -419,7 +482,32 @@
     "pricePerDay": "Price/Day (DH) *",
     "daysLeft_one": "{{count}} day left",
     "daysLeft_other": "{{count}} days left",
-    "daysLeft": "{{count}} days left"
+    "daysLeft": "{{count}} days left",
+    "trash": "Trash",
+    "validation": {
+      "brandRequired": "Brand / model is required.",
+      "plateRequired": "License plate is required.",
+      "dailyPriceRequired": "Daily price is required.",
+      "requiredSummary": "Brand, license plate and daily price are required."
+    },
+    "vehicleImage": "Vehicle Image",
+    "emptyTitle": "No vehicles yet.",
+    "emptyHint": "Add your first vehicle to start managing your fleet.",
+    "noFilterResults": "No vehicles match your filters.",
+    "noFilterHint": "Try changing the search or status filter.",
+    "saveFailed": "Failed to save vehicle",
+    "deleteFailed": "Unable to delete vehicle. Please try again later.",
+    "deleteConfirm": "Delete this vehicle?",
+    "statusLabel": {
+      "AVAILABLE": "Available",
+      "RESERVED": "Reserved",
+      "RENTED": "Rented",
+      "MAINTENANCE": "Maintenance",
+      "IN_MAINTENANCE": "Maintenance",
+      "OUT_OF_SERVICE": "Out of service",
+      "SOLD": "Sold",
+      "ARCHIVED": "Archived"
+    }
   },
   "reservations": {
     "title": "Reservations & Rentals",
@@ -779,6 +867,14 @@
       "restoreAsDraftDesc": "Restores the contract in DRAFT status without reserving the vehicle. Use this to recover the record for editing or historical reference — it will not affect vehicle availability."
     }
   },
+  "clientSearch": {
+    "label": "Search Client",
+    "placeholder": "Search by name, phone, CIN, passport, email...",
+    "searching": "Searching...",
+    "minChars": "Type at least 2 characters",
+    "noResults": "No clients found",
+    "createNew": "Create new client \"{{name}}\""
+  },
   "invoices": {
     "title": "Invoices & Billing",
     "subtitle": "Generate and manage client invoices.",
@@ -820,7 +916,12 @@
     "branches": "Branches",
     "vehicles": "vehicles",
     "employees": "employees",
-    "reviews": "reviews"
+    "reviews": "reviews",
+    "generalInformation": "General Information",
+    "contactInfo": "Contact Info",
+    "saveChanges": "Save Changes",
+    "updateSuccess": "Agency updated successfully.",
+    "updateFailed": "Unable to update agency. Please try again later."
   },
   "employees": {
     "title": "Employee Directory",
@@ -832,10 +933,64 @@
     "searchPlaceholder": "Search by name, role or department...",
     "filters": "Filters",
     "name": "Name",
+    "employee": "Employee",
+    "contact": "Contact",
+    "email": "Email",
+    "phone": "Phone",
+    "fullName": "Full Name",
     "role": "Role",
     "department": "Department",
     "status": "Status",
-    "actions": "Actions"
+    "actions": "Actions",
+    "export": "Export",
+    "editEmployee": "Edit Employee",
+    "deleteEmployee": "Delete employee",
+    "resetPassword": "Reset login password",
+    "temporaryPassword": "Temporary Password",
+    "temporaryPasswordPlaceholder": "10+ chars, upper, lower, number, symbol",
+    "hireDate": "Hire Date",
+    "saveChanges": "Save Changes",
+    "addingEmployee": "Adding Employee...",
+    "noEmployees": "No employees found",
+    "deleteConfirm": "Delete this employee?",
+    "resetPasswordPrompt": "New password for {{name}} (10+ characters with uppercase, lowercase, number, and symbol)",
+    "actionLabels": {
+      "update": "Update",
+      "delete": "Delete"
+    },
+    "messages": {
+      "created": "Employee created successfully.",
+      "passwordReset": "Password reset successfully"
+    },
+    "errors": {
+      "loadFailed": "Unable to load employees.",
+      "fullNameRequired": "Full name is required.",
+      "emailRequired": "Email is required.",
+      "temporaryPasswordRequired": "Temporary password is required.",
+      "strongPassword": "Use 10+ characters with uppercase, lowercase, number, and symbol.",
+      "completeRequired": "Complete required fields and use a strong temporary password.",
+      "permissionsLoading": "Permissions are still loading. Please try again in a moment.",
+      "noPermission": "You do not have permission to manage employees.",
+      "saveFailed": "Unable to save employee. Please try again later.",
+      "noLoginAccount": "This legacy employee does not have a login account",
+      "resetPasswordFailed": "Unable to reset password. Please try again later.",
+      "deleteFailed": "Unable to delete employee. Please try again later."
+    },
+    "roles": {
+      "ADMIN": "Administrator",
+      "MANAGER": "Manager",
+      "AGENT": "Agent / Counter Staff",
+      "ACCOUNTANT": "Accountant",
+      "FLEET_MANAGER": "Fleet Manager",
+      "RECEPTIONIST": "Receptionist",
+      "DRIVER": "Driver",
+      "VIEWER": "Viewer",
+      "EMPLOYEE": "Employee"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive"
+    }
   },
   "reports": {
     "title": "Analytics & Reports",
@@ -995,7 +1150,44 @@
       "cancellationReviewHint": "Your request will be reviewed by our team before your subscription is cancelled. This does not delete your data.",
       "tellUsMore": "Tell us more (optional)",
       "feedbackPlaceholder": "What could we have done better?",
-      "discount": "Discount ({{code}})"
+      "discount": "Discount ({{code}})",
+      "trialEndsOn": "Trial ends on {{date}} ({{days}} days left)",
+      "renewsOn": "Renews on {{date}}",
+      "subscriptionInactive": "Subscription is not active",
+      "upgradePlan": "Upgrade Plan",
+      "changePlan": "Change Plan",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "cycles": {
+        "monthly": "monthly",
+        "yearly": "yearly",
+        "MONTHLY": "monthly",
+        "YEARLY": "yearly"
+      },
+      "plansLoadFailed": "Unable to load plans ({{error}}). Check your connection or try refreshing.",
+      "noPlansFound": "No subscription plans found. Ask Super Admin to create active plans.",
+      "noCyclePlans": "No {{cycle}} plans available yet.",
+      "subtotal": "Subtotal",
+      "total": "Total",
+      "confirmCancellationReview": "I understand this will submit a cancellation request for review.",
+      "submitting": "Submitting...",
+      "submitRequest": "Submit Request",
+      "keepSubscription": "Keep Subscription",
+      "billingLoadFailed": "Unable to load billing information. Please try again later.",
+      "paymentProviderNotConfigured": "Payment provider not configured for this plan. Please contact support.",
+      "typeCancelToConfirm": "Type CANCEL to confirm.",
+      "subscriptionCancelled": "Subscription cancelled.",
+      "cancelFailed": "Unable to cancel subscription. Please try again later.",
+      "paymentsProcessedExternally": "Subscription payments are processed externally",
+      "paymentMethodManagedExternally": "Payment and checkout are managed securely by our payment provider. Update or remove your payment method from the checkout portal you used to subscribe.",
+      "cancelImmediateWarning": "Cancelling will deactivate your subscription immediately. You will lose access to paid features until you resubscribe. This does not delete your data.",
+      "typeCancelLabel": "Type CANCEL to confirm",
+      "cancelling": "Cancelling...",
+      "confirmCancellation": "Confirm Cancellation",
+      "subscriptionPlansLoadFailed": "Unable to load subscription plans. Please try again.",
+      "promoValidationFailed": "Unable to validate promo code.",
+      "checkoutMissingAdmin": "Checkout is not configured for this plan. Super Admin must add a Whop checkout link or plan ID.",
+      "confirmCancellationRequest": "Please confirm the cancellation request."
     },
     "securityTab": {
       "saveRecoveryCodes": "Save your recovery codes",
@@ -1081,11 +1273,43 @@
       "dataRetention": "Data Retention",
       "dangerZone": "Danger Zone",
       "requestDeactivation": "Request account deactivation",
-      "requestDeactivationTitle": "Request Account Deactivation"
+      "requestDeactivationTitle": "Request Account Deactivation",
+      "entities": {
+        "vehicles": "Vehicles",
+        "clients": "Clients",
+        "contracts": "Contracts",
+        "reservations": "Reservations"
+      },
+      "noRowsToExport": "No {{entity}} found to export.",
+      "exportSuccess": "{{entity}} exported successfully.",
+      "exportFailed": "Unable to export {{entity}}. Please try again later.",
+      "accountDownloadSuccess": "Account data downloaded successfully.",
+      "accountDownloadFailed": "Unable to download account data. Please try again later.",
+      "confirmBeforeSubmit": "Please confirm you understand this request before submitting.",
+      "deactivationSubmitted": "Deactivation request submitted. Our team will contact you to confirm.",
+      "deactivationFailed": "Unable to submit your request. Please try again later.",
+      "retentionPrefix": "Vehicle inspection photos and videos are kept for",
+      "daysCount": "{{count}} days",
+      "retentionSuffix": "after the reservation end date, based on your Operations settings. Other agency records (clients, contracts, reservations) are retained for as long as your account remains active.",
+      "contactSupportDataRequests": "Contact support about data requests",
+      "deactivationInfo": "Requesting account deactivation opens a support ticket reviewed by our team. We do not delete your data automatically — this protects you from accidental loss.",
+      "deactivationModalDesc": "This will open a support ticket with our team to review and process your deactivation request. Your data will not be deleted automatically.",
+      "reasonOptional": "Reason (optional)",
+      "deactivationConfirm": "I understand this request will be reviewed by the RentCar team before any action is taken.",
+      "submitting": "Submitting...",
+      "submitRequest": "Submit Request",
+      "cancel": "Cancel"
     },
     "notificationsTab": {
       "channels": "Notification Channels",
-      "channelsDesc": "Choose how you want to be notified about agency activity"
+      "channelsDesc": "Choose how you want to be notified about agency activity",
+      "inApp": "In-app notifications",
+      "inAppDesc": "Contract signed, reservation reminders, payment activity, and more",
+      "email": "Email notifications",
+      "emailDesc": "Receive a copy of important alerts by email",
+      "browserPush": "Browser push notifications",
+      "browserPushDesc": "Get notified even when RentCar is in the background",
+      "saveSettings": "Save Settings"
     },
     "teamAccess": "Team & access",
     "teamAccessDesc": "Manage which roles can access which modules and actions.",
@@ -1117,7 +1341,53 @@
     "agencySaved": "Agency information saved successfully!",
     "passwordChanged": "Password changed successfully!",
     "avatarUploadFailed": "Unable to upload avatar. Please try again later.",
-    "profileSaveFailed": "Unable to save profile. Please try again later."
+    "profileSaveFailed": "Unable to save profile. Please try again later.",
+    "operationsTab": {
+      "title": "Operational Settings",
+      "subtitle": "Regional, email, and notification configuration",
+      "currency": "Currency",
+      "language": "Language",
+      "timezone": "Timezone",
+      "vehicleInspectionMedia": "Vehicle Inspection Media",
+      "vehicleInspectionMediaDesc": "Keep inspection photos and videos until reservation end date plus this retention period.",
+      "days": "{{count}} days",
+      "customDays": "Custom days",
+      "moreOperationsTools": "More operations tools",
+      "operationsCenterDesc": "Track support tickets and operational issues.",
+      "saveSettings": "Save Settings",
+      "agencySmtp": "Agency SMTP",
+      "smtpHost": "SMTP Host",
+      "smtpPort": "SMTP Port",
+      "username": "Username",
+      "password": "Password",
+      "smtpPasswordStored": "Stored securely - enter to replace",
+      "smtpPasswordPlaceholder": "Enter SMTP password",
+      "useTls": "Use TLS"
+    },
+    "agencyLogo": "Agency Logo",
+    "noLogo": "No Logo",
+    "uploadLogo": "Upload Logo",
+    "logoUploadSuccess": "Logo uploaded successfully",
+    "logoUploadFailed": "Failed to upload logo. Please try again.",
+    "logoRemoved": "Logo removed",
+    "logoRemoveFailed": "Failed to remove logo",
+    "agencyDigitalSignature": "Agency Digital Signature",
+    "agencySignatureDesc": "This signature will be automatically applied to all future contracts.",
+    "clearRedraw": "Clear & Redraw",
+    "drawAgencySignature": "Draw agency signature here",
+    "agencyStamp": "Agency Stamp",
+    "agencyStampOptional": "Agency Stamp (Optional)",
+    "noStamp": "No Stamp",
+    "uploadStamp": "Upload Stamp",
+    "stampUploadSuccess": "Stamp uploaded successfully",
+    "stampUploadFailed": "Failed to upload stamp. Please try again.",
+    "stampRemoved": "Stamp removed",
+    "stampRemoveFailed": "Failed to remove stamp",
+    "termsConditions": "Terms & Conditions",
+    "termsConditionsDesc": "These terms will be displayed on every contract signing page. Leave blank to use defaults.",
+    "termsConditionsPlaceholder": "Enter your agency terms and conditions here...",
+    "moreAgencySettings": "More agency settings",
+    "branchesDesc": "Manage multiple branch locations for this agency."
   },
   "toast": {
     "success": "{{action}} successfully!",
@@ -1780,7 +2050,30 @@
     "yesterday": "Yesterday",
     "daysAgo": "{{count}} days ago",
     "deleteNotification": "Delete notification",
-    "clearReadCount": "Clear {{count}} read"
+    "clearReadCount": "Clear {{count}} read",
+    "types": {
+      "PAYMENT_PARTIAL": {
+        "title": "Payment Pending",
+        "message": "Contract {{contractNumber}} has a pending or partial payment."
+      },
+      "CONTRACT_FULLY_SIGNED": {
+        "title": "Contract Fully Signed",
+        "message": "Client signed contract {{contractNumber}}. The contract is now fully signed."
+      },
+      "QR_GENERATED": {
+        "title": "QR Code Generated",
+        "message": "QR code for contract {{contractNumber}} is ready to share with the client."
+      },
+      "CONTRACT_SIGNED_AGENCY": {
+        "title": "Contract Signed by Agency",
+        "message": "Contract {{contractNumber}} has been signed by the agency."
+      },
+      "CONTRACT_CREATED": {
+        "title": "Contract Created",
+        "message": "Contract {{contractNumber}} was created."
+      }
+    },
+    "countLabel": "{{count}} notifications"
   },
   "common": {
     "loading": "Loading...",
@@ -1808,7 +2101,7 @@
     "noData": "No data available",
     "noResults": "No results found",
     "retry": "Retry",
-    "error": "An error occurred. Please try again.",
+    "error": "Error",
     "success": "Success",
     "states": {
       "loading": "Loading...",
@@ -1868,7 +2161,13 @@
     "outOfService": "Out of Service",
     "sold": "Sold",
     "archived": "Archived",
-    "other": "Other"
+    "other": "Other",
+    "reserve": "Reserve",
+    "contract": "Contract",
+    "return": "Return",
+    "select": "Select",
+    "saveChanges": "Save Changes",
+    "notAvailable": "N/A"
   },
   "trialBanner": {
     "trialEndsIn": "Trial ends in {{count}} day. Upgrade anytime to unlock your full potential.",
@@ -1924,7 +2223,32 @@
     "unlimitedAccessTo": "Unlimited access to {{feature}}",
     "prioritySupportIncluded": "Priority support included",
     "advancedAnalyticsReports": "Advanced analytics & reports",
-    "teamCollaborationTools": "Team collaboration tools"
+    "teamCollaborationTools": "Team collaboration tools",
+    "clients": "Clients",
+    "contracts": "Contracts",
+    "planNames": {
+      "trial": "Trial",
+      "standard": "Standard",
+      "basic": "Basic",
+      "premium": "Premium",
+      "enterprise": "Enterprise"
+    },
+    "statuses": {
+      "TRIAL": "Trial",
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "CANCELLED": "Cancelled",
+      "CANCELED": "Cancelled",
+      "CANCEL_SCHEDULED": "Cancellation scheduled",
+      "PAST_DUE": "Past due",
+      "EXPIRED": "Expired",
+      "SUSPENDED": "Suspended",
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "FAILED": "Failed",
+      "UNPAID": "Unpaid",
+      "PARTIALLY_PAID": "Partially paid"
+    }
   },
   "userMenu": {
     "account": "Account",
@@ -2257,7 +2581,7 @@
     "backToContracts": "Back to Contracts",
     "pdfTemplate": "PDF Template",
     "regeneratePdf": "Regenerate PDF",
-    "regeneratePdfHint": "Refresh the saved PDF with the agency’s current template and branding",
+    "regeneratePdfHint": "Refresh the saved PDF with the agency current logo, name and settings",
     "startInspection": "Start Vehicle Inspection",
     "signatureStatus": "Signature Status",
     "roleOwner": "Owner",
@@ -2359,7 +2683,13 @@
       "trunk": "Trunk"
     },
     "pageTitle": "Contract Details",
-    "pdfTemplateLabel": "PDF Template:"
+    "pdfTemplateLabel": "PDF Template:",
+    "systemDefault": "System default",
+    "noTemplateConfigured": "No agency contract template configured. System default will be used.",
+    "signatures": "Signatures",
+    "invoices": "Invoices",
+    "created": "Created",
+    "updated": "Updated"
   },
   "roleAccess": {
     "title": "Role Access",
@@ -2483,5 +2813,45 @@
   },
   "calendar": {
     "today": "Today"
+  },
+  "enum": {
+    "vehicleCategory": {
+      "ECONOMY": "Economy",
+      "COMPACT": "Compact",
+      "SEDAN": "Sedan",
+      "SUV": "SUV",
+      "LUXURY": "Luxury",
+      "SPORT": "Sport",
+      "ELECTRIC": "Electric",
+      "HYBRID": "Hybrid",
+      "VAN": "Van",
+      "PICKUP": "Pickup",
+      "MINIBUS": "Minibus",
+      "TRUCK": "Truck",
+      "MOTORCYCLE": "Motorcycle"
+    },
+    "fuel": {
+      "ESSENCE": "Petrol",
+      "PETROL": "Petrol",
+      "GASOLINE": "Petrol",
+      "DIESEL": "Diesel",
+      "ELECTRIC": "Electric",
+      "HYBRID": "Hybrid"
+    },
+    "transmission": {
+      "MANUAL": "Manual",
+      "AUTOMATIC": "Automatic"
+    },
+    "fuelLevel": {
+      "EMPTY": "Empty",
+      "QUARTER": "1/4",
+      "HALF": "1/2",
+      "THREE_QUARTERS": "3/4",
+      "FULL": "Full"
+    }
+  },
+  "branches": {
+    "branch": "Branch",
+    "unassigned": "Unassigned"
   }
 }

@@ -72,6 +72,7 @@ class InspectionServiceTest {
         when(mediaRepository.save(any(InspectionMedia.class))).thenAnswer(invocation -> {
             InspectionMedia media = invocation.getArgument(0);
             if (media.getId() == null) media.setId(99L);
+            if (media.getActive() == null) media.setActive(true);
             return media;
         });
         when(inspectionRepository.save(any(Inspection.class))).thenAnswer(invocation -> invocation.getArgument(0));

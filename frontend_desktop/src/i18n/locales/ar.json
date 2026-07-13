@@ -169,7 +169,47 @@
     "filters": "عوامل التصفية",
     "reservations": "حجوزات",
     "viewProfile": "عرض الملف الشخصي",
-    "book": "حجز"
+    "book": "حجز",
+    "identityNotProvided": "الهوية غير مدخلة",
+    "emptyTitle": "لا يوجد عملاء",
+    "emptyHint": "ابدأ بإضافة أول عميل.",
+    "updateAction": "تحديث",
+    "deleteAction": "حذف",
+    "saveFailed": "تعذر حفظ العميل. يرجى إعادة المحاولة لاحقاً.",
+    "deleteFailed": "تعذر حذف العميل. يرجى إعادة المحاولة لاحقاً.",
+    "deleteConfirm": "هل تريد حذف هذا العميل؟",
+    "form": {
+      "fullName": "الاسم الكامل",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "secondaryPhone": "الهاتف الثانوي",
+      "cinPassport": "CIN / جواز السفر",
+      "passportNumber": "رقم جواز السفر",
+      "drivingLicense": "رخصة القيادة",
+      "nationality": "الجنسية",
+      "gender": "الجنس",
+      "birthDate": "تاريخ الميلاد",
+      "address": "العنوان",
+      "city": "المدينة",
+      "country": "البلد",
+      "postalCode": "الرمز البريدي",
+      "companyName": "اسم الشركة",
+      "notes": "ملاحظات"
+    },
+    "gender": {
+      "male": "ذكر",
+      "female": "أنثى"
+    },
+    "validation": {
+      "fullNameRequired": "الاسم الكامل مطلوب.",
+      "phoneRequired": "الهاتف مطلوب.",
+      "cinPassportRequired": "CIN أو جواز السفر مطلوب.",
+      "nationalityRequired": "الجنسية مطلوبة.",
+      "addressRequired": "العنوان مطلوب.",
+      "cityRequired": "المدينة مطلوبة.",
+      "countryRequired": "البلد مطلوب.",
+      "requiredSummary": "يرجى ملء الحقول المطلوبة: الاسم الكامل، الهاتف، CIN أو جواز السفر، العنوان، المدينة، البلد والجنسية."
+    }
   },
   "vehicles": {
     "title": "إدارة الأسطول",
@@ -183,7 +223,32 @@
     "maintenance": "صيانة",
     "manageDetails": "إدارة التفاصيل",
     "seats": "مقاعد",
-    "perDay": "درهم/يوم"
+    "perDay": "درهم/يوم",
+    "trash": "المحذوفات",
+    "validation": {
+      "brandRequired": "الماركة / الطراز مطلوب.",
+      "plateRequired": "رقم اللوحة مطلوب.",
+      "dailyPriceRequired": "السعر اليومي مطلوب.",
+      "requiredSummary": "الماركة ورقم اللوحة والسعر اليومي مطلوبة."
+    },
+    "vehicleImage": "صورة المركبة",
+    "emptyTitle": "لا توجد مركبات بعد.",
+    "emptyHint": "أضف أول مركبة للبدء في إدارة أسطولك.",
+    "noFilterResults": "لا توجد مركبات تطابق الفلاتر.",
+    "noFilterHint": "جرّب تغيير البحث أو فلتر الحالة.",
+    "saveFailed": "فشل حفظ المركبة",
+    "deleteFailed": "تعذر حذف المركبة. يرجى إعادة المحاولة لاحقًا.",
+    "deleteConfirm": "هل تريد حذف هذه المركبة؟",
+    "statusLabel": {
+      "AVAILABLE": "متاح",
+      "RESERVED": "محجوز",
+      "RENTED": "مؤجر",
+      "MAINTENANCE": "صيانة",
+      "IN_MAINTENANCE": "في الصيانة",
+      "OUT_OF_SERVICE": "خارج الخدمة",
+      "SOLD": "مباع",
+      "ARCHIVED": "مؤرشف"
+    }
   },
   "reservations": {
     "title": "الحجوزات والتأجير",
@@ -292,7 +357,6 @@
     "clientSigns": "توقيع العميل",
     "ownerSigns": "توقيع المالك",
     "contractActive": "العقد نشط",
-    "completed": "مكتمل",
     "waiting": "في الانتظار",
     "termsStatus": "الشروط والأحكام",
     "termsAccepted": "تم قبول الشروط",
@@ -308,7 +372,23 @@
     "print": "طباعة",
     "fetchFailed": "فشل تحميل العقد",
     "signFailed": "فشل حفظ التوقيع",
-    "ownerSigned": "تم حفظ توقيع المالك"
+    "ownerSigned": "تم حفظ توقيع المالك",
+    "statusLabel": {
+      "DRAFT": "مسودة",
+      "PENDING_SIGNATURE": "في انتظار التوقيع",
+      "SIGNED": "موقع",
+      "ACTIVE": "نشط",
+      "COMPLETED": "مكتمل",
+      "CANCELLED": "ملغى"
+    }
+  },
+  "clientSearch": {
+    "label": "البحث عن عميل",
+    "placeholder": "البحث بالاسم أو الهاتف أو CIN أو جواز السفر أو البريد...",
+    "searching": "جار البحث...",
+    "minChars": "اكتب حرفين على الأقل",
+    "noResults": "لم يتم العثور على عملاء",
+    "createNew": "إنشاء عميل جديد \"{{name}}\""
   },
   "invoices": {
     "title": "الفواتير والفوترة",
@@ -351,7 +431,12 @@
     "branches": "الفروع",
     "vehicles": "مركبات",
     "employees": "موظفين",
-    "reviews": "تقييم"
+    "reviews": "تقييم",
+    "generalInformation": "المعلومات العامة",
+    "contactInfo": "معلومات التواصل",
+    "saveChanges": "حفظ التغييرات",
+    "updateSuccess": "تم تحديث الوكالة بنجاح.",
+    "updateFailed": "تعذر تحديث الوكالة. يرجى المحاولة لاحقاً."
   },
   "employees": {
     "title": "دليل الموظفين",
@@ -363,10 +448,64 @@
     "searchPlaceholder": "البحث بالاسم أو الدور أو القسم...",
     "filters": "عوامل التصفية",
     "name": "الاسم",
+    "employee": "الموظف",
+    "contact": "التواصل",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "fullName": "الاسم الكامل",
     "role": "الدور",
     "department": "القسم",
     "status": "الحالة",
-    "actions": "إجراءات"
+    "actions": "إجراءات",
+    "export": "تصدير",
+    "editEmployee": "تعديل الموظف",
+    "deleteEmployee": "حذف الموظف",
+    "resetPassword": "إعادة تعيين كلمة مرور الدخول",
+    "temporaryPassword": "كلمة المرور المؤقتة",
+    "temporaryPasswordPlaceholder": "10+ أحرف، حرف كبير، حرف صغير، رقم، رمز",
+    "hireDate": "تاريخ التوظيف",
+    "saveChanges": "حفظ التغييرات",
+    "addingEmployee": "جار إضافة الموظف...",
+    "noEmployees": "لم يتم العثور على موظفين",
+    "deleteConfirm": "هل تريد حذف هذا الموظف؟",
+    "resetPasswordPrompt": "كلمة مرور جديدة لـ {{name}} (10+ أحرف مع حرف كبير وصغير ورقم ورمز)",
+    "actionLabels": {
+      "update": "تحديث",
+      "delete": "حذف"
+    },
+    "messages": {
+      "created": "تم إنشاء الموظف بنجاح.",
+      "passwordReset": "تمت إعادة تعيين كلمة المرور بنجاح"
+    },
+    "errors": {
+      "loadFailed": "تعذر تحميل الموظفين.",
+      "fullNameRequired": "الاسم الكامل مطلوب.",
+      "emailRequired": "البريد الإلكتروني مطلوب.",
+      "temporaryPasswordRequired": "كلمة المرور المؤقتة مطلوبة.",
+      "strongPassword": "استخدم 10+ أحرف مع حرف كبير وصغير ورقم ورمز.",
+      "completeRequired": "أكمل الحقول المطلوبة واستخدم كلمة مرور مؤقتة قوية.",
+      "permissionsLoading": "ما زال تحميل الصلاحيات جارياً. حاول مرة أخرى بعد قليل.",
+      "noPermission": "ليست لديك صلاحية إدارة الموظفين.",
+      "saveFailed": "تعذر حفظ الموظف. حاول مرة أخرى لاحقاً.",
+      "noLoginAccount": "هذا الموظف القديم لا يملك حساب دخول",
+      "resetPasswordFailed": "تعذر إعادة تعيين كلمة المرور. حاول مرة أخرى لاحقاً.",
+      "deleteFailed": "تعذر حذف الموظف. حاول مرة أخرى لاحقاً."
+    },
+    "roles": {
+      "ADMIN": "مدير النظام",
+      "MANAGER": "مدير",
+      "AGENT": "وكيل / موظف استقبال",
+      "ACCOUNTANT": "محاسب",
+      "FLEET_MANAGER": "مسؤول الأسطول",
+      "RECEPTIONIST": "موظف استقبال",
+      "DRIVER": "سائق",
+      "VIEWER": "مشاهد",
+      "EMPLOYEE": "موظف"
+    },
+    "statuses": {
+      "ACTIVE": "نشط",
+      "INACTIVE": "غير نشط"
+    }
   },
   "reports": {
     "title": "التحليلات والتقارير",
@@ -428,7 +567,138 @@
     "agencySaved": "تم حفظ معلومات الوكالة بنجاح!",
     "passwordChanged": "تم تغيير كلمة المرور بنجاح!",
     "avatarUploadFailed": "تعذر رفع الصورة. المرجو المحاولة لاحقاً.",
-    "profileSaveFailed": "تعذر حفظ الملف الشخصي. المرجو المحاولة لاحقاً."
+    "profileSaveFailed": "تعذر حفظ الملف الشخصي. المرجو المحاولة لاحقاً.",
+    "billingTab": {
+      "trialEndsOn": "تنتهي الفترة التجريبية في {{date}} (متبقي {{days}} يوم)",
+      "renewsOn": "يتجدد في {{date}}",
+      "subscriptionInactive": "الاشتراك غير نشط",
+      "upgradePlan": "ترقية الخطة",
+      "changePlan": "تغيير الخطة",
+      "monthly": "شهري",
+      "yearly": "سنوي",
+      "cycles": {
+        "monthly": "شهري",
+        "yearly": "سنوي",
+        "MONTHLY": "شهري",
+        "YEARLY": "سنوي"
+      },
+      "plansLoadFailed": "تعذر تحميل الخطط ({{error}}). تحقق من الاتصال أو أعد المحاولة.",
+      "noPlansFound": "لا توجد خطط اشتراك. اطلب من المشرف العام إنشاء خطط نشطة.",
+      "noCyclePlans": "لا توجد خطط {{cycle}} متاحة حالياً.",
+      "subtotal": "المجموع الفرعي",
+      "total": "الإجمالي",
+      "confirmCancellationReview": "أفهم أن هذا سيرسل طلب إلغاء للمراجعة.",
+      "submitting": "جارٍ الإرسال...",
+      "submitRequest": "إرسال الطلب",
+      "keepSubscription": "الاحتفاظ بالاشتراك",
+      "billingLoadFailed": "تعذر تحميل معلومات الفوترة. يرجى المحاولة لاحقاً.",
+      "paymentProviderNotConfigured": "مزود الدفع غير مهيأ لهذه الخطة. يرجى التواصل مع الدعم.",
+      "typeCancelToConfirm": "اكتب CANCEL للتأكيد.",
+      "subscriptionCancelled": "تم إلغاء الاشتراك.",
+      "cancelFailed": "تعذر إلغاء الاشتراك. يرجى المحاولة لاحقاً.",
+      "paymentsProcessedExternally": "تتم معالجة مدفوعات الاشتراك خارجياً",
+      "paymentMethodManagedExternally": "تتم إدارة الدفع والخروج بأمان عبر مزود الدفع الخاص بنا. يمكنك تحديث أو إزالة طريقة الدفع من بوابة الدفع التي استخدمتها للاشتراك.",
+      "cancelImmediateWarning": "سيؤدي الإلغاء إلى تعطيل اشتراكك فوراً. ستفقد الوصول إلى الميزات المدفوعة حتى تشترك من جديد. هذا لا يحذف بياناتك.",
+      "typeCancelLabel": "اكتب CANCEL للتأكيد",
+      "cancelling": "جارٍ الإلغاء...",
+      "confirmCancellation": "تأكيد الإلغاء",
+      "subscriptionPlansLoadFailed": "تعذر تحميل خطط الاشتراك. يرجى المحاولة مرة أخرى.",
+      "promoValidationFailed": "تعذر التحقق من رمز العرض.",
+      "checkoutMissingAdmin": "الدفع غير مهيأ لهذه الخطة. يجب على المشرف العام إضافة رابط دفع Whop أو معرف خطة.",
+      "confirmCancellationRequest": "يرجى تأكيد طلب الإلغاء."
+    },
+    "privacyTab": {
+      "exportData": "تصدير بياناتك",
+      "exportDataDesc": "نزّل بيانات وكالتك كملفات CSV",
+      "downloadAccountData": "تنزيل بيانات الحساب",
+      "downloadAccountDataDesc": "ملف الوكالة والإعدادات التشغيلية بصيغة JSON",
+      "dataRetention": "الاحتفاظ بالبيانات",
+      "dangerZone": "منطقة الخطر",
+      "requestDeactivation": "طلب تعطيل الحساب",
+      "requestDeactivationTitle": "طلب تعطيل الحساب",
+      "entities": {
+        "vehicles": "المركبات",
+        "clients": "العملاء",
+        "contracts": "العقود",
+        "reservations": "الحجوزات"
+      },
+      "noRowsToExport": "لا توجد بيانات {{entity}} للتصدير.",
+      "exportSuccess": "تم تصدير {{entity}} بنجاح.",
+      "exportFailed": "تعذر تصدير {{entity}}. يرجى المحاولة لاحقاً.",
+      "accountDownloadSuccess": "تم تنزيل بيانات الحساب بنجاح.",
+      "accountDownloadFailed": "تعذر تنزيل بيانات الحساب. يرجى المحاولة لاحقاً.",
+      "confirmBeforeSubmit": "يرجى تأكيد فهمك لهذا الطلب قبل الإرسال.",
+      "deactivationSubmitted": "تم إرسال طلب التعطيل. سيتواصل معك فريقنا للتأكيد.",
+      "deactivationFailed": "تعذر إرسال طلبك. يرجى المحاولة لاحقاً.",
+      "retentionPrefix": "يتم الاحتفاظ بصور وفيديوهات فحص المركبات لمدة",
+      "daysCount": "{{count}} يوم",
+      "retentionSuffix": "بعد تاريخ نهاية الحجز حسب إعدادات العمليات. يتم الاحتفاظ بسجلات الوكالة الأخرى (العملاء، العقود، الحجوزات) طالما بقي حسابك نشطاً.",
+      "contactSupportDataRequests": "التواصل مع الدعم بخصوص طلبات البيانات",
+      "deactivationInfo": "طلب تعطيل الحساب يفتح تذكرة دعم يراجعها فريقنا. لا نحذف بياناتك تلقائياً، وذلك لحمايتك من الفقدان غير المقصود.",
+      "deactivationModalDesc": "سيؤدي هذا إلى فتح تذكرة دعم لفريقنا لمراجعة طلب التعطيل ومعالجته. لن يتم حذف بياناتك تلقائياً.",
+      "reasonOptional": "السبب (اختياري)",
+      "deactivationConfirm": "أفهم أن هذا الطلب ستتم مراجعته من طرف فريق RentCar قبل اتخاذ أي إجراء.",
+      "submitting": "جارٍ الإرسال...",
+      "submitRequest": "إرسال الطلب",
+      "cancel": "إلغاء"
+    },
+    "operationsTab": {
+      "title": "إعدادات العمليات",
+      "subtitle": "إعدادات المنطقة والبريد الإلكتروني والإشعارات",
+      "currency": "العملة",
+      "language": "اللغة",
+      "timezone": "المنطقة الزمنية",
+      "vehicleInspectionMedia": "وسائط فحص المركبة",
+      "vehicleInspectionMediaDesc": "احتفظ بصور وفيديوهات الفحص حتى تاريخ نهاية الحجز مع إضافة مدة الاحتفاظ هذه.",
+      "days": "{{count}} يوم",
+      "customDays": "أيام مخصصة",
+      "moreOperationsTools": "المزيد من أدوات العمليات",
+      "operationsCenterDesc": "تتبع تذاكر الدعم والمشاكل التشغيلية.",
+      "saveSettings": "حفظ الإعدادات",
+      "agencySmtp": "SMTP الوكالة",
+      "smtpHost": "مضيف SMTP",
+      "smtpPort": "منفذ SMTP",
+      "username": "اسم المستخدم",
+      "password": "كلمة المرور",
+      "smtpPasswordStored": "مخزنة بأمان - أدخل قيمة جديدة للاستبدال",
+      "smtpPasswordPlaceholder": "أدخل كلمة مرور SMTP",
+      "useTls": "استخدام TLS"
+    },
+    "notificationsTab": {
+      "channels": "قنوات الإشعارات",
+      "channelsDesc": "اختر كيف تريد تلقي إشعارات نشاط الوكالة",
+      "inApp": "إشعارات داخل التطبيق",
+      "inAppDesc": "توقيع العقود، تذكيرات الحجز، نشاط الدفع، والمزيد",
+      "email": "إشعارات البريد الإلكتروني",
+      "emailDesc": "استلم نسخة من التنبيهات المهمة عبر البريد الإلكتروني",
+      "browserPush": "إشعارات المتصفح الفورية",
+      "browserPushDesc": "تلقَّ إشعارات حتى عندما يكون RentCar في الخلفية",
+      "saveSettings": "حفظ الإعدادات"
+    },
+    "agencyLogo": "شعار الوكالة",
+    "noLogo": "لا يوجد شعار",
+    "uploadLogo": "رفع الشعار",
+    "logoUploadSuccess": "تم رفع الشعار بنجاح",
+    "logoUploadFailed": "فشل رفع الشعار. يرجى المحاولة مرة أخرى.",
+    "logoRemoved": "تم حذف الشعار",
+    "logoRemoveFailed": "فشل حذف الشعار",
+    "agencyDigitalSignature": "التوقيع الرقمي للوكالة",
+    "agencySignatureDesc": "سيتم تطبيق هذا التوقيع تلقائياً على جميع العقود المستقبلية.",
+    "clearRedraw": "مسح وإعادة الرسم",
+    "drawAgencySignature": "ارسم توقيع الوكالة هنا",
+    "agencyStamp": "ختم الوكالة",
+    "agencyStampOptional": "ختم الوكالة (اختياري)",
+    "noStamp": "لا يوجد ختم",
+    "uploadStamp": "رفع الختم",
+    "stampUploadSuccess": "تم رفع الختم بنجاح",
+    "stampUploadFailed": "فشل رفع الختم. يرجى المحاولة مرة أخرى.",
+    "stampRemoved": "تم حذف الختم",
+    "stampRemoveFailed": "فشل حذف الختم",
+    "termsConditions": "الشروط والأحكام",
+    "termsConditionsDesc": "ستظهر هذه الشروط في كل صفحة توقيع عقد. اتركها فارغة لاستخدام الإعدادات الافتراضية.",
+    "termsConditionsPlaceholder": "أدخل شروط وأحكام وكالتك هنا...",
+    "moreAgencySettings": "المزيد من إعدادات الوكالة",
+    "branchesDesc": "إدارة مواقع الفروع المتعددة لهذه الوكالة."
   },
   "toast": {
     "success": "{{action}} بنجاح!",
@@ -750,32 +1020,97 @@
       "skip": "لاحقاً"
     },
     "fields": {
-      "name": "اسم الوكالة", "logoUrl": "رابط الشعار", "phone": "الهاتف",
-      "address": "العنوان", "city": "المدينة", "country": "الدولة", "currency": "العملة",
-      "timezone": "المنطقة الزمنية", "language": "اللغة", "taxRate": "نسبة الضريبة",
+      "name": "اسم الوكالة",
+      "logoUrl": "رابط الشعار",
+      "phone": "الهاتف",
+      "address": "العنوان",
+      "city": "المدينة",
+      "country": "الدولة",
+      "currency": "العملة",
+      "timezone": "المنطقة الزمنية",
+      "language": "اللغة",
+      "taxRate": "نسبة الضريبة",
       "rentalPolicies": "سياسات التأجير"
     },
     "wizard": {
-      "agency": { "title": "معلومات الوكالة" },
-      "business": { "title": "إعدادات العمل" },
-      "vehicle": { "title": "أضف أول مركبة", "description": "أضف أول مركبة لبدء استقبال الحجوزات.", "action": "إضافة مركبة" },
-      "client": { "title": "أضف أول عميل", "description": "أنشئ ملف عميل للحجوزات والعقود وسجل المدفوعات.", "action": "إضافة عميل" },
-      "reservation": { "title": "أنشئ أول حجز", "description": "اربط عميلاً بمركبة متاحة مع تواريخ وأوقات دقيقة.", "action": "إنشاء حجز" },
-      "contract": { "title": "أنشئ أول عقد", "description": "أنشئ العقد من بيانات الحجز دون إدخال مكرر.", "action": "إنشاء عقد" },
-      "gps": { "title": "إعداد GPS", "description": "يمكنك ربط مزود GPS لتتبع المركبات والرحلات.", "action": "إعداد GPS" },
-      "complete": { "title": "اكتمل الإعداد", "description": "تهانينا. وكالتك جاهزة لإدارة عمليات التأجير.", "action": "فتح لوحة التحكم" }
+      "agency": {
+        "title": "معلومات الوكالة"
+      },
+      "business": {
+        "title": "إعدادات العمل"
+      },
+      "vehicle": {
+        "title": "أضف أول مركبة",
+        "description": "أضف أول مركبة لبدء استقبال الحجوزات.",
+        "action": "إضافة مركبة"
+      },
+      "client": {
+        "title": "أضف أول عميل",
+        "description": "أنشئ ملف عميل للحجوزات والعقود وسجل المدفوعات.",
+        "action": "إضافة عميل"
+      },
+      "reservation": {
+        "title": "أنشئ أول حجز",
+        "description": "اربط عميلاً بمركبة متاحة مع تواريخ وأوقات دقيقة.",
+        "action": "إنشاء حجز"
+      },
+      "contract": {
+        "title": "أنشئ أول عقد",
+        "description": "أنشئ العقد من بيانات الحجز دون إدخال مكرر.",
+        "action": "إنشاء عقد"
+      },
+      "gps": {
+        "title": "إعداد GPS",
+        "description": "يمكنك ربط مزود GPS لتتبع المركبات والرحلات.",
+        "action": "إعداد GPS"
+      },
+      "complete": {
+        "title": "اكتمل الإعداد",
+        "description": "تهانينا. وكالتك جاهزة لإدارة عمليات التأجير.",
+        "action": "فتح لوحة التحكم"
+      }
     },
     "pages": {
-      "dashboard": { "title": "لوحة التحكم المباشرة", "description": "تابع الحجوزات والمركبات والإيرادات والعملاء والخطوات المقترحة من البيانات الفعلية." },
-      "vehicles": { "title": "إدارة المركبات", "description": "أضف المركبات وحدّث بياناتها وأدر التوفر وGPS والصيانة." },
-      "clients": { "title": "إدارة العملاء", "description": "أنشئ ملفات العملاء وراجع الحجوزات والعقود والمستندات والمدفوعات." },
-      "reservations": { "title": "إدارة الحجوزات", "description": "تربط الحجوزات العملاء والمركبات والعقود والتوفر والمدفوعات تلقائياً." },
-      "contracts": { "title": "إنشاء عقود التأجير", "description": "تستخدم العقود بيانات العميل والمركبة والسعر والحجز وتدعم التوقيع الرقمي." },
-      "payments": { "title": "متابعة كل دفعة", "description": "راجع الإيرادات والأرصدة والفواتير والمبالغ المستردة من المصدر المالي الموحد." },
-      "gps": { "title": "تتبع المركبات المتصلة", "description": "أعد المزود وتابع الموقع والسرعة والتشغيل والبطارية وسجل الرحلات." },
-      "settings": { "title": "إعداد مساحة العمل", "description": "أدر هوية الوكالة واللغة والعملة والمنطقة الزمنية والإشعارات والتكاملات." },
-      "contractTemplates": { "title": "أنشئ نماذج العقود", "description": "ارفع نموذج عقد ورقي ممسوح ضوئياً، اربط الحقول الديناميكية، وحدد نموذجاً افتراضياً لتوليد PDF." },
-      "operationsCenter": { "title": "تابع تذاكر الدعم", "description": "أنشئ تذاكر دعم، تابع حالتها، وأضف تعليقات حتى يتم حلها." }
+      "dashboard": {
+        "title": "لوحة التحكم المباشرة",
+        "description": "تابع الحجوزات والمركبات والإيرادات والعملاء والخطوات المقترحة من البيانات الفعلية."
+      },
+      "vehicles": {
+        "title": "إدارة المركبات",
+        "description": "أضف المركبات وحدّث بياناتها وأدر التوفر وGPS والصيانة."
+      },
+      "clients": {
+        "title": "إدارة العملاء",
+        "description": "أنشئ ملفات العملاء وراجع الحجوزات والعقود والمستندات والمدفوعات."
+      },
+      "reservations": {
+        "title": "إدارة الحجوزات",
+        "description": "تربط الحجوزات العملاء والمركبات والعقود والتوفر والمدفوعات تلقائياً."
+      },
+      "contracts": {
+        "title": "إنشاء عقود التأجير",
+        "description": "تستخدم العقود بيانات العميل والمركبة والسعر والحجز وتدعم التوقيع الرقمي."
+      },
+      "payments": {
+        "title": "متابعة كل دفعة",
+        "description": "راجع الإيرادات والأرصدة والفواتير والمبالغ المستردة من المصدر المالي الموحد."
+      },
+      "gps": {
+        "title": "تتبع المركبات المتصلة",
+        "description": "أعد المزود وتابع الموقع والسرعة والتشغيل والبطارية وسجل الرحلات."
+      },
+      "settings": {
+        "title": "إعداد مساحة العمل",
+        "description": "أدر هوية الوكالة واللغة والعملة والمنطقة الزمنية والإشعارات والتكاملات."
+      },
+      "contractTemplates": {
+        "title": "أنشئ نماذج العقود",
+        "description": "ارفع نموذج عقد ورقي ممسوح ضوئياً، اربط الحقول الديناميكية، وحدد نموذجاً افتراضياً لتوليد PDF."
+      },
+      "operationsCenter": {
+        "title": "تابع تذاكر الدعم",
+        "description": "أنشئ تذاكر دعم، تابع حالتها، وأضف تعليقات حتى يتم حلها."
+      }
     },
     "tour": {
       "dashboard": "هذه لوحة التحكم وتعرض ملخص الوكالة من البيانات المباشرة.",
@@ -830,6 +1165,177 @@
     "featureLocked": "الميزة مقفلة",
     "featureLockedDesc": "تتطلب هذه الميزة خطة أعلى. قم بالترقية لإلغاء القفل.",
     "upgradeNow": "الترقية الآن",
-    "maybeLater": "لاحقًا"
+    "maybeLater": "لاحقًا",
+    "clients": "العملاء",
+    "contracts": "العقود",
+    "planNames": {
+      "trial": "تجريبي",
+      "standard": "قياسي",
+      "basic": "أساسي",
+      "premium": "مميز",
+      "enterprise": "مؤسسات"
+    },
+    "statuses": {
+      "TRIAL": "تجريبي",
+      "ACTIVE": "نشط",
+      "INACTIVE": "غير نشط",
+      "CANCELLED": "ملغى",
+      "CANCELED": "ملغى",
+      "CANCEL_SCHEDULED": "إلغاء مجدول",
+      "PAST_DUE": "متأخر الدفع",
+      "EXPIRED": "منتهي",
+      "SUSPENDED": "موقوف",
+      "PAID": "مدفوع",
+      "PENDING": "قيد الانتظار",
+      "FAILED": "فشل",
+      "UNPAID": "غير مدفوع",
+      "PARTIALLY_PAID": "مدفوع جزئيا"
+    }
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "markAllRead": "تحديد الكل كمقروء",
+    "noNotifications": "لا توجد إشعارات بعد",
+    "types": {
+      "PAYMENT_PARTIAL": {
+        "title": "دفعة معلقة",
+        "message": "العقد {{contractNumber}} لديه دفعة معلقة أو جزئية."
+      },
+      "CONTRACT_FULLY_SIGNED": {
+        "title": "تم توقيع العقد بالكامل",
+        "message": "وقع العميل العقد {{contractNumber}}. أصبح العقد موقعا بالكامل."
+      },
+      "QR_GENERATED": {
+        "title": "تم إنشاء رمز QR",
+        "message": "رمز QR للعقد {{contractNumber}} جاهز للمشاركة مع العميل."
+      },
+      "CONTRACT_SIGNED_AGENCY": {
+        "title": "تم توقيع العقد من طرف الوكالة",
+        "message": "تم توقيع العقد {{contractNumber}} من طرف الوكالة."
+      },
+      "CONTRACT_CREATED": {
+        "title": "تم إنشاء العقد",
+        "message": "تم إنشاء العقد {{contractNumber}}."
+      }
+    },
+    "countLabel": "{{count}} إشعارات"
+  },
+  "enum": {
+    "vehicleCategory": {
+      "ECONOMY": "اقتصادية",
+      "COMPACT": "مدمجة",
+      "SEDAN": "سيدان",
+      "SUV": "دفع رباعي",
+      "LUXURY": "فاخرة",
+      "SPORT": "رياضية",
+      "ELECTRIC": "كهربائية",
+      "HYBRID": "هجينة",
+      "VAN": "فان",
+      "PICKUP": "بيك أب",
+      "MINIBUS": "حافلة صغيرة",
+      "TRUCK": "شاحنة",
+      "MOTORCYCLE": "دراجة نارية"
+    },
+    "fuel": {
+      "ESSENCE": "بنزين",
+      "PETROL": "بنزين",
+      "GASOLINE": "بنزين",
+      "DIESEL": "ديزل",
+      "ELECTRIC": "كهربائي",
+      "HYBRID": "هجين"
+    },
+    "transmission": {
+      "MANUAL": "يدوي",
+      "AUTOMATIC": "أوتوماتيكي"
+    },
+    "fuelLevel": {
+      "EMPTY": "فارغ",
+      "QUARTER": "1/4",
+      "HALF": "1/2",
+      "THREE_QUARTERS": "3/4",
+      "FULL": "ممتلئ"
+    }
+  },
+  "vehicleSelector": {
+    "availableCount": "{{count}} مركبة متاحة",
+    "period": "من {{startDate}} على {{startTime}} إلى {{endDate}} على {{endTime}}",
+    "searchPlaceholder": "ابحث بالماركة أو الطراز أو رقم اللوحة...",
+    "allCategories": "كل الفئات",
+    "allTransmissions": "كل نواقل الحركة",
+    "manual": "يدوي",
+    "automatic": "أوتوماتيكي",
+    "selectPeriodFirst": "اختر فترة لعرض المركبات المتاحة.",
+    "loading": "جار تحميل المركبات المتاحة...",
+    "unavailableTitle": "توفر المركبات غير متاح",
+    "retry": "إعادة فحص التوفر",
+    "noAvailable": "لا توجد مركبات متاحة لهذه الفترة.",
+    "changePeriodHint": "غيّر التواريخ أو الأوقات للبحث عن توفر آخر.",
+    "noMatches": "لا توجد مركبات تطابق معاييرك.",
+    "resetFilters": "إعادة ضبط الفلاتر",
+    "selected": "محدد",
+    "madPerDay": "درهم / يوم",
+    "estimatedTotal": "الإجمالي المقدر: {{amount}} درهم",
+    "sessionExpired": "انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى.",
+    "permissionDenied": "ليست لديك صلاحية لعرض المركبات المتاحة.",
+    "loadFailed": "تعذر تحميل المركبات المتاحة. يرجى إعادة المحاولة."
+  },
+  "common": {
+    "reserve": "حجز",
+    "contract": "عقد",
+    "return": "إرجاع",
+    "update": "تحديث",
+    "delete": "حذف",
+    "error": "خطأ",
+    "select": "اختيار",
+    "saveChanges": "حفظ التغييرات",
+    "saving": "جارٍ الحفظ...",
+    "optional": "اختياري",
+    "notAvailable": "N/A",
+    "remove": "إزالة"
+  },
+  "branches": {
+    "branch": "الفرع",
+    "unassigned": "غير معين"
+  },
+  "contractDetails": {
+    "notFound": "العقد غير موجود",
+    "backToContracts": "العودة إلى العقود",
+    "pageTitle": "تفاصيل العقد",
+    "pdfTemplate": "نموذج PDF",
+    "systemDefault": "النموذج الافتراضي",
+    "pdfTemplateLabel": "نموذج PDF:",
+    "noTemplateConfigured": "لم يتم تكوين نموذج عقد للوكالة. سيتم استخدام النموذج الافتراضي.",
+    "regeneratePdf": "إعادة إنشاء PDF",
+    "regeneratePdfHint": "تحديث PDF بأحدث شعار واسم وإعدادات الوكالة",
+    "startInspection": "بدء فحص المركبة",
+    "signatureStatus": "حالة التوقيع",
+    "roleOwner": "المالك",
+    "roleEmployee": "الموظف",
+    "agencySignatureApplied": "تم تطبيق توقيع الوكالة",
+    "agencyRepresentative": "ممثل الوكالة",
+    "signatures": "التوقيعات",
+    "viewSignedPdf": "عرض PDF الموقع",
+    "contractTimeline": "الجدول الزمني للعقد",
+    "clientBalance": "رصيد العميل",
+    "remaining": "المتبقي",
+    "rentals": "التأجيرات",
+    "invoices": "الفواتير",
+    "termsConditions": "الشروط والأحكام",
+    "metadata": "البيانات",
+    "created": "تم الإنشاء",
+    "updated": "تم التحديث",
+    "agencySignatureAlt": "توقيع الوكالة",
+    "agencyStampAlt": "ختم الوكالة",
+    "clientSignatureAlt": "توقيع العميل",
+    "tabs": {
+      "overview": "نظرة عامة",
+      "client": "العميل",
+      "vehicle": "المركبة",
+      "payment": "الدفع",
+      "inspection": "الفحص",
+      "documents": "الوثائق",
+      "drivers": "السائقون",
+      "activity": "النشاط"
+    }
   }
 }

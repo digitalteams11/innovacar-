@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Car, Fuel, Gauge, AlertCircle, Check, Loader2, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertCircle, Car, Check, Fuel, Gauge, Loader2, RefreshCw, Search } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { resolveMediaUrl } from '../../lib/utils';
+import { translateFuelType, translateTransmission, translateVehicleCategory } from '../../utils/statusLabels';
 
 export interface Vehicle {
   id: number;
@@ -131,36 +134,52 @@ function currentAgencyId() {
   }
 }
 
-function requestErrorMessage(error: unknown) {
+function requestErrorMessage(error: unknown, t: any) {
   const status = (error as { response?: { status?: number } })?.response?.status;
-  if (status === 401) return 'Session expired. Please sign in again.';
-  if (status === 403) return 'You do not have permission to view available vehicles.';
+  if (status === 401) return t('vehicleSelector.sessionExpired');
+  if (status === 403) return t('vehicleSelector.permissionDenied');
   if (error && typeof error === 'object' && 'userMessage' in error) {
     const value = (error as { userMessage?: unknown }).userMessage;
     if (typeof value === 'string' && value.trim()) return value;
   }
-  return 'Available vehicles could not be loaded. Please retry.';
+  return t('vehicleSelector.loadFailed');
+}
+
+function transmissionKey(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (['manual', 'manuelle'].includes(normalized)) return 'manual';
+  if (['automatic', 'automatique', 'auto'].includes(normalized)) return 'automatic';
+  return normalized;
+}
+
+function rentalDays(startDate: string, endDate: string) {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
 export default function SmartVehicleSelector({
   startDate, startTime = '09:00', endDate, endTime = '18:00', value, onSelect, onUnavailable
 }: SmartVehicleSelectorProps) {
+  const { t, i18n } = useTranslation();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [loadError, setLoadError] = useState('');
-  const [emptyMessage, setEmptyMessage] = useState('No available vehicles for selected dates');
+  const [emptyMessage, setEmptyMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [transmissionFilter, setTransmissionFilter] = useState('');
   const requestVersionRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const days = rentalDays(startDate, endDate);
 
   const fetchAvailableVehicles = useCallback(async (signal?: AbortSignal) => {
-    // Never call the availability endpoint before auth has settled and a
-    // token actually exists — calling it during the brief window right
-    // after a refresh/logout transition is what produces spurious 401s.
-    if (authLoading || !isAuthenticated || !localStorage.getItem('token')) {
-      return;
-    }
+    if (authLoading || !isAuthenticated || !localStorage.getItem('token')) return;
+
     const requestVersion = ++requestVersionRef.current;
     const requestedStartDate = normalizeDateParam(startDate);
     const requestedEndDate = normalizeDateParam(endDate);
@@ -169,7 +188,7 @@ export default function SmartVehicleSelector({
     const agencyId = currentAgencyId();
     setLoading(true);
     setLoadError('');
-    setEmptyMessage('No available vehicles for selected dates');
+    setEmptyMessage('');
     try {
       const { data } = await api.get<unknown>('/availability/vehicles', {
         params: {
@@ -197,9 +216,6 @@ export default function SmartVehicleSelector({
         } else if (availableVehicles.length === 0 && typeof response.message === 'string') {
           setEmptyMessage(response.message);
         }
-        // The previously selected vehicle no longer appears for the new date
-        // range (someone else booked it, or the dates changed) — clear it
-        // instead of silently submitting a contract for an unavailable vehicle.
         if (value != null && !availableVehicles.some((vehicle) => vehicle.id === value)) {
           setSelectedVehicle(null);
           onUnavailable?.();
@@ -210,14 +226,12 @@ export default function SmartVehicleSelector({
       console.error(error);
       if (requestVersion === requestVersionRef.current) {
         setVehicles([]);
-        setLoadError(requestErrorMessage(error));
+        setLoadError(requestErrorMessage(error, t));
       }
     } finally {
-      if (requestVersion === requestVersionRef.current) {
-        setLoading(false);
-      }
+      if (requestVersion === requestVersionRef.current) setLoading(false);
     }
-  }, [authLoading, endDate, endTime, isAuthenticated, startDate, startTime]);
+  }, [authLoading, endDate, endTime, isAuthenticated, onUnavailable, startDate, startTime, t, value]);
 
   useEffect(() => {
     if (!startDate || !endDate || authLoading || !isAuthenticated) return;
@@ -231,26 +245,77 @@ export default function SmartVehicleSelector({
     };
   }, [authLoading, endDate, endTime, fetchAvailableVehicles, isAuthenticated, startDate, startTime]);
 
+  useEffect(() => {
+    setSearchQuery('');
+    setCategoryFilter('');
+    setTransmissionFilter('');
+  }, [startDate, startTime, endDate, endTime]);
+
   const activeVehicle = vehicles.find((vehicle) => vehicle.id === value) || selectedVehicle;
+
+  const categoryOptions = useMemo(() => {
+    return Array.from(new Set(vehicles.map((vehicle) => vehicle.category).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  }, [vehicles]);
+
+  const filteredVehicles = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return vehicles
+      .filter((vehicle) => {
+        const matchesSearch = !q || [
+          vehicle.marque,
+          vehicle.brand,
+          vehicle.model,
+          vehicle.plate,
+          vehicle.plateNumber,
+        ].some((field) => String(field || '').toLowerCase().includes(q));
+        const matchesCategory = !categoryFilter || vehicle.category === categoryFilter;
+        const matchesTransmission = !transmissionFilter || transmissionKey(vehicle.transmission) === transmissionFilter;
+        return matchesSearch && matchesCategory && matchesTransmission;
+      });
+  }, [categoryFilter, searchQuery, transmissionFilter, vehicles]);
+
+  const hasActiveFilters = Boolean(searchQuery.trim() || categoryFilter || transmissionFilter);
+  const periodLabel = startDate && endDate
+    ? t('vehicleSelector.period', {
+      startDate: new Date(startDate).toLocaleDateString(i18n.language),
+      startTime,
+      endDate: new Date(endDate).toLocaleDateString(i18n.language),
+      endTime,
+    })
+    : '';
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setCategoryFilter('');
+    setTransmissionFilter('');
+  };
 
   const handleSelect = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     onSelect(vehicle);
   };
 
-  if (loading) {
+  if (!startDate || !endDate) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 size={24} className="animate-spin text-brand-500" />
+      <div className="flex items-center gap-2 rounded-xl bg-warning-50 p-4 text-sm text-warning-600">
+        <AlertCircle size={16} />
+        <span>{t('vehicleSelector.selectPeriodFirst')}</span>
       </div>
     );
   }
 
-  if (!startDate || !endDate) {
+  if (loading) {
     return (
-      <div className="flex items-center gap-2 p-4 bg-warning-50 text-warning-600 rounded-xl text-sm">
-        <AlertCircle size={16} />
-        <span>Please select rental dates first to see available vehicles</span>
+      <div className="rounded-2xl border border-slate-100 bg-white p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+          <Loader2 size={16} className="animate-spin text-brand-500" />
+          {t('vehicleSelector.loading')}
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          {[0, 1, 2, 3].map((item) => (
+            <div key={item} className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -261,7 +326,7 @@ export default function SmartVehicleSelector({
         <div className="flex items-start gap-2">
           <AlertCircle size={17} className="mt-0.5 shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Vehicle availability is unavailable</p>
+            <p className="text-sm font-semibold">{t('vehicleSelector.unavailableTitle')}</p>
             <p className="mt-1 text-xs leading-5">{loadError}</p>
           </div>
         </div>
@@ -275,7 +340,7 @@ export default function SmartVehicleSelector({
           }}
           className="mt-3 inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-rose-100 dark:border-rose-500/20 dark:bg-white/5 dark:hover:bg-white/10"
         >
-          <RefreshCw size={13} /> Retry availability
+          <RefreshCw size={13} /> {t('vehicleSelector.retry')}
         </button>
       </div>
     );
@@ -283,51 +348,120 @@ export default function SmartVehicleSelector({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1">
-        {vehicles.map((vehicle) => {
-          const isSelected = activeVehicle?.id === vehicle.id;
-          return (
-            <button
-              key={`${vehicle.id}-${vehicle.plateNumber || vehicle.plate || vehicle.marque || vehicle.model || 'vehicle'}`}
-              onClick={() => handleSelect(vehicle)}
-              className={`relative flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
-                isSelected
-                  ? 'border-brand-400 bg-brand-50/50 shadow-sm'
-                  : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'
-              }`}
-            >
-              {isSelected && (
-                <div className="absolute top-2 right-2 w-6 h-6 bg-brand-500 rounded-full flex items-center justify-center">
-                  <Check size={14} className="text-white" />
-                </div>
-              )}
-              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shrink-0">
-                {vehicle.imageUrl ? (
-                  <img src={vehicle.imageUrl} alt="" className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  <Car size={22} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-[#1e293b]">{vehicle.marque}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{vehicle.category} • {vehicle.year} • {vehicle.color}</p>
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1"><Fuel size={9} /> {vehicle.fuel}</span>
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1"><Gauge size={9} /> {vehicle.transmission}</span>
-                  {vehicle.gpsEnabled && <span className="text-[10px] text-brand-400 font-bold">GPS</span>}
-                </div>
-                <div className="flex items-baseline gap-1.5 mt-2">
-                  <span className="text-lg font-black text-brand-500">{vehicle.prixJour}</span>
-                  <span className="text-[10px] text-slate-400 font-medium">MAD/day</span>
-                </div>
-              </div>
+      <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-[#1e293b]">
+              {t('vehicleSelector.availableCount', { count: vehicles.length })}
+            </p>
+            <p className="text-[11px] text-slate-400">{periodLabel}</p>
+          </div>
+          {hasActiveFilters && (
+            <button type="button" onClick={resetFilters} className="text-xs font-semibold text-brand-500 hover:text-brand-600">
+              {t('vehicleSelector.resetFilters')}
             </button>
-          );
-        })}
+          )}
+        </div>
+
+        {vehicles.length > 0 && (
+          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(180px,1fr)_150px_150px]">
+            <label className="relative block">
+              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={t('vehicleSelector.searchPlaceholder')}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pe-3 ps-9 text-xs text-[#1e293b] outline-none transition-all focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-[#1e293b] outline-none focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100">
+              <option value="">{t('vehicleSelector.allCategories')}</option>
+              {categoryOptions.map((category) => <option key={category} value={category}>{translateVehicleCategory(category)}</option>)}
+            </select>
+            <select value={transmissionFilter} onChange={(event) => setTransmissionFilter(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-[#1e293b] outline-none focus:border-brand-300 focus:bg-white focus:ring-2 focus:ring-brand-100">
+              <option value="">{t('vehicleSelector.allTransmissions')}</option>
+              <option value="manual">{t('vehicleSelector.manual')}</option>
+              <option value="automatic">{t('vehicleSelector.automatic')}</option>
+            </select>
+          </div>
+        )}
       </div>
-      {vehicles.length === 0 && (
-        <div className="text-center py-6 text-slate-400 text-sm">
-          {emptyMessage}
+
+      {vehicles.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+          <p className="text-sm font-semibold text-slate-600">
+            {emptyMessage || t('vehicleSelector.noAvailable')}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            {t('vehicleSelector.changePeriodHint')}
+          </p>
+        </div>
+      ) : filteredVehicles.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+          <p className="text-sm font-semibold text-slate-600">
+            {t('vehicleSelector.noMatches')}
+          </p>
+          <button type="button" onClick={resetFilters} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-brand-500 shadow-sm hover:bg-brand-50">
+            {t('vehicleSelector.resetFilters')}
+          </button>
+        </div>
+      ) : (
+        <div className="grid max-h-[360px] grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+          {filteredVehicles.map((vehicle) => {
+            const isSelected = activeVehicle?.id === vehicle.id;
+            const imageSrc = resolveMediaUrl(vehicle.imageUrl);
+            const estimatedTotal = days > 0 ? (vehicle.prixJour || 0) * days : 0;
+            const displayName = vehicle.marque || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim();
+            const categoryLabel = translateVehicleCategory(vehicle.category);
+            const fuelLabel = translateFuelType(vehicle.fuel);
+            const transmissionLabel = translateTransmission(vehicle.transmission);
+            return (
+              <button
+                key={`${vehicle.id}-${vehicle.plateNumber || vehicle.plate || displayName || 'vehicle'}`}
+                onClick={() => handleSelect(vehicle)}
+                className={`relative flex min-h-[132px] items-start gap-3 rounded-2xl border-2 p-3 text-left transition-all ${
+                  isSelected
+                    ? 'border-brand-400 bg-brand-50/60 shadow-sm ring-2 ring-brand-100'
+                    : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'
+                }`}
+              >
+                {isSelected && (
+                  <div className="absolute end-2 top-2 flex items-center gap-1 rounded-full bg-brand-500 px-2 py-1 text-[10px] font-bold text-white">
+                    <Check size={14} />
+                    {t('vehicleSelector.selected')}
+                  </div>
+                )}
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-slate-400">
+                  {imageSrc ? (
+                    <img src={imageSrc} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Car size={22} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate pe-20 text-sm font-bold text-[#1e293b]">{displayName || '-'}</p>
+                  <p className="mt-0.5 font-mono text-[11px] text-slate-500">{vehicle.plateNumber || vehicle.plate || '-'}</p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {[categoryLabel, fuelLabel, transmissionLabel].filter(Boolean).join(' - ')}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                    {vehicle.fuel && <span className="flex items-center gap-1 text-[10px] text-slate-400"><Fuel size={9} /> {fuelLabel}</span>}
+                    {vehicle.transmission && <span className="flex items-center gap-1 text-[10px] text-slate-400"><Gauge size={9} /> {transmissionLabel}</span>}
+                    {vehicle.gpsEnabled && <span className="text-[10px] font-bold text-brand-400">GPS</span>}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-lg font-black text-brand-500">{(vehicle.prixJour || 0).toLocaleString()}</span>
+                    <span className="text-[10px] font-medium text-slate-400">{t('vehicleSelector.madPerDay')}</span>
+                    {estimatedTotal > 0 && (
+                      <span className="basis-full text-[11px] font-semibold text-slate-500">
+                        {t('vehicleSelector.estimatedTotal', { amount: estimatedTotal.toLocaleString() })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

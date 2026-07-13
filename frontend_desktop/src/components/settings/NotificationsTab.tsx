@@ -1,4 +1,5 @@
 import { Bell, Save } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import SoundSettings from '../SoundSettings';
 
 interface NotificationsTabProps {
@@ -13,6 +14,8 @@ interface NotificationsTabProps {
 export default function NotificationsTab({
   notificationInApp, notificationEmail, notificationPush, onChange, onSave, saving,
 }: NotificationsTabProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <div className="card-premium space-y-5 p-4 sm:p-6">
@@ -21,27 +24,27 @@ export default function NotificationsTab({
             <Bell size={20} className="text-brand-500" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#1e293b]">Notification Channels</h3>
-            <p className="text-sm text-slate-400 font-normal">Choose how you want to be notified about agency activity</p>
+            <h3 className="text-base font-bold text-[#1e293b]">{t('settings.notificationsTab.channels')}</h3>
+            <p className="text-sm text-slate-400 font-normal">{t('settings.notificationsTab.channelsDesc')}</p>
           </div>
         </div>
 
         <div className="space-y-3">
           <NotificationToggle
-            label="In-app notifications"
-            description="Contract signed, reservation reminders, payment activity, and more"
+            label={t('settings.notificationsTab.inApp')}
+            description={t('settings.notificationsTab.inAppDesc')}
             checked={notificationInApp}
             onChange={(checked) => onChange('notificationInApp', checked)}
           />
           <NotificationToggle
-            label="Email notifications"
-            description="Receive a copy of important alerts by email"
+            label={t('settings.notificationsTab.email')}
+            description={t('settings.notificationsTab.emailDesc')}
             checked={notificationEmail}
             onChange={(checked) => onChange('notificationEmail', checked)}
           />
           <NotificationToggle
-            label="Browser push notifications"
-            description="Get notified even when RentCar is in the background"
+            label={t('settings.notificationsTab.browserPush')}
+            description={t('settings.notificationsTab.browserPushDesc')}
             checked={notificationPush}
             onChange={(checked) => onChange('notificationPush', checked)}
           />
@@ -54,7 +57,7 @@ export default function NotificationsTab({
             className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all disabled:opacity-70 w-full sm:w-auto"
           >
             {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
-            Save Settings
+            {t('settings.notificationsTab.saveSettings')}
           </button>
         </div>
       </div>

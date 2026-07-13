@@ -275,6 +275,7 @@ export default function Contracts() {
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
@@ -520,6 +521,7 @@ export default function Contracts() {
     setClientMode('existing');
     setNewClientForm({ fullName: '', phone: '', cin: '', passportNumber: '', driverLicenseNumber: '', email: '', address: '', dateOfBirth: '', nationality: '' });
     setNewClientErrors({});
+    setFieldErrors({});
     setDuplicateClientAlert(null);
     setVehicleConflictAlert(null);
     setPaidAmountAlert(null);
@@ -728,6 +730,7 @@ export default function Contracts() {
       // Validate client mode
       if (clientMode === 'existing') {
         if (!clientData.clientId) {
+          setFieldErrors((prev) => ({ ...prev, client: 'Client is required.' }));
           showToast('Please select a saved client', 'warning');
           return;
         }
@@ -745,9 +748,17 @@ export default function Contracts() {
         setNewClientErrors({});
       }
       if (!startDate || !startTime || !endDate || !endTime || !selectedVehicle) {
+        const errors: Record<string, string> = {};
+        if (!startDate) errors.startDate = 'Start date is required.';
+        if (!startTime) errors.startTime = 'Start time is required.';
+        if (!endDate) errors.endDate = 'End date is required.';
+        if (!endTime) errors.endTime = 'End time is required.';
+        if (!selectedVehicle) errors.vehicle = 'Vehicle is required.';
+        setFieldErrors((prev) => ({ ...prev, ...errors }));
         showToast('Please fill in rental dates and select an available vehicle', 'warning');
         return;
       }
+      setFieldErrors({});
 
       setDuplicateClientAlert(null);
       setVehicleConflictAlert(null);
@@ -891,6 +902,24 @@ export default function Contracts() {
       setSaving(false);
     }
   };
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const fieldError = (field: string) => (
+    fieldErrors[field] ? <p className="mt-1 text-xs font-medium text-danger-500">{fieldErrors[field]}</p> : null
+  );
+
+  const requiredInputClass = (field: string) =>
+    `w-full px-3 py-2 bg-[#f5f5f0] border rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white transition-all disabled:opacity-60 ${
+      fieldErrors[field] ? 'border-danger-500 focus:border-danger-500' : 'border-[#e8e6e1] focus:border-brand-300'
+    }`;
 
   function contractErrorMessage(err: any): string {
     const errData = err?.response?.data || {};
@@ -1356,14 +1385,14 @@ export default function Contracts() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => { setClientMode('existing'); setNewClientErrors({}); setDuplicateClientAlert(null); }}
+                      onClick={() => { setClientMode('existing'); setNewClientErrors({}); setDuplicateClientAlert(null); clearFieldError('client'); }}
                       className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition-all ${clientMode === 'existing' ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-slate-500 border-slate-200 hover:border-brand-300'}`}
                     >
                       {t('contracts.form.searchExistingClient')}
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setClientMode('new'); setClientData({}); setDuplicateClientAlert(null); }}
+                      onClick={() => { setClientMode('new'); setClientData({}); setDuplicateClientAlert(null); clearFieldError('client'); }}
                       className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition-all ${clientMode === 'new' ? 'bg-success-500 text-white border-success-500' : 'bg-white text-slate-500 border-slate-200 hover:border-success-300'}`}
                     >
                       {t('contracts.form.newClientToggle')}
@@ -1373,9 +1402,10 @@ export default function Contracts() {
                   {/* Existing client search */}
                   {clientMode === 'existing' && (
                     <>
-                      <SmartClientSearch value={clientData} onSelect={setClientData} required />
+                      <SmartClientSearch value={clientData} onSelect={(value) => { setClientData(value); clearFieldError('client'); }} required />
+                      {fieldError('client')}
                       {clientData.clientFullName && (
-                        <ClientCard data={clientData} onClear={() => setClientData({})} />
+                        <ClientCard data={clientData} onClear={() => { setClientData({}); clearFieldError('client'); }} />
                       )}
                     </>
                   )}
@@ -1567,23 +1597,31 @@ export default function Contracts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.startDate')} <span className="text-danger-500">*</span></label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={!!selectedReservation}
-                    className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
+                  <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); clearFieldError('startDate'); }} disabled={!!selectedReservation}
+                    aria-invalid={Boolean(fieldErrors.startDate)}
+                    className={requiredInputClass('startDate')} />
+                  {fieldError('startDate')}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.startTime')} <span className="text-danger-500">*</span></label>
-                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} disabled={!!selectedReservation}
-                    className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
+                  <input type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); clearFieldError('startTime'); }} disabled={!!selectedReservation}
+                    aria-invalid={Boolean(fieldErrors.startTime)}
+                    className={requiredInputClass('startTime')} />
+                  {fieldError('startTime')}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.endDate')} <span className="text-danger-500">*</span></label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={!!selectedReservation}
-                    className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
+                  <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); clearFieldError('endDate'); }} disabled={!!selectedReservation}
+                    aria-invalid={Boolean(fieldErrors.endDate)}
+                    className={requiredInputClass('endDate')} />
+                  {fieldError('endDate')}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.endTime')} <span className="text-danger-500">*</span></label>
-                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} disabled={!!selectedReservation}
-                    className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all disabled:opacity-60" />
+                  <input type="time" value={endTime} onChange={(e) => { setEndTime(e.target.value); clearFieldError('endTime'); }} disabled={!!selectedReservation}
+                    aria-invalid={Boolean(fieldErrors.endTime)}
+                    className={requiredInputClass('endTime')} />
+                  {fieldError('endTime')}
                 </div>
               </div>
               {selectedReservation && selectedVehicle ? (
@@ -1597,6 +1635,7 @@ export default function Contracts() {
                   value={selectedVehicle?.id}
                   onSelect={(v) => {
                     setSelectedVehicle(v);
+                    clearFieldError('vehicle');
                     setPickupLocation('');
                     setReturnLocation('');
                     // Pre-fill deposit from vehicle default (admin can override)
@@ -1606,10 +1645,12 @@ export default function Contracts() {
                   }}
                   onUnavailable={() => {
                     setSelectedVehicle(null);
+                    clearFieldError('vehicle');
                     showToast(t('contracts.form.vehicleNoLongerAvailable'), 'warning');
                   }}
                 />
               )}
+              {fieldError('vehicle')}
               {selectedVehicle && !selectedReservation && <VehicleCard vehicle={selectedVehicle} />}
             </div>
 

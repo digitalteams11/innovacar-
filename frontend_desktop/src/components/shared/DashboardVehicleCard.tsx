@@ -1,7 +1,7 @@
 import { Car, Gauge, Fuel, FileText, Calendar, User, Wrench, Eye, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { normalizeStatusCode, translateFuelLevel, translateFuelType, translateVehicleCategory, translateVehicleStatus } from '../../utils/statusLabels';
+import { translateFuelLevel, translateFuelType, translateVehicleCategory, translateVehicleStatus } from '../../utils/statusLabels';
 
 /* ─── types ─────────────────────────────────────────────────────────── */
 export interface VehicleCardData {
@@ -50,7 +50,7 @@ const STATUS_CFG: Record<string, { cls: string }> = {
 };
 
 function StatusBadge({ statut }: { statut?: string }) {
-  const key = normalizeStatusCode(statut) || 'AVAILABLE';
+  const key = (statut || 'AVAILABLE').toUpperCase();
   const cfg = STATUS_CFG[key] ?? { cls: 'bg-slate-500/15 text-slate-500 border-slate-500/25' };
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cfg.cls}`}>

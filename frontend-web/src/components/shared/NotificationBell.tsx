@@ -101,6 +101,39 @@ function getRelativeTime(dateStr: string, t: (k: string, opts?: Record<string, u
   return t('notifications.daysAgo', { count: days, defaultValue: `${days} days ago` });
 }
 
+function getNotificationTypeKey(n: AppNotification): string | null {
+  const type = (n.type || '').toUpperCase();
+  const title = (n.title || '').trim().toLowerCase();
+
+  if (type === 'PAYMENT_PARTIAL' || title === 'payment pending') return 'PAYMENT_PARTIAL';
+  if (type === 'CONTRACT_FULLY_SIGNED' || title === 'contract fully signed') return 'CONTRACT_FULLY_SIGNED';
+  if (type === 'QR_GENERATED' || type === 'CONTRACT_QR_GENERATED' || title === 'qr code generated') return 'QR_GENERATED';
+  if (type === 'CONTRACT_SIGNED_AGENCY' || title === 'contract signed by agency') return 'CONTRACT_SIGNED_AGENCY';
+  if (type === 'CONTRACT_CREATED' || title === 'contract created') return 'CONTRACT_CREATED';
+
+  return null;
+}
+
+function extractContractNumber(message?: string): string | null {
+  return message?.match(/\b(?:Contract|contract)\s+([A-Z]{2,}-\d{4}-\d{5})\b/)?.[1] || null;
+}
+
+function localizeNotification(n: AppNotification, t: (k: string, opts?: Record<string, unknown>) => string) {
+  const typeKey = getNotificationTypeKey(n);
+
+  if (typeKey) {
+    const contractNumber = extractContractNumber(n.message);
+    return {
+      title: t(`notifications.types.${typeKey}.title`, { defaultValue: n.title }),
+      message: contractNumber
+        ? t(`notifications.types.${typeKey}.message`, { contractNumber: `\u2068${contractNumber}\u2069`, defaultValue: n.message })
+        : n.message,
+    };
+  }
+
+  return { title: n.title, message: n.message };
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function NotificationBell() {
@@ -247,6 +280,7 @@ export default function NotificationBell() {
             ) : (
               notifications.map((n) => {
                 const colors = getSeverityColors(n.severity || 'INFO');
+                const display = localizeNotification(n, t);
                 return (
                   <div
                     key={n.id}
@@ -274,10 +308,10 @@ export default function NotificationBell() {
                             className="text-xs font-semibold truncate"
                             style={{ color: !n.read ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                           >
-                            {n.title}
+                            {display.title}
                           </p>
                           <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: 'var(--text-muted)' }}>
-                            {n.message}
+                            {display.message}
                           </p>
                           <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
                             {getRelativeTime(n.createdAt, t)}
@@ -315,7 +349,7 @@ export default function NotificationBell() {
               style={{ borderTop: '1px solid var(--border-subtle)' }}
             >
               <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
+                {t('notifications.countLabel', { count: notifications.length })}
               </span>
               {readCount > 0 && (
                 <button
@@ -325,7 +359,7 @@ export default function NotificationBell() {
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#ef4444'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'}
                 >
-                  Clear {readCount} read
+                  {t('notifications.clearReadCount', { count: readCount })}
                 </button>
               )}
             </div>

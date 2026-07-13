@@ -8,6 +8,7 @@ import com.carrental.entity.Vehicle;
 import com.carrental.entity.VehicleStatus;
 import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.ClientRepository;
+import com.carrental.repository.ContractRepository;
 import com.carrental.repository.ReservationRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
@@ -35,7 +36,9 @@ class ReservationServiceTest {
     @Mock private ReservationRepository reservationRepository;
     @Mock private VehicleRepository vehicleRepository;
     @Mock private ClientRepository clientRepository;
+    @Mock private ContractRepository contractRepository;
     @Mock private AvailabilityService availabilityService;
+    @Mock private VehicleStatusSyncService vehicleStatusSyncService;
 
     @InjectMocks
     private ReservationService reservationService;
@@ -170,10 +173,12 @@ class ReservationServiceTest {
     void deleteReservation_success() {
         when(reservationRepository.findByIdAndTenantId(100L, TENANT_ID))
                 .thenReturn(Optional.of(existingReservation));
+        when(reservationRepository.save(existingReservation)).thenReturn(existingReservation);
 
         reservationService.deleteReservation(100L, "test@example.com");
 
         verify(reservationRepository).save(existingReservation);
+        verify(vehicleStatusSyncService).recalculateVehicleStatus(VEHICLE_ID, TENANT_ID);
         assertThat(existingReservation.getStatus()).isEqualTo(com.carrental.entity.ReservationStatus.CANCELLED);
     }
 }

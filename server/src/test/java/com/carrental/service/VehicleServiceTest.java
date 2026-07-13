@@ -207,6 +207,7 @@ class VehicleServiceTest {
     void deleteVehicle_removesAvailableVehicle() {
         when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
                 .thenReturn(Optional.of(availableVehicle));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         vehicleService.deleteVehicle(VEHICLE_ID);
 

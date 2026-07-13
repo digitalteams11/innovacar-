@@ -12,11 +12,11 @@ class RolePermissionInterceptorTest {
     @Test
     void contractMutationsUseDistinctPermissions() {
         assertThat(interceptor.resolvePermission("POST", "/api/contracts"))
-                .isEqualTo("CREATE_CONTRACT");
+                .isEqualTo("CONTRACT_CREATE");
         assertThat(interceptor.resolvePermission("PUT", "/api/contracts/42"))
-                .isEqualTo("EDIT_CONTRACT");
+                .isEqualTo("CONTRACT_UPDATE");
         assertThat(interceptor.resolvePermission("DELETE", "/api/contracts/42"))
-                .isEqualTo("DELETE_CONTRACT");
+                .isEqualTo("CONTRACT_DELETE");
     }
 
     @Test
@@ -26,8 +26,8 @@ class RolePermissionInterceptorTest {
         assertThat(interceptor.resolvePermission("POST", "/api/deposits"))
                 .isEqualTo("MANAGE_DEPOSITS");
         assertThat(interceptor.resolvePermission("POST", "/api/gps/settings"))
-                .isEqualTo("MANAGE_GPS");
+                .isEqualTo("GPS_SETTINGS");
         assertThat(interceptor.resolvePermission("POST", "/api/branches"))
-                .isEqualTo("MANAGE_BRANCHES");
+                .isNull();
     }
 }

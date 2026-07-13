@@ -59,6 +59,7 @@ export default function Maintenance() {
   const [updatingMaintenanceId, setUpdatingMaintenanceId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [orphanCount, setOrphanCount] = useState(0);
 
   const stats = useMemo(() => {
@@ -110,13 +111,25 @@ export default function Maintenance() {
 
   useEffect(() => { load(); }, []);
 
+  const updateFormField = (field: keyof typeof emptyForm, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   const validateForm = () => {
-    if (!form.vehicleId) return t('maintenance.validation.vehicleRequired');
-    if (!form.title.trim()) return t('maintenance.validation.titleRequired');
-    if (!form.scheduledDate) return t('maintenance.validation.scheduledDateRequired');
-    if (form.cost && Number(form.cost) < 0) return t('maintenance.validation.costInvalid');
-    if (form.mileage && Number(form.mileage) < 0) return t('maintenance.validation.mileageInvalid');
-    return '';
+    const errors: Record<string, string> = {};
+    if (!form.vehicleId) errors.vehicleId = t('maintenance.validation.vehicleRequired');
+    if (!form.title.trim()) errors.title = t('maintenance.validation.titleRequired');
+    if (!form.scheduledDate) errors.scheduledDate = t('maintenance.validation.scheduledDateRequired');
+    if (form.cost && Number(form.cost) < 0) errors.cost = t('maintenance.validation.costInvalid');
+    if (form.mileage && Number(form.mileage) < 0) errors.mileage = t('maintenance.validation.mileageInvalid');
+    setFieldErrors(errors);
+    return Object.values(errors)[0] || '';
   };
 
   const create = async () => {
@@ -152,6 +165,7 @@ export default function Maintenance() {
       const response = await api.post('/maintenance', payload);
       setOpen(false);
       setForm(emptyForm);
+      setFieldErrors({});
       await load();
       window.dispatchEvent(new Event('rentcar-data-updated'));
       const warnings: string[] = response.data?.warnings || [];
@@ -166,6 +180,21 @@ export default function Maintenance() {
       setSaving(false);
     }
   };
+
+  const openCreate = () => {
+    setForm(emptyForm);
+    setFieldErrors({});
+    setOpen(true);
+  };
+
+  const fieldError = (field: string) => (
+    fieldErrors[field] ? <p className="mt-1 text-xs font-medium text-danger-500">{fieldErrors[field]}</p> : null
+  );
+
+  const inputClass = (field: string) =>
+    `mt-1 w-full px-3 py-2.5 border rounded-lg text-sm ${
+      fieldErrors[field] ? 'border-danger-500 ring-2 ring-danger-500/20' : ''
+    }`;
 
   const statusSuccessKey = (status: string) => {
     switch (status) {
@@ -218,7 +247,7 @@ export default function Maintenance() {
           <h1 className="text-xl font-bold text-[#1e293b]">{t('maintenance.title')}</h1>
           <p className="text-sm text-slate-500">{t('maintenance.subtitle')}</p>
         </div>
-        <button onClick={() => setOpen(true)}
+        <button onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium">
           <Plus size={16} /> {t('maintenance.newWorkOrder')}
         </button>
@@ -355,8 +384,9 @@ export default function Maintenance() {
         <div className="space-y-4">
           <label className="block">
             <span className="text-xs font-medium text-slate-500">{t('maintenance.modal.vehicle')}</span>
-            <select value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}
-              className="mt-1 w-full px-3 py-2.5 border rounded-lg text-sm">
+            <select value={form.vehicleId} onChange={(e) => updateFormField('vehicleId', e.target.value)}
+              aria-invalid={Boolean(fieldErrors.vehicleId)}
+              className={inputClass('vehicleId')}>
               <option value="">{t('maintenance.modal.selectVehicle')}</option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
@@ -365,17 +395,18 @@ export default function Maintenance() {
                 </option>
               ))}
             </select>
+            {fieldError('vehicleId')}
           </label>
-          <Field label={t('maintenance.modal.titleField')} value={form.title} onChange={(title) => setForm({ ...form, title })} />
-          <Field label={t('maintenance.modal.serviceProvider')} value={form.serviceProvider} onChange={(serviceProvider) => setForm({ ...form, serviceProvider })} />
-          <Field label={t('maintenance.modal.scheduledDate')} type="datetime-local" value={form.scheduledDate} onChange={(scheduledDate) => setForm({ ...form, scheduledDate })} />
+          <Field label={t('maintenance.modal.titleField')} value={form.title} onChange={(title) => updateFormField('title', title)} error={fieldErrors.title} />
+          <Field label={t('maintenance.modal.serviceProvider')} value={form.serviceProvider} onChange={(serviceProvider) => updateFormField('serviceProvider', serviceProvider)} />
+          <Field label={t('maintenance.modal.scheduledDate')} type="datetime-local" value={form.scheduledDate} onChange={(scheduledDate) => updateFormField('scheduledDate', scheduledDate)} error={fieldErrors.scheduledDate} />
           <div className="grid grid-cols-2 gap-3">
-            <Field label={t('maintenance.modal.cost')} type="number" value={form.cost} onChange={(cost) => setForm({ ...form, cost })} />
-            <Field label={t('maintenance.modal.mileage')} type="number" value={form.mileage} onChange={(mileage) => setForm({ ...form, mileage })} />
+            <Field label={t('maintenance.modal.cost')} type="number" value={form.cost} onChange={(cost) => updateFormField('cost', cost)} error={fieldErrors.cost} />
+            <Field label={t('maintenance.modal.mileage')} type="number" value={form.mileage} onChange={(mileage) => updateFormField('mileage', mileage)} error={fieldErrors.mileage} />
           </div>
           <label className="block">
             <span className="text-xs font-medium text-slate-500">{t('maintenance.modal.description')}</span>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+            <textarea value={form.description} onChange={(e) => updateFormField('description', e.target.value)}
               className="mt-1 w-full px-3 py-2.5 border rounded-lg text-sm" rows={3} />
           </label>
           <button onClick={create} disabled={saving}
@@ -404,15 +435,17 @@ function statusClass(status: string) {
   return 'bg-slate-100 text-slate-700';
 }
 
-function Field({ label, value, onChange, type = 'text' }: {
-  label: string; value: string; onChange: (value: string) => void; type?: string;
+function Field({ label, value, onChange, type = 'text', error = '' }: {
+  label: string; value: string; onChange: (value: string) => void; type?: string; error?: string;
 }) {
   return (
     <label className="block">
       <span className="text-xs font-medium text-slate-500">{label}</span>
       <input type={type} value={value} min={type === 'number' ? '0' : undefined}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full px-3 py-2.5 border rounded-lg text-sm" />
+        aria-invalid={Boolean(error)}
+        className={`mt-1 w-full px-3 py-2.5 border rounded-lg text-sm ${error ? 'border-danger-500 ring-2 ring-danger-500/20' : ''}`} />
+      {error && <p className="mt-1 text-xs font-medium text-danger-500">{error}</p>}
     </label>
   );
 }

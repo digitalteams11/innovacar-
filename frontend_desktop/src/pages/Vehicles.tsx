@@ -13,6 +13,7 @@ import api from '../api/axios';
 import { useSubscription } from '../hooks/useSubscription';
 import ApiErrorState from '../components/ApiErrorState';
 import { useFeatureAccess } from '../context/FeatureAccessContext';
+import { normalizeStatusCode, translateFuelType, translateTransmission, translateVehicleCategory, translateVehicleStatus } from '../utils/statusLabels';
 
 interface Vehicle {
   id: number;
@@ -46,6 +47,11 @@ const statusVariantMap: Record<string, 'available' | 'rented' | 'maintenance'> =
   SOLD: 'maintenance',
   ARCHIVED: 'maintenance',
 };
+
+const normalizeVehicle = (vehicle: Vehicle): Vehicle => ({
+  ...vehicle,
+  statut: normalizeStatusCode(vehicle.statut) || 'AVAILABLE',
+});
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -103,7 +109,7 @@ export default function Vehicles() {
         : Array.isArray(data?.data)
           ? data.data
           : [];
-      setData(vehicles);
+      setData(vehicles.map(normalizeVehicle));
     } catch (err: any) {
       console.error('Failed to fetch vehicles', err);
       setData([]);
@@ -132,8 +138,8 @@ export default function Vehicles() {
     { id: 'Available', label: t('vehicles.available') },
     { id: 'Rented', label: t('vehicles.rented') },
     { id: 'In_Maintenance', label: t('vehicles.maintenance') },
-    { id: 'Out_Of_Service', label: 'Out of service' },
-    { id: 'Archived', label: 'Archived' },
+    { id: 'Out_Of_Service', label: t('vehicles.outOfService') },
+    { id: 'Archived', label: t('vehicles.archived') },
   ];
 
   const filteredData = data.filter((v) => {
@@ -144,8 +150,17 @@ export default function Vehicles() {
   });
 
   const exportFleet = () => {
-    const headers = ['ID', 'Brand', 'Category', 'Plate', 'Status', 'Price/Day', 'Fuel', 'Transmission'];
-    const rows = filteredData.map((v) => [v.id, v.marque, v.category, v.plate, v.statut, v.prixJour, v.fuel, v.transmission]);
+    const headers = ['ID', t('vehicles.brandModel'), t('vehicles.category'), t('vehicles.plate'), t('vehicles.status'), t('vehicles.pricePerDay'), t('vehicles.fuel'), t('vehicles.transmission')];
+    const rows = filteredData.map((v) => [
+      v.id,
+      v.marque,
+      translateVehicleCategory(v.category),
+      v.plate,
+      translateVehicleStatus(v.statut),
+      v.prixJour,
+      translateFuelType(v.fuel),
+      translateTransmission(v.transmission),
+    ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -200,7 +215,7 @@ export default function Vehicles() {
 
   const saveVehicle = async () => {
     if (!form.marque || !form.prixJour || !form.plate) {
-      showToast('Brand, license plate and daily price are required.', 'warning');
+      showToast(t('vehicles.validation.requiredSummary'), 'warning');
       return;
     }
     try {
@@ -218,7 +233,7 @@ export default function Vehicles() {
       if (editingId) {
         const { data: updated } = await api.put(`/vehicles/${editingId}`, payload);
         setData((prev) => prev.map((v) => (v.id === editingId ? updated : v)));
-        showToast(t('toast.success', { action: 'Update' }));
+        showToast(t('toast.success', { action: t('common.update') }));
       } else {
         const { data: newVehicle } = await api.post('/vehicles', payload);
         setData((prev) => [...prev, newVehicle]);
@@ -228,8 +243,8 @@ export default function Vehicles() {
       setEditingId(null);
     } catch (err: any) {
       const details = (err as any).response?.data?.details;
-      const msg = (err as any).userMessage || 'Failed to save vehicle';
-      let fullMsg = 'Error: ' + msg;
+      const msg = (err as any).userMessage || t('vehicles.saveFailed');
+      let fullMsg = `${t('common.error')}: ${msg}`;
       if (details && typeof details === 'object') {
         const fieldErrors = Object.entries(details).map(([field, error]) => `${field}: ${error}`).join(', ');
         fullMsg += ' - ' + fieldErrors;
@@ -240,13 +255,13 @@ export default function Vehicles() {
   };
 
   const deleteVehicle = async (id: number) => {
-    if (confirm('Delete this vehicle?')) {
+    if (confirm(t('vehicles.deleteConfirm'))) {
       try {
         await api.delete(`/vehicles/${id}`);
         setData((prev) => prev.filter((v) => v.id !== id));
-        showToast(t('toast.success', { action: 'Delete' }));
+        showToast(t('toast.success', { action: t('common.delete') }));
       } catch (err) {
-        showToast('Unable to delete vehicle. Please try again later.', 'error');
+        showToast(t('vehicles.deleteFailed'), 'error');
       }
     }
   };
@@ -340,7 +355,7 @@ export default function Vehicles() {
                       variant={statusVariantMap[vehicle.statut] || 'neutral'}
                       size="sm"
                     >
-                      {vehicle.statut}
+                      {translateVehicleStatus(vehicle.statut)}
                     </StatusBadge>
                   </div>
                   <motion.button
@@ -362,7 +377,7 @@ export default function Vehicles() {
                     <div className="min-w-0">
                       <h3 className="text-sm font-semibold group-hover:text-brand-500 transition-colors" style={{ color: 'var(--text-primary)' }}>{vehicle.marque}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{vehicle.category || 'Economy'}</span>
+                        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{translateVehicleCategory(vehicle.category || 'Economy')}</span>
                         <div className="w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--border-subtle)' }}></div>
                         <span className="text-[11px] font-mono font-medium" style={{ color: 'var(--text-muted)' }}>{vehicle.plate || `PLT-${vehicle.id}`}</span>
                       </div>
@@ -385,11 +400,11 @@ export default function Vehicles() {
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <Fuel size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.fuel || 'Diesel'}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateFuelType(vehicle.fuel || 'Diesel')}</span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <Shield size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.transmission || 'Manual'}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateTransmission(vehicle.transmission || 'Manual')}</span>
                     </div>
                   </div>
 
@@ -413,10 +428,10 @@ export default function Vehicles() {
           {filteredData.length === 0 && (
             <div className="col-span-full py-12 text-center" style={{ color: 'var(--text-muted)' }}>
               <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {data.length === 0 ? 'No vehicles yet.' : 'No vehicles match your filters.'}
+                {data.length === 0 ? t('vehicles.emptyTitle') : t('vehicles.noFilterResults')}
               </p>
               <p className="mt-1 text-xs">
-                {data.length === 0 ? 'Add your first vehicle to start managing your fleet.' : 'Try changing the search or status filter.'}
+                {data.length === 0 ? t('vehicles.emptyHint') : t('vehicles.noFilterHint')}
               </p>
             </div>
           )}
@@ -433,7 +448,7 @@ export default function Vehicles() {
               border: '1px solid var(--border-subtle)',
             }}
           >
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>📷 Vehicle Image</label>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>📷 {t('vehicles.vehicleImage')}</label>
             <div className="relative">
               <input
                 type="file"
@@ -452,15 +467,15 @@ export default function Vehicles() {
               >
                 {imagePreview ? (
                   <div className="relative w-full h-full">
-                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={imagePreview} alt={t('vehicles.preview')} className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="flex flex-col items-center">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5" style={{ backgroundColor: 'var(--bg-hover)' }}>
                       <Camera size={20} style={{ color: 'var(--text-muted)' }} />
                     </div>
-                    <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Click to upload</span>
-                    <span className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>JPG, PNG up to 5MB</span>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('vehicles.clickToUpload')}</span>
+                    <span className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('vehicles.imageSizeHint')}</span>
                   </div>
                 )}
               </label>
@@ -468,64 +483,64 @@ export default function Vehicles() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Brand / Model *</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.brandModel')}</label>
             <input type="text" value={form.marque} onChange={(e) => setForm({ ...form, marque: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Category</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.category')}</label>
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
-                <option value="">Select category</option>
-                {vehicleCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                <option value="">{t('vehicles.selectCategory')}</option>
+                {vehicleCategories.map((category) => <option key={category} value={category}>{translateVehicleCategory(category)}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Plate</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.plate')}</label>
               <input type="text" value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Status</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.status')}</label>
               <select value={form.statut} onChange={(e) => setForm({ ...form, statut: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
-                <option value="AVAILABLE">Available</option>
-                <option value="RESERVED">Reserved</option>
-                <option value="RENTED">Rented</option>
-                <option value="MAINTENANCE">Maintenance</option>
-                <option value="OUT_OF_SERVICE">Out of service</option>
-                <option value="SOLD">Sold</option>
-                <option value="ARCHIVED">Archived</option>
+                <option value="AVAILABLE">{t('common.available')}</option>
+                <option value="RESERVED">{t('common.reserved')}</option>
+                <option value="RENTED">{t('common.rented')}</option>
+                <option value="MAINTENANCE">{t('common.maintenance')}</option>
+                <option value="OUT_OF_SERVICE">{t('vehicles.outOfService')}</option>
+                <option value="SOLD">{t('vehicles.sold')}</option>
+                <option value="ARCHIVED">{t('vehicles.archived')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Price/Day (DH) *</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.pricePerDay')}</label>
               <input type="number" value={form.prixJour} onChange={(e) => setForm({ ...form, prixJour: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
             </div>
           </div>
           {hasFeature('MULTI_BRANCH') && (
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Branch</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('branches.branch')}</label>
               <select value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
-                <option value="">Unassigned</option>
+                <option value="">{t('branches.unassigned')}</option>
                 {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
               </select>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Fuel</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.fuel')}</label>
               <select value={form.fuel} onChange={(e) => setForm({ ...form, fuel: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
-                <option value="Essence">Essence</option>
-                <option value="Diesel">Diesel</option>
-                <option value="Hybrid">Hybrid</option>
-                <option value="Electric">Electric</option>
+                <option value="Essence">{t('vehicles.essence')}</option>
+                <option value="Diesel">{t('vehicles.diesel')}</option>
+                <option value="Hybrid">{t('vehicles.hybrid')}</option>
+                <option value="Electric">{t('vehicles.electric')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Transmission</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.transmission')}</label>
               <select value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
-                <option value="Manual">Manual</option>
-                <option value="Automatic">Automatic</option>
+                <option value="Manual">{t('vehicles.manual')}</option>
+                <option value="Automatic">{t('vehicles.automatic')}</option>
               </select>
             </div>
           </div>

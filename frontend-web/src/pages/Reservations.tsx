@@ -108,6 +108,7 @@ export default function Reservations() {
   const [startTime, setStartTime] = useState('09:00');
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('18:00');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pickupLocation, setPickupLocation] = useState('');
   const [returnLocation, setReturnLocation] = useState('');
   const [notes, setNotes] = useState('');
@@ -115,7 +116,9 @@ export default function Reservations() {
   const [saving, setSaving] = useState(false);
 
   const { showToast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.resolvedLanguage || i18n.language || undefined;
+  const formatDate = (value: string) => new Date(value).toLocaleDateString(locale);
 
   const fetchReservations = useCallback(async () => {
     try {
@@ -220,6 +223,7 @@ export default function Reservations() {
     setEditingId(null);
     setClientData({});
     setSelectedVehicle(null);
+    setFieldErrors({});
     setStartDate('');
     setStartTime('09:00');
     setEndDate('');
@@ -238,6 +242,7 @@ export default function Reservations() {
     setEditingId(res.id);
     setClientData({ clientId: res.clientId, clientFullName: res.clientName });
     setSelectedVehicle(res.vehicleId ? { id: res.vehicleId, marque: res.vehicleMarque } : null);
+    setFieldErrors({});
     setStartDate(res.dateStart);
     setStartTime(res.startTime || '09:00');
     setEndDate(res.dateEnd);
@@ -249,14 +254,23 @@ export default function Reservations() {
   };
 
   const saveReservation = async () => {
-    if (!clientData.clientId || !selectedVehicle?.id || !startDate || !endDate) {
-      showToast('Please select client, vehicle, and dates');
+    const errors: Record<string, string> = {};
+    if (!clientData.clientId) errors.client = 'Client is required.';
+    if (!selectedVehicle?.id) errors.vehicle = 'Vehicle is required.';
+    if (!startDate) errors.startDate = 'Start date is required.';
+    if (!startTime) errors.startTime = 'Start time is required.';
+    if (!endDate) errors.endDate = 'End date is required.';
+    if (!endTime) errors.endTime = 'End time is required.';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      showToast('Please select client, vehicle, and dates', 'warning');
       return;
     }
     try {
       setSaving(true);
+      const vehicle = selectedVehicle as SelectedVehicle;
       const payload = {
-        vehicleId: selectedVehicle.id,
+        vehicleId: vehicle.id,
         clientId: clientData.clientId,
         dateStart: startDate,
         startTime,
@@ -274,6 +288,7 @@ export default function Reservations() {
         showToast(t('toast.newReservationCreated'));
       }
       setIsModalOpen(false);
+      setFieldErrors({});
       await fetchReservations();
     } catch (error: unknown) {
       showToast(apiErrorMessage(error, 'Unable to save reservation. Please try again later.'), 'error');
@@ -281,6 +296,24 @@ export default function Reservations() {
       setSaving(false);
     }
   };
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const fieldError = (field: string) => (
+    fieldErrors[field] ? <p className="mt-1 text-xs font-medium text-danger-500">{fieldErrors[field]}</p> : null
+  );
+
+  const inputClass = (field: string) =>
+    `w-full px-3 py-2 glass-input text-sm ${
+      fieldErrors[field] ? 'border-danger-500 ring-2 ring-danger-500/20' : ''
+    }`;
 
   const deleteReservation = async (id: number) => {
     const reservation = data.find((r) => r.id === id);
@@ -347,14 +380,17 @@ export default function Reservations() {
   const calendarToday = new Date();
   const calendarYear = calendarToday.getFullYear();
   const calendarMonth = calendarToday.getMonth();
-  const monthLabel = calendarToday.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const monthLabel = calendarToday.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   const firstWeekday = new Date(calendarYear, calendarMonth, 1).getDay();
   const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const calendarCells: Array<number | null> = [
     ...Array.from({ length: firstWeekday }, () => null),
     ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
   ];
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const isArabic = locale?.startsWith('ar');
+  const weekDays = Array.from({ length: 7 }, (_, index) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2026, 1, index + 1))
+  );
   const reservationsForDay = (day: number | null) => {
     if (!day) return [];
     return filteredData.filter((reservation) => {
@@ -432,7 +468,7 @@ export default function Reservations() {
         </div>
         <div className="grid grid-cols-7 gap-2 text-center">
           {weekDays.map((day) => (
-            <div key={day} className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-faint)]">
+            <div key={day} className={`text-[10px] font-black tracking-[0.16em] text-[var(--text-faint)] ${isArabic ? '' : 'uppercase'}`}>
               {day}
             </div>
           ))}
@@ -500,9 +536,9 @@ export default function Reservations() {
               </div>
               <div className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 text-sm text-[var(--text-secondary)]">
                 <div className="flex items-center justify-between gap-2">
-                  <span>{new Date(res.dateStart).toLocaleDateString()} {res.startTime?.slice(0, 5)}</span>
+                  <span>{formatDate(res.dateStart)} {res.startTime?.slice(0, 5)}</span>
                   <ChevronRight size={14} />
-                  <span>{new Date(res.dateEnd).toLocaleDateString()} {res.endTime?.slice(0, 5)}</span>
+                  <span>{formatDate(res.dateEnd)} {res.endTime?.slice(0, 5)}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-[var(--text-muted)]">
                   <span>{res.pickupLocation || t('reservations.casablancaAirport')}</span>
@@ -627,9 +663,9 @@ export default function Reservations() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          <span>{new Date(res.dateStart).toLocaleDateString()} {res.startTime?.slice(0, 5)}</span>
+                          <span>{formatDate(res.dateStart)} {res.startTime?.slice(0, 5)}</span>
                           <ChevronRight size={13} style={{ color: 'var(--text-muted)' }} />
-                          <span>{new Date(res.dateEnd).toLocaleDateString()} {res.endTime?.slice(0, 5)}</span>
+                          <span>{formatDate(res.dateEnd)} {res.endTime?.slice(0, 5)}</span>
                         </div>
                         <div className="flex items-center gap-1 mt-0.5" style={{ color: 'var(--text-muted)' }}>
                           <Clock size={11} />
@@ -728,7 +764,8 @@ export default function Reservations() {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? t('reservations.edit') : t('reservations.createReservation')} maxWidth="5xl">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:gap-6">
           <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
-            <SmartClientSearch value={clientData} onSelect={setClientData} required />
+            <SmartClientSearch value={clientData} onSelect={(value) => { setClientData(value); clearFieldError('client'); }} required />
+            {fieldError('client')}
 
             <AnimatePresence>
               {clientData.clientFullName && (
@@ -757,7 +794,7 @@ export default function Reservations() {
                       </div>
                     </div>
                     <button
-                      onClick={() => setClientData({})}
+                      onClick={() => { setClientData({}); clearFieldError('client'); }}
                       className="p-1.5 rounded-lg transition-all"
                       style={{ color: 'var(--text-muted)' }}
                       onMouseEnter={(e) => {
@@ -786,26 +823,34 @@ export default function Reservations() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{t('reservations.startDate')} <span className="text-danger-500">*</span></label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 glass-input text-sm" style={{ color: 'var(--text-primary)' }} />
+                <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); clearFieldError('startDate'); }}
+                  aria-invalid={Boolean(fieldErrors.startDate)}
+                  className={inputClass('startDate')} style={{ color: 'var(--text-primary)' }} />
+                {fieldError('startDate')}
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{t('reservations.endDate')} <span className="text-danger-500">*</span></label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 glass-input text-sm" style={{ color: 'var(--text-primary)' }} />
+                <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); clearFieldError('endDate'); }}
+                  aria-invalid={Boolean(fieldErrors.endDate)}
+                  className={inputClass('endDate')} style={{ color: 'var(--text-primary)' }} />
+                {fieldError('endDate')}
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{t('reservations.startTime')} <span className="text-danger-500">*</span></label>
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-3 py-2 glass-input text-sm" style={{ color: 'var(--text-primary)' }} />
+                <input type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); clearFieldError('startTime'); }}
+                  aria-invalid={Boolean(fieldErrors.startTime)}
+                  className={inputClass('startTime')} style={{ color: 'var(--text-primary)' }} />
+                {fieldError('startTime')}
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{t('reservations.endTime')} <span className="text-danger-500">*</span></label>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full px-3 py-2 glass-input text-sm" style={{ color: 'var(--text-primary)' }} />
+                <input type="time" value={endTime} onChange={(e) => { setEndTime(e.target.value); clearFieldError('endTime'); }}
+                  aria-invalid={Boolean(fieldErrors.endTime)}
+                  className={inputClass('endTime')} style={{ color: 'var(--text-primary)' }} />
+                {fieldError('endTime')}
               </div>
             </div>
 
@@ -815,12 +860,14 @@ export default function Reservations() {
               endDate={endDate}
               endTime={endTime}
               value={selectedVehicle?.id}
-              onSelect={(v) => setSelectedVehicle(v)}
+              onSelect={(v) => { setSelectedVehicle(v); clearFieldError('vehicle'); }}
               onUnavailable={() => {
                 setSelectedVehicle(null);
+                clearFieldError('vehicle');
                 showToast(t('reservations.vehicleUnavailableToast'), 'warning');
               }}
             />
+            {fieldError('vehicle')}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

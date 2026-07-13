@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -127,6 +128,7 @@ const safePdfFileName = (contractNumber: string) =>
   `contract-${(contractNumber || 'contract').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
 
 export default function ContractDetails() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -457,9 +459,9 @@ export default function ContractDetails() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400">
         <AlertCircle size={48} className="mb-4" />
-        <p className="text-lg font-medium">Contract not found</p>
+        <p className="text-lg font-medium">{t('contractDetails.notFound')}</p>
         <button onClick={() => navigate('/contracts')} className="mt-4 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-brand-600 transition-all w-full sm:w-auto">
-          Back to Contracts
+          {t('contractDetails.backToContracts')}
         </button>
       </div>
     );
@@ -473,16 +475,20 @@ export default function ContractDetails() {
       : contract.status;
   const canFinalize = bothSigned && contract.status !== 'ACTIVE' && contract.status !== 'COMPLETED';
   const selectedPdfTemplate = templates.find((tpl) => tpl.id === selectedTemplateId) || null;
+  const statusLabel = (status?: string) =>
+    status ? t(`contracts.statusLabel.${status}`, { defaultValue: status.replace('_', ' ') }) : 'N/A';
+  const paymentStatusLabel = (status?: string) =>
+    status ? t(`subscription.statuses.${status}`, { defaultValue: status.replace('_', ' ') }) : 'N/A';
 
   const detailTabs = [
-    { key: 'overview', label: 'Overview', icon: FileText },
-    { key: 'client', label: 'Client', icon: User },
-    { key: 'vehicle', label: 'Vehicle', icon: Car },
-    { key: 'payment', label: 'Payment', icon: CreditCard },
-    { key: 'inspection', label: 'Inspection', icon: Shield },
-    { key: 'documents', label: 'Documents', icon: ClipboardCheck },
-    { key: 'drivers', label: 'Drivers', icon: Users },
-    { key: 'activity', label: 'Activity', icon: History },
+    { key: 'overview', label: t('contractDetails.tabs.overview'), icon: FileText },
+    { key: 'client', label: t('contractDetails.tabs.client'), icon: User },
+    { key: 'vehicle', label: t('contractDetails.tabs.vehicle'), icon: Car },
+    { key: 'payment', label: t('contractDetails.tabs.payment'), icon: CreditCard },
+    { key: 'inspection', label: t('contractDetails.tabs.inspection'), icon: Shield },
+    { key: 'documents', label: t('contractDetails.tabs.documents'), icon: ClipboardCheck },
+    { key: 'drivers', label: t('contractDetails.tabs.drivers'), icon: Users },
+    { key: 'activity', label: t('contractDetails.tabs.activity'), icon: History },
   ];
 
   return (
@@ -495,21 +501,21 @@ export default function ContractDetails() {
           </button>
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-[#1e293b] truncate">{contract.contractNumber}</h1>
-            <p className="text-slate-500 text-xs sm:text-sm">Contract Details</p>
+            <p className="text-slate-500 text-xs sm:text-sm">{t('contractDetails.pageTitle')}</p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <span className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider ${getStatusBadge(displayedStatus)}`}>
-            {displayedStatus.replace('_', ' ')}
+            {statusLabel(displayedStatus)}
           </span>
           <select
             value={selectedTemplateId ?? 'system'}
             onChange={(event) => handleSelectTemplate(event.target.value)}
             disabled={savingTemplate}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:border-brand-300 disabled:opacity-50"
-            title="PDF Template"
+            title={t('contractDetails.pdfTemplate')}
           >
-            <option value="system">System default</option>
+            <option value="system">{t('contractDetails.systemDefault')}</option>
             {templates.map((tpl) => (
               <option key={tpl.id} value={tpl.id}>
                 {tpl.name}{tpl.default ? ' (agency default)' : ''}{tpl.templateType === 'SYSTEM_DEFAULT' ? ' - system' : ''}
@@ -517,17 +523,17 @@ export default function ContractDetails() {
             ))}
           </select>
           <span className="max-w-[280px] text-[11px] font-medium text-slate-500">
-            PDF Template: {selectedPdfTemplate ? selectedPdfTemplate.name : 'System default'}
+            {t('contractDetails.pdfTemplateLabel')} {selectedPdfTemplate ? selectedPdfTemplate.name : t('contractDetails.systemDefault')}
           </span>
           {!selectedTemplateId && !templates.length && (
             <span className="max-w-[260px] text-[11px] font-medium text-amber-600">
-              No agency contract template configured. System default will be used.
+              {t('contractDetails.noTemplateConfigured')}
             </span>
           )}
           <button onClick={handlePrintPdf} disabled={isSubmitting} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
             <Printer size={14} className="sm:hidden" />
             <Printer size={16} className="hidden sm:block" />
-            <span className="hidden sm:inline">Print</span>
+            <span className="hidden sm:inline">{t('contracts.print')}</span>
           </button>
           <button onClick={handleDownloadPdf} disabled={isSubmitting}
             className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
@@ -545,14 +551,14 @@ export default function ContractDetails() {
             }`}>
             <QrCode size={14} className="sm:hidden" />
             <QrCode size={16} className="hidden sm:block" />
-            {contract.qrToken ? 'Show QR' : 'Generate QR'}
+            {contract.qrToken ? t('contracts.showQR') : t('contracts.generateQR')}
           </button>
           <button
             onClick={() => handleStartInspection('BEFORE_DELIVERY')}
             disabled={isSubmitting}
             className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-all disabled:opacity-50 whitespace-nowrap">
             <CameraIcon />
-            Start Vehicle Inspection
+            {t('contractDetails.startInspection')}
           </button>
         </div>
       </div>
@@ -579,27 +585,27 @@ export default function ContractDetails() {
             <>
               {/* Signature Status */}
               <div className="card-premium space-y-4 p-3 sm:p-5">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Signature Status</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.signatureStatus')}</h3>
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <div className={`p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center ${contract.clientSigned ? 'bg-success-50 border border-success-100' : 'bg-slate-50 border border-slate-100'}`}>
                     <User size={18} className={`mx-auto mb-1.5 sm:mb-2 ${contract.clientSigned ? 'text-success-500' : 'text-slate-300'}`} />
-                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Client</p>
+                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.tabs.client')}</p>
                     <p className={`text-xs sm:text-sm font-bold mt-0.5 sm:mt-1 ${contract.clientSigned ? 'text-success-600' : 'text-slate-400'}`}>
-                      {contract.clientSigned ? 'Signed' : 'Pending'}
+                      {contract.clientSigned ? t('contracts.signed') : t('contracts.waiting')}
                     </p>
                   </div>
                   <div className={`p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center ${contract.ownerSigned ? 'bg-success-50 border border-success-100' : 'bg-slate-50 border border-slate-100'}`}>
                     <Shield size={18} className={`mx-auto mb-1.5 sm:mb-2 ${contract.ownerSigned ? 'text-success-500' : 'text-slate-300'}`} />
-                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Owner</p>
+                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.roleOwner')}</p>
                     <p className={`text-xs sm:text-sm font-bold mt-0.5 sm:mt-1 ${contract.ownerSigned ? 'text-success-600' : 'text-slate-400'}`}>
-                      {contract.ownerSigned ? 'Signed' : 'Pending'}
+                      {contract.ownerSigned ? t('contracts.signed') : t('contracts.waiting')}
                     </p>
                   </div>
                   <div className={`p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center ${contract.employeeSigned ? 'bg-success-50 border border-success-100' : 'bg-slate-50 border border-slate-100'}`}>
                     <FileText size={18} className={`mx-auto mb-1.5 sm:mb-2 ${contract.employeeSigned ? 'text-success-500' : 'text-slate-300'}`} />
-                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Employee</p>
+                    <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.roleEmployee')}</p>
                     <p className={`text-xs sm:text-sm font-bold mt-0.5 sm:mt-1 ${contract.employeeSigned ? 'text-success-600' : 'text-slate-400'}`}>
-                      {contract.employeeSigned ? 'Signed' : 'Pending'}
+                      {contract.employeeSigned ? t('contracts.signed') : t('contracts.waiting')}
                     </p>
                   </div>
                 </div>
@@ -632,7 +638,7 @@ export default function ContractDetails() {
                     <div className="flex items-start sm:items-center gap-3 p-3 sm:p-4 bg-success-50 border border-success-100 rounded-xl">
                       <CheckCircle2 size={18} className="text-success-500 shrink-0 mt-0.5 sm:mt-0" />
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-semibold text-success-700">Agency Signature Applied</p>
+                        <p className="text-xs sm:text-sm font-semibold text-success-700">{t('contractDetails.agencySignatureApplied')}</p>
                         {contract.ownerSignature && (
                           <img src={contract.ownerSignature} alt="Agency Signature" className="h-12 sm:h-16 mt-2 bg-white rounded-lg border border-success-200 p-1" />
                         )}
@@ -653,11 +659,11 @@ export default function ContractDetails() {
               {/* Signature Previews */}
               {(contract.ownerSigned || contract.clientSigned) && (
                 <div className="card-premium space-y-4 p-3 sm:p-5">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Signatures</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.signatures')}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {contract.ownerSigned && contract.ownerSignature && (
                       <div className="space-y-2">
-                        <p className="text-xs font-bold text-slate-500">Agency Representative</p>
+                        <p className="text-xs font-bold text-slate-500">{t('contractDetails.agencyRepresentative')}</p>
                         <div className="p-2 bg-white rounded-xl border border-slate-200">
                           <img src={contract.ownerSignature} alt="Agency Signature" className="h-16 sm:h-20 w-full object-contain" />
                         </div>
@@ -665,7 +671,7 @@ export default function ContractDetails() {
                     )}
                     {contract.clientSigned && contract.clientSignature && (
                       <div className="space-y-2">
-                        <p className="text-xs font-bold text-slate-500">Client</p>
+                        <p className="text-xs font-bold text-slate-500">{t('contractDetails.tabs.client')}</p>
                         <div className="p-2 bg-white rounded-xl border border-slate-200">
                           <img src={contract.clientSignature} alt="Client Signature" className="h-16 sm:h-20 w-full object-contain" />
                         </div>
@@ -680,7 +686,7 @@ export default function ContractDetails() {
                       className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 transition-all disabled:opacity-50"
                     >
                       <FileText size={16} />
-                      View Signed PDF
+                      {t('contractDetails.viewSignedPdf')}
                     </button>
                   )}
                 </div>
@@ -991,7 +997,7 @@ export default function ContractDetails() {
         <div className="space-y-5">
           {/* Timeline */}
           <div className="card-premium p-3 sm:p-5 space-y-4">
-            <h4 className="text-sm font-bold text-[#1e293b]">Contract Timeline</h4>
+            <h4 className="text-sm font-bold text-[#1e293b]">{t('contractDetails.contractTimeline')}</h4>
             <div className="space-y-3">
               {['DRAFT', 'PENDING_SIGNATURE', 'SIGNED', 'ACTIVE', 'COMPLETED'].map((s, idx) => {
                 const isDone = getStatusIndex(contract.status) >= idx;
@@ -1005,7 +1011,7 @@ export default function ContractDetails() {
                     </div>
                     <div className="flex-1">
                       <p className={`text-sm font-medium ${isDone || isCurrent ? 'text-[#1e293b]' : 'text-slate-400'}`}>
-                        {s.replace('_', ' ')}
+                        {statusLabel(s)}
                       </p>
                     </div>
                   </div>
@@ -1018,21 +1024,21 @@ export default function ContractDetails() {
           {clientBalance && (
             <div className="card-premium p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-[#1e293b]">Client Balance</h4>
+                <h4 className="text-sm font-bold text-[#1e293b]">{t('contractDetails.clientBalance')}</h4>
                 <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${clientBalance.paymentStatus === 'PAID' ? 'bg-success-50 text-success-500' : clientBalance.paymentStatus === 'PARTIALLY_PAID' ? 'bg-warning-50 text-warning-500' : 'bg-danger-50 text-danger-500'}`}>
-                  {clientBalance.paymentStatus?.replace('_', ' ')}
+                  {paymentStatusLabel(clientBalance.paymentStatus)}
                 </span>
               </div>
 
               {/* Money row */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-success-50 rounded-xl p-3 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-success-400 mb-1">Paid</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-success-400 mb-1">{paymentStatusLabel('PAID')}</p>
                   <p className="text-lg font-black text-success-600">{Number(clientBalance.totalPaid || 0).toLocaleString()}</p>
                   <p className="text-[10px] text-success-400 font-medium">MAD</p>
                 </div>
                 <div className={`rounded-xl p-3 text-center ${(clientBalance.remainingBalance || 0) > 0 ? 'bg-danger-50' : 'bg-success-50'}`}>
-                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${(clientBalance.remainingBalance || 0) > 0 ? 'text-danger-400' : 'text-success-400'}`}>Remaining</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${(clientBalance.remainingBalance || 0) > 0 ? 'text-danger-400' : 'text-success-400'}`}>{t('contractDetails.remaining')}</p>
                   <p className={`text-lg font-black ${(clientBalance.remainingBalance || 0) > 0 ? 'text-danger-600' : 'text-success-600'}`}>{Number(clientBalance.remainingBalance || 0).toLocaleString()}</p>
                   <p className={`text-[10px] font-medium ${(clientBalance.remainingBalance || 0) > 0 ? 'text-danger-400' : 'text-success-400'}`}>MAD</p>
                 </div>
@@ -1042,15 +1048,15 @@ export default function ContractDetails() {
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-[#f5f5f0] rounded-xl p-2.5 text-center">
                   <p className="text-lg font-bold text-[#1e293b]">{clientBalance.totalRentals ?? 0}</p>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Rentals</p>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{t('contractDetails.rentals')}</p>
                 </div>
                 <div className="bg-[#f5f5f0] rounded-xl p-2.5 text-center">
                   <p className="text-lg font-bold text-[#1e293b]">{clientBalance.openInvoices ?? 0}</p>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Invoices</p>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{t('contractDetails.invoices')}</p>
                 </div>
                 <div className="bg-[#f5f5f0] rounded-xl p-2.5 text-center">
                   <p className="text-lg font-bold text-[#1e293b]">{clientBalance.activeContracts ?? 0}</p>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Active</p>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{t('subscription.statuses.ACTIVE')}</p>
                 </div>
               </div>
             </div>
@@ -1058,21 +1064,21 @@ export default function ContractDetails() {
 
           {/* Terms */}
           <div className="card-premium p-5 space-y-3">
-            <h4 className="text-sm font-bold text-[#1e293b]">Terms & Conditions</h4>
+            <h4 className="text-sm font-bold text-[#1e293b]">{t('contractDetails.termsConditions')}</h4>
             <div className={`flex items-center gap-3 p-3 rounded-xl ${contract.termsAccepted ? 'bg-success-50 text-success-600' : 'bg-slate-50 text-slate-500'}`}>
               <Shield size={18} />
               <span className="text-sm font-medium">
-                {contract.termsAccepted ? 'Terms accepted' : 'Terms not yet accepted'}
+                {contract.termsAccepted ? t('contracts.termsAccepted') : t('contracts.termsPending')}
               </span>
             </div>
           </div>
 
           {/* Metadata */}
           <div className="card-premium p-3 sm:p-5 space-y-2">
-            <h4 className="text-sm font-bold text-[#1e293b]">Metadata</h4>
+            <h4 className="text-sm font-bold text-[#1e293b]">{t('contractDetails.metadata')}</h4>
             <div className="text-xs text-slate-400 space-y-1">
-              <p>Created: {contract.createdAt ? new Date(contract.createdAt).toLocaleString() : 'N/A'}</p>
-              <p>Updated: {contract.updatedAt ? new Date(contract.updatedAt).toLocaleString() : 'N/A'}</p>
+              <p>{t('contractDetails.created')}: {contract.createdAt ? new Date(contract.createdAt).toLocaleString() : 'N/A'}</p>
+              <p>{t('contractDetails.updated')}: {contract.updatedAt ? new Date(contract.updatedAt).toLocaleString() : 'N/A'}</p>
             </div>
           </div>
         </div>

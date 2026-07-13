@@ -8,12 +8,12 @@ spring:
   datasource:
     url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/location-voiture}"
     username: "${SPRING_DATASOURCE_USERNAME:postgres}"
-    password: "${SPRING_DATASOURCE_PASSWORD:}"
+    password: "${SPRING_DATASOURCE_PASSWORD:0000}"
     driver-class-name: "${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}"
 
 
   flyway:
-    enabled: true
+    enabled: "${SPRING_FLYWAY_ENABLED:false}"
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
@@ -28,6 +28,8 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
+    hibernate:
+      ddl-auto: "${SPRING_JPA_HIBERNATE_DDL_AUTO:update}"
     properties:
       hibernate:
         format_sql: true
@@ -62,7 +64,7 @@ app:
   jwt:
     # 256-bit Base64-encoded secret. Set JWT_SECRET in every deployed environment.
     secret: "${JWT_SECRET:dGhpc0lzQVNlY3JldEtleUZvckp3dFRva2VuR2VuZXJhdGlvbkluRGV2T25seSEh}"
-    expiration-ms: 900000         # 15 min access token
+    expiration-ms: 86400000       # 24h access token
     refresh-expiration-ms: 604800000  # 7 days refresh token
 
   # ── Rate Limiting ────────────────────────────────────────────────────────────
@@ -93,6 +95,16 @@ app:
     password:
       expiration-days: 90
 
+  bootstrap:
+    super-admin:
+      enabled: "${APP_BOOTSTRAP_SUPER_ADMIN_ENABLED:false}"
+      email: "${APP_BOOTSTRAP_SUPER_ADMIN_EMAIL:superadmin@test.com}"
+      password: "${APP_BOOTSTRAP_SUPER_ADMIN_PASSWORD:password}"
+    demo:
+      enabled: "${APP_BOOTSTRAP_DEMO_ENABLED:true}"
+      admin-email: "${APP_BOOTSTRAP_DEMO_ADMIN_EMAIL:admin@test.com}"
+      admin-password: "${APP_BOOTSTRAP_DEMO_ADMIN_PASSWORD:password}"
+
 # ── Whop Integration ──────────────────────────────────────────────────────────
 # Set WHOP_API_KEY and WHOP_WEBHOOK_SECRET environment variables in production.
 # The API key is NEVER exposed to the frontend.
@@ -111,16 +123,6 @@ whop:
       secure: "${AUTH_COOKIE_SECURE:false}"
       same-site: "${AUTH_COOKIE_SAME_SITE:Lax}"
       domain: "${AUTH_COOKIE_DOMAIN:}"
-
-  bootstrap:
-    super-admin:
-      enabled: "${APP_BOOTSTRAP_SUPER_ADMIN_ENABLED:false}"
-      email: "${APP_BOOTSTRAP_SUPER_ADMIN_EMAIL:superadmin@test.com}"
-      password: "${APP_BOOTSTRAP_SUPER_ADMIN_PASSWORD:password}"
-    demo:
-      enabled: "${APP_BOOTSTRAP_DEMO_ENABLED:true}"
-      admin-email: "${APP_BOOTSTRAP_DEMO_ADMIN_EMAIL:admin@test.com}"
-      admin-password: "${APP_BOOTSTRAP_DEMO_ADMIN_PASSWORD:password}"
 
   # Shared default retention for every entity's Trash, unless overridden below.
   trash:
@@ -181,3 +183,14 @@ whop:
     # Kept here only as documentation for already-migrated installs.
     gemini:
       api-key: "${GEMINI_API_KEY:}"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  flyway:
+    enabled: "${SPRING_FLYWAY_ENABLED:true}"
+  jpa:
+    hibernate:
+      ddl-auto: "${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}"

@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-13T01:00:06.245Z
+Generated: 2026-07-13T11:51:15.423Z
 Scanned source files: 179
-Static translation keys used: 1392
+Static translation keys used: 1430
 
 ## Missing EN Keys (0)
 
@@ -16,7 +16,7 @@ None.
 
 None.
 
-## Possible Visible Hardcoded Text (1695)
+## Possible Visible Hardcoded Text (1684)
 
 ### By file
 
@@ -45,7 +45,7 @@ None.
 - src\pages\GpsAlerts.tsx: 25
 - src\pages\superadmin\SuperAdminAnnouncements.tsx: 24
 - src\pages\superadmin\SuperAdminAgencies.tsx: 23
-- src\pages\Clients.tsx: 20
+- src\pages\Clients.tsx: 21
 - src\pages\InspectionCapture.tsx: 19
 - src\pages\superadmin\SuperAdminStaff.tsx: 19
 - src\types\dashboard.ts: 18
@@ -60,7 +60,6 @@ None.
 - src\pages\superadmin\SuperAdminTicketDetail.tsx: 15
 - src\components\shared\ContractReturnModal.tsx: 13
 - src\components\shared\VehicleInspection.tsx: 13
-- src\components\shared\DashboardVehicleCard.tsx: 12
 - src\pages\superadmin\SuperAdminFeatures.tsx: 12
 - src\pages\Reports.tsx: 10
 - src\pages\superadmin\SuperAdminRoles.tsx: 10
@@ -72,15 +71,15 @@ None.
 - src\components\shared\LivePriceSidebar.tsx: 8
 - src\pages\superadmin\SuperAdminUsers.tsx: 8
 - src\pages\WhiteLabel.tsx: 8
+- src\components\shared\AiChatPanel.tsx: 7
 - src\context\AuthContext.tsx: 7
 - src\components\ClientProfileModal.tsx: 6
-- src\components\shared\AiChatPanel.tsx: 6
 - src\components\UserMenu.tsx: 6
 - src\context\NotificationContext.tsx: 6
 - src\pages\AccountSuspended.tsx: 6
+- src\components\Layout.tsx: 5
 - src\components\shared\SignaturePad.tsx: 5
-- src\pages\Vehicles.tsx: 5
-- src\components\shared\SmartVehicleSelector.tsx: 4
+- src\pages\Login.tsx: 4
 - src\pages\Reservations.tsx: 4
 - src\pages\superadmin\SuperAdminPayments.tsx: 4
 - src\pages\TicketDetail.tsx: 4
@@ -88,19 +87,19 @@ None.
 - src\components\EmptyState.tsx: 3
 - src\components\settings\SecurityTab.tsx: 3
 - src\components\shared\SmartClientSearch.tsx: 3
-- src\pages\Login.tsx: 3
 - src\components\LanguageSwitcher.tsx: 2
-- src\components\Layout.tsx: 2
 - src\components\Modal.tsx: 2
 - src\components\ReservationDetailsModal.tsx: 2
 - src\components\shared\AiAssistantButton.tsx: 2
 - src\components\shared\QRCodeModal.tsx: 2
+- src\components\SplashScreen.tsx: 2
 - src\components\superadmin\EmptyState.tsx: 2
 - src\context\OnboardingContext.tsx: 2
 - src\pages\ForgotPassword.tsx: 2
 - src\pages\Invoices.tsx: 2
 - src\pages\ResetPassword.tsx: 2
 - src\pages\superadmin\SuperAdminAnalytics.tsx: 2
+- src\pages\Vehicles.tsx: 2
 - src\pages\VerifyEmail.tsx: 2
 - src\pages\VerifyResetCode.tsx: 2
 - src\components\GuidanceSystem.tsx: 1
@@ -132,8 +131,11 @@ None.
 - src\components\help\FaqModal.tsx:31 [prop:placeholder] - Search frequently asked questions...
 - src\components\LanguageSwitcher.tsx:5 [object:label] - English
 - src\components\LanguageSwitcher.tsx:6 [object:label] - Français
-- src\components\Layout.tsx:157 [jsx-text] - Rent
-- src\components\Layout.tsx:157 [jsx-text] - Car
+- src\components\Layout.tsx:159 [jsx-text] - Innova
+- src\components\Layout.tsx:159 [jsx-text] - Car
+- src\components\Layout.tsx:234 [jsx-text] - InnovaCar
+- src\components\Layout.tsx:155 [prop:alt] - InnovaCar
+- src\components\Layout.tsx:232 [prop:alt] - InnovaCar
 - src\components\Modal.tsx:74 [prop:aria-label] - Close dialog
 - src\components\Modal.tsx:100 [prop:aria-label] - Close
 - src\components\ReservationDetailsModal.tsx:102 [jsx-text] - ABC-123-XY
@@ -202,12 +204,13 @@ None.
 - src\components\settings\SecurityTab.tsx:448 [object:label] - Keep your phone number up to date
 - src\components\shared\AiAssistantButton.tsx:23 [prop:title] - AI Assistant
 - src\components\shared\AiAssistantButton.tsx:24 [prop:aria-label] - Open AI assistant
-- src\components\shared\AiChatPanel.tsx:152 [jsx-text] - AI Assistant
-- src\components\shared\AiChatPanel.tsx:172 [jsx-text] - Ask about how to use RentCar, troubleshoot issues, or learn about any feature.
-- src\components\shared\AiChatPanel.tsx:213 [jsx-text] - Open AI Settings
-- src\components\shared\AiChatPanel.tsx:237 [jsx-text] - Thinking...
-- src\components\shared\AiChatPanel.tsx:156 [prop:title] - Clear chat
-- src\components\shared\AiChatPanel.tsx:249 [prop:placeholder] - Ask the AI assistant...
+- src\components\shared\AiChatPanel.tsx:167 [jsx-text] - AI Assistant
+- src\components\shared\AiChatPanel.tsx:187 [jsx-text] - Ask about how to use RentCar, troubleshoot issues, or learn about any feature.
+- src\components\shared\AiChatPanel.tsx:228 [jsx-text] - Open AI Settings
+- src\components\shared\AiChatPanel.tsx:239 [jsx-text] - View Plans
+- src\components\shared\AiChatPanel.tsx:263 [jsx-text] - Thinking...
+- src\components\shared\AiChatPanel.tsx:171 [prop:title] - Clear chat
+- src\components\shared\AiChatPanel.tsx:275 [prop:placeholder] - Ask the AI assistant...
 - src\components\shared\AiStatusBadge.tsx:11 [jsx-text] - AI is unavailable.
 - src\components\shared\CarThinkingAiIcon.tsx:60 [prop:title] - AI error
 - src\components\shared\ContractReturnModal.tsx:89 [jsx-text] - Vehicle Return Inspection
@@ -223,18 +226,6 @@ None.
 - src\components\shared\ContractReturnModal.tsx:182 [object:label] - Fuel Charge
 - src\components\shared\ContractReturnModal.tsx:183 [object:label] - Mileage Fee
 - src\components\shared\ContractReturnModal.tsx:184 [object:label] - Damage Fee
-- src\components\shared\DashboardVehicleCard.tsx:110 [jsx-text] - Fuel
-- src\components\shared\DashboardVehicleCard.tsx:168 [jsx-text] - View
-- src\components\shared\DashboardVehicleCard.tsx:175 [jsx-text] - Reserve
-- src\components\shared\DashboardVehicleCard.tsx:180 [jsx-text] - Contract
-- src\components\shared\DashboardVehicleCard.tsx:188 [jsx-text] - Return
-- src\components\shared\DashboardVehicleCard.tsx:195 [jsx-text] - Maintenance
-- src\components\shared\DashboardVehicleCard.tsx:50 [object:label] - Available
-- src\components\shared\DashboardVehicleCard.tsx:51 [object:label] - Reserved
-- src\components\shared\DashboardVehicleCard.tsx:52 [object:label] - Rented
-- src\components\shared\DashboardVehicleCard.tsx:53 [object:label] - Maintenance
-- src\components\shared\DashboardVehicleCard.tsx:54 [object:label] - Maintenance
-- src\components\shared\DashboardVehicleCard.tsx:55 [object:label] - Out of Svc
 - src\components\shared\LivePriceSidebar.tsx:82 [jsx-text] - Select dates to see pricing
 - src\components\shared\LivePriceSidebar.tsx:92 [jsx-text] - Live Pricing
 - src\components\shared\LivePriceSidebar.tsx:106 [jsx-text] - Subtotal
@@ -243,8 +234,8 @@ None.
 - src\components\shared\LivePriceSidebar.tsx:97 [prop:label] - Insurance
 - src\components\shared\LivePriceSidebar.tsx:98 [prop:label] - Delivery
 - src\components\shared\LivePriceSidebar.tsx:100 [prop:label] - Extra Hours
-- src\components\shared\QRCodeModal.tsx:293 [jsx-text] - WhatsApp
-- src\components\shared\QRCodeModal.tsx:307 [jsx-text] - Email
+- src\components\shared\QRCodeModal.tsx:332 [jsx-text] - WhatsApp
+- src\components\shared\QRCodeModal.tsx:346 [jsx-text] - Email
 - src\components\shared\ReturnInspectionModal.tsx:83 [jsx-text] - Vehicle Return Inspection
 - src\components\shared\ReturnInspectionModal.tsx:84 [jsx-text] - Process deposit return after inspection
 - src\components\shared\ReturnInspectionModal.tsx:95 [jsx-text] - Inspection Checklist
@@ -291,10 +282,6 @@ None.
 - src\components\shared\SmartClientSearch.tsx:200 [jsx-text] - Searching...
 - src\components\shared\SmartClientSearch.tsx:70 [prop:label] - Search Client
 - src\components\shared\SmartClientSearch.tsx:71 [prop:placeholder] - Search by name, phone, CIN, passport, email...
-- src\components\shared\SmartVehicleSelector.tsx:253 [jsx-text] - Please select rental dates first to see available vehicles
-- src\components\shared\SmartVehicleSelector.tsx:264 [jsx-text] - Vehicle availability is unavailable
-- src\components\shared\SmartVehicleSelector.tsx:278 [jsx-text] - Retry availability
-- src\components\shared\SmartVehicleSelector.tsx:321 [jsx-text] - MAD/day
 - src\components\shared\SubscriptionBadge.tsx:27 [object:label] - Trial
 - src\components\shared\SubscriptionBadge.tsx:34 [object:label] - Free
 - src\components\shared\SubscriptionBadge.tsx:41 [object:label] - Basic
@@ -333,6 +320,8 @@ None.
 - src\components\SoundSettings.tsx:15 [object:description] - Low soft error tone
 - src\components\SoundSettings.tsx:16 [object:label] - New Support Message
 - src\components\SoundSettings.tsx:16 [object:description] - Light message pop
+- src\components\SplashScreen.tsx:13 [jsx-text] - InnovaCar
+- src\components\SplashScreen.tsx:11 [prop:alt] - InnovaCar
 - src\components\superadmin\ai\AiModelsTab.tsx:196 [prop:placeholder] - llama-3.3-70b-versatile
 - src\components\superadmin\ai\AiProvidersTab.tsx:263 [prop:placeholder] - Groq
 - src\components\superadmin\EmptyState.tsx:13 [prop:title] - No data available
@@ -416,26 +405,27 @@ None.
 - src\pages\Agency.tsx:111 [jsx-text] - Country
 - src\pages\Agency.tsx:117 [jsx-text] - Tax ID
 - src\pages\Agency.tsx:133 [jsx-text] - Contact Info
-- src\pages\Clients.tsx:409 [jsx-text] - No clients available
-- src\pages\Clients.tsx:410 [jsx-text] - Get started by adding your first client.
-- src\pages\Clients.tsx:422 [jsx-text] - Full Name
-- src\pages\Clients.tsx:427 [jsx-text] - Email
-- src\pages\Clients.tsx:432 [jsx-text] - Phone
-- src\pages\Clients.tsx:437 [jsx-text] - Secondary Phone
-- src\pages\Clients.tsx:447 [jsx-text] - Passport Number
-- src\pages\Clients.tsx:452 [jsx-text] - Driving License
-- src\pages\Clients.tsx:457 [jsx-text] - Nationality
-- src\pages\Clients.tsx:462 [jsx-text] - Gender
-- src\pages\Clients.tsx:465 [jsx-text] - Select
-- src\pages\Clients.tsx:466 [jsx-text] - Male
-- src\pages\Clients.tsx:467 [jsx-text] - Female
-- src\pages\Clients.tsx:471 [jsx-text] - Birth Date
-- src\pages\Clients.tsx:476 [jsx-text] - Address
-- src\pages\Clients.tsx:481 [jsx-text] - City
-- src\pages\Clients.tsx:486 [jsx-text] - Country
-- src\pages\Clients.tsx:491 [jsx-text] - Postal Code
-- src\pages\Clients.tsx:496 [jsx-text] - Company Name
-- src\pages\Clients.tsx:501 [jsx-text] - Notes
+- src\pages\Clients.tsx:444 [jsx-text] - No clients available
+- src\pages\Clients.tsx:445 [jsx-text] - Get started by adding your first client.
+- src\pages\Clients.tsx:457 [jsx-text] - Full Name
+- src\pages\Clients.tsx:464 [jsx-text] - Email
+- src\pages\Clients.tsx:469 [jsx-text] - Phone
+- src\pages\Clients.tsx:476 [jsx-text] - Secondary Phone
+- src\pages\Clients.tsx:481 [jsx-text] - CIN / Passport
+- src\pages\Clients.tsx:488 [jsx-text] - Passport Number
+- src\pages\Clients.tsx:495 [jsx-text] - Driving License
+- src\pages\Clients.tsx:500 [jsx-text] - Nationality
+- src\pages\Clients.tsx:507 [jsx-text] - Gender
+- src\pages\Clients.tsx:510 [jsx-text] - Select
+- src\pages\Clients.tsx:511 [jsx-text] - Male
+- src\pages\Clients.tsx:512 [jsx-text] - Female
+- src\pages\Clients.tsx:516 [jsx-text] - Birth Date
+- src\pages\Clients.tsx:521 [jsx-text] - Address
+- src\pages\Clients.tsx:528 [jsx-text] - City
+- src\pages\Clients.tsx:535 [jsx-text] - Country
+- src\pages\Clients.tsx:542 [jsx-text] - Postal Code
+- src\pages\Clients.tsx:547 [jsx-text] - Company Name
+- src\pages\Clients.tsx:552 [jsx-text] - Notes
 - src\pages\ContractDetails.tsx:630 [jsx-text] - System default
 - src\pages\ContractDetails.tsx:641 [jsx-text] - No agency contract template configured. System default will be used.
 - src\pages\ContractDetails.tsx:648 [jsx-text] - Print
@@ -658,27 +648,27 @@ None.
 - src\pages\ContractTemplates.tsx:117 [object:description] - Advanced contract template for agencies with custom clauses, multi-branch support, and audit records.
 - src\pages\ContractTemplates.tsx:222 [object:label] - Client full name
 - src\pages\ContractTemplates.tsx:473 [object:title] - Conditions generales
-- src\pages\Employees.tsx:248 [jsx-text] - Export
-- src\pages\Employees.tsx:251 [jsx-text] - Add Employee
-- src\pages\Employees.tsx:270 [jsx-text] - Employee
-- src\pages\Employees.tsx:271 [jsx-text] - Contact
-- src\pages\Employees.tsx:272 [jsx-text] - Role
-- src\pages\Employees.tsx:273 [jsx-text] - Department
-- src\pages\Employees.tsx:274 [jsx-text] - Status
-- src\pages\Employees.tsx:275 [jsx-text] - Actions
-- src\pages\Employees.tsx:310 [jsx-text] - No employees found
-- src\pages\Employees.tsx:322 [jsx-text] - Phone
-- src\pages\Employees.tsx:324 [jsx-text] - Role
-- src\pages\Employees.tsx:325 [jsx-text] - Department
-- src\pages\Employees.tsx:329 [jsx-text] - Hire Date
-- src\pages\Employees.tsx:330 [jsx-text] - Status
-- src\pages\Employees.tsx:332 [jsx-text] - Active
-- src\pages\Employees.tsx:332 [jsx-text] - Inactive
-- src\pages\Employees.tsx:257 [prop:placeholder] - Search employees...
-- src\pages\Employees.tsx:302 [prop:aria-label] - Edit employee
-- src\pages\Employees.tsx:303 [prop:title] - Reset login password
-- src\pages\Employees.tsx:304 [prop:aria-label] - Delete employee
-- src\pages\Employees.tsx:327 [prop:placeholder] - 10+ chars, upper, lower, number, symbol
+- src\pages\Employees.tsx:280 [jsx-text] - Export
+- src\pages\Employees.tsx:283 [jsx-text] - Add Employee
+- src\pages\Employees.tsx:302 [jsx-text] - Employee
+- src\pages\Employees.tsx:303 [jsx-text] - Contact
+- src\pages\Employees.tsx:304 [jsx-text] - Role
+- src\pages\Employees.tsx:305 [jsx-text] - Department
+- src\pages\Employees.tsx:306 [jsx-text] - Status
+- src\pages\Employees.tsx:307 [jsx-text] - Actions
+- src\pages\Employees.tsx:342 [jsx-text] - No employees found
+- src\pages\Employees.tsx:354 [jsx-text] - Phone
+- src\pages\Employees.tsx:356 [jsx-text] - Role
+- src\pages\Employees.tsx:357 [jsx-text] - Department
+- src\pages\Employees.tsx:361 [jsx-text] - Hire Date
+- src\pages\Employees.tsx:362 [jsx-text] - Status
+- src\pages\Employees.tsx:364 [jsx-text] - Active
+- src\pages\Employees.tsx:364 [jsx-text] - Inactive
+- src\pages\Employees.tsx:289 [prop:placeholder] - Search employees...
+- src\pages\Employees.tsx:334 [prop:aria-label] - Edit employee
+- src\pages\Employees.tsx:335 [prop:title] - Reset login password
+- src\pages\Employees.tsx:336 [prop:aria-label] - Delete employee
+- src\pages\Employees.tsx:359 [prop:placeholder] - 10+ chars, upper, lower, number, symbol
 - src\pages\Employees.tsx:32 [object:label] - Manager
 - src\pages\Employees.tsx:33 [object:label] - Agent / Counter Staff
 - src\pages\Employees.tsx:34 [object:label] - Accountant
@@ -906,11 +896,12 @@ None.
 - src\pages\InspectionCapture.tsx:20 [object:title] - Documents
 - src\pages\InspectionCapture.tsx:21 [object:title] - Accessories
 - src\pages\InspectionCapture.tsx:22 [object:title] - Video Walkaround Photo
-- src\pages\Invoices.tsx:229 [jsx-text] - Pay
-- src\pages\Invoices.tsx:238 [jsx-text] - No invoices found
-- src\pages\Login.tsx:333 [jsx-text] - Rent
-- src\pages\Login.tsx:334 [jsx-text] - Car
-- src\pages\Login.tsx:441 [prop:placeholder] - XXXXX-XXXXX
+- src\pages\Invoices.tsx:269 [jsx-text] - Pay
+- src\pages\Invoices.tsx:278 [jsx-text] - No invoices found
+- src\pages\Login.tsx:335 [jsx-text] - Innova
+- src\pages\Login.tsx:336 [jsx-text] - Car
+- src\pages\Login.tsx:333 [prop:alt] - InnovaCar
+- src\pages\Login.tsx:443 [prop:placeholder] - XXXXX-XXXXX
 - src\pages\OperationsCenter.tsx:346 [jsx-text] - Refresh
 - src\pages\OperationsCenter.tsx:394 [jsx-text] - Conversation
 - src\pages\OperationsCenter.tsx:434 [jsx-text] - Accepted
@@ -1024,10 +1015,10 @@ None.
 - src\pages\Reports.tsx:114 [prop:description] - Paid invoices will appear here as soon as revenue is recorded.
 - src\pages\Reports.tsx:139 [prop:title] - No fleet utilization yet
 - src\pages\Reports.tsx:140 [prop:description] - Vehicles will appear here once fleet records exist.
-- src\pages\Reservations.tsx:623 [jsx-text] - Auto-created from contract
-- src\pages\Reservations.tsx:896 [jsx-text] - Plate:
-- src\pages\Reservations.tsx:897 [jsx-text] - Fuel:
-- src\pages\Reservations.tsx:898 [jsx-text] - Day:
+- src\pages\Reservations.tsx:654 [jsx-text] - Auto-created from contract
+- src\pages\Reservations.tsx:938 [jsx-text] - Plate:
+- src\pages\Reservations.tsx:939 [jsx-text] - Fuel:
+- src\pages\Reservations.tsx:940 [jsx-text] - Day:
 - src\pages\ResetPassword.tsx:98 [jsx-text] - Rent
 - src\pages\ResetPassword.tsx:98 [jsx-text] - Car
 - src\pages\Settings.tsx:512 [jsx-text] - Agency Logo
@@ -1776,11 +1767,8 @@ None.
 - src\pages\TicketDetail.tsx:160 [jsx-text] - Conversation
 - src\pages\TicketDetail.tsx:162 [jsx-text] - No messages yet.
 - src\pages\TicketDetail.tsx:184 [prop:placeholder] - Write a reply...
-- src\pages\Vehicles.tsx:415 [jsx-text] - Trash is empty
-- src\pages\Vehicles.tsx:425 [jsx-text] - Vehicles are permanently deleted automatically 30 days after being trashed (unless still linked to a contract/reservation).
-- src\pages\Vehicles.tsx:179 [object:label] - Out of service
-- src\pages\Vehicles.tsx:180 [object:label] - Archived
-- src\pages\Vehicles.tsx:181 [object:label] - Trash
+- src\pages\Vehicles.tsx:456 [jsx-text] - Trash is empty
+- src\pages\Vehicles.tsx:466 [jsx-text] - Vehicles are permanently deleted automatically 30 days after being trashed (unless still linked to a contract/reservation).
 - src\pages\VerifyEmail.tsx:48 [jsx-text] - Rent
 - src\pages\VerifyEmail.tsx:48 [jsx-text] - Car
 - src\pages\VerifyResetCode.tsx:74 [jsx-text] - Rent

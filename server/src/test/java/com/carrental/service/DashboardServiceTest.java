@@ -53,7 +53,7 @@ class DashboardServiceTest {
     @Test
     void getDashboardMetrics_returnsCorrectAggregations() {
         when(vehicleRepository.countByTenantId(TENANT_ID)).thenReturn(10L);
-        when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.AVAILABLE)).thenReturn(4L);
+        when(vehicleRepository.countAvailableByTenantId(TENANT_ID)).thenReturn(4L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RESERVED)).thenReturn(2L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RENTED)).thenReturn(4L);
         when(contractRepository.findAllByTenantIdAndStatus(any(), any())).thenReturn(Collections.emptyList());
@@ -76,7 +76,7 @@ class DashboardServiceTest {
     @Test
     void getDashboardMetrics_handlesNullRevenue() {
         when(vehicleRepository.countByTenantId(TENANT_ID)).thenReturn(0L);
-        when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.AVAILABLE)).thenReturn(0L);
+        when(vehicleRepository.countAvailableByTenantId(TENANT_ID)).thenReturn(0L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RESERVED)).thenReturn(0L);
         when(vehicleRepository.countByTenantIdAndStatut(TENANT_ID, VehicleStatus.RENTED)).thenReturn(0L);
         when(contractRepository.findAllByTenantIdAndStatus(any(), any())).thenReturn(Collections.emptyList());

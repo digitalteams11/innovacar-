@@ -4,6 +4,29 @@
     "underDevelopment": "Section en développement",
     "underDevelopmentDesc": "Ce module est actuellement en cours de construction par notre équipe."
   },
+  "vehicleSelector": {
+    "availableCount": "{{count}} vehicules disponibles",
+    "period": "Du {{startDate}} a {{startTime}} au {{endDate}} a {{endTime}}",
+    "searchPlaceholder": "Rechercher par marque, modele ou immatriculation...",
+    "allCategories": "Toutes les categories",
+    "allTransmissions": "Toutes les transmissions",
+    "manual": "Manuelle",
+    "automatic": "Automatique",
+    "selectPeriodFirst": "Choisissez une periode pour afficher les vehicules disponibles.",
+    "loading": "Chargement des vehicules disponibles...",
+    "unavailableTitle": "La disponibilite des vehicules est indisponible",
+    "retry": "Relancer la disponibilite",
+    "noAvailable": "Aucun vehicule disponible pour cette periode.",
+    "changePeriodHint": "Modifiez les dates ou les heures pour rechercher d'autres disponibilites.",
+    "noMatches": "Aucun vehicule ne correspond a vos criteres.",
+    "resetFilters": "Reinitialiser les filtres",
+    "selected": "Selectionne",
+    "madPerDay": "MAD / jour",
+    "estimatedTotal": "Total estime : {{amount}} MAD",
+    "sessionExpired": "Session expiree. Veuillez vous reconnecter.",
+    "permissionDenied": "Vous n'avez pas l'autorisation de consulter les vehicules disponibles.",
+    "loadFailed": "Les vehicules disponibles n'ont pas pu etre charges. Veuillez reessayer."
+  },
   "nav": {
     "dashboard": "Tableau de bord",
     "reservations": "Réservations",
@@ -169,7 +192,47 @@
     "filters": "Filtres",
     "reservations": "réservations",
     "viewProfile": "Voir Profil",
-    "book": "Réserver"
+    "book": "Réserver",
+    "identityNotProvided": "Identité non renseignée",
+    "emptyTitle": "Aucun client disponible",
+    "emptyHint": "Commencez par ajouter votre premier client.",
+    "updateAction": "Mise à jour",
+    "deleteAction": "Suppression",
+    "saveFailed": "Impossible d'enregistrer le client. Veuillez réessayer plus tard.",
+    "deleteFailed": "Impossible de supprimer le client. Veuillez réessayer plus tard.",
+    "deleteConfirm": "Supprimer ce client ?",
+    "form": {
+      "fullName": "Nom complet",
+      "email": "Email",
+      "phone": "Téléphone",
+      "secondaryPhone": "Téléphone secondaire",
+      "cinPassport": "CIN / Passeport",
+      "passportNumber": "Numéro de passeport",
+      "drivingLicense": "Permis de conduire",
+      "nationality": "Nationalité",
+      "gender": "Genre",
+      "birthDate": "Date de naissance",
+      "address": "Adresse",
+      "city": "Ville",
+      "country": "Pays",
+      "postalCode": "Code postal",
+      "companyName": "Nom de l'entreprise",
+      "notes": "Notes"
+    },
+    "gender": {
+      "male": "Homme",
+      "female": "Femme"
+    },
+    "validation": {
+      "fullNameRequired": "Le nom complet est obligatoire.",
+      "phoneRequired": "Le téléphone est obligatoire.",
+      "cinPassportRequired": "Le CIN ou le passeport est obligatoire.",
+      "nationalityRequired": "La nationalité est obligatoire.",
+      "addressRequired": "L'adresse est obligatoire.",
+      "cityRequired": "La ville est obligatoire.",
+      "countryRequired": "Le pays est obligatoire.",
+      "requiredSummary": "Veuillez remplir les champs obligatoires : nom complet, téléphone, CIN ou passeport, adresse, ville, pays et nationalité."
+    }
   },
   "vehicles": {
     "title": "Gestion de la flotte",
@@ -183,7 +246,32 @@
     "maintenance": "Maintenance",
     "manageDetails": "Gérer les détails",
     "seats": "Places",
-    "perDay": "DH/j"
+    "perDay": "DH/j",
+    "trash": "Corbeille",
+    "validation": {
+      "brandRequired": "La marque / le modele est obligatoire.",
+      "plateRequired": "L'immatriculation est obligatoire.",
+      "dailyPriceRequired": "Le prix journalier est obligatoire.",
+      "requiredSummary": "La marque, l'immatriculation et le prix journalier sont obligatoires."
+    },
+    "vehicleImage": "Image du vehicule",
+    "emptyTitle": "Aucun vehicule pour le moment.",
+    "emptyHint": "Ajoutez votre premier vehicule pour commencer a gerer votre flotte.",
+    "noFilterResults": "Aucun vehicule ne correspond a vos filtres.",
+    "noFilterHint": "Modifiez la recherche ou le filtre de statut.",
+    "saveFailed": "Echec de l enregistrement du vehicule",
+    "deleteFailed": "Impossible de supprimer le vehicule. Veuillez reessayer plus tard.",
+    "deleteConfirm": "Supprimer ce vehicule ?",
+    "statusLabel": {
+      "AVAILABLE": "Disponible",
+      "RESERVED": "Reserve",
+      "RENTED": "Loue",
+      "MAINTENANCE": "Maintenance",
+      "IN_MAINTENANCE": "Maintenance",
+      "OUT_OF_SERVICE": "Hors service",
+      "SOLD": "Vendu",
+      "ARCHIVED": "Archive"
+    }
   },
   "reservations": {
     "title": "Réservations & Locations",
@@ -292,7 +380,6 @@
     "clientSigns": "Le client signe",
     "ownerSigns": "Le propriétaire signe",
     "contractActive": "Contrat actif",
-    "completed": "Terminé",
     "waiting": "En attente",
     "termsStatus": "Conditions Générales",
     "termsAccepted": "Conditions acceptées",
@@ -308,7 +395,23 @@
     "print": "Imprimer",
     "fetchFailed": "Échec du chargement du contrat",
     "signFailed": "Échec de l'enregistrement de la signature",
-    "ownerSigned": "Signature du propriétaire enregistrée"
+    "ownerSigned": "Signature du propriétaire enregistrée",
+    "statusLabel": {
+      "DRAFT": "Brouillon",
+      "PENDING_SIGNATURE": "En attente de signature",
+      "SIGNED": "Signe",
+      "ACTIVE": "Actif",
+      "COMPLETED": "Termine",
+      "CANCELLED": "Annule"
+    }
+  },
+  "clientSearch": {
+    "label": "Rechercher un client",
+    "placeholder": "Rechercher par nom, telephone, CIN, passeport, email...",
+    "searching": "Recherche...",
+    "minChars": "Saisissez au moins 2 caracteres",
+    "noResults": "Aucun client trouve",
+    "createNew": "Creer le client \"{{name}}\""
   },
   "invoices": {
     "title": "Factures & Facturation",
@@ -351,7 +454,12 @@
     "branches": "Succursales",
     "vehicles": "véhicules",
     "employees": "employés",
-    "reviews": "avis"
+    "reviews": "avis",
+    "generalInformation": "Informations générales",
+    "contactInfo": "Coordonnées",
+    "saveChanges": "Enregistrer les modifications",
+    "updateSuccess": "Agence mise à jour avec succès.",
+    "updateFailed": "Impossible de mettre à jour l’agence. Veuillez réessayer plus tard."
   },
   "employees": {
     "title": "Répertoire des employés",
@@ -363,10 +471,64 @@
     "searchPlaceholder": "Rechercher par nom, poste ou département...",
     "filters": "Filtres",
     "name": "Nom",
+    "employee": "Employé",
+    "contact": "Contact",
+    "email": "Email",
+    "phone": "Téléphone",
+    "fullName": "Nom complet",
     "role": "Poste",
     "department": "Département",
     "status": "Statut",
-    "actions": "Actions"
+    "actions": "Actions",
+    "export": "Exporter",
+    "editEmployee": "Modifier l'employé",
+    "deleteEmployee": "Supprimer l'employé",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "temporaryPassword": "Mot de passe temporaire",
+    "temporaryPasswordPlaceholder": "10+ caractères, majuscule, minuscule, chiffre, symbole",
+    "hireDate": "Date d'embauche",
+    "saveChanges": "Enregistrer les modifications",
+    "addingEmployee": "Ajout de l'employé...",
+    "noEmployees": "Aucun employé trouvé",
+    "deleteConfirm": "Supprimer cet employé ?",
+    "resetPasswordPrompt": "Nouveau mot de passe pour {{name}} (10+ caractères avec majuscule, minuscule, chiffre et symbole)",
+    "actionLabels": {
+      "update": "Mise à jour",
+      "delete": "Suppression"
+    },
+    "messages": {
+      "created": "Employé créé avec succès.",
+      "passwordReset": "Mot de passe réinitialisé avec succès"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger les employés.",
+      "fullNameRequired": "Le nom complet est obligatoire.",
+      "emailRequired": "L'email est obligatoire.",
+      "temporaryPasswordRequired": "Le mot de passe temporaire est obligatoire.",
+      "strongPassword": "Utilisez 10+ caractères avec majuscule, minuscule, chiffre et symbole.",
+      "completeRequired": "Complétez les champs obligatoires et utilisez un mot de passe temporaire fort.",
+      "permissionsLoading": "Les permissions sont encore en cours de chargement. Réessayez dans un instant.",
+      "noPermission": "Vous n'avez pas la permission de gérer les employés.",
+      "saveFailed": "Impossible d'enregistrer l'employé. Réessayez plus tard.",
+      "noLoginAccount": "Cet ancien employé n'a pas de compte de connexion",
+      "resetPasswordFailed": "Impossible de réinitialiser le mot de passe. Réessayez plus tard.",
+      "deleteFailed": "Impossible de supprimer l'employé. Réessayez plus tard."
+    },
+    "roles": {
+      "ADMIN": "Administrateur",
+      "MANAGER": "Manager",
+      "AGENT": "Agent / comptoir",
+      "ACCOUNTANT": "Comptable",
+      "FLEET_MANAGER": "Responsable flotte",
+      "RECEPTIONIST": "Réceptionniste",
+      "DRIVER": "Chauffeur",
+      "VIEWER": "Lecteur",
+      "EMPLOYEE": "Employé"
+    },
+    "statuses": {
+      "ACTIVE": "Actif",
+      "INACTIVE": "Inactif"
+    }
   },
   "reports": {
     "title": "Analyses & Rapports",
@@ -428,7 +590,138 @@
     "agencySaved": "Informations de l'agence enregistrées avec succès !",
     "passwordChanged": "Mot de passe modifié avec succès !",
     "avatarUploadFailed": "Impossible de téléverser l'avatar. Veuillez réessayer plus tard.",
-    "profileSaveFailed": "Impossible d'enregistrer le profil. Veuillez réessayer plus tard."
+    "profileSaveFailed": "Impossible d'enregistrer le profil. Veuillez réessayer plus tard.",
+    "billingTab": {
+      "trialEndsOn": "Essai terminé le {{date}} ({{days}} jours restants)",
+      "renewsOn": "Renouvellement le {{date}}",
+      "subscriptionInactive": "Abonnement inactif",
+      "upgradePlan": "Mettre à niveau",
+      "changePlan": "Changer de plan",
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "cycles": {
+        "monthly": "mensuel",
+        "yearly": "annuel",
+        "MONTHLY": "mensuel",
+        "YEARLY": "annuel"
+      },
+      "plansLoadFailed": "Impossible de charger les plans ({{error}}). Vérifiez votre connexion ou réessayez.",
+      "noPlansFound": "Aucun plan d’abonnement trouvé. Demandez au Super Admin de créer des plans actifs.",
+      "noCyclePlans": "Aucun plan {{cycle}} disponible pour le moment.",
+      "subtotal": "Sous-total",
+      "total": "Total",
+      "confirmCancellationReview": "Je comprends que cela enverra une demande d’annulation pour examen.",
+      "submitting": "Envoi...",
+      "submitRequest": "Envoyer la demande",
+      "keepSubscription": "Garder l’abonnement",
+      "billingLoadFailed": "Impossible de charger les informations de facturation. Veuillez réessayer plus tard.",
+      "paymentProviderNotConfigured": "Le prestataire de paiement n’est pas configuré pour ce plan. Veuillez contacter le support.",
+      "typeCancelToConfirm": "Tapez CANCEL pour confirmer.",
+      "subscriptionCancelled": "Abonnement annulé.",
+      "cancelFailed": "Impossible d’annuler l’abonnement. Veuillez réessayer plus tard.",
+      "paymentsProcessedExternally": "Les paiements d’abonnement sont traités à l’extérieur",
+      "paymentMethodManagedExternally": "Le paiement et le checkout sont gérés de manière sécurisée par notre prestataire de paiement. Modifiez ou supprimez votre moyen de paiement depuis le portail utilisé lors de l’abonnement.",
+      "cancelImmediateWarning": "L’annulation désactivera immédiatement votre abonnement. Vous perdrez l’accès aux fonctionnalités payantes jusqu’à une nouvelle souscription. Cela ne supprime pas vos données.",
+      "typeCancelLabel": "Tapez CANCEL pour confirmer",
+      "cancelling": "Annulation...",
+      "confirmCancellation": "Confirmer l’annulation",
+      "subscriptionPlansLoadFailed": "Impossible de charger les plans d’abonnement. Veuillez réessayer.",
+      "promoValidationFailed": "Impossible de valider le code promo.",
+      "checkoutMissingAdmin": "Le paiement n’est pas configuré pour ce plan. Le Super Admin doit ajouter un lien de paiement Whop ou un ID de plan.",
+      "confirmCancellationRequest": "Veuillez confirmer la demande d’annulation."
+    },
+    "privacyTab": {
+      "exportData": "Exporter vos données",
+      "exportDataDesc": "Téléchargez les données de votre agence au format CSV",
+      "downloadAccountData": "Télécharger les données du compte",
+      "downloadAccountDataDesc": "Profil de votre agence et paramètres opérationnels au format JSON",
+      "dataRetention": "Conservation des données",
+      "dangerZone": "Zone sensible",
+      "requestDeactivation": "Demander la désactivation du compte",
+      "requestDeactivationTitle": "Demander la désactivation du compte",
+      "entities": {
+        "vehicles": "Véhicules",
+        "clients": "Clients",
+        "contracts": "Contrats",
+        "reservations": "Réservations"
+      },
+      "noRowsToExport": "Aucun élément {{entity}} à exporter.",
+      "exportSuccess": "{{entity}} exporté avec succès.",
+      "exportFailed": "Impossible d’exporter {{entity}}. Veuillez réessayer plus tard.",
+      "accountDownloadSuccess": "Données du compte téléchargées avec succès.",
+      "accountDownloadFailed": "Impossible de télécharger les données du compte. Veuillez réessayer plus tard.",
+      "confirmBeforeSubmit": "Veuillez confirmer que vous comprenez cette demande avant de l’envoyer.",
+      "deactivationSubmitted": "Demande de désactivation envoyée. Notre équipe vous contactera pour confirmer.",
+      "deactivationFailed": "Impossible d’envoyer votre demande. Veuillez réessayer plus tard.",
+      "retentionPrefix": "Les photos et vidéos d’inspection des véhicules sont conservées pendant",
+      "daysCount": "{{count}} jours",
+      "retentionSuffix": "après la date de fin de réservation, selon vos paramètres d’opérations. Les autres dossiers de l’agence (clients, contrats, réservations) sont conservés tant que votre compte reste actif.",
+      "contactSupportDataRequests": "Contacter le support à propos des demandes de données",
+      "deactivationInfo": "La demande de désactivation du compte ouvre un ticket support examiné par notre équipe. Nous ne supprimons pas automatiquement vos données, afin d’éviter toute perte accidentelle.",
+      "deactivationModalDesc": "Cela ouvrira un ticket support pour que notre équipe examine et traite votre demande de désactivation. Vos données ne seront pas supprimées automatiquement.",
+      "reasonOptional": "Raison (optionnel)",
+      "deactivationConfirm": "Je comprends que cette demande sera examinée par l’équipe RentCar avant toute action.",
+      "submitting": "Envoi...",
+      "submitRequest": "Envoyer la demande",
+      "cancel": "Annuler"
+    },
+    "operationsTab": {
+      "title": "Paramètres opérationnels",
+      "subtitle": "Configuration régionale, e-mail et notifications",
+      "currency": "Devise",
+      "language": "Langue",
+      "timezone": "Fuseau horaire",
+      "vehicleInspectionMedia": "Médias d’inspection du véhicule",
+      "vehicleInspectionMediaDesc": "Conservez les photos et vidéos d’inspection jusqu’à la date de fin de réservation plus cette période de conservation.",
+      "days": "{{count}} jours",
+      "customDays": "Jours personnalisés",
+      "moreOperationsTools": "Plus d’outils opérationnels",
+      "operationsCenterDesc": "Suivez les tickets support et les problèmes opérationnels.",
+      "saveSettings": "Enregistrer les paramètres",
+      "agencySmtp": "SMTP de l’agence",
+      "smtpHost": "Hôte SMTP",
+      "smtpPort": "Port SMTP",
+      "username": "Nom d’utilisateur",
+      "password": "Mot de passe",
+      "smtpPasswordStored": "Stocké de manière sécurisée - saisissez pour remplacer",
+      "smtpPasswordPlaceholder": "Saisir le mot de passe SMTP",
+      "useTls": "Utiliser TLS"
+    },
+    "notificationsTab": {
+      "channels": "Canaux de notification",
+      "channelsDesc": "Choisissez comment recevoir les notifications liées à l’activité de l’agence",
+      "inApp": "Notifications dans l’application",
+      "inAppDesc": "Contrat signé, rappels de réservation, activité de paiement, et plus",
+      "email": "Notifications par e-mail",
+      "emailDesc": "Recevez une copie des alertes importantes par e-mail",
+      "browserPush": "Notifications push du navigateur",
+      "browserPushDesc": "Recevez des notifications même lorsque RentCar est en arrière-plan",
+      "saveSettings": "Enregistrer les paramètres"
+    },
+    "agencyLogo": "Logo de l’agence",
+    "noLogo": "Aucun logo",
+    "uploadLogo": "Importer le logo",
+    "logoUploadSuccess": "Logo importé avec succès",
+    "logoUploadFailed": "Échec de l’import du logo. Veuillez réessayer.",
+    "logoRemoved": "Logo supprimé",
+    "logoRemoveFailed": "Échec de la suppression du logo",
+    "agencyDigitalSignature": "Signature numérique de l’agence",
+    "agencySignatureDesc": "Cette signature sera automatiquement appliquée à tous les futurs contrats.",
+    "clearRedraw": "Effacer et redessiner",
+    "drawAgencySignature": "Dessinez la signature de l’agence ici",
+    "agencyStamp": "Cachet de l’agence",
+    "agencyStampOptional": "Cachet de l’agence (optionnel)",
+    "noStamp": "Aucun cachet",
+    "uploadStamp": "Importer le cachet",
+    "stampUploadSuccess": "Cachet importé avec succès",
+    "stampUploadFailed": "Échec de l’import du cachet. Veuillez réessayer.",
+    "stampRemoved": "Cachet supprimé",
+    "stampRemoveFailed": "Échec de la suppression du cachet",
+    "termsConditions": "Conditions générales",
+    "termsConditionsDesc": "Ces conditions seront affichées sur chaque page de signature de contrat. Laissez vide pour utiliser les valeurs par défaut.",
+    "termsConditionsPlaceholder": "Saisissez ici les conditions générales de votre agence...",
+    "moreAgencySettings": "Plus de paramètres agence",
+    "branchesDesc": "Gérez plusieurs emplacements de succursales pour cette agence."
   },
   "toast": {
     "success": "{{action}} avec succès !",
@@ -750,32 +1043,97 @@
       "skip": "Plus tard"
     },
     "fields": {
-      "name": "Nom de l'agence", "logoUrl": "URL du logo", "phone": "Téléphone",
-      "address": "Adresse", "city": "Ville", "country": "Pays", "currency": "Devise",
-      "timezone": "Fuseau horaire", "language": "Langue", "taxRate": "Taux de taxe",
+      "name": "Nom de l'agence",
+      "logoUrl": "URL du logo",
+      "phone": "Téléphone",
+      "address": "Adresse",
+      "city": "Ville",
+      "country": "Pays",
+      "currency": "Devise",
+      "timezone": "Fuseau horaire",
+      "language": "Langue",
+      "taxRate": "Taux de taxe",
       "rentalPolicies": "Politiques de location"
     },
     "wizard": {
-      "agency": { "title": "Informations de l'agence" },
-      "business": { "title": "Paramètres métier" },
-      "vehicle": { "title": "Créez votre premier véhicule", "description": "Ajoutez votre premier véhicule pour commencer à recevoir des réservations.", "action": "Créer un véhicule" },
-      "client": { "title": "Créez votre premier client", "description": "Créez un profil client pour les réservations, contrats et paiements.", "action": "Créer un client" },
-      "reservation": { "title": "Créez votre première réservation", "description": "Reliez un client et un véhicule disponible avec des dates et heures précises.", "action": "Créer une réservation" },
-      "contract": { "title": "Générez votre premier contrat", "description": "Générez un contrat depuis la réservation sans double saisie.", "action": "Générer le contrat" },
-      "gps": { "title": "Configurer le GPS", "description": "Connectez facultativement votre fournisseur GPS pour suivre véhicules et trajets.", "action": "Configurer le GPS" },
-      "complete": { "title": "Configuration terminée", "description": "Félicitations. Votre agence est prête à gérer les locations.", "action": "Ouvrir le tableau de bord" }
+      "agency": {
+        "title": "Informations de l'agence"
+      },
+      "business": {
+        "title": "Paramètres métier"
+      },
+      "vehicle": {
+        "title": "Créez votre premier véhicule",
+        "description": "Ajoutez votre premier véhicule pour commencer à recevoir des réservations.",
+        "action": "Créer un véhicule"
+      },
+      "client": {
+        "title": "Créez votre premier client",
+        "description": "Créez un profil client pour les réservations, contrats et paiements.",
+        "action": "Créer un client"
+      },
+      "reservation": {
+        "title": "Créez votre première réservation",
+        "description": "Reliez un client et un véhicule disponible avec des dates et heures précises.",
+        "action": "Créer une réservation"
+      },
+      "contract": {
+        "title": "Générez votre premier contrat",
+        "description": "Générez un contrat depuis la réservation sans double saisie.",
+        "action": "Générer le contrat"
+      },
+      "gps": {
+        "title": "Configurer le GPS",
+        "description": "Connectez facultativement votre fournisseur GPS pour suivre véhicules et trajets.",
+        "action": "Configurer le GPS"
+      },
+      "complete": {
+        "title": "Configuration terminée",
+        "description": "Félicitations. Votre agence est prête à gérer les locations.",
+        "action": "Ouvrir le tableau de bord"
+      }
     },
     "pages": {
-      "dashboard": { "title": "Votre tableau de bord en direct", "description": "Suivez réservations, véhicules, revenus, clients et prochaines actions avec les données réelles." },
-      "vehicles": { "title": "Gérez vos véhicules", "description": "Ajoutez des véhicules et gérez leurs informations, disponibilité, GPS et entretien." },
-      "clients": { "title": "Gérez vos clients", "description": "Créez les profils et consultez réservations, contrats, documents et paiements." },
-      "reservations": { "title": "Gérez les réservations", "description": "Les réservations relient automatiquement clients, véhicules, contrats, disponibilité et paiements." },
-      "contracts": { "title": "Générez les contrats", "description": "Les contrats réutilisent les données client, véhicule, prix et réservation et acceptent la signature numérique." },
-      "payments": { "title": "Suivez chaque paiement", "description": "Consultez revenus, soldes, factures, remboursements et historique depuis la source financière unique." },
-      "gps": { "title": "Suivez les véhicules connectés", "description": "Configurez un fournisseur et suivez position, vitesse, contact, batterie et trajets." },
-      "settings": { "title": "Configurez votre espace", "description": "Gérez identité, langue, devise, fuseau, notifications, SMTP et intégrations." },
-      "contractTemplates": { "title": "Créez vos modèles de contrat", "description": "Importez un contrat papier scanné, associez les champs dynamiques et définissez un modèle par défaut pour la génération du PDF." },
-      "operationsCenter": { "title": "Suivez les tickets d'assistance", "description": "Créez des tickets d'assistance, suivez leur statut et ajoutez des commentaires jusqu'à leur résolution." }
+      "dashboard": {
+        "title": "Votre tableau de bord en direct",
+        "description": "Suivez réservations, véhicules, revenus, clients et prochaines actions avec les données réelles."
+      },
+      "vehicles": {
+        "title": "Gérez vos véhicules",
+        "description": "Ajoutez des véhicules et gérez leurs informations, disponibilité, GPS et entretien."
+      },
+      "clients": {
+        "title": "Gérez vos clients",
+        "description": "Créez les profils et consultez réservations, contrats, documents et paiements."
+      },
+      "reservations": {
+        "title": "Gérez les réservations",
+        "description": "Les réservations relient automatiquement clients, véhicules, contrats, disponibilité et paiements."
+      },
+      "contracts": {
+        "title": "Générez les contrats",
+        "description": "Les contrats réutilisent les données client, véhicule, prix et réservation et acceptent la signature numérique."
+      },
+      "payments": {
+        "title": "Suivez chaque paiement",
+        "description": "Consultez revenus, soldes, factures, remboursements et historique depuis la source financière unique."
+      },
+      "gps": {
+        "title": "Suivez les véhicules connectés",
+        "description": "Configurez un fournisseur et suivez position, vitesse, contact, batterie et trajets."
+      },
+      "settings": {
+        "title": "Configurez votre espace",
+        "description": "Gérez identité, langue, devise, fuseau, notifications, SMTP et intégrations."
+      },
+      "contractTemplates": {
+        "title": "Créez vos modèles de contrat",
+        "description": "Importez un contrat papier scanné, associez les champs dynamiques et définissez un modèle par défaut pour la génération du PDF."
+      },
+      "operationsCenter": {
+        "title": "Suivez les tickets d'assistance",
+        "description": "Créez des tickets d'assistance, suivez leur statut et ajoutez des commentaires jusqu'à leur résolution."
+      }
     },
     "tour": {
       "dashboard": "Voici votre tableau de bord alimenté par les données réelles.",
@@ -830,6 +1188,154 @@
     "featureLocked": "Fonctionnalité Verrouillée",
     "featureLockedDesc": "Cette fonctionnalité nécessite un plan supérieur. Mettez à niveau pour la débloquer.",
     "upgradeNow": "Mettre à Niveau",
-    "maybeLater": "Plus Tard"
+    "maybeLater": "Plus Tard",
+    "clients": "Clients",
+    "contracts": "Contrats",
+    "planNames": {
+      "trial": "Essai",
+      "standard": "Standard",
+      "basic": "Basique",
+      "premium": "Premium",
+      "enterprise": "Entreprise"
+    },
+    "statuses": {
+      "TRIAL": "Essai",
+      "ACTIVE": "Actif",
+      "INACTIVE": "Inactif",
+      "CANCELLED": "Annulé",
+      "CANCELED": "Annulé",
+      "CANCEL_SCHEDULED": "Annulation planifiée",
+      "PAST_DUE": "Paiement en retard",
+      "EXPIRED": "Expiré",
+      "SUSPENDED": "Suspendu",
+      "PAID": "Payé",
+      "PENDING": "En attente",
+      "FAILED": "Échec",
+      "UNPAID": "Non paye",
+      "PARTIALLY_PAID": "Partiellement paye"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "noNotifications": "Aucune notification pour le moment",
+    "types": {
+      "PAYMENT_PARTIAL": {
+        "title": "Paiement en attente",
+        "message": "Le contrat {{contractNumber}} a un paiement en attente ou partiel."
+      },
+      "CONTRACT_FULLY_SIGNED": {
+        "title": "Contrat entierement signe",
+        "message": "Le client a signe le contrat {{contractNumber}}. Le contrat est maintenant entierement signe."
+      },
+      "QR_GENERATED": {
+        "title": "QR code genere",
+        "message": "Le QR code du contrat {{contractNumber}} est pret a etre partage avec le client."
+      },
+      "CONTRACT_SIGNED_AGENCY": {
+        "title": "Contrat signe par l agence",
+        "message": "Le contrat {{contractNumber}} a ete signe par l agence."
+      },
+      "CONTRACT_CREATED": {
+        "title": "Contrat cree",
+        "message": "Le contrat {{contractNumber}} a ete cree."
+      }
+    },
+    "countLabel": "{{count}} notifications"
+  },
+  "enum": {
+    "vehicleCategory": {
+      "ECONOMY": "Economique",
+      "COMPACT": "Compacte",
+      "SEDAN": "Berline",
+      "SUV": "SUV",
+      "LUXURY": "Luxe",
+      "SPORT": "Sport",
+      "ELECTRIC": "Electrique",
+      "HYBRID": "Hybride",
+      "VAN": "Van",
+      "PICKUP": "Pick-up",
+      "MINIBUS": "Minibus",
+      "TRUCK": "Camion",
+      "MOTORCYCLE": "Moto"
+    },
+    "fuel": {
+      "ESSENCE": "Essence",
+      "PETROL": "Essence",
+      "GASOLINE": "Essence",
+      "DIESEL": "Diesel",
+      "ELECTRIC": "Electrique",
+      "HYBRID": "Hybride"
+    },
+    "transmission": {
+      "MANUAL": "Manuelle",
+      "AUTOMATIC": "Automatique"
+    },
+    "fuelLevel": {
+      "EMPTY": "Vide",
+      "QUARTER": "1/4",
+      "HALF": "1/2",
+      "THREE_QUARTERS": "3/4",
+      "FULL": "Plein"
+    }
+  },
+  "common": {
+    "reserve": "Reserver",
+    "contract": "Contrat",
+    "return": "Retour",
+    "update": "Mise a jour",
+    "delete": "Suppression",
+    "error": "Erreur",
+    "select": "Sélectionner",
+    "saveChanges": "Enregistrer les modifications",
+    "saving": "Enregistrement...",
+    "optional": "Optionnel",
+    "notAvailable": "N/A",
+    "remove": "Supprimer"
+  },
+  "branches": {
+    "branch": "Succursale",
+    "unassigned": "Non assigne"
+  },
+  "contractDetails": {
+    "notFound": "Contrat introuvable",
+    "backToContracts": "Retour aux contrats",
+    "pageTitle": "Details du contrat",
+    "pdfTemplate": "Modele de PDF",
+    "systemDefault": "Modele par defaut",
+    "pdfTemplateLabel": "Modele de PDF :",
+    "noTemplateConfigured": "Aucun modele de contrat configure pour l agence. Le modele par defaut sera utilise.",
+    "regeneratePdf": "Regenerer le PDF",
+    "regeneratePdfHint": "Actualise le PDF enregistre avec le logo, le nom et les parametres actuels de l agence",
+    "startInspection": "Demarrer inspection vehicule",
+    "signatureStatus": "Statut de signature",
+    "roleOwner": "Proprietaire",
+    "roleEmployee": "Employe",
+    "agencySignatureApplied": "Signature de l agence appliquee",
+    "agencyRepresentative": "Representant de l agence",
+    "signatures": "Signatures",
+    "viewSignedPdf": "Voir le PDF signe",
+    "contractTimeline": "Chronologie du contrat",
+    "clientBalance": "Solde client",
+    "remaining": "Restant",
+    "rentals": "Locations",
+    "invoices": "Factures",
+    "termsConditions": "Conditions generales",
+    "metadata": "Metadonnees",
+    "created": "Cree",
+    "updated": "Mis a jour",
+    "agencySignatureAlt": "Signature de l agence",
+    "agencyStampAlt": "Cachet de l agence",
+    "clientSignatureAlt": "Signature du client",
+    "tabs": {
+      "overview": "Apercu",
+      "client": "Client",
+      "vehicle": "Vehicule",
+      "payment": "Paiement",
+      "inspection": "Inspection",
+      "documents": "Documents",
+      "drivers": "Conducteurs",
+      "activity": "Activite"
+    }
   }
 }
