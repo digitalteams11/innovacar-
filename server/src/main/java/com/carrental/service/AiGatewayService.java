@@ -121,13 +121,31 @@ public class AiGatewayService {
                 systemInstruction,
                 userPrompt,
                 settings.getRequestTimeoutSeconds(),
-                settings.getMaxOutputTokens(),
+                clampMaxTokens(settings.getMaxOutputTokens(), model),
                 settings.getTemperature()
         );
 
         AiCallResult result = client.generate(request);
         recordUsage(provider, model, result);
         return result;
+    }
+
+    /**
+     * The admin-configured max_tokens is a single global value, but some models
+     * (esp. Groq's smaller/guard models) have a context window far below it —
+     * providers reject max_tokens >= context_window with an HTTP 400. Clamp
+     * against the model's known context window before sending so the common
+     * case never round-trips a failed request; {@link com.carrental.service.provider.GroqProviderClient}
+     * still retries reactively off the provider's error text for models whose
+     * window isn't known here.
+     */
+    private Integer clampMaxTokens(Integer configured, AiModel model) {
+        int requested = configured != null ? configured : 4096;
+        if (model == null || model.getContextWindow() == null || model.getContextWindow() <= 0) {
+            return requested;
+        }
+        long cap = Math.max(1, model.getContextWindow() - 1);
+        return (int) Math.min(requested, cap);
     }
 
     private AiModel resolveModel(Long providerId) {

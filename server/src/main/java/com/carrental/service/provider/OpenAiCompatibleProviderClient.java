@@ -110,6 +110,11 @@ public class OpenAiCompatibleProviderClient implements AiProviderClient {
 
     private AiCallResult call(String baseUrl, String model, String apiKey, String systemInstruction, String userPrompt,
                                Integer timeoutSeconds, Integer maxTokens, Double temperature) {
+        return call(baseUrl, model, apiKey, systemInstruction, userPrompt, timeoutSeconds, maxTokens, temperature, true);
+    }
+
+    private AiCallResult call(String baseUrl, String model, String apiKey, String systemInstruction, String userPrompt,
+                               Integer timeoutSeconds, Integer maxTokens, Double temperature, boolean allowCapRetry) {
         if (baseUrl == null || baseUrl.isBlank()) {
             return AiCallResult.fail("AI_PROVIDER_URL_MISSING", "No base URL configured for this provider.");
         }
@@ -152,6 +157,16 @@ public class OpenAiCompatibleProviderClient implements AiProviderClient {
             int httpStatus = ex.getStatusCode().value();
             String providerMsg = safeProviderMessage(ex);
             log.warn("[OPENAI_COMPATIBLE_CALL] model={} httpStatus={} success=false latencyMs={}", resolvedModel, httpStatus, latencyMs);
+
+            if (httpStatus == 400) {
+                Integer cap = extractMaxTokensCap(providerMsg);
+                int requested = maxTokens != null ? maxTokens : 2048;
+                if (allowCapRetry && cap != null && cap > 0 && cap < requested) {
+                    log.warn("[OPENAI_COMPATIBLE_CALL] model={} requested max_tokens={} exceeds provider cap={} — retrying with clamped value",
+                            resolvedModel, requested, cap);
+                    return call(baseUrl, model, apiKey, systemInstruction, userPrompt, timeoutSeconds, cap, temperature, false);
+                }
+            }
 
             return switch (httpStatus) {
                 case 400 -> AiCallResult.fail("AI_BAD_REQUEST", "Provider rejected the request (HTTP 400).", latencyMs, httpStatus, providerMsg);

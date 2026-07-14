@@ -134,11 +134,6 @@ public class ContractResponse {
     private String publicSigningUrl;
     private String pdfUrl;
 
-    // Selected agency contract template (null = system default PDF)
-    private Long selectedTemplateId;
-    private String selectedTemplateName;
-    private String selectedTemplateType;
-
     // Deposit
     private com.carrental.dto.deposit.DepositResponse deposit;
 
@@ -178,10 +173,6 @@ public class ContractResponse {
                 .returnTime(contract.getReturnTime())
                 .pickupLocation(contract.getPickupLocation())
                 .returnLocation(contract.getReturnLocation())
-                .selectedTemplateId(contract.getSelectedTemplate() != null ? contract.getSelectedTemplate().getId() : null)
-                .selectedTemplateName(contract.getSelectedTemplate() != null ? contract.getSelectedTemplate().getName() : null)
-                .selectedTemplateType(contract.getSelectedTemplate() != null && contract.getSelectedTemplate().getTemplateType() != null
-                        ? contract.getSelectedTemplate().getTemplateType().name() : null)
                 .clientFirstName(contract.getClientFirstName())
                 .clientLastName(contract.getClientLastName())
                 .clientFullName(contract.getClientFullName())

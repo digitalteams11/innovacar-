@@ -36,8 +36,23 @@ public class WhiteLabelSettings {
     @Column(name = "custom_domain", unique = true, length = 255)
     private String customDomain;
 
+    @Column(name = "subdomain", unique = true, length = 63)
+    private String subdomain;
+
     @Column(name = "domain_status", length = 30)
-    private String domainStatus; // PENDING, VERIFIED, FAILED
+    private String domainStatus; // NONE, PENDING, DNS_VERIFIED, FAILED, ACTIVE
+
+    @Column(name = "verification_token", length = 64)
+    private String verificationToken;
+
+    @Column(name = "dns_verified_at")
+    private LocalDateTime dnsVerifiedAt;
+
+    @Column(name = "last_checked_at")
+    private LocalDateTime lastCheckedAt;
+
+    @Column(name = "last_check_error", columnDefinition = "TEXT")
+    private String lastCheckError;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -49,7 +64,7 @@ public class WhiteLabelSettings {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (domainStatus == null) domainStatus = "PENDING";
+        if (domainStatus == null) domainStatus = "NONE";
     }
 
     @PreUpdate

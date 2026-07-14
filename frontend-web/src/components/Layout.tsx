@@ -47,7 +47,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isBlocked = user?.accountAccess?.canUsePlatform === false;
   const { hasFeature, planCode } = useFeatureAccess();
   const { hasPermission } = usePermissions();
-  const { appearance, updateAppearance } = useTheme();
+  const { appearance, updateAppearance, branding } = useTheme();
+  const logoSrc = branding?.logoUrl || INNOVACAR_LOGO_URL;
 
   useEffect(() => {
     localStorage.setItem('rentcar_sidebar_collapsed', String(sidebarCollapsed));
@@ -86,7 +87,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   ], [t]);
 
   const adminToolItems = useMemo<NavigationItem[]>(() => [
-    { to: '/contract-templates', icon: FileText, label: t('nav.contractTemplates'), feature: 'CUSTOM_TEMPLATES', permission: 'MANAGE_SETTINGS', hideWhenLocked: true },
     { to: '/agency', icon: Info, label: t('nav.agency') },
     { to: '/role-permissions', icon: ShieldCheck, label: t('nav.roleAccess'), permission: 'MANAGE_EMPLOYEES' },
     { to: '/white-label', icon: Palette, label: t('nav.whiteLabel'), feature: 'WHITE_LABEL' },
@@ -152,7 +152,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className={cn('h-[68px] px-4 flex items-center', appearance.sidebarStyle === 'compact' || sidebarCollapsed ? 'justify-center' : 'justify-between')}>
           <Link to="/" className="flex items-center gap-3 min-w-0">
             <span className="w-10 h-10 rounded-xl border border-[color-mix(in_srgb,var(--text-sidebar)_12%,transparent)] bg-white/95 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-              <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
+              <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
             </span>
             {appearance.sidebarStyle !== 'compact' && !sidebarCollapsed && (
               <span className="min-w-0">
@@ -229,7 +229,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="app-topbar sticky top-2 lg:top-4 z-40 h-[58px] lg:h-[64px] mx-2 lg:mx-4 px-3 sm:px-4 lg:px-5 flex items-center gap-3 rounded-lg">
           <Link to="/" className="lg:hidden flex items-center gap-2 shrink-0">
             <span className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
-              <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
+              <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
             </span>
             <strong className="hidden min-[375px]:block text-sm">InnovaCar</strong>
           </Link>

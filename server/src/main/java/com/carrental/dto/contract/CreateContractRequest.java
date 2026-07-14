@@ -30,10 +30,6 @@ public class CreateContractRequest {
     private NewClientInlineRequest newClient;
     private Long vehicleId;
 
-    // Contract PDF template explicitly chosen for this contract (null = resolve
-    // the agency's default template, or the system default PDF if none is set).
-    private Long selectedTemplateId;
-
     // Dates
     @NotNull(message = "Start date is required")
     private LocalDate startDate;

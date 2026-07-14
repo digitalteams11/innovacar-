@@ -20,9 +20,13 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,9 +34,23 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GpsProviderService {
 
+    /** IOPGPS only ever has one valid API host — the docs/dashboard URLs are not the API. */
+    public static final String IOPGPS_BASE_URL = "https://open.iopgps.com";
+
+    /** IOPGPS access tokens are valid ~2h; we refresh a bit early to avoid using a stale one mid-request. */
+    private static final long IOPGPS_TOKEN_CACHE_TTL_SECONDS = 90 * 60;
+
     private final EncryptionUtil encryptionUtil;
     private final VehicleRepository vehicleRepository;
     private final GpsDeviceRepository gpsDeviceRepository;
+
+    private final Map<String, CachedIopgpsToken> iopgpsTokenCache = new ConcurrentHashMap<>();
+
+    private record CachedIopgpsToken(String token, long expiresAtEpochSecond) {
+        boolean isValid() {
+            return Instant.now().getEpochSecond() < expiresAtEpochSecond;
+        }
+    }
 
     private WebClient createWebClient(String baseUrl) {
         return WebClient.builder()
@@ -271,11 +289,23 @@ public class GpsProviderService {
     // ── Provider-specific connection tests ─────────────────────────────────────
 
     private GpsConnectionTestResponse testIopgpsConnection(GpsConnectionTestRequest request, long startTime) {
-        String baseUrl = Optional.ofNullable(request.getBaseUrl()).orElse("https://www.iopgps.com");
+        String appId = request.getAppId();
+        String secretKey = request.getApiKey();
 
         try {
-            String token = fetchIopgpsToken(baseUrl, request.getAppId(), request.getApiKey());
+            String token = getOrFetchIopgpsToken(appId, secretKey);
             if (token == null) {
+                boolean looksLikeEmail = appId != null && appId.contains("@");
+                if (looksLikeEmail) {
+                    return GpsConnectionTestResponse.builder()
+                            .success(false)
+                            .message("The IOPGPS account name is incorrect.")
+                            .provider("IOPGPS")
+                            .errorCode("IOPGPS_INVALID_APP_ID")
+                            .action("Copy the APPID/account name shown in IOPGPS API settings.")
+                            .responseTime((System.currentTimeMillis() - startTime) + "ms")
+                            .build();
+                }
                 return GpsConnectionTestResponse.builder()
                         .success(false)
                         .message("IOPGPS authentication failed")
@@ -285,12 +315,10 @@ public class GpsProviderService {
                         .build();
             }
 
-            WebClient client = createWebClient(baseUrl);
+            WebClient client = createWebClient(IOPGPS_BASE_URL);
             var response = client.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/rest/api/v1/devices")
-                            .queryParam("access_token", token)
-                            .build())
+                    .uri("/rest/api/v1/devices")
+                    .header("accessToken", token)
                     .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, cr ->
@@ -480,7 +508,7 @@ public class GpsProviderService {
             String authPrefix) {
 
         return switch (provider) {
-            case "IOPGPS"  -> fetchIopgpsDevices(baseUrl, appId, apiKey, deviceGroupId);
+            case "IOPGPS"  -> fetchIopgpsDevices(appId, apiKey, deviceGroupId);
             case "TRACCAR" -> fetchTraccarDevices(baseUrl, appId, apiKey, password);
             case "WIALON"  -> fetchWialonDevices(baseUrl, apiKey);
             case "GPSWOX"  -> fetchGpswoxDevices(baseUrl, apiKey);
@@ -490,20 +518,19 @@ public class GpsProviderService {
 
     @SuppressWarnings("unchecked")
     private List<GpsDeviceSyncResponse.GpsDeviceInfo> fetchIopgpsDevices(
-            String baseUrl, String appId, String apiKey, String deviceGroupId) {
+            String appId, String apiKey, String deviceGroupId) {
 
-        String url = Optional.ofNullable(baseUrl).orElse("https://www.iopgps.com");
-        String token = fetchIopgpsToken(url, appId, apiKey);
+        String token = getOrFetchIopgpsToken(appId, apiKey);
         if (token == null) return List.of();
 
-        WebClient client = createWebClient(url);
+        WebClient client = createWebClient(IOPGPS_BASE_URL);
         var response = client.get()
                 .uri(uriBuilder -> {
-                    var builder = uriBuilder.path("/rest/api/v1/devices")
-                            .queryParam("access_token", token);
+                    var builder = uriBuilder.path("/rest/api/v1/devices");
                     if (deviceGroupId != null) builder.queryParam("groupId", deviceGroupId);
                     return builder.build();
                 })
+                .header("accessToken", token)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .timeout(Duration.ofSeconds(15))
@@ -644,31 +671,94 @@ public class GpsProviderService {
         return devices;
     }
 
+    /** Returns a cached IOPGPS access token if still fresh, otherwise authenticates and caches the result. */
+    private String getOrFetchIopgpsToken(String appId, String secretKey) {
+        if (appId == null || appId.isBlank() || secretKey == null || secretKey.isBlank()) {
+            return null;
+        }
+        String cacheKey = appId.trim();
+        CachedIopgpsToken cached = iopgpsTokenCache.get(cacheKey);
+        if (cached != null && cached.isValid()) {
+            return cached.token();
+        }
+
+        String token = fetchIopgpsToken(appId, secretKey);
+        if (token != null) {
+            long expiresAt = Instant.now().getEpochSecond() + IOPGPS_TOKEN_CACHE_TTL_SECONDS;
+            iopgpsTokenCache.put(cacheKey, new CachedIopgpsToken(token, expiresAt));
+        }
+        return token;
+    }
+
     @SuppressWarnings("unchecked")
-    private String fetchIopgpsToken(String baseUrl, String appId, String apiKey) {
+    private String fetchIopgpsToken(String appId, String secretKey) {
         try {
-            WebClient client = createWebClient(baseUrl);
-            var response = client.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/rest/api/v1/auth/access_token")
-                            .queryParam("account", appId)
-                            .queryParam("password", apiKey)
-                            .queryParam("time", System.currentTimeMillis() / 1000)
-                            .build())
+            long timestamp = Instant.now().getEpochSecond();
+            String signature = buildSignature(secretKey, timestamp);
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("appid", appId);
+            body.put("time", timestamp);
+            body.put("signature", signature);
+
+            WebClient client = createWebClient(IOPGPS_BASE_URL);
+            var response = client.post()
+                    .uri("/api/auth")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
                     .retrieve()
+                    .onStatus(HttpStatusCode::isError, cr ->
+                            cr.bodyToMono(String.class)
+                                    .flatMap(respBody -> Mono.error(new RuntimeException("IOPGPS auth error: " + respBody)))
+                    )
                     .bodyToMono(Map.class)
                     .timeout(Duration.ofSeconds(10))
                     .block();
 
-            if (response != null && response.get("data") instanceof Map) {
-                Map<String, Object> data = (Map<String, Object>) response.get("data");
-                return (String) data.get("access_token");
+            String token = extractIopgpsAccessToken(response);
+            if (token == null) {
+                log.warn("IOPGPS auth response missing accessToken: {}", response);
             }
-            log.warn("IOPGPS token response invalid: {}", response);
+            return token;
         } catch (Exception e) {
             log.error("Failed to fetch IOPGPS token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractIopgpsAccessToken(Map<String, Object> response) {
+        if (response == null) return null;
+        Object direct = response.get("accessToken");
+        if (direct instanceof String s && !s.isBlank()) return s;
+        if (response.get("data") instanceof Map<?, ?> data) {
+            Object token = data.get("accessToken");
+            if (token instanceof String s && !s.isBlank()) return s;
         }
         return null;
+    }
+
+    /**
+     * IOPGPS signature scheme: md5(md5(secretKey) + time), both hashes lowercase 32-char hex.
+     * secretKey is the API key generated in IOPGPS API Configuration — not the login password.
+     */
+    private String buildSignature(String secretKey, long unixTimestamp) {
+        String firstHash = md5Lowercase(secretKey);
+        return md5Lowercase(firstHash + unixTimestamp);
+    }
+
+    private String md5Lowercase(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("MD5");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("MD5 algorithm not available", e);
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

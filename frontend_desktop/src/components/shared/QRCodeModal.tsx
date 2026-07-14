@@ -15,6 +15,8 @@ interface QRCodeModalProps {
   contractNumber: string;
   clientName: string;
   contractId?: string | number;
+  clientEmail?: string;
+  clientPhone?: string;
 }
 
 export default function QRCodeModal({
@@ -25,6 +27,8 @@ export default function QRCodeModal({
   contractNumber,
   clientName,
   contractId,
+  clientEmail,
+  clientPhone,
 }: QRCodeModalProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -137,14 +141,15 @@ export default function QRCodeModal({
     const text = encodeURIComponent(
       `Please sign your rental contract (${contractNumber}) for ${clientName}: ${fullUrl}`
     );
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    const digits = clientPhone ? clientPhone.replace(/[^\d]/g, '') : '';
+    window.open(`https://wa.me/${digits}?text=${text}`, '_blank');
   };
 
   const handleShareSms = () => {
     const text = encodeURIComponent(
       `Please sign your rental contract: ${fullUrl}`
     );
-    window.open(`sms:?body=${text}`, '_blank');
+    window.open(`sms:${clientPhone || ''}?body=${text}`, '_blank');
   };
 
   const handleShareEmail = () => {
@@ -152,7 +157,7 @@ export default function QRCodeModal({
     const body = encodeURIComponent(
       `Dear ${clientName},\n\nPlease sign your rental contract by clicking the link below:\n\n${fullUrl}\n\nThank you.`
     );
-    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    window.open(`mailto:${clientEmail || ''}?subject=${subject}&body=${body}`, '_blank');
   };
 
   const handleDownloadQR = () => {

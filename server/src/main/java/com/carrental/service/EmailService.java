@@ -133,20 +133,33 @@ public class EmailService {
     }
 
     /**
-     * Sends "contract ready for signature" email to client.
+     * Sends "contract ready for signature" email to client, with the signing
+     * link and (when available) a scannable QR code image attached.
      */
     public void sendContractReadyEmail(String toEmail, String clientName, String contractNumber,
-                                        String signingUrl, String agencyName) {
+                                        String signingUrl, String agencyName, byte[] qrPngBytes) {
         if (toEmail == null || toEmail.isBlank()) {
             log.info("[EMAIL] Skipped contract ready email — client has no email [contract={}]", contractNumber);
             return;
         }
         String subject = agencyName + " — Your Rental Contract is Ready for Signature";
-        String body = buildContractReadyEmail(clientName, contractNumber, signingUrl, agencyName);
+        String htmlBody = buildContractReadyEmail(clientName, contractNumber, signingUrl, agencyName,
+                qrPngBytes != null && qrPngBytes.length > 0);
+        String plainBody = String.format(
+                "Dear %s,%n%nYour rental contract (%s) from %s is ready for your signature.%n%n"
+                + "Please open the link below to review and sign the contract:%n%s%n%n"
+                + "If you have any questions, please contact %s directly.%n%n— %s",
+                clientName != null ? clientName : "Valued Client", contractNumber, agencyName,
+                signingUrl, agencyName, agencyName);
+        boolean hasQr = qrPngBytes != null && qrPngBytes.length > 0;
         // Client-facing emails should appear to come from the agency, so the
         // agency's own SMTP (if configured) takes priority here.
-        deliver(smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject, body),
-                toEmail, subject);
+        SmtpMailService.SmtpResult result = hasQr
+                ? smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject,
+                        htmlBody, plainBody, "contract-signing-qr.png", qrPngBytes, "image/png")
+                : smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject,
+                        htmlBody, plainBody);
+        deliver(result, toEmail, subject);
     }
 
     /**
@@ -353,25 +366,53 @@ public class EmailService {
     }
 
     private String buildContractReadyEmail(String clientName, String contractNumber,
-                                            String signingUrl, String agencyName) {
-        return String.format("""
-            Dear %s,
-
-            Your rental contract (%s) from %s is ready for your signature.
-
-            Please click the link below to review and sign the contract:
-            %s
-
-            If you have any questions, please contact %s directly.
-
-            — %s
-            """,
-            clientName != null ? clientName : "Valued Client",
-            contractNumber,
-            agencyName,
-            signingUrl,
-            agencyName,
-            agencyName);
+                                            String signingUrl, String agencyName, boolean hasQrAttachment) {
+        String name = clientName != null && !clientName.isBlank() ? clientName : "Valued Client";
+        String qrNote = hasQrAttachment
+                ? "<p style=\"margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;\">"
+                + "You can also scan the QR code attached to this email with your phone to open the signing page.</p>"
+                : "";
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+            <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:40px 0;">
+                <tr><td align="center">
+                  <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                    <tr><td style="background:#1a56db;padding:32px 40px;">
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">%s</h1>
+                      <p style="margin:6px 0 0;color:#93c5fd;font-size:13px;">Rental Contract Signature Required</p>
+                    </td></tr>
+                    <tr><td style="padding:40px;">
+                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Your contract is ready to sign</h2>
+                      <p style="margin:0 0 8px;color:#374151;font-size:15px;line-height:1.6;">Dear %s,</p>
+                      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+                        Your rental contract <strong>%s</strong> from %s is ready for your signature.
+                      </p>
+                      <div style="text-align:center;margin:0 0 24px;">
+                        <a href="%s" style="display:inline-block;background:#1a56db;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;">Review &amp; Sign Contract</a>
+                      </div>
+                      <p style="margin:0 0 24px;color:#6b7280;font-size:13px;line-height:1.6;word-break:break-all;">
+                        Or copy this link into your browser: <a href="%s" style="color:#1a56db;">%s</a>
+                      </p>
+                      %s
+                      <p style="margin:0 0 8px;color:#6b7280;font-size:14px;line-height:1.6;">
+                        If you have any questions, please contact %s directly.
+                      </p>
+                    </td></tr>
+                    <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
+                      <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                        &mdash; %s
+                      </p>
+                    </td></tr>
+                  </table>
+                </td></tr>
+              </table>
+            </body>
+            </html>
+            """.formatted(agencyName, name, contractNumber, agencyName, signingUrl, signingUrl, signingUrl,
+                qrNote, agencyName, agencyName);
     }
 
     private String buildEmailOtpCodeEmail(String userName, String code, int expiresInMinutes, String purpose) {

@@ -730,11 +730,11 @@ function GPSStatusWidget({
           <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('dashboard.gpsNotConfiguredDesc')}</p>
         </div>
         <button
-          onClick={() => navigate('/gps')}
+          onClick={() => navigate('/gps-settings')}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
           style={{ backgroundColor: 'var(--brand-primary)' }}
         >
-          {t('gps.openDashboard')}
+          {t('gps.configure')}
         </button>
       </div>
     );
@@ -787,7 +787,7 @@ function GPSStatusWidget({
       )}
 
       <button
-        onClick={() => navigate('/gps')}
+        onClick={() => navigate('/gps-tracking')}
         className="w-full flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl border hover:bg-[var(--bg-hover)] transition-colors"
         style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
       >
@@ -808,7 +808,7 @@ function QuickActions({ navigate }: { navigate: (path: string) => void }) {
     { label: t('dashboard.createContract', 'Create Contract'), icon: FileText,    color: 'bg-orange-500/10 text-orange-500', to: '/contracts', desc: t('dashboard.createContractDesc') },
     { label: t('dashboard.invoices',       'Invoices'),        icon: CreditCard,  color: 'bg-pink-500/10 text-pink-500',   to: '/invoices', desc: t('dashboard.invoicesDesc') },
     { label: t('dashboard.reports',        'Reports'),         icon: BarChart3,   color: 'bg-cyan-500/10 text-cyan-500',   to: '/reports', desc: t('dashboard.reportsDesc') },
-    { label: t('dashboard.gpsDashboardAction'),                  icon: MapPin,      color: 'bg-teal-500/10 text-teal-500',   to: '/gps', desc: t('dashboard.gpsDashboardActionDesc') },
+    { label: t('dashboard.gpsDashboardAction'),                  icon: MapPin,      color: 'bg-teal-500/10 text-teal-500',   to: '/gps-tracking', desc: t('dashboard.gpsDashboardActionDesc') },
     { label: t('common.maintenance'),                            icon: Wrench,      color: 'bg-red-500/10 text-red-500',     to: '/maintenance', desc: t('dashboard.maintenanceActionDesc') },
   ];
   return (
@@ -1060,7 +1060,7 @@ export default function Dashboard() {
     { id: 'client',      label: t('dashboard.setup.steps.client.label'),      description: t('dashboard.setup.steps.client.description'),     done: totalClients > 0,     route: '/clients',      icon: Users },
     { id: 'reservation', label: t('dashboard.setup.steps.reservation.label'),  description: t('dashboard.setup.steps.reservation.description'), done: reservations.length > 0, route: '/reservations', icon: Calendar },
     { id: 'contract',    label: t('dashboard.setup.steps.contract.label'),description: t('dashboard.setup.steps.contract.description'), done: (activeContracts + signedContracts) > 0, route: '/contracts', icon: FileText },
-    { id: 'gps',         label: t('dashboard.setup.steps.gps.label'),              description: t('dashboard.setup.steps.gps.description'),       done: !!(gpsStatus?.configured && (gpsStatus?.total ?? 0) > 0), route: '/gps',   icon: MapPin },
+    { id: 'gps',         label: t('dashboard.setup.steps.gps.label'),              description: t('dashboard.setup.steps.gps.description'),       done: !!(gpsStatus?.configured && (gpsStatus?.total ?? 0) > 0), route: '/gps-settings',   icon: MapPin },
     { id: 'settings',    label: t('dashboard.setup.steps.settings.label'),  description: t('dashboard.setup.steps.settings.description'),   done: agencyConfigured,      route: '/agency',       icon: Settings2 },
   ];
   const checklistProgress = checklistSteps.filter(s => s.done).length;

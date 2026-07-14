@@ -26,7 +26,6 @@ const Login = React.lazy(() => import('./pages/Login'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const Contracts = React.lazy(() => import('./pages/Contracts'));
 const ContractDetails = React.lazy(() => import('./pages/ContractDetails'));
-const ContractTemplates = React.lazy(() => import('./pages/ContractTemplates'));
 const PublicContract = React.lazy(() => import('./pages/PublicContract'));
 const InspectionCapture = React.lazy(() => import('./pages/InspectionCapture'));
 const Invoices = React.lazy(() => import('./pages/Invoices'));
@@ -213,7 +212,6 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/contracts" element={<ProtectedRoute><PermissionGate permission="VIEW_CONTRACTS"><FeatureGate feature="CONTRACT_MANAGEMENT"><Contracts /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/contracts/:id" element={<ProtectedRoute><PermissionGate permission="VIEW_CONTRACTS"><FeatureGate feature="CONTRACT_MANAGEMENT"><ContractDetails /></FeatureGate></PermissionGate></ProtectedRoute>} />
-      <Route path="/contract-templates" element={<ProtectedRoute><PermissionGate permission="MANAGE_SETTINGS"><FeatureGate feature="CONTRACT_MANAGEMENT"><ContractTemplates /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute><PermissionGate permission="VIEW_INVOICES"><FeatureGate feature="INVOICE_GENERATION"><Invoices /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/agency" element={<ProtectedRoute><Agency /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><FeatureGate feature="MULTI_EMPLOYEE"><Employees /></FeatureGate></PermissionGate></ProtectedRoute>} />

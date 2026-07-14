@@ -25,7 +25,6 @@ const moduleKeys: Record<string, string> = {
   '/gps-tracking': 'gps',
   '/gps-settings': 'gps',
   '/settings': 'settings',
-  '/contract-templates': 'contractTemplates',
   '/operations-center': 'operationsCenter',
 };
 

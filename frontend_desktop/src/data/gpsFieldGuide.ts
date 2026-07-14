@@ -82,10 +82,10 @@ export const GPS_PROVIDER_GUIDE: Record<string, ProviderGuide> = {
   IOPGPS: {
     label: 'IOPGPS',
     notes: [
-      'APP ID is the account name shown in your IOPGPS API access page.',
-      'API Key (password) is generated inside the IOPGPS dashboard under API access.',
-      'Base URL is usually https://www.iopgps.com unless your provider gave you a different regional endpoint.',
-      'If unsure, contact IOPGPS support and ask for API access credentials.',
+      'The Account Name is the exact account name linked to the API key — not your login email.',
+      'Generate the API key from IOPGPS > System Configuration > API Key Request. Enter that key as the API Key field, never your login password.',
+      'RentCar always connects to https://open.iopgps.com — this cannot be changed.',
+      'If the account name is wrong, IOPGPS will reject authentication even if the API key is correct — double-check it in your IOPGPS API settings.',
     ],
   },
   TRACCAR: {

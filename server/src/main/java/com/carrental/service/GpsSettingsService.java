@@ -68,7 +68,9 @@ public class GpsSettingsService {
         if (Boolean.TRUE.equals(request.getEnabled()) && !hadCredentialsBefore && !providingNewKey && !providingNewPassword) {
             throw new IllegalArgumentException("API key or password is required to connect this GPS provider.");
         }
-        String normalizedBaseUrl = normalizeBaseUrl(request.getBaseUrl());
+        String normalizedBaseUrl = "IOPGPS".equalsIgnoreCase(request.getProvider())
+                ? GpsProviderService.IOPGPS_BASE_URL
+                : normalizeBaseUrl(request.getBaseUrl());
 
         if (settings == null) {
             settings = GpsSettings.builder()

@@ -48,6 +48,17 @@ public class PaymentResponse {
     }
 
     public static PaymentResponse from(Payment payment) {
+        // Contract/Client/Vehicle are soft-deletable (@SQLRestriction excludes
+        // deleted rows), so a payment's FK can point at a row that still exists
+        // in the DB but is filtered out — Hibernate only detects this when the
+        // lazy proxy is initialized, throwing EntityNotFoundException instead of
+        // returning null. Resolve safely so one archived/deleted related record
+        // doesn't 404 the entire payments list.
+        com.carrental.entity.Contract safeContract = com.carrental.util.LazyEntityUtil.resolve(payment.getContract());
+        com.carrental.entity.Client safeClient = com.carrental.util.LazyEntityUtil.resolve(payment.getClient());
+        com.carrental.entity.Vehicle safeVehicle = com.carrental.util.LazyEntityUtil.resolve(payment.getVehicle());
+        com.carrental.entity.Invoice safeInvoice = com.carrental.util.LazyEntityUtil.resolve(payment.getInvoice());
+
         return PaymentResponse.builder()
                 .id(payment.getId())
                 .paymentNumber(payment.getPaymentNumber())
@@ -62,13 +73,13 @@ public class PaymentResponse {
                         ? "RES-" + payment.getReservation().getId()
                         : null)
                 .contractId(payment.getContract() != null ? payment.getContract().getId() : null)
-                .contractNumber(payment.getContract() != null ? payment.getContract().getContractNumber() : null)
+                .contractNumber(safeContract != null ? safeContract.getContractNumber() : null)
                 .invoiceId(payment.getInvoice() != null ? payment.getInvoice().getId() : null)
-                .invoiceNumber(payment.getInvoice() != null ? payment.getInvoice().getInvoiceNumber() : null)
+                .invoiceNumber(safeInvoice != null ? safeInvoice.getInvoiceNumber() : null)
                 .clientId(payment.getClient() != null ? payment.getClient().getId() : null)
-                .clientName(payment.getClient() != null ? payment.getClient().getName() : null)
+                .clientName(safeClient != null ? safeClient.getName() : null)
                 .vehicleId(payment.getVehicle() != null ? payment.getVehicle().getId() : null)
-                .vehicleLabel(payment.getVehicle() != null ? payment.getVehicle().getMarque() : null)
+                .vehicleLabel(safeVehicle != null ? safeVehicle.getMarque() : null)
                 .notes(payment.getNotes())
                 .tenantId(payment.getTenant() != null ? payment.getTenant().getId() : null)
                 .createdAt(payment.getCreatedAt())

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, Lock, Mail, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
+import { usePublicBranding } from '../hooks/usePublicBranding';
 
 const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
 
@@ -122,6 +123,9 @@ export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const publicBranding = usePublicBranding();
+  const brandedLogoUrl = publicBranding?.found && publicBranding.logoUrl ? publicBranding.logoUrl : INNOVACAR_LOGO_URL;
+  const brandedName = publicBranding?.found && publicBranding.tenantName ? publicBranding.tenantName : null;
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -330,10 +334,10 @@ export default function Login() {
           className="flex items-center justify-center gap-3 mb-10"
         >
           <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-accent-400/20 overflow-hidden">
-            <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-1" />
+            <img src={brandedLogoUrl} alt={brandedName || 'InnovaCar'} className="h-full w-full object-contain p-1" />
           </div>
           <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            Innova<span className="text-accent-500">Car</span>
+            {brandedName ?? <>Innova<span className="text-accent-500">Car</span></>}
           </span>
         </motion.div>
 

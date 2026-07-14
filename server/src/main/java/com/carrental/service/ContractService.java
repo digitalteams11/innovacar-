@@ -43,13 +43,12 @@ public class ContractService {
     private final ContractAuditLogRepository contractAuditLogRepository;
     private final DepositRepository depositRepository;
     private final PaymentRepository paymentRepository;
-    private final ContractTemplateRepository contractTemplateRepository;
-    private final ContractTemplateService contractTemplateService;
     private final PdfService pdfService;
     private final NotificationService notificationService;
     private final SseService sseService;
     private final EmailService emailService;
     private final PlatformEmailService platformEmailService;
+    private final QrCodeService qrCodeService;
     private final DepositService depositService;
     private final AvailabilityService availabilityService;
     private final VehicleStatusSyncService vehicleStatusSyncService;
@@ -93,7 +92,8 @@ public class ContractService {
     @Transactional
     public ContractResponse getContractById(Long id) {
         Contract contract = fetchContractInTenant(id);
-        if (repairSignedStatus(contract)) {
+        boolean needsSave = repairSignedStatus(contract);
+        if (needsSave) {
             contract = contractRepository.save(contract);
         }
         ContractResponse response = ContractResponse.from(contract);
@@ -235,19 +235,11 @@ public class ContractService {
         int calculatedRentalDays = Math.toIntExact(
                 ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1);
 
-        // The template explicitly chosen for this contract at creation time. A
-        // null selection is intentional, not a gap: PDF generation already
-        // resolves the agency's default template (then the system default PDF)
-        // at render time, so a contract with no explicit template still picks
-        // up whichever template the agency later marks as default.
-        ContractTemplate resolvedTemplate = resolveSelectedTemplate(request.getSelectedTemplateId(), tenantId);
-
         // ── Build contract with auto-populated snapshots ───────────────────────
         Contract.ContractBuilder builder = Contract.builder()
                 .contractNumber(resolvedContractNumber)
                 .status(status)
                 .reservation(savedReservation)
-                .selectedTemplate(resolvedTemplate)
                 .contractType(request.getContractType())
                 .contractLanguage(request.getContractLanguage())
                 .contractDuration(request.getContractDuration())
@@ -506,10 +498,10 @@ public class ContractService {
                 request.getNewClient() != null ? request.getNewClient().getDriverLicenseNumber() : null);
 
         if (request.getClientId() == null && request.getNewClient() == null) {
-            throw new IllegalArgumentException("CLIENT_REQUIRED: A client is required. Provide clientId or newClient.");
+            throw new IllegalArgumentException("A client is required. Provide clientId or newClient.");
         }
         if (request.getClientId() != null && request.getNewClient() != null) {
-            throw new IllegalArgumentException("CLIENT_SOURCE_AMBIGUOUS: Provide either clientId or newClient, not both.");
+            throw new IllegalArgumentException("Provide either clientId or newClient, not both.");
         }
         if (request.getVehicleId() == null) {
             throw new IllegalArgumentException("A vehicle is required to create a contract.");
@@ -534,10 +526,10 @@ public class ContractService {
                 AvailabilityService.ConflictDetail conflict = availabilityService.findConflictDetail(
                         vehicle.getId(), request.getStartDate(), pickupTime, request.getEndDate(), returnTime, null);
                 log.warn("[DIRECT_CREATE_CONFLICT] errorCode=VEHICLE_ALREADY_RESERVED tenantId={} vehicleId={} "
-                                + "selectedTemplateId={} clientMode=NEW_CLIENT newClientPhone={} newClientCin={} "
+                                + "clientMode=NEW_CLIENT newClientPhone={} newClientCin={} "
                                 + "newClientDriverLicense={} startDate={} endDate={} conflictSource={} conflictId={} "
                                 + "message=vehicle already reserved",
-                        tenantId, vehicle.getId(), request.getSelectedTemplateId(),
+                        tenantId, vehicle.getId(),
                         request.getNewClient().getPhone(), request.getNewClient().getCin(),
                         request.getNewClient().getDriverLicenseNumber(),
                         request.getStartDate(), request.getEndDate(),
@@ -568,10 +560,10 @@ public class ContractService {
                 client = createInlineClient(request.getNewClient(), tenant, tenantId);
             } catch (com.carrental.exception.ClientDuplicateException e) {
                 log.warn("[DIRECT_CREATE_CONFLICT] errorCode={} tenantId={} vehicleId={} "
-                                + "selectedTemplateId={} clientMode=NEW_CLIENT newClientPhone={} newClientCin={} "
+                                + "clientMode=NEW_CLIENT newClientPhone={} newClientCin={} "
                                 + "newClientDriverLicense={} startDate={} endDate={} matchedFields={} "
                                 + "existingClientId={} message={}",
-                        e.getErrorCode(), tenantId, vehicle.getId(), request.getSelectedTemplateId(),
+                        e.getErrorCode(), tenantId, vehicle.getId(),
                         request.getNewClient().getPhone(), request.getNewClient().getCin(),
                         request.getNewClient().getDriverLicenseNumber(),
                         request.getStartDate(), request.getEndDate(),
@@ -656,10 +648,10 @@ public class ContractService {
             AvailabilityService.ConflictDetail conflict = availabilityService.findConflictDetail(
                     vehicle.getId(), request.getStartDate(), pickupTime, request.getEndDate(), returnTime, null);
             log.warn("[DIRECT_CREATE_CONFLICT] errorCode=VEHICLE_ALREADY_RESERVED tenantId={} vehicleId={} "
-                            + "selectedTemplateId={} clientMode=EXISTING_CLIENT startDate={} endDate={} "
+                            + "clientMode=EXISTING_CLIENT startDate={} endDate={} "
                             + "conflictSource={} conflictId={} conflictStart={} conflictEnd={} "
                             + "message=vehicle already reserved",
-                    tenantId, vehicle.getId(), request.getSelectedTemplateId(),
+                    tenantId, vehicle.getId(),
                     request.getStartDate(), request.getEndDate(),
                     conflict.conflictSource(), conflict.conflictId(),
                     conflict.conflictStartDate(), conflict.conflictEndDate());
@@ -790,8 +782,6 @@ public class ContractService {
         data.put("reservationId", contract.getReservationId());
         data.put("contractStatus", contract.getStatus() != null ? contract.getStatus().name() : ContractStatus.PENDING_SIGNATURE.name());
         data.put("reservationStatus", ReservationStatus.CONFIRMED.name());
-        data.put("selectedTemplateId", contract.getSelectedTemplateId());
-        data.put("selectedTemplateName", contract.getSelectedTemplateName());
         data.put("clientId", client.getId());
         data.put("clientName", client.getName());
         data.put("clientCreated", clientCreated);
@@ -1532,7 +1522,7 @@ public class ContractService {
     }
 
     @Transactional
-    public String generateQrToken(Long id, String overrideFrontendUrl) {
+    public String generateQrToken(Long id) {
         Contract contract = fetchContractInTenant(id);
         Long tenantId = TenantContext.getCurrentTenantId();
 
@@ -1557,7 +1547,7 @@ public class ContractService {
 
         String token = generateSecureToken();
         contract.setQrToken(token);
-        contract.setPublicSigningUrl(buildPublicSigningUrl(id, token, overrideFrontendUrl));
+        contract.setPublicSigningUrl(buildPublicSigningUrl(id, token));
         Contract saved = contractRepository.save(contract);
 
         logAudit(saved, "QR_GENERATED", "QR token generated for contract", null, null);
@@ -1575,12 +1565,14 @@ public class ContractService {
 
         // Send email to client if they have one
         try {
+            byte[] qrPng = qrCodeService.generatePng(saved.getPublicSigningUrl(), 400);
             emailService.sendContractReadyEmail(
                     saved.getClientEmail(),
                     saved.getClientFullName(),
                     saved.getContractNumber(),
                     saved.getPublicSigningUrl(),
-                    tenantRepository.findById(tenantId).map(Tenant::getName).orElse("Your Agency"));
+                    tenantRepository.findById(tenantId).map(Tenant::getName).orElse("Your Agency"),
+                    qrPng);
         } catch (Exception e) {
             log.warn("QR token generated but contract-ready email failed for contract [id={}]", saved.getId(), e);
         }
@@ -1706,19 +1698,11 @@ public class ContractService {
 
     @Transactional(readOnly = true)
     public byte[] generateContractPdf(Long id) {
-        return generateContractPdf(id, true);
-    }
-
-    @Transactional(readOnly = true)
-    public byte[] generateContractPdf(Long id, boolean useAgencyTemplate) {
         Contract contract = fetchContractInTenant(id);
         Tenant tenant = tenantRepository.findById(contract.getTenant().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
         com.carrental.entity.Deposit deposit = depositRepository.findByContractId(contract.getId()).orElse(null);
-        if (contract.getSelectedTemplate() != null) {
-            contractTemplateService.assertCanUseTemplate(contract.getSelectedTemplate());
-        }
-        return pdfService.generateContractPdf(contract, tenant, deposit, useAgencyTemplate);
+        return pdfService.generateContractPdf(contract, tenant, deposit);
     }
 
     /**
@@ -1734,71 +1718,13 @@ public class ContractService {
         Tenant tenant = tenantRepository.findById(contract.getTenant().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
         com.carrental.entity.Deposit deposit = depositRepository.findByContractId(contract.getId()).orElse(null);
-        byte[] pdf = pdfService.generateContractPdf(contract, tenant, deposit, true);
+        byte[] pdf = pdfService.generateContractPdf(contract, tenant, deposit);
         String pdfUrl = pdfService.saveContractPdf(contract, pdf);
         contract.setPdfUrl(pdfUrl);
         contract.setUpdatedAt(LocalDateTime.now());
         Contract saved = contractRepository.save(contract);
         log.info("[PDF_REGENERATE] contractId={} tenantId={} regenerated=true", id, tenant.getId());
         return ContractResponse.from(saved);
-    }
-
-    /**
-     * Choose which contract template a contract's PDF should use.
-     * A null / "SYSTEM_DEFAULT" templateId clears the selection so the system default PDF is used.
-     * The template must belong to the contract's agency (tenant), otherwise it is rejected.
-     */
-    @Transactional
-    public ContractResponse updateSelectedTemplate(Long id, Object templateId) {
-        Contract contract = fetchContractInTenant(id);
-        if (templateId == null
-                || "SYSTEM_DEFAULT".equalsIgnoreCase(String.valueOf(templateId))
-                || String.valueOf(templateId).isBlank()) {
-            contract.setSelectedTemplate(null);
-        } else {
-            Long tenantId = TenantContext.getCurrentTenantId();
-            Long parsedId;
-            try {
-                parsedId = templateId instanceof Number number ? number.longValue() : Long.parseLong(String.valueOf(templateId).trim());
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("Invalid template id");
-            }
-            ContractTemplate template = contractTemplateRepository.findByIdAndTenantId(parsedId, tenantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Contract template not found"));
-            contractTemplateService.assertCanUseTemplate(template);
-            contract.setSelectedTemplate(template);
-        }
-        Contract saved = contractRepository.save(contract);
-        logAudit(saved, "TEMPLATE", "Contract PDF template updated", null,
-                saved.getSelectedTemplate() != null ? String.valueOf(saved.getSelectedTemplate().getId()) : "SYSTEM_DEFAULT");
-        return ContractResponse.from(saved);
-    }
-
-    /**
-     * Resolves the template for a contract: explicit request first, then tenant
-     * default, then null (system PDF fallback). Also emits [CONTRACT_TEMPLATE_SELECT]
-     * audit log so every PDF path can be traced.
-     */
-    private ContractTemplate resolveSelectedTemplate(Long templateId, Long tenantId) {
-        if (templateId != null) {
-            ContractTemplate template = contractTemplateRepository.findByIdAndTenantId(templateId, tenantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Contract template not found"));
-            contractTemplateService.assertCanUseTemplate(template);
-            log.info("[CONTRACT_TEMPLATE_SELECT] source=request tenantId={} templateId={} templateName={}",
-                    tenantId, template.getId(), template.getName());
-            return template;
-        }
-        // Fall back to the agency's active default template when no explicit pick was made.
-        ContractTemplate defaultTemplate = contractTemplateRepository
-                .findFirstByTenantIdAndDefaultTemplateTrueAndActiveTrueOrderByUpdatedAtDesc(tenantId)
-                .orElse(null);
-        if (defaultTemplate != null) {
-            log.info("[CONTRACT_TEMPLATE_SELECT] source=tenant_default tenantId={} templateId={} templateName={}",
-                    tenantId, defaultTemplate.getId(), defaultTemplate.getName());
-        } else {
-            log.info("[CONTRACT_TEMPLATE_SELECT] source=system_default tenantId={} templateId=null", tenantId);
-        }
-        return defaultTemplate;
     }
 
     // ── PUBLIC SIGNING ───────────────────────────────────────────────────────
@@ -2297,12 +2223,9 @@ public class ContractService {
         return contractId + "/" + token;
     }
 
-    private String buildPublicSigningUrl(Long contractId, String token, String overrideFrontendUrl) {
-        String url = (overrideFrontendUrl != null && !overrideFrontendUrl.isBlank())
-                ? overrideFrontendUrl
-                : frontendUrl;
-        String base = url.replaceAll("/+$", "");
-        return base + "/contract-sign/" + savedContractPath(contractId, token);
+    private String buildPublicSigningUrl(Long contractId, String token) {
+        String base = frontendUrl.replaceAll("/+$", "");
+        return base + "/#/contract-sign/" + savedContractPath(contractId, token);
     }
 
     private void logAudit(Contract contract, String action, String description, String oldValue, String newValue) {

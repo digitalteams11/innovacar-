@@ -276,8 +276,6 @@ export default function Contracts() {
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
   // New-client inline creation state
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing');
@@ -545,16 +543,6 @@ export default function Contracts() {
     } catch (err) {
       setReservations([]);
     }
-    try {
-      const { data } = await api.get('/contract-templates');
-      const activeTemplates = (data?.data || []).filter((item: any) => item.active);
-      setTemplates(activeTemplates);
-      const defaultTemplate = activeTemplates.find((item: any) => item.default);
-      setSelectedTemplateId(defaultTemplate ? String(defaultTemplate.id) : '');
-    } catch (err) {
-      setTemplates([]);
-      setSelectedTemplateId('');
-    }
     setIsModalOpen(true);
   };
 
@@ -738,8 +726,10 @@ export default function Contracts() {
         const errs: Record<string, string> = {};
         if (!newClientForm.fullName.trim()) errs.fullName = 'Full name is required';
         if (!newClientForm.phone.trim()) errs.phone = 'Phone is required';
-        if (!newClientForm.cin.trim() && !newClientForm.driverLicenseNumber.trim()) errs.cin = 'CIN or driver license number is required';
-        if (!newClientForm.driverLicenseNumber.trim()) errs.driverLicenseNumber = 'Driver license number is required';
+        if (!newClientForm.cin.trim() && !newClientForm.driverLicenseNumber.trim()) {
+          errs.cin = 'CIN or driver license number is required';
+          errs.driverLicenseNumber = 'CIN or driver license number is required';
+        }
         if (Object.keys(errs).length > 0) {
           setNewClientErrors(errs);
           showToast('Please complete the required client fields', 'warning');
@@ -772,7 +762,6 @@ export default function Contracts() {
       const payload: any = {
         contractNumber: contractNumber || undefined,
         vehicleId: selectedVehicle.id,
-        selectedTemplateId: selectedTemplateId ? Number(selectedTemplateId) : undefined,
         startDate: isoStart,
         startTime: h24Start,
         endDate: isoEnd,
@@ -947,6 +936,14 @@ export default function Contracts() {
         return `This contract template requires a higher plan (${conflictData.requiredPlan || 'STANDARD'}). Choose another template or upgrade your plan.`;
       case 'CONTRACT_NUMBER_EXISTS':
         return 'Contract number conflict. Please try submitting again — a new number will be generated.';
+      case 'CLIENT_REQUIRED':
+        return 'Select an existing client or fill in the new client details.';
+      case 'CLIENT_SOURCE_AMBIGUOUS':
+        return 'Choose either an existing client or a new client, not both.';
+      case 'CLIENT_FIELD_REQUIRED':
+        return 'Please complete the required client fields (full name, phone, and CIN or driver license number).';
+      case 'VEHICLE_REQUIRED':
+        return 'Please select a vehicle.';
       case 'DATA_CONFLICT':
         return errData.message || err?.userMessage || 'A data conflict prevented saving. Please check your input and try again.';
       default:
@@ -1040,7 +1037,7 @@ export default function Contracts() {
 
   const handleGenerateQR = async (contract: Contract) => {
     try {
-      const res = await api.post(`/contracts/${contract.id}/qr`, { frontendUrl: window.location.origin + '/#' });
+      const res = await api.post(`/contracts/${contract.id}/qr`);
       // Open modal immediately with updated token/URL from response
       setQrModal({
         open: true,
@@ -1722,21 +1719,6 @@ export default function Contracts() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.contractTemplate')}</label>
-                <select value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
-                  <option value="">{t('contracts.form.systemDefault')}</option>
-                  {templates.map((tpl: any) => (
-                    <option key={tpl.id} value={tpl.id}>
-                      {tpl.name}{tpl.default ? t('contracts.form.agencyDefaultSuffix') : ''}{tpl.templateType === 'SYSTEM_DEFAULT' ? t('contracts.form.systemSuffix') : ''}
-                    </option>
-                  ))}
-                </select>
-                {templates.length === 0 && (
-                  <p className="text-xs text-slate-400 mt-1">{t('contracts.form.noTemplateConfigured')}</p>
-                )}
-              </div>
-              <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">{t('contracts.form.notes')}</label>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
                   className="w-full px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm resize-none focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all" />
@@ -1896,7 +1878,8 @@ export default function Contracts() {
         <QRCodeModal isOpen={qrModal.open} onClose={() => setQrModal({ open: false })}
           qrToken={qrModal.contract.qrToken || ''}
           signingUrl={qrModal.contract.publicSigningUrl || ''}
-          contractNumber={qrModal.contract.contractNumber} clientName={qrModal.contract.clientFullName || ''} />
+          contractNumber={qrModal.contract.contractNumber} clientName={qrModal.contract.clientFullName || ''}
+          clientEmail={qrModal.contract.clientEmail} clientPhone={qrModal.contract.clientPhone} />
       )}
 
       {/* Restore Conflict Modal */}

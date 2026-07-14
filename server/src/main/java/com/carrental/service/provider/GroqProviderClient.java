@@ -108,6 +108,11 @@ public class GroqProviderClient implements AiProviderClient {
 
     private AiCallResult call(String baseUrl, String model, String apiKey, String systemInstruction, String userPrompt,
                                Integer timeoutSeconds, Integer maxTokens, Double temperature) {
+        return call(baseUrl, model, apiKey, systemInstruction, userPrompt, timeoutSeconds, maxTokens, temperature, true);
+    }
+
+    private AiCallResult call(String baseUrl, String model, String apiKey, String systemInstruction, String userPrompt,
+                               Integer timeoutSeconds, Integer maxTokens, Double temperature, boolean allowCapRetry) {
         String resolvedModel = (model == null || model.isBlank()) ? DEFAULT_MODEL : model.trim();
         int timeout = timeoutSeconds != null ? timeoutSeconds : 30;
         long start = System.currentTimeMillis();
@@ -148,6 +153,16 @@ public class GroqProviderClient implements AiProviderClient {
             int httpStatus = ex.getStatusCode().value();
             String providerMsg = safeProviderMessage(ex);
             log.warn("[GROQ_CALL] model={} httpStatus={} success=false latencyMs={}", resolvedModel, httpStatus, latencyMs);
+
+            if (httpStatus == 400) {
+                Integer cap = extractMaxTokensCap(providerMsg);
+                int requested = maxTokens != null ? maxTokens : 2048;
+                if (allowCapRetry && cap != null && cap > 0 && cap < requested) {
+                    log.warn("[GROQ_CALL] model={} requested max_tokens={} exceeds provider cap={} — retrying with clamped value",
+                            resolvedModel, requested, cap);
+                    return call(baseUrl, model, apiKey, systemInstruction, userPrompt, timeoutSeconds, cap, temperature, false);
+                }
+            }
 
             return switch (httpStatus) {
                 case 400 -> AiCallResult.fail("AI_BAD_REQUEST",

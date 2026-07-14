@@ -42,6 +42,12 @@ export interface AppearanceSettings {
   whiteLabelMode: boolean;
 }
 
+interface BrandingOverride {
+  logoUrl: string;
+  primaryColor: string;
+  accentColor: string;
+}
+
 interface ThemeContextType {
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
@@ -50,6 +56,9 @@ interface ThemeContextType {
   updateAppearance: (updates: Partial<AppearanceSettings>) => void;
   applyPreset: (preset: ThemePreset) => void;
   resetAppearance: () => void;
+  /** Agency Branding (White Label) logo/colors — the source of truth when set, overriding the active preset. */
+  branding: BrandingOverride | null;
+  refreshBranding: () => void;
 }
 
 const STORAGE_KEY = 'rentcar_appearance';
@@ -250,6 +259,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
   const [appearance, setAppearance] = useState<AppearanceSettings>(loadAppearance);
   const [loadedRemoteAppearance, setLoadedRemoteAppearance] = useState(false);
+  const [branding, setBranding] = useState<BrandingOverride | null>(null);
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(
     appearance.mode === 'auto' ? systemTheme() : appearance.mode,
   );
@@ -287,6 +297,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       });
     return () => { cancelled = true; };
   }, [isAuthenticated]);
+
+  const fetchBranding = useCallback(() => {
+    if (!isAuthenticated) {
+      setBranding(null);
+      return;
+    }
+    api.get('/white-label')
+      .then(({ data }) => {
+        if (data?.primaryColor && data?.accentColor) {
+          setBranding({
+            logoUrl: data.logoUrl || '',
+            primaryColor: data.primaryColor,
+            accentColor: data.accentColor,
+          });
+        } else {
+          setBranding(null);
+        }
+      })
+      .catch(() => setBranding(null));
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    fetchBranding();
+  }, [fetchBranding]);
 
   // Apply the user's own saved theme mode once per login session. This is a
   // personal account preference (server-persisted on the User entity), kept
@@ -348,9 +382,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.toggle('dark', resolvedTheme === 'dark');
     root.dataset.themePreset = appearance.preset;
     root.dataset.buttonStyle = appearance.buttonStyle;
-    root.style.setProperty('--brand-primary', appearance.primaryColor);
+    // Agency Branding (White Label) colors are the source of truth when configured —
+    // they override the preset's primary/accent so saving branding repaints the app immediately.
+    root.style.setProperty('--brand-primary', branding?.primaryColor || appearance.primaryColor);
     root.style.setProperty('--brand-secondary', appearance.secondaryColor);
-    root.style.setProperty('--brand-accent', appearance.accentColor);
+    root.style.setProperty('--brand-accent', branding?.accentColor || appearance.accentColor);
     root.style.setProperty('--bg-sidebar', appearance.sidebarColor);
     root.style.setProperty('--text-sidebar', sidebarText.text);
     root.style.setProperty('--text-sidebar-muted', sidebarText.muted);
@@ -373,7 +409,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--density-scale', String(density));
     root.style.setProperty('--font-ui', `'${appearance.fontFamily}', Inter, system-ui, sans-serif`);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appearance));
-  }, [appearance, resolvedTheme]);
+  }, [appearance, resolvedTheme, branding]);
 
   useEffect(() => {
     if (!isAuthenticated || !loadedRemoteAppearance) return;
@@ -420,7 +456,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     updateAppearance,
     applyPreset,
     resetAppearance,
-  }), [appearance, applyPreset, resetAppearance, resolvedTheme, setTheme, updateAppearance]);
+    branding,
+    refreshBranding: fetchBranding,
+  }), [appearance, applyPreset, branding, fetchBranding, resetAppearance, resolvedTheme, setTheme, updateAppearance]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

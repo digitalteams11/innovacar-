@@ -70,12 +70,6 @@ public class Contract {
     @JoinColumn(name = "vehicle_id")
     private Vehicle vehicle;
 
-    // Optional agency contract template chosen for this contract's PDF.
-    // Nullable: existing contracts and "System default" choices have no template.
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "selected_template_id")
-    private ContractTemplate selectedTemplate;
-
     // ── Dates & Times ────────────────────────────────────────────────────────
 
     @Column(name = "start_date", nullable = false)

@@ -234,37 +234,6 @@ export const helpCenterContent: Record<string, ModuleHelpContent> = {
     ],
   },
 
-  contractTemplates: {
-    title: 'Contract Templates',
-    videoUrl: null,
-    walkthrough: [
-      'Click "New template" or upload a scanned paper contract.',
-      'Map each field (client name, dates, price, signature zone, etc.) onto the document.',
-      'Save the field mapping.',
-      'Set the template as default if it should be used automatically.',
-      'Generate a contract PDF using the template to verify it.',
-    ],
-    documentation: {
-      overview: 'Contract templates let you reuse your agency\'s existing paper contract layout by mapping dynamic fields onto a scanned document.',
-      keyActions: ['Upload scanned paper', 'Map fields', 'Save mapping', 'Set default', 'Generate PDF using template'],
-      workflow: [
-        { heading: '1. Upload scanned paper', steps: ['Upload a scan or photo of your existing paper contract as the template background.'] },
-        { heading: '2. Map fields', steps: ['Drag each dynamic field (client, vehicle, dates, price, signature) onto its position on the scanned page.'] },
-        { heading: '3. Save mapping', steps: ['Save once every required field has a position — missing fields are highlighted.'] },
-        { heading: '4. Set as default', steps: ['Mark the template as default so new contracts use it automatically.'] },
-        { heading: '5. Generate PDF using template', steps: ['Create a test contract and download the PDF to confirm the layout looks correct.'] },
-      ],
-      requiredFields: ['Template name', 'Background scan', 'Field mapping for client, vehicle, dates, price, signature'],
-      commonErrors: ['Generated PDF looks misaligned: re-check field coordinates in the mapping editor and re-save.'],
-      tips: ['Keep one template marked default at a time — new contracts always use the default template.'],
-    },
-    faq: [
-      { q: 'Can I use my own paper contract design?', a: 'Yes — upload a scan of your paper contract and map the dynamic fields onto it.' },
-      { q: 'How do I set the default template?', a: 'Open the template and toggle "Set as default". Only one template can be default at a time.' },
-      { q: 'Why does the generated PDF look wrong?', a: 'A field is likely mapped to the wrong position. Re-open the mapping editor, adjust coordinates, and save again.' },
-    ],
-  },
-
   settings: {
     title: 'Settings',
     videoUrl: null,

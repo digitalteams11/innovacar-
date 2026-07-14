@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 public class SuperAdminController {
 
     private final TenantRepository tenantRepository;
+    private final WhiteLabelSettingsRepository whiteLabelSettingsRepository;
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
     private final ReservationRepository reservationRepository;
@@ -1170,6 +1171,20 @@ public class SuperAdminController {
         tenant.setVerifiedBy(null);
         tenantRepository.save(tenant);
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency verification reset"));
+    }
+
+    @PutMapping("/white-label/{tenantId}/activate")
+    public ResponseEntity<Map<String, Object>> activateAgencyDomain(@PathVariable Long tenantId) {
+        WhiteLabelSettings settings = whiteLabelSettingsRepository.findByTenantId(tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("No white-label settings for this agency"));
+        if (!"DNS_VERIFIED".equals(settings.getDomainStatus())) {
+            throw new IllegalStateException(
+                    "Domain must be DNS_VERIFIED before activation — current status: " + settings.getDomainStatus());
+        }
+        settings.setDomainStatus("ACTIVE");
+        whiteLabelSettingsRepository.save(settings);
+        return ResponseEntity.ok(Map.of("success", true, "message",
+                "Domain marked ACTIVE. Confirm the reverse proxy/SSL for this domain is actually deployed — see docs/custom-domain-runbook.md."));
     }
 
     @GetMapping("/agencies/{id}/activity")

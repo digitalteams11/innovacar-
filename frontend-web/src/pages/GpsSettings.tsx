@@ -53,7 +53,10 @@ interface TestResult {
   devicesFound: number;
   responseTime: string;
   errorCode: string;
+  action?: string;
 }
+
+const IOPGPS_BASE_URL = 'https://open.iopgps.com';
 
 const PROVIDERS = [
   { value: 'IOPGPS', label: 'IOPGPS', description: 'Professional fleet tracking platform' },
@@ -607,7 +610,10 @@ export default function GpsSettingsPage() {
             return (
               <button
                 key={p.value}
-                onClick={() => handleChange('provider', p.value)}
+                onClick={() => {
+                  handleChange('provider', p.value);
+                  if (p.value === 'IOPGPS') handleChange('baseUrl', IOPGPS_BASE_URL);
+                }}
                 className={`relative p-4 rounded-xl border-2 text-left transition-all ${
                   selected
                     ? 'border-brand-500 bg-brand-50/50'
@@ -644,7 +650,7 @@ export default function GpsSettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-              APP ID / Account ID
+              {settings.provider === 'IOPGPS' ? 'IOPGPS Account Name' : 'APP ID / Account ID'}
               <GpsFieldHelp fieldKey="appId" provider={settings.provider} />
             </label>
             <div className="relative">
@@ -653,10 +659,15 @@ export default function GpsSettingsPage() {
                 type="text"
                 value={settings.appId}
                 onChange={(e) => handleChange('appId', e.target.value)}
-                placeholder="your-app-id"
+                placeholder={settings.provider === 'IOPGPS' ? 'exact account name' : 'your-app-id'}
                 className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
             </div>
+            {settings.provider === 'IOPGPS' && (
+              <p className="text-xs text-slate-400 mt-1.5">
+                Use the exact account name linked to the API key generated in IOPGPS &gt; System Configuration &gt; API Key Request.
+              </p>
+            )}
           </div>
 
           <div>
@@ -757,22 +768,42 @@ export default function GpsSettingsPage() {
             </>
           )}
 
-          <div>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-              Base URL
-              <GpsFieldHelp fieldKey="baseUrl" provider={settings.provider} />
-            </label>
-            <div className="relative">
-              <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={settings.baseUrl}
-                onChange={(e) => handleChange('baseUrl', e.target.value)}
-                placeholder="https://api.provider.com"
-                className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
-              />
+          {settings.provider === 'CUSTOM' ? (
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
+                Base URL
+                <GpsFieldHelp fieldKey="baseUrl" provider={settings.provider} />
+              </label>
+              <div className="relative">
+                <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={settings.baseUrl}
+                  onChange={(e) => handleChange('baseUrl', e.target.value)}
+                  placeholder="https://api.provider.com"
+                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                />
+              </div>
             </div>
-          </div>
+          ) : settings.provider === 'IOPGPS' && (
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
+                API Host
+              </label>
+              <div className="relative">
+                <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={IOPGPS_BASE_URL}
+                  disabled
+                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0]/60 border border-[#e8e6e1] rounded-xl text-sm font-normal text-slate-400 cursor-not-allowed"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1.5">
+                RentCar always connects to the official IOPGPS API host. This value cannot be changed.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
@@ -853,6 +884,9 @@ export default function GpsSettingsPage() {
             )}
             {!testResult.success && testResult.errorCode && (
               <p className="text-xs text-rose-500 mt-1 font-mono">{testResult.errorCode}</p>
+            )}
+            {!testResult.success && testResult.action && (
+              <p className="text-xs text-rose-500 mt-1">{testResult.action}</p>
             )}
           </div>
         </div>

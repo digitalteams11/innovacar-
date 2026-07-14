@@ -1,2 +1,5 @@
 org.springframework.context.ApplicationContextInitializer=\
 com.carrental.config.DatabaseSafetyInitializer
+
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.carrental.config.DatabaseUrlEnvironmentPostProcessor

@@ -79,7 +79,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   ], [t]);
 
   const adminToolItems = useMemo<NavigationItem[]>(() => [
-    { to: '/contract-templates', icon: FileText, label: t('nav.contractTemplates'), feature: 'CONTRACT_MANAGEMENT', permission: 'MANAGE_SETTINGS' },
     { to: '/agency', icon: Info, label: t('nav.agency') },
     { to: '/branches', icon: Building2, label: t('nav.branches'), feature: 'MULTI_BRANCH' },
     { to: '/role-permissions', icon: ShieldCheck, label: t('nav.roleAccess'), permission: 'MANAGE_EMPLOYEES' },

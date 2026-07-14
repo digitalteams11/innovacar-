@@ -16,4 +16,7 @@ public class GpsConnectionTestResponse {
     private Integer devicesFound;
     private String responseTime;
     private String errorCode;
+
+    /** Actionable next step shown to the user when success is false. */
+    private String action;
 }

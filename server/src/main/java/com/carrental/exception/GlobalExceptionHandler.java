@@ -100,6 +100,21 @@ public class GlobalExceptionHandler {
                 "Related data is missing. Please refresh or repair this record.", "error", "RELATED_ENTITY_MISSING");
     }
 
+    @ExceptionHandler(com.carrental.legal.exception.LegalDocumentNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleLegalDocumentNotFound(com.carrental.legal.exception.LegalDocumentNotFoundException ex) {
+        return bodyWithCode(HttpStatus.NOT_FOUND, safeBusinessMessage(ex.getMessage(), "Legal document not found."), "error", "LEGAL_DOCUMENT_NOT_FOUND");
+    }
+
+    @ExceptionHandler(com.carrental.legal.exception.LegalDocumentStateException.class)
+    public ResponseEntity<Map<String, Object>> handleLegalDocumentState(com.carrental.legal.exception.LegalDocumentStateException ex) {
+        return bodyWithCode(HttpStatus.CONFLICT, safeBusinessMessage(ex.getMessage(), "This action is not valid for the document's current state."), "warning", "LEGAL_DOCUMENT_STATE_CONFLICT");
+    }
+
+    @ExceptionHandler(com.carrental.legal.exception.PrivacyRequestNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handlePrivacyRequestNotFound(com.carrental.legal.exception.PrivacyRequestNotFoundException ex) {
+        return bodyWithCode(HttpStatus.NOT_FOUND, safeBusinessMessage(ex.getMessage(), "Privacy request not found."), "error", "PRIVACY_REQUEST_NOT_FOUND");
+    }
+
     @ExceptionHandler(InspectionTokenExpiredException.class)
     public ResponseEntity<Map<String, Object>> handleInspectionExpired(InspectionTokenExpiredException ex) {
         return bodyWithCode(HttpStatus.GONE,
@@ -398,15 +413,6 @@ public class GlobalExceptionHandler {
         return bodyWithCode(HttpStatus.CONFLICT, ex.getMessage(), "warning", "ADMIN_LOCKOUT_PREVENTED");
     }
 
-    @ExceptionHandler(TemplatePlanRequiredException.class)
-    public ResponseEntity<Map<String, Object>> handleTemplatePlanRequired(TemplatePlanRequiredException ex) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("requiredPlan", ex.getRequiredPlan());
-        return bodyWithCode(HttpStatus.FORBIDDEN,
-                safeBusinessMessage(ex.getMessage(), "Your plan does not include this contract template."),
-                "warning", "TEMPLATE_PLAN_REQUIRED", data);
-    }
-
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleMaxUpload(MaxUploadSizeExceededException ex) {
         return bodyWithCode(HttpStatus.PAYLOAD_TOO_LARGE,
@@ -673,6 +679,19 @@ public class GlobalExceptionHandler {
         }
         if (lower.contains("rental end must be after rental start") || lower.contains("rental start and end dates are required")) {
             return "INVALID_DATE_RANGE";
+        }
+        if (lower.contains("a client is required")) {
+            return "CLIENT_REQUIRED";
+        }
+        if (lower.contains("provide either clientid or newclient")) {
+            return "CLIENT_SOURCE_AMBIGUOUS";
+        }
+        if (lower.contains("newclient.fullname is required") || lower.contains("newclient.phone is required")
+                || lower.contains("newclient.cin or driverlicensenumber is required")) {
+            return "CLIENT_FIELD_REQUIRED";
+        }
+        if (lower.contains("a vehicle is required to create a contract")) {
+            return "VEHICLE_REQUIRED";
         }
         return "BUSINESS_VALIDATION_ERROR";
     }

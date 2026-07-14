@@ -54,6 +54,35 @@ public final class AiProviderHttpSupport {
         return "AI_SERVICE_UNAVAILABLE";
     }
 
+    /**
+     * Providers that reject an oversized {@code max_tokens}/{@code max_completion_tokens}
+     * value on a 400 respond with the model's actual cap embedded in the error
+     * text (e.g. Groq: "must be less than or equal to `512`"; OpenAI-style:
+     * "supports at most 4096 completion tokens"). Parsing it lets callers
+     * retry once with a clamped value instead of hardcoding per-model limits
+     * that providers change over time.
+     */
+    private static final java.util.regex.Pattern[] MAX_TOKENS_CAP_PATTERNS = {
+            java.util.regex.Pattern.compile("less than or equal to `?(\\d+)`?", java.util.regex.Pattern.CASE_INSENSITIVE),
+            java.util.regex.Pattern.compile("supports at most `?(\\d+)`?", java.util.regex.Pattern.CASE_INSENSITIVE),
+            java.util.regex.Pattern.compile("maximum value for `?max_tokens`? is `?(\\d+)`?", java.util.regex.Pattern.CASE_INSENSITIVE),
+    };
+
+    public static Integer extractMaxTokensCap(String providerMessage) {
+        if (providerMessage == null || providerMessage.isBlank()) return null;
+        for (java.util.regex.Pattern pattern : MAX_TOKENS_CAP_PATTERNS) {
+            var matcher = pattern.matcher(providerMessage);
+            if (matcher.find()) {
+                try {
+                    return Integer.parseInt(matcher.group(1));
+                } catch (NumberFormatException ignore) {
+                    // try next pattern
+                }
+            }
+        }
+        return null;
+    }
+
     public static String networkErrorMessage(String code, String providerName, Throwable root) {
         return switch (code) {
             case "AI_PROVIDER_URL_MISSING" ->

@@ -471,7 +471,7 @@ export default function Contracts() {
 
   const handleGenerateQR = async (contract: Contract) => {
     try {
-      const res = await api.post(`/contracts/${contract.id}/qr`, { frontendUrl: window.location.origin + '/#' });
+      const res = await api.post(`/contracts/${contract.id}/qr`);
       // Open modal immediately with updated token/URL from response
       setQrModal({
         open: true,
@@ -954,7 +954,8 @@ export default function Contracts() {
         <QRCodeModal isOpen={qrModal.open} onClose={() => setQrModal({ open: false })}
           qrToken={qrModal.contract.qrToken || ''}
           signingUrl={qrModal.contract.publicSigningUrl || ''}
-          contractNumber={qrModal.contract.contractNumber} clientName={qrModal.contract.clientFullName || ''} />
+          contractNumber={qrModal.contract.contractNumber} clientName={qrModal.contract.clientFullName || ''}
+          clientEmail={qrModal.contract.clientEmail} clientPhone={qrModal.contract.clientPhone} />
       )}
     </div>
   );

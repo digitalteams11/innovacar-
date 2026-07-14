@@ -87,7 +87,6 @@ interface ContractDetail {
   qrToken: string;
   publicSigningUrl: string;
   pdfUrl: string;
-  selectedTemplateId?: number | null;
 
   // Deposit
   deposit?: {
@@ -144,19 +143,13 @@ export default function ContractDetails() {
   const [clientBalance, setClientBalance] = useState<any>(null);
   const [inspections, setInspections] = useState<any[]>([]);
   const [inspectionQr, setInspectionQr] = useState<any>(null);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-  const [savingTemplate, setSavingTemplate] = useState(false);
 
-  useEffect(() => { fetchContract(); fetchPdfTemplates(); }, [id]);
+  useEffect(() => { fetchContract(); }, [id]);
 
   const fetchContract = async () => {
     try {
       const { data } = await api.get(`/contracts/${id}`);
       setContract(data);
-      if (data.selectedTemplateId !== undefined && data.selectedTemplateId !== null) {
-        setSelectedTemplateId(data.selectedTemplateId);
-      }
       fetchInspections(data.id);
       if (data.clientId) {
         fetchClientBalance(data.clientId);
@@ -174,38 +167,6 @@ export default function ContractDetails() {
       setInspections(Array.isArray(data) ? data : []);
     } catch {
       setInspections([]);
-    }
-  };
-
-  const fetchPdfTemplates = async () => {
-    try {
-      const { data } = await api.get('/contract-templates');
-      const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-      const activeTemplates = list.filter((item: any) => item.active);
-      setTemplates(activeTemplates);
-      const defaultTemplate = activeTemplates.find((item: any) => item.default);
-      if (defaultTemplate) {
-        setSelectedTemplateId((current) => current ?? defaultTemplate.id);
-      }
-    } catch {
-      setTemplates([]);
-    }
-  };
-
-  const handleSelectTemplate = async (value: string) => {
-    if (!contract) return;
-    const templateId = value === 'system' ? null : Number(value);
-    setSelectedTemplateId(templateId);
-    setSavingTemplate(true);
-    try {
-      const { data } = await api.put(`/contracts/${contract.id}/template`, { templateId });
-      setContract((current) => current ? { ...current, selectedTemplateId: data?.selectedTemplateId ?? null } : current);
-      setSelectedTemplateId(data?.selectedTemplateId ?? null);
-      showToast(templateId ? 'Contract template saved' : 'System default template selected', 'success');
-    } catch (err: any) {
-      showToast(err?.userMessage || 'Unable to save template choice.', 'error');
-    } finally {
-      setSavingTemplate(false);
     }
   };
 
@@ -232,7 +193,7 @@ export default function ContractDetails() {
     setIsSubmitting(true);
     try {
       showToast('Generating PDF...', 'info');
-      const response = await api.get(`/contracts/${contract.id}/pdf`, { params: { template: selectedTemplateId ? 'agency' : 'system' }, responseType: 'blob' });
+      const response = await api.get(`/contracts/${contract.id}/pdf`, { responseType: 'blob' });
       if (!response.data || response.data.size === 0) {
         showToast('PDF file is empty. Please try again.', 'error');
         return;
@@ -258,7 +219,7 @@ export default function ContractDetails() {
     if (!contract) return;
     setIsSubmitting(true);
     try {
-      const response = await api.get(`/contracts/${contract.id}/pdf`, { params: { template: selectedTemplateId ? 'agency' : 'system' }, responseType: 'blob' });
+      const response = await api.get(`/contracts/${contract.id}/pdf`, { responseType: 'blob' });
       if (!response.data || response.data.size === 0) {
         showToast('PDF file is empty. Please try again.', 'error');
         return;
@@ -372,9 +333,7 @@ export default function ContractDetails() {
     }
     setIsSubmitting(true);
     try {
-      const { data } = await api.get(`/contracts/${contract.id}/qr`, {
-        params: { frontendUrl: window.location.origin + '/#' },
-      });
+      const { data } = await api.get(`/contracts/${contract.id}/qr`);
       if (data?.success === false) {
         showToast(data.message || 'Unable to generate QR code. Please try again later.', 'error');
         return;
@@ -474,7 +433,6 @@ export default function ContractDetails() {
       ? 'PENDING_SIGNATURE'
       : contract.status;
   const canFinalize = bothSigned && contract.status !== 'ACTIVE' && contract.status !== 'COMPLETED';
-  const selectedPdfTemplate = templates.find((tpl) => tpl.id === selectedTemplateId) || null;
   const statusLabel = (status?: string) =>
     status ? t(`contracts.statusLabel.${status}`, { defaultValue: status.replace('_', ' ') }) : 'N/A';
   const paymentStatusLabel = (status?: string) =>
@@ -508,28 +466,6 @@ export default function ContractDetails() {
           <span className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider ${getStatusBadge(displayedStatus)}`}>
             {statusLabel(displayedStatus)}
           </span>
-          <select
-            value={selectedTemplateId ?? 'system'}
-            onChange={(event) => handleSelectTemplate(event.target.value)}
-            disabled={savingTemplate}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:border-brand-300 disabled:opacity-50"
-            title={t('contractDetails.pdfTemplate')}
-          >
-            <option value="system">{t('contractDetails.systemDefault')}</option>
-            {templates.map((tpl) => (
-              <option key={tpl.id} value={tpl.id}>
-                {tpl.name}{tpl.default ? ' (agency default)' : ''}{tpl.templateType === 'SYSTEM_DEFAULT' ? ' - system' : ''}
-              </option>
-            ))}
-          </select>
-          <span className="max-w-[280px] text-[11px] font-medium text-slate-500">
-            {t('contractDetails.pdfTemplateLabel')} {selectedPdfTemplate ? selectedPdfTemplate.name : t('contractDetails.systemDefault')}
-          </span>
-          {!selectedTemplateId && !templates.length && (
-            <span className="max-w-[260px] text-[11px] font-medium text-amber-600">
-              {t('contractDetails.noTemplateConfigured')}
-            </span>
-          )}
           <button onClick={handlePrintPdf} disabled={isSubmitting} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
             <Printer size={14} className="sm:hidden" />
             <Printer size={16} className="hidden sm:block" />
@@ -1094,6 +1030,8 @@ export default function ContractDetails() {
           contractNumber={contract.contractNumber}
           clientName={contract.clientFullName || ''}
           contractId={contract.id}
+          clientEmail={contract.clientEmail}
+          clientPhone={contract.clientPhone}
         />
       )}
 

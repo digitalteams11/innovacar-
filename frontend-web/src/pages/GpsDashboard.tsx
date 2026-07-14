@@ -153,25 +153,30 @@ export default function GpsDashboard() {
   const [secondsAgo, setSecondsAgo] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inFlightRef = useRef(false);
+  const syntheticRef = useRef<GpsVehicle[]>([]);
 
-  const fetchAll = useCallback(async (isManual = false) => {
+  // `/gps/settings` and `/gps/devices` describe configuration, not live
+  // position — they only need to be (re-)fetched on mount and on an
+  // explicit manual refresh, not on every 30s tracking tick. Polling them
+  // that often just doubles request volume for data that hasn't changed.
+  const fetchAll = useCallback(async (isManual = false, includeConfig = false) => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     if (isManual) setRefreshing(true);
 
     try {
-      const [vehiclesRes, statsRes, settingsRes, devicesRes] = await Promise.allSettled([
-        api.get('/gps/tracked'),
-        api.get('/gps/stats'),
-        api.get('/gps/settings'),
-        api.get('/gps/devices'),
-      ]);
+      const requests: Promise<any>[] = [api.get('/gps/tracked'), api.get('/gps/stats')];
+      if (includeConfig) requests.push(api.get('/gps/settings'), api.get('/gps/devices'));
 
-      if (settingsRes.status === 'fulfilled') {
-        const d = settingsRes.value.data;
-        setGpsConfigured(!!(d?.hasCredentials || d?.enabled));
-      } else {
-        setGpsConfigured(false);
+      const [vehiclesRes, statsRes, settingsRes, devicesRes] = await Promise.allSettled(requests);
+
+      if (includeConfig) {
+        if (settingsRes?.status === 'fulfilled') {
+          const d = settingsRes.value.data;
+          setGpsConfigured(!!(d?.hasCredentials || d?.enabled));
+        } else {
+          setGpsConfigured(false);
+        }
       }
 
       let tracked: GpsVehicle[] = [];
@@ -180,13 +185,14 @@ export default function GpsDashboard() {
         tracked = Array.isArray(raw) ? raw : (raw?.data ?? []);
       }
 
-      // Merge unlinked synced devices (no vehicleId) as virtual map entries
-      if (devicesRes.status === 'fulfilled') {
+      // Merge unlinked synced devices (no vehicleId) as virtual map entries.
+      // Only refetched with the config batch; on tracking-only ticks we
+      // reuse the last computed list so they don't disappear from the map.
+      if (includeConfig && devicesRes?.status === 'fulfilled') {
         const devList: SyncedDevice[] = devicesRes.value.data?.data?.devices ?? [];
-        const unlinked = devList.filter(d => !d.vehicleId && d.latitude && d.longitude);
         const linkedIds = new Set(tracked.map(v => v.id));
-        const synthetic: GpsVehicle[] = unlinked
-          .filter(d => !linkedIds.has(d.id))
+        syntheticRef.current = devList
+          .filter(d => !d.vehicleId && d.latitude && d.longitude && !linkedIds.has(d.id))
           .map(d => ({
             id: d.id,
             marque: d.name || `Device ${d.providerDeviceId}`,
@@ -200,10 +206,8 @@ export default function GpsDashboard() {
             lastSpeed: d.speed,
             gpsEnabled: true,
           }));
-        tracked = [...tracked, ...synthetic];
       }
-
-      setVehicles(tracked);
+      setVehicles([...tracked, ...syntheticRef.current]);
 
       if (statsRes.status === 'fulfilled') {
         const raw = statsRes.value.data;
@@ -221,12 +225,13 @@ export default function GpsDashboard() {
 
   // Initial load
   useEffect(() => {
-    fetchAll();
+    fetchAll(false, true);
   }, [fetchAll]);
 
-  // Auto-poll every 30 seconds
+  // Auto-poll every 30 seconds — tracking data only, config is re-fetched
+  // separately (initial load + manual refresh).
   useEffect(() => {
-    pollRef.current = setInterval(() => fetchAll(), 30_000);
+    pollRef.current = setInterval(() => fetchAll(false, false), 30_000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [fetchAll]);
 
@@ -350,7 +355,7 @@ export default function GpsDashboard() {
               )}
             </button>
             <button
-              onClick={() => fetchAll(true)}
+              onClick={() => fetchAll(true, true)}
               disabled={refreshing}
               className="surface-control flex items-center gap-2 h-10 px-4 text-sm font-medium disabled:opacity-50"
             >

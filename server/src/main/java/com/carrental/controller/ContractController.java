@@ -424,27 +424,22 @@ public class ContractController {
 
     @GetMapping("/contracts/{id}/qr")
     @PreAuthorize("@rolePermissionService.has('SIGN_CONTRACT')")
-    public ResponseEntity<Map<String, Object>> generateQrTokenGet(
-            @PathVariable Long id,
-            @RequestParam(required = false) String frontendUrl) {
-        return generateQrResponse(id, frontendUrl);
+    public ResponseEntity<Map<String, Object>> generateQrTokenGet(@PathVariable Long id) {
+        return generateQrResponse(id);
     }
 
     @PostMapping("/contracts/{id}/qr")
     @PreAuthorize("@rolePermissionService.has('SIGN_CONTRACT')")
-    public ResponseEntity<Map<String, Object>> generateQrToken(
-            @PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> body) {
-        String frontendUrl = body != null ? body.get("frontendUrl") : null;
-        return generateQrResponse(id, frontendUrl);
+    public ResponseEntity<Map<String, Object>> generateQrToken(@PathVariable Long id) {
+        return generateQrResponse(id);
     }
 
-    private ResponseEntity<Map<String, Object>> generateQrResponse(Long id, String frontendUrl) {
+    private ResponseEntity<Map<String, Object>> generateQrResponse(Long id) {
         try {
             boolean existingQr = contractService.hasQrCode(id);
-            String token = contractService.generateQrToken(id, frontendUrl);
+            String token = contractService.generateQrToken(id);
             ContractResponse updated = contractService.getContractById(id);
-            String publicSigningUrl = buildPublicSigningUrl(id, token, frontendUrl, updated.getPublicSigningUrl());
+            String publicSigningUrl = updated.getPublicSigningUrl();
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("contractId", updated.getId());
             data.put("contractNumber", updated.getContractNumber());
@@ -469,15 +464,6 @@ public class ContractController {
                     List.of()
             ));
         }
-    }
-
-    private String buildPublicSigningUrl(Long contractId, String token, String frontendUrl, String fallbackUrl) {
-        if (frontendUrl == null || frontendUrl.isBlank()) {
-            return fallbackUrl != null ? fallbackUrl : "";
-        }
-        String base = frontendUrl;
-        base = base.replaceAll("/+$", "");
-        return base + "/contract-sign/" + contractId + "/" + token;
     }
 
     private Map<String, Object> errorBody(String message, String errorCode, Object data) {
@@ -522,21 +508,12 @@ public class ContractController {
         return ResponseEntity.ok(contractService.markCompleted(id));
     }
 
-    @PutMapping("/contracts/{id}/template")
-    @PreAuthorize("@rolePermissionService.has('EDIT_CONTRACT')")
-    public ResponseEntity<ContractResponse> updateContractTemplate(@PathVariable Long id,
-                                                                    @RequestBody Map<String, Object> body) {
-        Object templateId = body == null ? null : body.get("templateId");
-        return ResponseEntity.ok(contractService.updateSelectedTemplate(id, templateId));
-    }
-
     @GetMapping("/contracts/{id}/pdf")
     @PreAuthorize("@rolePermissionService.has('VIEW_CONTRACTS')")
-    public ResponseEntity<?> downloadContractPdf(@PathVariable Long id,
-                                                 @RequestParam(defaultValue = "agency") String template) {
+    public ResponseEntity<?> downloadContractPdf(@PathVariable Long id) {
         try {
             ContractResponse contract = contractService.getContractById(id);
-            byte[] pdf = contractService.generateContractPdf(id, !"system".equalsIgnoreCase(template));
+            byte[] pdf = contractService.generateContractPdf(id);
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -551,12 +528,6 @@ public class ContractController {
                     "CONTRACT_NOT_FOUND",
                     null
             ));
-        } catch (com.carrental.exception.TemplatePlanRequiredException ex) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorBody(
-                    ex.getMessage(),
-                    "TEMPLATE_PLAN_REQUIRED",
-                    Map.of("requiredPlan", ex.getRequiredPlan())
-            ));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorBody(
                     "Unable to generate contract PDF",
@@ -568,11 +539,10 @@ public class ContractController {
 
     @GetMapping("/contracts/{id}/pdf/preview")
     @PreAuthorize("@rolePermissionService.has('VIEW_CONTRACTS')")
-    public ResponseEntity<?> previewContractPdf(@PathVariable Long id,
-                                                @RequestParam(defaultValue = "agency") String template) {
+    public ResponseEntity<?> previewContractPdf(@PathVariable Long id) {
         try {
             ContractResponse contract = contractService.getContractById(id);
-            byte[] pdf = contractService.generateContractPdf(id, !"system".equalsIgnoreCase(template));
+            byte[] pdf = contractService.generateContractPdf(id);
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -586,12 +556,6 @@ public class ContractController {
                     "Contract not found",
                     "CONTRACT_NOT_FOUND",
                     null
-            ));
-        } catch (com.carrental.exception.TemplatePlanRequiredException ex) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorBody(
-                    ex.getMessage(),
-                    "TEMPLATE_PLAN_REQUIRED",
-                    Map.of("requiredPlan", ex.getRequiredPlan())
             ));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorBody(
@@ -690,7 +654,7 @@ public class ContractController {
             if (contract.getQrToken() == null || !contract.getQrToken().equals(qrToken)) {
                 return ResponseEntity.status(404).body(errorBody("Contract not found", "CONTRACT_NOT_FOUND", null));
             }
-            byte[] pdf = contractService.generateContractPdf(contractId, true);
+            byte[] pdf = contractService.generateContractPdf(contractId);
             return ResponseEntity.ok()
                     .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION,

@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface WhiteLabelSettingsRepository extends JpaRepository<WhiteLabelSettings, Long> {
     Optional<WhiteLabelSettings> findByTenantId(Long tenantId);
     Optional<WhiteLabelSettings> findByCustomDomain(String customDomain);
+    Optional<WhiteLabelSettings> findBySubdomain(String subdomain);
 }
