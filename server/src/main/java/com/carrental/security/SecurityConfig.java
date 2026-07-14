@@ -208,7 +208,7 @@ public class SecurityConfig {
             log.warn("[CORS_CONFIG_WARNING] onRailway={} prodProfile={} app.frontend-url={} — "
                     + "app.cors.allowed-origins does not look production-ready: '{}'. "
                     + "Set CORS_ALLOWED_ORIGINS to the exact production origin(s), comma-separated, "
-                    + "no wildcards — e.g. https://innvacar.app,https://www.innvacar.app",
+                    + "no wildcards — e.g. https://innovacar.app,https://www.innovacar.app",
                     onRailway, prodProfile, frontendUrl, allowedOrigins);
         }
     }

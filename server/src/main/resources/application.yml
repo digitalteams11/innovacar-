@@ -93,7 +93,7 @@ app:
   # via PUBLIC_WEB_URL. Must be a bare origin (no trailing slash, no /# hash
   # prefix) — the backend appends the HashRouter "/#/contract-sign/..." path
   # itself. In production, set FRONTEND_URL (or PUBLIC_WEB_URL as an alias) to
-  # the real public domain, e.g. https://innvacar.app — this is the single
+  # the real public domain, e.g. https://innovacar.app — this is the single
   # source of truth; client requests can no longer override it.
   frontend-url: "${FRONTEND_URL:${PUBLIC_WEB_URL:http://localhost:5173}}"
 
@@ -105,7 +105,7 @@ app:
   # ── CORS ───────────────────────────────────────────────────────────────────
   # Production (Railway) MUST set CORS_ALLOWED_ORIGINS to the exact production
   # origin(s), comma-separated, no wildcards, e.g.:
-  #   CORS_ALLOWED_ORIGINS=https://innvacar.app,https://www.innvacar.app
+  #   CORS_ALLOWED_ORIGINS=https://innovacar.app,https://www.innovacar.app
   # The default below is LAN-dev only; SecurityConfig logs a warning if this
   # default is still active while running under the "prod" profile or on Railway.
   cors:
