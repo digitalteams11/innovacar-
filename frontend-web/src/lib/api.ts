@@ -14,7 +14,7 @@ if (import.meta.env.PROD && !configuredApiUrl) {
   console.error(
     '[API] VITE_API_URL is not set in this production build. ' +
     'Set it in Vercel → Project Settings → Environment Variables ' +
-    '(e.g. VITE_API_URL=https://api.innovacar.app) and redeploy.'
+    '(e.g. VITE_API_URL=https://api.innovacar.app/api) and redeploy.'
   );
 }
 

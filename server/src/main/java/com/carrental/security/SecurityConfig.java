@@ -113,6 +113,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                         "/api/auth/**",
+                        "/health",
                         "/api/health",
                         "/actuator/health",
                         "/error",
@@ -124,8 +125,6 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/inspections/token/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/inspections/*/upload").permitAll()
                 .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
-                // Actuator health (optional — safe to expose)
-                .requestMatchers("/actuator/health", "/api/health").permitAll()
                 // Everything else requires a valid JWT
                 .anyRequest().authenticated())
 
