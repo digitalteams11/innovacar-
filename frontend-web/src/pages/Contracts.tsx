@@ -24,6 +24,8 @@ interface Contract {
   id: number;
   contractNumber: string;
   clientFullName: string;
+  clientEmail?: string;
+  clientPhone?: string;
   vehicleBrand?: string;
   vehicleModel?: string;
   vehicleMissing?: boolean;

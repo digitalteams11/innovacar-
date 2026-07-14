@@ -4,6 +4,20 @@ const browserHost =
     ? window.location.hostname
     : 'localhost';
 
+// Production builds must always have VITE_API_URL baked in at build time
+// (set in Vercel's project env vars) — silently falling back to the current
+// browser host would try to hit e.g. https://innvacar.app:8082/api, which is
+// both the wrong host and blocked as mixed content. This never throws (a
+// blank screen is worse than a console error), it just makes the
+// misconfiguration impossible to miss.
+if (import.meta.env.PROD && !configuredApiUrl) {
+  console.error(
+    '[API] VITE_API_URL is not set in this production build. ' +
+    'Set it in Vercel → Project Settings → Environment Variables ' +
+    '(e.g. VITE_API_URL=https://api.innvacar.app) and redeploy.'
+  );
+}
+
 export const API_BASE_URL = (
   configuredApiUrl || `http://${browserHost}:8082/api`
 ).replace(/\/+$/, '');

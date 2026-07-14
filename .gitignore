@@ -26,6 +26,7 @@ server/storage/
 .env
 .env.*
 !.env.example
+!frontend-web/.env.production
 *.local
 
 # Environment-specific Spring config that may hold real credentials

@@ -4,6 +4,7 @@ import com.carrental.dto.AuthResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Arrays;
 
+@Slf4j
 @Component
 public class AuthCookieService {
 
@@ -33,6 +35,12 @@ public class AuthCookieService {
         this.sameSite = sameSite;
         this.domain = domain;
         this.refreshExpirationSeconds = refreshExpirationMs / 1000;
+        // Never logs token values — only the cookie flags themselves, so a
+        // cross-site cookie failure (browser silently dropping it) can be
+        // diagnosed from this line alone: cross-site prod needs secure=true,
+        // sameSite=None.
+        log.info("[AUTH_COOKIE_CONFIG] secure={} sameSite={} domain={}",
+                secure, sameSite, domain.isBlank() ? "(host-only)" : domain);
     }
 
     public boolean usesCookieTransport(HttpServletRequest request) {

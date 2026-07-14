@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import { Camera, CheckCircle2, Loader2, RotateCcw, ShieldCheck, Upload } from 'lucide-react';
-import { API_BASE_URL, API_ORIGIN } from '../lib/api';
-
-const API_BASE = API_BASE_URL;
+import { API_ORIGIN } from '../lib/api';
+import api from '../api/axios';
 
 const PHOTO_STEPS = [
   { label: 'FRONT_SIDE', title: 'Front Side' },
@@ -32,19 +30,14 @@ export default function InspectionCapture() {
 
   const loadInspection = async () => {
     if (!token) return;
-    const endpoint = `${API_BASE}/public/inspections/${token}`;
-    return fetch(endpoint)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(messageForStatus(res.status, await res.json().catch(() => null)));
-        return res.json();
-      })
-      .then(setInspection);
+    const { data } = await api.get(`/public/inspections/${token}`);
+    setInspection(data);
   };
 
   useEffect(() => {
     setLoading(true);
     loadInspection()
-      .catch((err) => setError(err.message || 'Inspection link is invalid or expired'))
+      .catch((err) => setError(normalizeUploadError(err) || 'Inspection link is invalid or expired'))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -60,7 +53,7 @@ export default function InspectionCapture() {
     form.append('label', label);
     form.append('notes', notes[label] || '');
     form.append('inspectionType', inspection.type || 'BEFORE_DELIVERY');
-    const endpoint = `${API_BASE}/public/inspections/${token}/media`;
+    const endpoint = `/public/inspections/${token}/media`;
     console.info('[inspection-upload]', {
       tokenPresent: Boolean(token),
       fileName: file.name,
@@ -69,7 +62,7 @@ export default function InspectionCapture() {
       endpoint,
     });
     try {
-      const res = await axios.post(endpoint, form);
+      const res = await api.post(endpoint, form);
       console.info('[inspection-upload-response]', { status: res.status });
       const body = res.data;
       if (body?.success === false) throw new Error(messageForStatus(res.status, body));
@@ -221,7 +214,7 @@ function normalizeUploadError(error: any) {
   const body = error?.response?.data;
   if (status) return messageForStatus(status, body);
   const message = error?.message || '';
-  if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+  if (/Failed to fetch|NetworkError|Load failed|Network Error/i.test(message)) {
     return 'Unable to reach backend from phone. Check Wi-Fi IP.';
   }
   if (/permission/i.test(message)) return 'Camera permission denied.';

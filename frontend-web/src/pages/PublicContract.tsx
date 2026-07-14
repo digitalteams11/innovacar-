@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { API_BASE_URL, API_ORIGIN } from '../lib/api';
+import { API_ORIGIN } from '../lib/api';
+import api from '../api/axios';
 
 const resolveAsset = (url?: string | null) => {
   if (!url) return url ?? undefined;
@@ -83,21 +84,20 @@ export default function PublicContract() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const API_BASE = API_BASE_URL;
-
-  // Build the appropriate API URL based on available params
-  const getContractUrl = () => {
+  // Build the appropriate API path based on available params (relative to the
+  // shared axios instance's baseURL — never concatenate a full URL by hand).
+  const getContractPath = () => {
     if (contractId && qrToken) {
-      return `${API_BASE}/public/contracts/${contractId}/${qrToken}`;
+      return `/public/contracts/${contractId}/${qrToken}`;
     }
-    return `${API_BASE}/public/contracts/${qrToken}`;
+    return `/public/contracts/${qrToken}`;
   };
 
-  const getSignUrl = () => {
+  const getSignPath = () => {
     if (contractId && qrToken) {
-      return `${API_BASE}/public/contracts/${contractId}/${qrToken}/sign`;
+      return `/public/contracts/${contractId}/${qrToken}/sign`;
     }
-    return `${API_BASE}/public/contracts/${qrToken}/sign`;
+    return `/public/contracts/${qrToken}/sign`;
   };
 
   useEffect(() => {
@@ -110,26 +110,19 @@ export default function PublicContract() {
   }, [qrToken, contractId]);
 
   const fetchContract = async () => {
-    const url = getContractUrl();
+    const path = getContractPath();
     try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        let detail = '';
-        try {
-          const body = await res.json();
-          detail = body.error || body.message || '';
-        } catch { /* ignore parse error */ }
-        throw new Error(`HTTP ${res.status}${detail ? ': ' + detail : ''}`);
-      }
-      const data = await res.json();
+      const { data } = await api.get(path);
       setContract(data);
       setIsSigned(data.clientSigned || false);
       setTermsChecked(data.termsAccepted || false);
     } catch (err: any) {
-      console.error('[PublicContract] fetch failed:', url, err);
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.error || err?.response?.data?.message || '';
+      console.error('[PublicContract] fetch failed:', path, err);
       setError(
-        err?.message?.startsWith('HTTP')
-          ? `Server error (${err.message}). Please try again or contact support.`
+        status
+          ? `Server error (HTTP ${status}${detail ? ': ' + detail : ''}). Please try again or contact support.`
           : 'This contract link is invalid or has expired.'
       );
     } finally {
@@ -142,21 +135,13 @@ export default function PublicContract() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(getSignUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          signatureData,
-          signerType: 'CLIENT',
-          termsAccepted: true,
-          ipAddress: '',
-          userAgent: navigator.userAgent,
-        }),
+      const { data } = await api.post(getSignPath(), {
+        signatureData,
+        signerType: 'CLIENT',
+        termsAccepted: true,
+        ipAddress: '',
+        userAgent: navigator.userAgent,
       });
-
-      if (!res.ok) throw new Error('Failed to save signature');
-
-      const data = await res.json();
       setContract(data);
       setIsSigned(true);
       setShowSuccess(true);
@@ -171,8 +156,7 @@ export default function PublicContract() {
     if (!contract?.pdfUrl) return;
     setIsSubmitting(true);
     try {
-      const apiOrigin = API_BASE.replace(/\/api$/, '');
-      const res = await fetch(`${apiOrigin}${contract.pdfUrl}`);
+      const res = await fetch(`${API_ORIGIN}${contract.pdfUrl}`);
       if (!res.ok) throw new Error('Unable to download PDF');
       const blob = await res.blob();
       if (!blob || blob.size === 0) throw new Error('PDF file is empty');

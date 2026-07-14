@@ -1,6 +1,7 @@
 package com.carrental.security;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,6 +30,7 @@ import org.springframework.http.MediaType;
  *   <li>Method-level security enabled ({@code @PreAuthorize})</li>
  * </ul>
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -38,9 +40,13 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final SubscriptionFilter      subscriptionFilter;
     private final UserDetailsServiceImpl  userDetailsService;
+    private final org.springframework.core.env.Environment environment;
 
     @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
     private String allowedOrigins;
+
+    @Value("${app.frontend-url:}")
+    private String frontendUrl;
 
     // ── Password encoder ────────────────────────────────────────────────────
 
@@ -138,6 +144,8 @@ public class SecurityConfig {
 
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+        warnIfProductionOriginsLookLocal();
+
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
         java.util.Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
@@ -164,5 +172,44 @@ public class SecurityConfig {
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    /**
+     * Logs (never throws — a CORS misconfiguration breaks the frontend, not the
+     * server) a clear warning if this looks like a production/Railway deploy
+     * whose CORS_ALLOWED_ORIGINS still defaults to the LAN-dev list, or doesn't
+     * include the configured app.frontend-url host. This is the same signal a
+     * browser console CORS error would show, just surfaced in server logs first.
+     */
+    private void warnIfProductionOriginsLookLocal() {
+        boolean onRailway = System.getenv("RAILWAY_ENVIRONMENT_NAME") != null
+                || System.getenv("RAILWAY_PROJECT_ID") != null
+                || System.getenv("RAILWAY_SERVICE_ID") != null;
+        boolean prodProfile = java.util.Arrays.asList(environment.getActiveProfiles()).contains("prod");
+        if (!onRailway && !prodProfile) {
+            return;
+        }
+
+        String frontendHost = null;
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            try {
+                frontendHost = java.net.URI.create(frontendUrl).getHost();
+            } catch (Exception ignored) {
+                // leave frontendHost null — handled below
+            }
+        }
+
+        boolean originsLookLocal = allowedOrigins.toLowerCase(java.util.Locale.ROOT).contains("localhost")
+                || allowedOrigins.contains("192.168.")
+                || allowedOrigins.contains("127.0.0.1");
+        boolean containsFrontendHost = frontendHost != null && allowedOrigins.contains(frontendHost);
+
+        if (originsLookLocal || !containsFrontendHost) {
+            log.warn("[CORS_CONFIG_WARNING] onRailway={} prodProfile={} app.frontend-url={} — "
+                    + "app.cors.allowed-origins does not look production-ready: '{}'. "
+                    + "Set CORS_ALLOWED_ORIGINS to the exact production origin(s), comma-separated, "
+                    + "no wildcards — e.g. https://innvacar.app,https://www.innvacar.app",
+                    onRailway, prodProfile, frontendUrl, allowedOrigins);
+        }
     }
 }
