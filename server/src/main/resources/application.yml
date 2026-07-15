@@ -21,8 +21,15 @@ spring:
   flyway:
     enabled: "${SPRING_FLYWAY_ENABLED:false}"
     locations: classpath:db/migration
+    # If a target database already has the full schema applied outside Flyway
+    # (see server/scripts/bootstrap/baseline-core-schema.sql — the one-time
+    # manual bootstrap for a brand-new database) but has no flyway_schema_history
+    # table yet, Flyway auto-inserts a synthetic "baseline" row at
+    # baseline-version instead of trying to replay every historical migration
+    # against it. Kept at 57 (the latest migration as of the bootstrap script)
+    # so only V58+ ever actually execute against a bootstrapped database.
     baseline-on-migrate: true
-    baseline-version: 0
+    baseline-version: "${SPRING_FLYWAY_BASELINE_VERSION:57}"
     validate-on-migrate: true
     out-of-order: false
   servlet:
