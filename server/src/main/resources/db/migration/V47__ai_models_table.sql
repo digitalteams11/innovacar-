@@ -1,4 +1,7 @@
-CREATE TABLE ai_models (
+-- IF NOT EXISTS: a manually-bootstrapped database (see
+-- server/scripts/bootstrap/baseline-core-schema.sql) may already contain
+-- this table as part of the current entity shape.
+CREATE TABLE IF NOT EXISTS ai_models (
     id                       BIGSERIAL PRIMARY KEY,
     ai_provider_id           BIGINT NOT NULL REFERENCES ai_providers(id) ON DELETE CASCADE,
     model_id                 VARCHAR(120) NOT NULL,
@@ -19,4 +22,4 @@ CREATE TABLE ai_models (
     CONSTRAINT uq_ai_models_provider_model UNIQUE (ai_provider_id, model_id)
 );
 
-CREATE INDEX idx_ai_models_provider ON ai_models (ai_provider_id);
+CREATE INDEX IF NOT EXISTS idx_ai_models_provider ON ai_models (ai_provider_id);

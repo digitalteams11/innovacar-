@@ -17,9 +17,33 @@ ALTER TABLE ai_settings
     ADD COLUMN IF NOT EXISTS system_prompt           TEXT,
     ADD COLUMN IF NOT EXISTS updated_by              BIGINT;
 
-UPDATE ai_settings SET global_enabled = COALESCE(enabled, FALSE);
-UPDATE ai_settings SET max_output_tokens = max_tokens WHERE max_output_tokens IS NULL;
-UPDATE ai_settings SET request_timeout_seconds = timeout_seconds WHERE request_timeout_seconds IS NULL;
+-- The three UPDATEs and the migration DO block below all read legacy columns
+-- (enabled, max_tokens, timeout_seconds, provider, api_key_encrypted, ...)
+-- that this same file drops at the end. On a manually-bootstrapped database
+-- (see server/scripts/bootstrap/baseline-core-schema.sql) those columns never
+-- existed in the first place — the bootstrap reflects the current entity
+-- shape, which is what this migration produces, not what it started from —
+-- so each is guarded to no-op when the legacy column is already gone.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ai_settings' AND column_name = 'enabled') THEN
+        UPDATE ai_settings SET global_enabled = COALESCE(enabled, FALSE);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ai_settings' AND column_name = 'max_tokens') THEN
+        UPDATE ai_settings SET max_output_tokens = max_tokens WHERE max_output_tokens IS NULL;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ai_settings' AND column_name = 'timeout_seconds') THEN
+        UPDATE ai_settings SET request_timeout_seconds = timeout_seconds WHERE request_timeout_seconds IS NULL;
+    END IF;
+END $$;
 
 DO $$
 DECLARE
@@ -27,6 +51,10 @@ DECLARE
     new_provider_id BIGINT;
     key_was_present BOOLEAN;
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ai_settings' AND column_name = 'provider') THEN
+        RETURN; -- legacy columns already gone (bootstrapped schema) — nothing to migrate.
+    END IF;
+
     SELECT * INTO legacy FROM ai_settings ORDER BY id LIMIT 1;
 
     IF legacy IS NULL THEN
@@ -74,4 +102,16 @@ ALTER TABLE ai_settings
     DROP COLUMN IF EXISTS last_test_message,
     DROP COLUMN IF EXISTS last_test_error_code;
 
-ALTER TABLE ai_audit_logs RENAME TO ai_audit_logs_legacy;
+-- Guarded: on a manually-bootstrapped database, ai_audit_logs_legacy already
+-- exists as its own distinct current entity/table (created directly by the
+-- bootstrap), and a separate, unrelated ai_audit_logs may also already exist
+-- as its own current entity — renaming would either collide with the
+-- existing ai_audit_logs_legacy or clobber a live, unrelated table. Only
+-- rename when this is a genuine pending rename: source present, target absent.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ai_audit_logs')
+       AND NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ai_audit_logs_legacy') THEN
+        ALTER TABLE ai_audit_logs RENAME TO ai_audit_logs_legacy;
+    END IF;
+END $$;

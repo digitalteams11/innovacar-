@@ -1,5 +1,8 @@
 -- Provider-independent AI architecture: provider catalog table.
-CREATE TABLE ai_providers (
+-- IF NOT EXISTS: a manually-bootstrapped database (see
+-- server/scripts/bootstrap/baseline-core-schema.sql) may already contain
+-- this table as part of the current entity shape.
+CREATE TABLE IF NOT EXISTS ai_providers (
     id                       BIGSERIAL PRIMARY KEY,
     name                     VARCHAR(120) NOT NULL,
     provider_type            VARCHAR(40)  NOT NULL
@@ -23,5 +26,5 @@ CREATE TABLE ai_providers (
     updated_by                BIGINT
 );
 
-CREATE UNIQUE INDEX uq_ai_providers_single_active ON ai_providers (is_active) WHERE is_active = TRUE;
-CREATE INDEX idx_ai_providers_type ON ai_providers (provider_type);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_providers_single_active ON ai_providers (is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_ai_providers_type ON ai_providers (provider_type);

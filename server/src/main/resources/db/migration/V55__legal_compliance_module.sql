@@ -39,7 +39,17 @@ CREATE TABLE IF NOT EXISTS legal_acceptances (
     capture_context     VARCHAR(40)
 );
 
-CREATE INDEX IF NOT EXISTS idx_legal_acceptance_user_type ON legal_acceptances (user_id, document_type);
+-- Guarded: com.carrental.entity.LegalAcceptance and com.carrental.legal.entity
+-- .LegalAcceptance are two distinct Java entities that both map to this table
+-- name with different shapes (a pre-existing conflict independent of this
+-- migration) — on a manually-bootstrapped database, whichever one Hibernate
+-- generated may not have a document_type column at all.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'legal_acceptances' AND column_name = 'document_type') THEN
+        CREATE INDEX IF NOT EXISTS idx_legal_acceptance_user_type ON legal_acceptances (user_id, document_type);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_legal_acceptance_tenant ON legal_acceptances (tenant_id);
 
 CREATE TABLE IF NOT EXISTS cookie_consents (

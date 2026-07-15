@@ -1,4 +1,7 @@
-CREATE TABLE ai_usage_logs (
+-- IF NOT EXISTS: a manually-bootstrapped database (see
+-- server/scripts/bootstrap/baseline-core-schema.sql) may already contain
+-- this table as part of the current entity shape.
+CREATE TABLE IF NOT EXISTS ai_usage_logs (
     id               BIGSERIAL PRIMARY KEY,
     ai_provider_id   BIGINT REFERENCES ai_providers(id) ON DELETE SET NULL,
     ai_model_id      BIGINT REFERENCES ai_models(id) ON DELETE SET NULL,
@@ -19,8 +22,8 @@ CREATE TABLE ai_usage_logs (
     created_at       TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_ai_usage_agency ON ai_usage_logs (agency_id);
-CREATE INDEX idx_ai_usage_user ON ai_usage_logs (user_id);
-CREATE INDEX idx_ai_usage_created ON ai_usage_logs (created_at);
-CREATE INDEX idx_ai_usage_provider ON ai_usage_logs (ai_provider_id);
-CREATE INDEX idx_ai_usage_automation ON ai_usage_logs (automation_code);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_agency ON ai_usage_logs (agency_id);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_user ON ai_usage_logs (user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_created ON ai_usage_logs (created_at);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_provider ON ai_usage_logs (ai_provider_id);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_automation ON ai_usage_logs (automation_code);
