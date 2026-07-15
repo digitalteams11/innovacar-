@@ -146,6 +146,14 @@ app:
       enabled: "${APP_BOOTSTRAP_DEMO_ENABLED:true}"
       admin-email: "${APP_BOOTSTRAP_DEMO_ADMIN_EMAIL:admin@test.com}"
       admin-password: "${APP_BOOTSTRAP_DEMO_ADMIN_PASSWORD:password}"
+    # Secure one-time production bootstrap for the first real SUPER_ADMIN
+    # account (see SuperAdminBootstrapRunner). Distinct from the demo/legacy
+    # bootstrap above — no insecure defaults, runs at most once.
+    superadmin:
+      enabled: "${BOOTSTRAP_SUPERADMIN_ENABLED:false}"
+      email: "${BOOTSTRAP_SUPERADMIN_EMAIL:}"
+      password: "${BOOTSTRAP_SUPERADMIN_PASSWORD:}"
+      name: "${BOOTSTRAP_SUPERADMIN_NAME:}"
 
   # ── Auth cookies (access/refresh token cookies set by AuthCookieService) ────
   # Cross-site production (Vercel frontend + Railway backend on different
