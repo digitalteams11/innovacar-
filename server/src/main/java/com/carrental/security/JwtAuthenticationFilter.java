@@ -49,8 +49,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
         if (path.startsWith("/api/public/")
+                || path.equals("/health")
                 || path.equals("/api/health")
                 || path.equals("/actuator/health")
+                || path.equals("/public/branding")
                 || path.equals("/api/client-errors")) return true;
 
         // Public auth routes — no JWT needed.

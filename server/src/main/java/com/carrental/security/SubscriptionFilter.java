@@ -48,8 +48,10 @@ public class SubscriptionFilter extends OncePerRequestFilter {
             "/api/client-errors"
     );
     private static final Set<String> ALWAYS_ALLOWED_PATHS = Set.of(
+            "/health",
             "/api/health",
             "/actuator/health",
+            "/public/branding",
             "/api/me",
             "/api/agency",
             "/api/users/me/basic-profile"

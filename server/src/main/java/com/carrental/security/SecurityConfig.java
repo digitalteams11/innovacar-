@@ -42,7 +42,7 @@ public class SecurityConfig {
     private final UserDetailsServiceImpl  userDetailsService;
     private final org.springframework.core.env.Environment environment;
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
+    @Value("${app.cors.allowed-origins:https://innovacar.app,https://www.innovacar.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
     private String allowedOrigins;
 
     @Value("${app.frontend-url:}")
@@ -116,6 +116,7 @@ public class SecurityConfig {
                         "/health",
                         "/api/health",
                         "/actuator/health",
+                        "/public/branding",
                         "/error",
                         "/api/client-errors",
                         "/api/client-errors/**").permitAll()
