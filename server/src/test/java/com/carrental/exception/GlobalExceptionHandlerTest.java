@@ -55,4 +55,22 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_PATH_PARAMETER");
         assertThat((String) response.getBody().get("message")).contains("id");
     }
+
+    /**
+     * Regression test for public registration returning a generic 400 on a
+     * duplicate email instead of the documented 409. AuthService.register()
+     * now throws IllegalStateException (not IllegalArgumentException) for an
+     * already-registered email so it lands here, matching the response
+     * contract: duplicate email -> 409 CONFLICT / EMAIL_ALREADY_EXISTS.
+     */
+    @Test
+    void duplicateEmailOnRegistration_mapsToConflictWithEmailAlreadyExistsCode() {
+        ResponseEntity<Map<String, Object>> response = handler.handleIllegalState(
+                new IllegalStateException("Email already registered. Please sign in instead."));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("details", "EMAIL_ALREADY_EXISTS");
+        assertThat(response.getBody()).containsEntry("success", false);
+        assertThat((String) response.getBody().get("message")).contains("already registered");
+    }
 }

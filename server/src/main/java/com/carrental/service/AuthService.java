@@ -267,14 +267,17 @@ public class AuthService {
         Tenant tenant;
         if (createsNewTenant) {
             if (userRepository.findFirstByEmailIgnoreCaseOrderByIdAsc(email).isPresent()) {
-                throw new IllegalArgumentException("Email already registered. Please sign in instead.");
+                // IllegalStateException (not IllegalArgumentException) so GlobalExceptionHandler
+                // routes this to HTTP 409 CONFLICT with errorCode EMAIL_ALREADY_EXISTS, per the
+                // registration response contract, instead of a generic 400.
+                throw new IllegalStateException("Email already registered. Please sign in instead.");
             }
             tenant = createTenantForRegistration(request, email);
         } else {
             tenant = tenantRepository.findById(request.getTenantId())
                     .orElseThrow(() -> new IllegalArgumentException("Tenant not found with id: " + request.getTenantId()));
             if (userRepository.existsByEmailAndTenantId(email, tenant.getId())) {
-                throw new IllegalArgumentException("Email already registered for this agency.");
+                throw new IllegalStateException("Email already registered for this agency.");
             }
         }
 

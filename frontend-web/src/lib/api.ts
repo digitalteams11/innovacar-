@@ -18,9 +18,20 @@ if (import.meta.env.PROD && !configuredApiUrl) {
   );
 }
 
-export const API_BASE_URL = (
-  configuredApiUrl || `http://${browserHost}:8082/api`
-).replace(/\/+$/, '');
+// Guards against the single most common production misconfiguration: Vercel's
+// dashboard env var set to the bare API origin (e.g. https://api.innovacar.app)
+// instead of the origin + /api path the backend actually serves under. Without
+// this, every request silently drops the /api prefix, misses every permitAll
+// matcher in SecurityConfig, and falls through to anyRequest().authenticated() —
+// surfacing as a 401 "session expired" even on public routes like /auth/register.
+function ensureApiSuffix(url: string): string {
+  const trimmed = url.replace(/\/+$/, '');
+  return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
+}
+
+export const API_BASE_URL = configuredApiUrl
+  ? ensureApiSuffix(configuredApiUrl)
+  : `http://${browserHost}:8082/api`;
 
 export const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '');
 

@@ -67,4 +67,29 @@ class JwtAuthenticationFilterTest {
         verify(jwtTokenProvider, never()).validateAccessToken(anyString());
         verify(chain).doFilter(request, response);
     }
+
+    /**
+     * Regression guard for the production 401 on public registration: the
+     * canonical route is /api/auth/register (see AuthController's
+     * @RequestMapping("/api/auth")), and this filter must never require a
+     * JWT/cookie for it — the request must reach the controller even with
+     * no Authorization header and no cookies at all.
+     */
+    @Test
+    void registerRouteIsNotFiltered() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/register");
+        assertThat(filter.shouldNotFilter(request)).isTrue();
+    }
+
+    @Test
+    void loginRouteIsNotFiltered() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+        assertThat(filter.shouldNotFilter(request)).isTrue();
+    }
+
+    @Test
+    void protectedRouteIsStillFiltered() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/vehicles");
+        assertThat(filter.shouldNotFilter(request)).isFalse();
+    }
 }
