@@ -5,6 +5,7 @@ import { usePermissions } from '../context/PermissionContext';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import api from '../api/axios';
+import { isPasswordStrong } from '../lib/passwordPolicy';
 import { Plus, Download, Mail, Phone, Trash2, Edit3, Loader2, KeyRound, Users } from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
@@ -151,7 +152,7 @@ export default function Employees() {
     if (!form.email.trim()) errors.email = t('employees.errors.emailRequired');
     if (editingId === null && !form.temporaryPassword) {
       errors.temporaryPassword = t('employees.errors.temporaryPasswordRequired');
-    } else if (editingId === null && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(form.temporaryPassword)) {
+    } else if (editingId === null && !isPasswordStrong(form.temporaryPassword)) {
       errors.temporaryPassword = t('employees.errors.strongPassword');
     }
     setFieldErrors(errors);
@@ -250,7 +251,7 @@ export default function Employees() {
       return;
     }
     const newPassword = window.prompt(t('employees.resetPasswordPrompt', { name: emp.name }));
-    if (!newPassword || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(newPassword)) return;
+    if (!newPassword || !isPasswordStrong(newPassword)) return;
     try {
       await api.put(`/users/${emp.userId}/admin-reset-password`, { newPassword });
       showToast(t('employees.messages.passwordReset'), 'success');

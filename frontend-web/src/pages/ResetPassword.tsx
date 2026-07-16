@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api, { translateApiError } from '../api/axios';
 import { Car, Loader2, ArrowLeft, CheckCircle, Lock, Eye, EyeOff } from 'lucide-react';
 import { ErrorBox } from './ForgotPassword';
+import { checkPasswordStrength } from '../lib/passwordPolicy';
 
 function StrengthItem({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -14,16 +15,6 @@ function StrengthItem({ ok, label }: { ok: boolean; label: string }) {
       {label}
     </li>
   );
-}
-
-function checkStrength(p: string) {
-  return {
-    len:   p.length >= 8,
-    upper: /[A-Z]/.test(p),
-    lower: /[a-z]/.test(p),
-    digit: /\d/.test(p),
-    sym:   /[^A-Za-z0-9]/.test(p),
-  };
 }
 
 export default function ResetPassword() {
@@ -40,7 +31,7 @@ export default function ResetPassword() {
   const [error, setError]         = useState('');
   const [success, setSuccess]     = useState(false);
 
-  const strength = checkStrength(newPassword);
+  const strength = checkPasswordStrength(newPassword);
   const strengthOk = Object.values(strength).every(Boolean);
 
   useEffect(() => {

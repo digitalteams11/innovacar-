@@ -983,13 +983,13 @@
     "deleteEmployee": "Supprimer l'employé",
     "resetPassword": "Réinitialiser le mot de passe",
     "temporaryPassword": "Mot de passe temporaire",
-    "temporaryPasswordPlaceholder": "10+ caractères, majuscule, minuscule, chiffre, symbole",
+    "temporaryPasswordPlaceholder": "8+ caractères, majuscule, minuscule, chiffre, symbole",
     "hireDate": "Date d'embauche",
     "saveChanges": "Enregistrer les modifications",
     "addingEmployee": "Ajout de l'employé...",
     "noEmployees": "Aucun employé trouvé",
     "deleteConfirm": "Supprimer cet employé ?",
-    "resetPasswordPrompt": "Nouveau mot de passe pour {{name}} (10+ caractères avec majuscule, minuscule, chiffre et symbole)",
+    "resetPasswordPrompt": "Nouveau mot de passe pour {{name}} (8+ caractères avec majuscule, minuscule, chiffre et symbole)",
     "actionLabels": {
       "update": "Mise à jour",
       "delete": "Suppression"
@@ -1003,7 +1003,7 @@
       "fullNameRequired": "Le nom complet est obligatoire.",
       "emailRequired": "L'email est obligatoire.",
       "temporaryPasswordRequired": "Le mot de passe temporaire est obligatoire.",
-      "strongPassword": "Utilisez 10+ caractères avec majuscule, minuscule, chiffre et symbole.",
+      "strongPassword": "Utilisez 8+ caractères avec majuscule, minuscule, chiffre et symbole.",
       "completeRequired": "Complétez les champs obligatoires et utilisez un mot de passe temporaire fort.",
       "permissionsLoading": "Les permissions sont encore en cours de chargement. Réessayez dans un instant.",
       "noPermission": "Vous n'avez pas la permission de gérer les employés.",
@@ -2550,6 +2550,7 @@
     }
   },
   "errors": {
+    "strongPassword": "Utilisez au moins 8 caractères avec majuscule, minuscule, chiffre et symbole.",
     "UNAUTHORIZED": "Votre session a expiré. Veuillez vous reconnecter.",
     "PERMISSION_DENIED": "Vous n'avez pas la permission d'effectuer cette action.",
     "AUTH_REQUIRED": "Authentification requise. Veuillez vous reconnecter.",

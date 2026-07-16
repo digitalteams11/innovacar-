@@ -976,13 +976,13 @@
     "deleteEmployee": "حذف الموظف",
     "resetPassword": "إعادة تعيين كلمة مرور الدخول",
     "temporaryPassword": "كلمة المرور المؤقتة",
-    "temporaryPasswordPlaceholder": "10+ أحرف، حرف كبير، حرف صغير، رقم، رمز",
+    "temporaryPasswordPlaceholder": "8+ أحرف، حرف كبير، حرف صغير، رقم، رمز",
     "hireDate": "تاريخ التوظيف",
     "saveChanges": "حفظ التغييرات",
     "addingEmployee": "جار إضافة الموظف...",
     "noEmployees": "لم يتم العثور على موظفين",
     "deleteConfirm": "هل تريد حذف هذا الموظف؟",
-    "resetPasswordPrompt": "كلمة مرور جديدة لـ {{name}} (10+ أحرف مع حرف كبير وصغير ورقم ورمز)",
+    "resetPasswordPrompt": "كلمة مرور جديدة لـ {{name}} (8+ أحرف مع حرف كبير وصغير ورقم ورمز)",
     "actionLabels": {
       "update": "تحديث",
       "delete": "حذف"
@@ -996,7 +996,7 @@
       "fullNameRequired": "الاسم الكامل مطلوب.",
       "emailRequired": "البريد الإلكتروني مطلوب.",
       "temporaryPasswordRequired": "كلمة المرور المؤقتة مطلوبة.",
-      "strongPassword": "استخدم 10+ أحرف مع حرف كبير وصغير ورقم ورمز.",
+      "strongPassword": "استخدم 8+ أحرف مع حرف كبير وصغير ورقم ورمز.",
       "completeRequired": "أكمل الحقول المطلوبة واستخدم كلمة مرور مؤقتة قوية.",
       "permissionsLoading": "ما زال تحميل الصلاحيات جارياً. حاول مرة أخرى بعد قليل.",
       "noPermission": "ليست لديك صلاحية إدارة الموظفين.",
@@ -2555,6 +2555,7 @@
     }
   },
   "errors": {
+    "strongPassword": "استخدم 8 أحرف على الأقل مع حرف كبير وصغير ورقم ورمز خاص.",
     "UNAUTHORIZED": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
     "PERMISSION_DENIED": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
     "AUTH_REQUIRED": "المصادقة مطلوبة. يرجى تسجيل الدخول مرة أخرى.",

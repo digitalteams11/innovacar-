@@ -249,9 +249,7 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const responseData = error.response?.data;
     const tokenExpired = error.response?.headers?.['token-expired'] === 'true';
-    const authEntryRequest = /\/auth\/(login|signup|register|google|refresh|logout|phone\/verify-otp)/.test(
-      originalRequest.url || ''
-    );
+    const authEntryRequest = isAuthEntryRequest(originalRequest.url || '');
 
     const hasSessionMarker = Boolean(
       getStoredAccessToken()

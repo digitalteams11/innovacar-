@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import api, { translateApiError } from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { isPasswordStrong } from '../../lib/passwordPolicy';
 import {
   Lock, Eye, EyeOff, ShieldCheck, Smartphone, Mail, Monitor,
   LogOut, History, AlertTriangle, CheckCircle2, XCircle, Trash2,
@@ -157,8 +158,8 @@ export default function SecurityTab() {
       setPasswordError('New password and confirmation do not match.');
       return;
     }
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(password.newPassword)) {
-      setPasswordError('Use at least 10 characters with uppercase, lowercase, a number, and a symbol.');
+    if (!isPasswordStrong(password.newPassword)) {
+      setPasswordError(t('errors.strongPassword', 'Use at least 8 characters with uppercase, lowercase, a number, and a symbol.'));
       return;
     }
     setPasswordLoading(true);

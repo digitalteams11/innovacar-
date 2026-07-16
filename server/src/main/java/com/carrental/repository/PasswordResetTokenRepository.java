@@ -30,6 +30,12 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     /** All PENDING tokens for a user — used to invalidate previous codes. */
     List<PasswordResetToken> findAllByUserIdAndStatus(Long userId, String status);
 
+    /** Most recent reset-code request for a user, regardless of status — used to enforce the resend cooldown. */
+    Optional<PasswordResetToken> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /** Count of reset-code requests for a user within a time window — used to enforce the per-15-minutes cap. */
+    long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime cutoff);
+
     // ── Cleanup ──────────────────────────────────────────────────────────────
 
     void deleteByUserId(Long userId);

@@ -39,9 +39,14 @@ public class SuperAdminBootstrapRunner implements ApplicationRunner {
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
-    /** At least 12 characters, one lowercase, one uppercase, one digit, one symbol. */
+    /**
+     * At least 8 characters, one lowercase, one uppercase, one digit, one symbol —
+     * the same canonical policy enforced by PasswordPolicyService for every other
+     * account (registration, change-password, forgot-password reset). Super Admin
+     * bootstrap must not be held to a different rule.
+     */
     private static final Pattern STRONG_PASSWORD_PATTERN =
-            Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,}$");
+            Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$");
 
     private static final String SYSTEM_TENANT_EMAIL = "system@innovax.tech";
 
@@ -78,7 +83,7 @@ public class SuperAdminBootstrapRunner implements ApplicationRunner {
         if (!hasText(password) || !STRONG_PASSWORD_PATTERN.matcher(password).matches()) {
             throw new IllegalStateException(
                     "BOOTSTRAP_SUPERADMIN_ENABLED=true requires BOOTSTRAP_SUPERADMIN_PASSWORD to be at least "
-                            + "12 characters and include an uppercase letter, a lowercase letter, a digit and a symbol.");
+                            + "8 characters and include an uppercase letter, a lowercase letter, a digit and a symbol.");
         }
 
         User user = userRepository.findFirstByEmailIgnoreCaseOrderByIdAsc(normalizedEmail).orElse(null);

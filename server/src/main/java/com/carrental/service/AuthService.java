@@ -161,7 +161,7 @@ public class AuthService {
                         .orElse(false);
                 boolean trustedRevoked = existingDevice.map(d -> d.getRevokedAt() != null).orElse(false);
 
-                log.info("[TRUSTED_DEVICE_DEBUG] userId={} has2FA={} trustedCookiePresent={} trustedTokenValid={} " +
+                log.debug("[TRUSTED_DEVICE_DEBUG] userId={} has2FA={} trustedCookiePresent={} trustedTokenValid={} " +
                         "trustedDeviceExpired={} trustedDeviceRevoked={} requires2FA={} trustDeviceRequested={} " +
                         "trustedDeviceCreated={} expiresAt={}",
                         user.getId(), needs2FA, fingerprintPresent, trustedValid, trustedExpired, trustedRevoked,
@@ -364,7 +364,7 @@ public class AuthService {
     public void requestPasswordReset(PasswordResetRequest request, String ipAddress, String userAgent) {
         String normalizedEmail = normalizeEmail(request.getEmail());
         Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
-        log.info("[FORGOT_PASSWORD_DEBUG] endpointHit=true emailMasked={} userExists={}",
+        log.debug("[FORGOT_PASSWORD_DEBUG] endpointHit=true emailMasked={} userExists={}",
                 maskEmail(normalizedEmail), userOpt.isPresent());
         if (userOpt.isEmpty()) {
             // Never reveal whether email exists
@@ -374,6 +374,24 @@ public class AuthService {
         }
 
         User user = userOpt.get();
+
+        // Rate limiting: max 3 code requests per user per 15 minutes, plus a 60-second
+        // resend cooldown between requests. Both are enforced silently (same generic
+        // success response as everywhere else in this method) — never surfaced as an
+        // error — so a rate-limited request can't be distinguished from a normal one
+        // and can't be used to probe account existence or request cadence.
+        Optional<PasswordResetToken> mostRecent =
+                passwordResetTokenRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId());
+        boolean cooldownActive = mostRecent.isPresent()
+                && mostRecent.get().getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(60));
+        long recentRequestCount = passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(
+                user.getId(), LocalDateTime.now().minusMinutes(15));
+        if (cooldownActive || recentRequestCount >= 3) {
+            log.info("[PWD_RESET] Rate limit hit for user [id={}] recentRequestCount={} cooldownActive={}",
+                    user.getId(), recentRequestCount, cooldownActive);
+            simulateDelay();
+            return;
+        }
 
         // Invalidate all previous PENDING tokens for this user
         passwordResetTokenRepository.findAllByUserIdAndStatus(user.getId(), "PENDING")
@@ -402,7 +420,7 @@ public class AuthService {
         // logged before the send attempt so a misconfiguration is diagnosable
         // without ever touching the password or the generated code.
         SmtpMailService.PlatformSmtpDiagnostics diag = smtpMailService.describePlatformConfig();
-        log.info("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} userExists=true smtpSettingsSource={} "
+        log.debug("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} userExists=true smtpSettingsSource={} "
                         + "smtpHost={} smtpPort={} smtpUsernamePresent={} fromEmail={} fromName={} "
                         + "startTls={} passwordPresent={} sendAttempted=true",
                 maskEmail(user.getEmail()), diag.source(), diag.host(), diag.port(), diag.usernamePresent(),
@@ -422,7 +440,7 @@ public class AuthService {
         }
 
         // Never log the OTP code or SMTP password — only the outcome.
-        log.info("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} sendResult={} errorCode={}",
+        log.debug("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} sendResult={} errorCode={}",
                 maskEmail(user.getEmail()), result.sent(), result.errorCode());
         if (!result.sent()) {
             // Never claim the code was sent when it wasn't — surface a clean,
@@ -775,7 +793,7 @@ public class AuthService {
         rateLimitService.recordAttempt(email, ipAddress, true, userAgent,
                 user.getId(), tenantId(user), null);
 
-        log.info("[TRUSTED_DEVICE_DEBUG] userId={} has2FA=true trustedCookiePresent={} trustedTokenValid=false " +
+        log.debug("[TRUSTED_DEVICE_DEBUG] userId={} has2FA=true trustedCookiePresent={} trustedTokenValid=false " +
                 "trustedDeviceExpired=false trustedDeviceRevoked=false requires2FA=false trustDeviceRequested={} " +
                 "trustedDeviceCreated={} expiresAt={}",
                 user.getId(), fingerprintPresent, trustRequested, trustCreated, newExpiresAt);
@@ -857,7 +875,7 @@ public class AuthService {
         userRepository.save(user);
         rateLimitService.recordAttempt(email, ipAddress, true, userAgent, user.getId(), tenantId(user), null);
 
-        log.info("[TRUSTED_DEVICE_DEBUG] userId={} has2FA=true trustedCookiePresent={} trustedTokenValid=false " +
+        log.debug("[TRUSTED_DEVICE_DEBUG] userId={} has2FA=true trustedCookiePresent={} trustedTokenValid=false " +
                 "trustedDeviceExpired=false trustedDeviceRevoked=false requires2FA=false trustDeviceRequested={} " +
                 "trustedDeviceCreated={} expiresAt={}",
                 user.getId(), fingerprintPresent, trustRequested, trustCreated, newExpiresAt);

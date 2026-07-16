@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, Car, Loader2, ArrowLeft, Eye, EyeOff, Check, X } from 'lucide-react';
+import { checkPasswordStrength, isPasswordStrong } from '../lib/passwordPolicy';
 
 declare global {
   interface Window { google?: any; }
@@ -71,12 +72,14 @@ function GlassInput({
    PASSWORD STRENGTH INDICATOR
    ============================================ */
 function PasswordStrength({ password }: { password: string }) {
+  const { t } = useTranslation();
+  const strength = checkPasswordStrength(password);
   const checks = [
-    { label: '10+ characters', pass: password.length >= 10 },
-    { label: 'Uppercase letter', pass: /[A-Z]/.test(password) },
-    { label: 'Lowercase letter', pass: /[a-z]/.test(password) },
-    { label: 'Number', pass: /\d/.test(password) },
-    { label: 'Symbol', pass: /[^A-Za-z0-9]/.test(password) },
+    { label: t('forgotPassword.req8chars', 'At least 8 characters'), pass: strength.len },
+    { label: t('forgotPassword.reqUpper', 'One uppercase letter'), pass: strength.upper },
+    { label: t('forgotPassword.reqLower', 'One lowercase letter'), pass: strength.lower },
+    { label: t('forgotPassword.reqDigit', 'One number'), pass: strength.digit },
+    { label: t('forgotPassword.reqSymbol', 'One special character'), pass: strength.sym },
   ];
   const score = checks.filter(c => c.pass).length;
 
@@ -181,8 +184,8 @@ export default function Register() {
       setLoading(false);
       return;
     }
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/.test(password)) {
-      setError('Use at least 10 characters with uppercase, lowercase, a number, and a symbol.');
+    if (!isPasswordStrong(password)) {
+      setError(t('errors.strongPassword', 'Use at least 8 characters with uppercase, lowercase, a number, and a symbol.'));
       setLoading(false);
       return;
     }

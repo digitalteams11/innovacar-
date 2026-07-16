@@ -983,13 +983,13 @@
     "deleteEmployee": "Delete employee",
     "resetPassword": "Reset login password",
     "temporaryPassword": "Temporary Password",
-    "temporaryPasswordPlaceholder": "10+ chars, upper, lower, number, symbol",
+    "temporaryPasswordPlaceholder": "8+ chars, upper, lower, number, symbol",
     "hireDate": "Hire Date",
     "saveChanges": "Save Changes",
     "addingEmployee": "Adding Employee...",
     "noEmployees": "No employees found",
     "deleteConfirm": "Delete this employee?",
-    "resetPasswordPrompt": "New password for {{name}} (10+ characters with uppercase, lowercase, number, and symbol)",
+    "resetPasswordPrompt": "New password for {{name}} (8+ characters with uppercase, lowercase, number, and symbol)",
     "actionLabels": {
       "update": "Update",
       "delete": "Delete"
@@ -1003,7 +1003,7 @@
       "fullNameRequired": "Full name is required.",
       "emailRequired": "Email is required.",
       "temporaryPasswordRequired": "Temporary password is required.",
-      "strongPassword": "Use 10+ characters with uppercase, lowercase, number, and symbol.",
+      "strongPassword": "Use 8+ characters with uppercase, lowercase, number, and symbol.",
       "completeRequired": "Complete required fields and use a strong temporary password.",
       "permissionsLoading": "Permissions are still loading. Please try again in a moment.",
       "noPermission": "You do not have permission to manage employees.",
@@ -2550,6 +2550,7 @@
     }
   },
   "errors": {
+    "strongPassword": "Use at least 8 characters with uppercase, lowercase, a number, and a symbol.",
     "UNAUTHORIZED": "Your session has expired. Please sign in again.",
     "PERMISSION_DENIED": "You do not have permission to perform this action.",
     "AUTH_REQUIRED": "Authentication is required. Please sign in again.",
