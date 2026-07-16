@@ -562,6 +562,28 @@ public class GlobalExceptionHandler {
         return null;
     }
 
+    /**
+     * DB connection-pool exhaustion / unavailability — a bounded Hikari pool
+     * under load surfaces this as {@code CannotCreateTransactionException} or
+     * {@code CannotGetJdbcConnectionException} (both subtypes of
+     * {@code DataAccessResourceFailureException}), or a raw
+     * {@code SQLTransientConnectionException} from the pool itself. Distinct
+     * from {@link #handleGeneric} (a real bug) — this is a transient capacity
+     * problem the client should retry, so it gets 503 with a specific code
+     * instead of an opaque 500.
+     */
+    @ExceptionHandler({
+            org.springframework.dao.DataAccessResourceFailureException.class,
+            org.springframework.transaction.CannotCreateTransactionException.class,
+            java.sql.SQLTransientConnectionException.class
+    })
+    public ResponseEntity<Map<String, Object>> handleDatabaseUnavailable(Exception ex, HttpServletRequest request) {
+        log.error("[DB_POOL_EXHAUSTED] path={} exceptionClass={}", request.getRequestURI(), ex.getClass().getName(), ex);
+        return bodyWithCode(HttpStatus.SERVICE_UNAVAILABLE,
+                "The service is temporarily busy. Please try again in a moment.",
+                "error", "DATABASE_UNAVAILABLE");
+    }
+
     @ExceptionHandler(UncheckedIOException.class)
     public ResponseEntity<Map<String, Object>> handleFileStorage(UncheckedIOException ex) {
         log.error("File storage failed", ex);

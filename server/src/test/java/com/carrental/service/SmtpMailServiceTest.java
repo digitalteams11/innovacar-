@@ -25,6 +25,7 @@ class SmtpMailServiceTest {
     private PlatformSettingsRepository platformSettingsRepository;
     private TenantSettingsRepository tenantSettingsRepository;
     private EncryptionUtil encryptionUtil;
+    private HttpEmailProvider httpEmailProvider;
     private SmtpMailService service;
 
     @BeforeEach
@@ -34,7 +35,12 @@ class SmtpMailServiceTest {
         encryptionUtil = new EncryptionUtil();
         ReflectionTestUtils.setField(encryptionUtil, "encryptionSecret", "unit-test-secret-32-bytes-long!!");
         encryptionUtil.init();
-        service = new SmtpMailService(platformSettingsRepository, tenantSettingsRepository, encryptionUtil);
+        httpEmailProvider = Mockito.mock(HttpEmailProvider.class);
+        service = new SmtpMailService(platformSettingsRepository, tenantSettingsRepository, encryptionUtil, httpEmailProvider);
+        // @Value fields aren't populated outside a Spring context — default to the
+        // same behavior as production's default (SMTP authoritative, no fallback).
+        ReflectionTestUtils.setField(service, "activeProvider", "SMTP");
+        ReflectionTestUtils.setField(service, "allowProviderFallback", false);
     }
 
     private PlatformSettings validPlatformSettings() {
@@ -132,5 +138,75 @@ class SmtpMailServiceTest {
 
         assertFalse(result.sent());
         assertEquals("SMTP_NOT_CONFIGURED", result.errorCode());
+    }
+
+    // ── Provider dispatch ────────────────────────────────────────────────────
+
+    @Test
+    void whenHttpProviderSelectedSmtpIsNeverAttempted() {
+        ReflectionTestUtils.setField(service, "activeProvider", "ZEPTOMAIL");
+        when(httpEmailProvider.send(Mockito.any())).thenReturn(
+                new SmtpMailService.SmtpResult(true, "email API (ZEPTOMAIL)", null, null, null));
+
+        SmtpMailService.SmtpResult result = service.sendPlatform("test@example.com", "Subject", "Body");
+
+        assertTrue(result.sent());
+        Mockito.verify(httpEmailProvider).send(Mockito.any());
+        // The SMTP path resolves platform config from the repository — confirm it was
+        // never even consulted, i.e. SMTP was not attempted at all.
+        Mockito.verifyNoInteractions(platformSettingsRepository);
+    }
+
+    @Test
+    void httpProviderFailureIsNotFollowedBySmtpFallbackByDefault() {
+        ReflectionTestUtils.setField(service, "activeProvider", "ZEPTOMAIL");
+        ReflectionTestUtils.setField(service, "allowProviderFallback", false);
+        when(httpEmailProvider.send(Mockito.any())).thenReturn(
+                SmtpMailService.SmtpResult.failure("email API (ZEPTOMAIL)", "boom", "EMAIL_API_SEND_FAILED"));
+
+        SmtpMailService.SmtpResult result = service.sendPlatform("test@example.com", "Subject", "Body");
+
+        assertFalse(result.sent());
+        assertEquals("EMAIL_API_SEND_FAILED", result.errorCode());
+        Mockito.verifyNoInteractions(platformSettingsRepository);
+    }
+
+    @Test
+    void httpProviderFailureFallsBackToSmtpOnlyWhenExplicitlyEnabled() {
+        ReflectionTestUtils.setField(service, "activeProvider", "ZEPTOMAIL");
+        ReflectionTestUtils.setField(service, "allowProviderFallback", true);
+        when(httpEmailProvider.send(Mockito.any())).thenReturn(
+                SmtpMailService.SmtpResult.failure("email API (ZEPTOMAIL)", "boom", "EMAIL_API_SEND_FAILED"));
+        when(platformSettingsRepository.findTopByOrderByIdAsc()).thenReturn(Optional.empty());
+
+        SmtpMailService.SmtpResult result = service.sendPlatform("test@example.com", "Subject", "Body");
+
+        // Falls through to SMTP, which is unconfigured in this test — the point is that
+        // it was actually consulted (fallback engaged), not that it succeeded.
+        assertFalse(result.sent());
+        Mockito.verify(platformSettingsRepository).findTopByOrderByIdAsc();
+    }
+
+    @Test
+    void smtpFailureDoesNotFallBackToHttpProviderByDefault() {
+        when(platformSettingsRepository.findTopByOrderByIdAsc()).thenReturn(Optional.empty());
+
+        service.sendPlatform("test@example.com", "Subject", "Body");
+
+        Mockito.verifyNoInteractions(httpEmailProvider);
+    }
+
+    @Test
+    void smtpFailureFallsBackToHttpProviderOnlyWhenExplicitlyEnabledAndConfigured() {
+        ReflectionTestUtils.setField(service, "allowProviderFallback", true);
+        when(platformSettingsRepository.findTopByOrderByIdAsc()).thenReturn(Optional.empty());
+        when(httpEmailProvider.isConfigured()).thenReturn(true);
+        when(httpEmailProvider.send(Mockito.any())).thenReturn(
+                new SmtpMailService.SmtpResult(true, "email API (ZEPTOMAIL)", null, null, null));
+
+        SmtpMailService.SmtpResult result = service.sendPlatform("test@example.com", "Subject", "Body");
+
+        assertTrue(result.sent());
+        Mockito.verify(httpEmailProvider).send(Mockito.any());
     }
 }

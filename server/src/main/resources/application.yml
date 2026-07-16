@@ -16,6 +16,20 @@ spring:
     username: "${SPRING_DATASOURCE_USERNAME}"
     password: "${SPRING_DATASOURCE_PASSWORD}"
     driver-class-name: "${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}"
+    # Bounded for a container-limited Railway Postgres plan — without an explicit
+    # cap, Hikari defaults to maximumPoolSize=10/minimumIdle=10, which a small
+    # plan's real connection limit can't always absorb across multiple app
+    # instances/redeploys. A checked-out connection that can't be obtained fails
+    # fast (10s) with a clear exception instead of a request thread hanging for
+    # Hikari's 30s default — the difference between one slow endpoint and Tomcat's
+    # whole thread pool (including /health) eventually starving.
+    hikari:
+      maximum-pool-size: "${DB_POOL_MAX_SIZE:5}"
+      minimum-idle: "${DB_POOL_MIN_IDLE:1}"
+      connection-timeout: "${DB_POOL_CONNECTION_TIMEOUT_MS:10000}"
+      idle-timeout: "${DB_POOL_IDLE_TIMEOUT_MS:300000}"
+      max-lifetime: "${DB_POOL_MAX_LIFETIME_MS:1200000}"
+      leak-detection-threshold: "${DB_POOL_LEAK_DETECTION_MS:20000}"
 
 
   flyway:
@@ -119,17 +133,15 @@ app:
     cname-target: "${APP_CNAME_TARGET:app.innovacar.app}"
 
   # ── CORS ───────────────────────────────────────────────────────────────────
-  # Prefer setting CORS_ALLOWED_ORIGINS explicitly on Railway to the exact
-  # production origin(s), comma-separated, no wildcards, e.g.:
-  #   CORS_ALLOWED_ORIGINS=https://innovacar.app,https://www.innovacar.app
-  # The default below still includes the production domains as a safety net
-  # (mirrors the VITE_API_URL fallback on the frontend) so the app isn't
-  # broken by a missing dashboard env var, plus the LAN-dev origins for local
-  # development. SecurityConfig logs a warning if this default is still
-  # missing the frontend's actual host while running under the "prod" profile
-  # or on Railway.
+  # Canonical production origins only — this base default applies whenever no
+  # more specific profile document overrides it. LAN-dev origins (localhost,
+  # 192.168.*) are added on top of this in application-dev.yml only, so a
+  # deploy that forgets to activate a profile still fails safe to prod-only
+  # CORS rather than accidentally allowing a dev origin. Override via
+  # CORS_ALLOWED_ORIGINS (comma-separated, no wildcards) if a third origin is
+  # ever added.
   cors:
-    allowed-origins: "${CORS_ALLOWED_ORIGINS:https://innovacar.app,https://www.innovacar.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5174,http://192.168.*.*:5173}"
+    allowed-origins: "${CORS_ALLOWED_ORIGINS:https://innovacar.app,https://www.innovacar.app}"
 
   # ── Google OAuth ─────────────────────────────────────────────────────────────
   google:
@@ -214,6 +226,24 @@ app:
   # unreadable and users must re-enter them.
   encryption:
     secret: "${APP_ENCRYPTION_SECRET:changeme-in-production-32bytes!}"
+
+  # ── Email delivery provider ───────────────────────────────────────────────────
+  # SMTP is authoritative by default (Super Admin's saved SMTP settings, or a
+  # tenant's own SMTP). Set EMAIL_PROVIDER=ZEPTOMAIL when the hosting network
+  # blocks outbound SMTP ports entirely (diagnose-smtp reports
+  # EMAIL_HOSTING_NETWORK_BLOCKED — TCP fails on every SMTP host/port before
+  # TLS or auth is ever attempted, so no SMTP config change can fix it).
+  # EMAIL_PROVIDER=ZOHO_API is accepted but not implemented (it needs a full
+  # OAuth 2.0 flow) — use ZEPTOMAIL instead. The non-selected mechanism is
+  # never used automatically unless EMAIL_ALLOW_PROVIDER_FALLBACK=true.
+  email:
+    provider: "${EMAIL_PROVIDER:SMTP}"
+    api-base-url: "${EMAIL_API_BASE_URL:}"
+    # Never log this value. Not exposed to the frontend anywhere.
+    api-token: "${EMAIL_API_TOKEN:}"
+    from-email: "${EMAIL_FROM_EMAIL:}"
+    from-name: "${EMAIL_FROM_NAME:RentCar}"
+    allow-provider-fallback: "${EMAIL_ALLOW_PROVIDER_FALLBACK:false}"
 
   # ── AI / Gemini ──────────────────────────────────────────────────────────────
   # Backend-only. Used only to seed the AiSettings row the first time it is

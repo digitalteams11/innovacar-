@@ -8,6 +8,7 @@ import com.carrental.util.EncryptionUtil;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -17,9 +18,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Properties;
 
 /**
- * Sends real email over SMTP using whichever provider is actually configured —
- * a tenant's own SMTP (from {@link TenantSettings}) if present, otherwise the
- * platform-wide SMTP configured by Super Admin (from {@link PlatformSettings}).
+ * The one canonical email entry point — every feature (test email,
+ * forgot-password, contract signing links, contract PDF notifications,
+ * reservation/payment/trial notifications, support emails) calls this class,
+ * never a JavaMailSender or an HTTP client directly.
+ *
+ * <p>Two delivery mechanisms exist: SMTP (a tenant's own SMTP from
+ * {@link TenantSettings}, falling back to the platform-wide SMTP configured
+ * by Super Admin in {@link PlatformSettings}) and an HTTPS email API
+ * ({@link HttpEmailProvider}) for when the hosting network blocks outbound
+ * SMTP ports entirely. {@code app.email.provider} (env var EMAIL_PROVIDER)
+ * selects which one is authoritative — SMTP by default. The other is only
+ * ever tried as a fallback, and only when {@code app.email.allow-provider-fallback}
+ * (EMAIL_ALLOW_PROVIDER_FALLBACK) is explicitly set to true; providers are
+ * never silently swapped.
  *
  * <p>Email is always a best-effort side effect: callers receive a result
  * record instead of an exception so a failed send never breaks the business
@@ -33,6 +45,13 @@ public class SmtpMailService {
     private final PlatformSettingsRepository platformSettingsRepository;
     private final TenantSettingsRepository tenantSettingsRepository;
     private final EncryptionUtil encryptionUtil;
+    private final HttpEmailProvider httpEmailProvider;
+
+    @Value("${app.email.provider:SMTP}")
+    private String activeProvider;
+
+    @Value("${app.email.allow-provider-fallback:false}")
+    private boolean allowProviderFallback;
 
     public record SmtpResult(boolean sent, String providerUsed, String errorMessage, String errorCode,
                               String exceptionClass) {
@@ -89,9 +108,7 @@ public class SmtpMailService {
      */
     @Transactional(readOnly = true)
     public SmtpResult sendForTenant(Long tenantId, String to, String subject, String body) {
-        SmtpConfig config = resolveTenantConfig(tenantId);
-        if (config == null) config = resolvePlatformConfig();
-        return send(config, to, subject, body, null);
+        return send(() -> resolveTenantOrPlatformConfig(tenantId), to, subject, body, null);
     }
 
     /**
@@ -100,9 +117,7 @@ public class SmtpMailService {
     @Transactional(readOnly = true)
     public SmtpResult sendForTenant(Long tenantId, String to, String subject,
                                     String htmlBody, String plainBody) {
-        SmtpConfig config = resolveTenantConfig(tenantId);
-        if (config == null) config = resolvePlatformConfig();
-        return send(config, to, subject, htmlBody, plainBody);
+        return send(() -> resolveTenantOrPlatformConfig(tenantId), to, subject, htmlBody, plainBody);
     }
 
     /**
@@ -113,9 +128,8 @@ public class SmtpMailService {
     public SmtpResult sendForTenant(Long tenantId, String to, String subject,
                                     String htmlBody, String plainBody,
                                     String attachmentName, byte[] attachmentBytes, String attachmentContentType) {
-        SmtpConfig config = resolveTenantConfig(tenantId);
-        if (config == null) config = resolvePlatformConfig();
-        return send(config, to, subject, htmlBody, plainBody, attachmentName, attachmentBytes, attachmentContentType);
+        return send(() -> resolveTenantOrPlatformConfig(tenantId), to, subject, htmlBody, plainBody,
+                attachmentName, attachmentBytes, attachmentContentType);
     }
 
     /**
@@ -124,7 +138,7 @@ public class SmtpMailService {
      */
     @Transactional(readOnly = true)
     public SmtpResult sendPlatform(String to, String subject, String body) {
-        return send(resolvePlatformConfig(), to, subject, body, null);
+        return send(this::resolvePlatformConfig, to, subject, body, null);
     }
 
     /**
@@ -132,7 +146,12 @@ public class SmtpMailService {
      */
     @Transactional(readOnly = true)
     public SmtpResult sendPlatform(String to, String subject, String htmlBody, String plainBody) {
-        return send(resolvePlatformConfig(), to, subject, htmlBody, plainBody);
+        return send(this::resolvePlatformConfig, to, subject, htmlBody, plainBody);
+    }
+
+    private SmtpConfig resolveTenantOrPlatformConfig(Long tenantId) {
+        SmtpConfig config = resolveTenantConfig(tenantId);
+        return config != null ? config : resolvePlatformConfig();
     }
 
     /** Returns true if the platform SMTP is usable. */
@@ -140,20 +159,63 @@ public class SmtpMailService {
         return resolvePlatformConfig() != null;
     }
 
-    // ── Core sender ───────────────────────────────────────────────────────────
-
-    private SmtpResult send(SmtpConfig config, String to, String subject,
-                            String htmlBody, String plainBody) {
-        return send(config, to, subject, htmlBody, plainBody, null, null, null);
+    /** The provider value exactly as configured (EMAIL_PROVIDER) — safe to expose, no secrets. */
+    public String activeProvider() {
+        return activeProvider;
     }
 
-    private SmtpResult send(SmtpConfig config, String to, String subject,
+    // ── Core sender — provider dispatch ─────────────────────────────────────────
+
+    private SmtpResult send(java.util.function.Supplier<SmtpConfig> configSupplier, String to, String subject,
+                            String htmlBody, String plainBody) {
+        return send(configSupplier, to, subject, htmlBody, plainBody, null, null, null);
+    }
+
+    /**
+     * Dispatches to whichever provider is authoritative
+     * ({@code app.email.provider} / EMAIL_PROVIDER, SMTP by default). The other
+     * mechanism is only ever tried as a fallback, and only when
+     * {@code app.email.allow-provider-fallback} (EMAIL_ALLOW_PROVIDER_FALLBACK)
+     * is explicitly true — providers are never silently swapped.
+     *
+     * <p>{@code configSupplier} is lazy — resolving the SMTP config decrypts a
+     * stored password and hits the database, so when the HTTP provider is
+     * authoritative and succeeds (or fallback is disabled), SMTP config is
+     * never resolved at all.
+     */
+    private SmtpResult send(java.util.function.Supplier<SmtpConfig> configSupplier, String to, String subject,
                             String htmlBody, String plainBody,
                             String attachmentName, byte[] attachmentBytes, String attachmentContentType) {
+        EmailMessage email = new EmailMessage(to, subject, htmlBody, plainBody,
+                attachmentName, attachmentBytes, attachmentContentType);
+
+        boolean httpProviderSelected = "ZEPTOMAIL".equalsIgnoreCase(activeProvider)
+                || "ZOHO_API".equalsIgnoreCase(activeProvider);
+
+        if (httpProviderSelected) {
+            SmtpResult httpResult = httpEmailProvider.send(email);
+            if (httpResult.sent() || !allowProviderFallback) {
+                return httpResult;
+            }
+            log.warn("[EMAIL] HTTP provider ({}) failed and EMAIL_ALLOW_PROVIDER_FALLBACK=true — falling back to SMTP for {}",
+                    activeProvider, to);
+            return sendViaSmtp(configSupplier.get(), email);
+        }
+
+        SmtpResult smtpResult = sendViaSmtp(configSupplier.get(), email);
+        if (!smtpResult.sent() && allowProviderFallback && httpEmailProvider.isConfigured()) {
+            log.warn("[EMAIL] SMTP failed ({}) and EMAIL_ALLOW_PROVIDER_FALLBACK=true — falling back to HTTP provider for {}",
+                    smtpResult.errorCode(), to);
+            return httpEmailProvider.send(email);
+        }
+        return smtpResult;
+    }
+
+    private SmtpResult sendViaSmtp(SmtpConfig config, EmailMessage email) {
         if (config == null) {
             return SmtpResult.unconfigured();
         }
-        if (!StringUtils.hasText(to)) {
+        if (!StringUtils.hasText(email.to())) {
             return SmtpResult.failure(config.label(), "Recipient email is required.", "EMAIL_NO_RECIPIENT");
         }
         // Zoho rejects (or silently rewrites) a From address that doesn't match the
@@ -187,6 +249,7 @@ public class SmtpMailService {
                 // Implicit SSL (port 465): no STARTTLS negotiation, TLS from the first byte.
                 props.put("mail.smtp.ssl.enable", "true");
                 props.put("mail.smtp.starttls.enable", "false");
+                props.put("mail.smtp.starttls.required", "false");
             } else {
                 props.put("mail.smtp.ssl.enable", "false");
                 props.put("mail.smtp.starttls.enable", String.valueOf(config.tls()));
@@ -201,48 +264,48 @@ public class SmtpMailService {
             props.put("mail.smtp.timeout", "10000");
             props.put("mail.smtp.writetimeout", "10000");
 
-            boolean hasAttachment = attachmentBytes != null && attachmentBytes.length > 0 && StringUtils.hasText(attachmentName);
+            boolean hasAttachment = email.hasAttachment();
             // MimeMessageHelper.setText(plain, html) requires multipart mode even without
             // an attachment — it builds a multipart/alternative body. Non-multipart mode
             // only works for a single plain-text or single HTML part.
-            boolean needsMultipart = hasAttachment || StringUtils.hasText(htmlBody);
+            boolean needsMultipart = hasAttachment || StringUtils.hasText(email.htmlBody());
 
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, needsMultipart, "UTF-8");
-            helper.setTo(to);
+            helper.setTo(email.to());
             if (StringUtils.hasText(config.fromName())) {
                 helper.setFrom(effectiveFrom, config.fromName());
             } else {
                 helper.setFrom(effectiveFrom);
             }
-            helper.setSubject(subject != null ? subject : "");
+            helper.setSubject(email.subject() != null ? email.subject() : "");
 
-            boolean hasHtml  = StringUtils.hasText(htmlBody);
-            boolean hasPlain = StringUtils.hasText(plainBody);
+            boolean hasHtml  = StringUtils.hasText(email.htmlBody());
+            boolean hasPlain = StringUtils.hasText(email.plainBody());
 
             if (hasHtml) {
                 // Multipart/alternative: plain-text fallback first, HTML second
-                String plain = hasPlain ? plainBody : stripHtml(htmlBody);
-                helper.setText(plain, htmlBody);
+                String plain = hasPlain ? email.plainBody() : stripHtml(email.htmlBody());
+                helper.setText(plain, email.htmlBody());
             } else if (hasPlain) {
-                helper.setText(plainBody, false);
+                helper.setText(email.plainBody(), false);
             } else {
                 helper.setText("(no content)", false);
             }
 
             if (hasAttachment) {
-                helper.addAttachment(attachmentName, new org.springframework.core.io.ByteArrayResource(attachmentBytes),
-                        StringUtils.hasText(attachmentContentType) ? attachmentContentType : "application/pdf");
+                helper.addAttachment(email.attachmentName(), new org.springframework.core.io.ByteArrayResource(email.attachmentBytes()),
+                        StringUtils.hasText(email.attachmentContentType()) ? email.attachmentContentType() : "application/pdf");
             }
 
             sender.send(message);
-            log.info("[SMTP] Sent via {} to {} | Subject: {}{}", config.label(), to, subject,
-                    hasAttachment ? " | Attachment: " + attachmentName : "");
+            log.info("[SMTP] Sent via {} to {} | Subject: {}{}", config.label(), email.to(), email.subject(),
+                    hasAttachment ? " | Attachment: " + email.attachmentName() : "");
             return SmtpResult.success(config.label());
         } catch (Exception ex) {
             String errorCode = classifySmtpException(ex);
             log.warn("[SMTP] Send via {} to {} failed [{}]: exceptionClass={} exceptionMessage={}",
-                    config.label(), to, errorCode, ex.getClass().getName(), ex.getMessage());
+                    config.label(), email.to(), errorCode, ex.getClass().getName(), ex.getMessage());
             return SmtpResult.failure(config.label(), ex.getMessage(), errorCode, ex.getClass().getName());
         }
     }

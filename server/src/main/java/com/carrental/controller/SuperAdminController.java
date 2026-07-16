@@ -1883,6 +1883,9 @@ public class SuperAdminController {
         result.put("lastTestStatus",   ps.getLastSmtpTestStatus());
         result.put("lastTestAt",       ps.getLastSmtpTestAt());
         result.put("lastTestErrorCode", ps.getLastSmtpTestErrorCode());
+        // EMAIL_PROVIDER value — never a secret, safe to expose. Lets the frontend show
+        // "Email API active" instead of the SMTP form implying SMTP is what's really sending.
+        result.put("activeEmailProvider", smtpMailService.activeProvider());
         return ResponseEntity.ok(result);
     }
 
@@ -1966,6 +1969,22 @@ public class SuperAdminController {
         if (useTls && useSsl) {
             return Map.of("success", false, "errorCode", "SMTP_TLS_SSL_CONFLICT",
                     "message", "STARTTLS and SSL cannot both be enabled for the same connection.");
+        }
+        // The two well-known SMTP ports each imply exactly one encryption mode —
+        // implicit SSL on 465 (no STARTTLS negotiation at all), STARTTLS on 587.
+        // Saving the wrong combination for these specific ports produces exactly
+        // the "TCP OK, TLS FAILED" or a connection that never completes its
+        // handshake failure this task is about, so it's rejected before saving
+        // rather than only being caught later by running Diagnose. Non-standard
+        // ports (a provider other than the two well-known ones) aren't forced
+        // into this pairing — only 465/587 have one universally correct answer.
+        if (port != null && port == 465 && !useSsl) {
+            return Map.of("success", false, "errorCode", "SMTP_PORT_MODE_MISMATCH",
+                    "message", "Port 465 requires SSL to be enabled (implicit SSL) with STARTTLS disabled.");
+        }
+        if (port != null && port == 587 && !useTls) {
+            return Map.of("success", false, "errorCode", "SMTP_PORT_MODE_MISMATCH",
+                    "message", "Port 587 requires STARTTLS to be enabled with SSL disabled.");
         }
         return null;
     }
@@ -2169,20 +2188,49 @@ public class SuperAdminController {
         // Super Admin actually saved, and normal sending never uses anything else.
         results.add(toDiagnosticMap(smtpDiagnosticsService.probe(configuredHost, configuredPort, username, fromEmail, password, sslEnabled)));
 
-        // For Zoho in STARTTLS mode: also probe the alternate 587 host so the admin can see
-        // which one works, purely as information — saving/sending never auto-switches to it.
-        // SSL mode (465) is a deliberate account choice — don't guess at it for accounts that
-        // were never configured for it.
-        if (isZoho && !sslEnabled) {
-            if (!configuredHost.equalsIgnoreCase("smtp.zoho.com")) {
-                results.add(toDiagnosticMap(smtpDiagnosticsService.probe("smtp.zoho.com", 587, username, fromEmail, password, false)));
-            }
-            if (!configuredHost.equalsIgnoreCase("smtppro.zoho.com")) {
-                results.add(toDiagnosticMap(smtpDiagnosticsService.probe("smtppro.zoho.com", 587, username, fromEmail, password, false)));
-            }
+        // For Zoho: also probe every remaining known candidate — the alternate
+        // hostname on the same mode, plus both hosts on the *other* mode (587
+        // STARTTLS vs 465 implicit SSL) — purely as information. Saving/sending
+        // never auto-switches to any of these; this is diagnostic-only.
+        if (isZoho) {
+            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
+                    "smtp.zoho.com", 587, false);
+            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
+                    "smtppro.zoho.com", 587, false);
+            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
+                    "smtp.zoho.com", 465, true);
+            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
+                    "smtppro.zoho.com", 465, true);
+        }
+
+        // Every single candidate failed to even establish a TCP connection — this is a
+        // hosting/network-level block (Railway or similar blocking outbound SMTP ports),
+        // not a credentials or TLS problem, and must be classified as such rather than
+        // left as a pile of individually-confusing SMTP_CONNECTION_TIMEOUT rows.
+        boolean allTcpFailed = !results.isEmpty() && results.stream()
+                .allMatch(r -> "FAILED".equals(r.get("tcp")));
+        if (allTcpFailed) {
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("errorCode", "EMAIL_HOSTING_NETWORK_BLOCKED");
+            summary.put("message", "Every candidate SMTP host/port failed to establish a TCP connection. "
+                    + "This looks like the hosting network is blocking outbound SMTP entirely, not a "
+                    + "credentials or TLS problem — configure an HTTP email API provider instead "
+                    + "(EMAIL_PROVIDER=ZEPTOMAIL) rather than continuing to retry SMTP.");
+            results.add(0, summary);
         }
 
         return ResponseEntity.ok(results);
+    }
+
+    private void probeIfDifferent(List<Map<String, Object>> results,
+                                   String alreadyProbedHost, int alreadyProbedPort, boolean alreadyProbedSsl,
+                                   String username, String fromEmail, String password,
+                                   String candidateHost, int candidatePort, boolean candidateSsl) {
+        if (candidateHost.equalsIgnoreCase(alreadyProbedHost) && candidatePort == alreadyProbedPort
+                && candidateSsl == alreadyProbedSsl) {
+            return;
+        }
+        results.add(toDiagnosticMap(smtpDiagnosticsService.probe(candidateHost, candidatePort, username, fromEmail, password, candidateSsl)));
     }
 
     private Map<String, Object> toDiagnosticMap(com.carrental.service.SmtpDiagnosticsService.SmtpProbeResult probe) {

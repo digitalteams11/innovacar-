@@ -45,9 +45,6 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins:https://innovacar.app,https://www.innovacar.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
     private String allowedOrigins;
 
-    @Value("${app.frontend-url:}")
-    private String frontendUrl;
-
     // ── Password encoder ────────────────────────────────────────────────────
 
     @Bean
@@ -144,7 +141,7 @@ public class SecurityConfig {
 
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
-        warnIfProductionOriginsLookLocal();
+        logCorsConfig();
 
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
         java.util.Arrays.stream(allowedOrigins.split(","))
@@ -160,7 +157,9 @@ public class SecurityConfig {
                 "Origin",
                 "X-Requested-With",
                 "X-Auth-Transport",
-                "X-Device-Id"));
+                "X-Device-Id",
+                "X-Tenant-ID",
+                "X-Requested-By"));
         configuration.setExposedHeaders(java.util.List.of(
                 "Token-Expired",
                 "Content-Disposition",
@@ -175,41 +174,27 @@ public class SecurityConfig {
     }
 
     /**
-     * Logs (never throws — a CORS misconfiguration breaks the frontend, not the
-     * server) a clear warning if this looks like a production/Railway deploy
-     * whose CORS_ALLOWED_ORIGINS still defaults to the LAN-dev list, or doesn't
-     * include the configured app.frontend-url host. This is the same signal a
-     * browser console CORS error would show, just surfaced in server logs first.
+     * Logs the single canonical CORS configuration line on startup — never the
+     * cookies/tokens the app also handles, just the resolved origin list, so a
+     * misconfiguration (e.g. the dev-oriented default leaking into a prod
+     * deploy) is visible from the very first log line instead of only
+     * surfacing as an opaque browser CORS error later.
      */
-    private void warnIfProductionOriginsLookLocal() {
-        boolean onRailway = System.getenv("RAILWAY_ENVIRONMENT_NAME") != null
-                || System.getenv("RAILWAY_PROJECT_ID") != null
-                || System.getenv("RAILWAY_SERVICE_ID") != null;
+    private void logCorsConfig() {
+        String profile = String.join(",", environment.getActiveProfiles());
+        java.util.List<String> origins = java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
+        log.info("[CORS_CONFIG] profile={} allowedOrigins={}",
+                profile.isBlank() ? "default" : profile, origins);
+
         boolean prodProfile = java.util.Arrays.asList(environment.getActiveProfiles()).contains("prod");
-        if (!onRailway && !prodProfile) {
-            return;
-        }
-
-        String frontendHost = null;
-        if (frontendUrl != null && !frontendUrl.isBlank()) {
-            try {
-                frontendHost = java.net.URI.create(frontendUrl).getHost();
-            } catch (Exception ignored) {
-                // leave frontendHost null — handled below
-            }
-        }
-
-        boolean originsLookLocal = allowedOrigins.toLowerCase(java.util.Locale.ROOT).contains("localhost")
-                || allowedOrigins.contains("192.168.")
-                || allowedOrigins.contains("127.0.0.1");
-        boolean containsFrontendHost = frontendHost != null && allowedOrigins.contains(frontendHost);
-
-        if (originsLookLocal || !containsFrontendHost) {
-            log.warn("[CORS_CONFIG_WARNING] onRailway={} prodProfile={} app.frontend-url={} — "
-                    + "app.cors.allowed-origins does not look production-ready: '{}'. "
-                    + "Set CORS_ALLOWED_ORIGINS to the exact production origin(s), comma-separated, "
-                    + "no wildcards — e.g. https://innovacar.app,https://www.innovacar.app",
-                    onRailway, prodProfile, frontendUrl, allowedOrigins);
+        boolean originsLookLocal = origins.stream().anyMatch(o ->
+                o.toLowerCase(java.util.Locale.ROOT).contains("localhost") || o.contains("192.168."));
+        if (prodProfile && originsLookLocal) {
+            log.warn("[CORS_CONFIG_WARNING] prod profile is active but allowedOrigins still contains a "
+                    + "dev/local origin — set CORS_ALLOWED_ORIGINS to the exact production origins only.");
         }
     }
 }

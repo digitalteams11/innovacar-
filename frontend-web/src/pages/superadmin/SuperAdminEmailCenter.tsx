@@ -17,6 +17,7 @@ interface SmtpSettings {
   hasPassword: boolean; smtpUseTls: boolean; smtpSslEnabled: boolean; smtpEnabled: boolean;
   fromEmail: string; fromName: string; smtpReplyTo: string;
   lastTestStatus: string | null; lastTestAt: string | null; lastTestErrorCode: string | null;
+  activeEmailProvider?: string;
 }
 
 interface EmailTemplate {
@@ -153,6 +154,7 @@ export default function SuperAdminEmailCenter() {
         smtpReplyTo: d.smtpReplyTo ?? '',
         lastTestStatus: d.lastTestStatus ?? null, lastTestAt: d.lastTestAt ?? null,
         lastTestErrorCode: d.lastTestErrorCode ?? null,
+        activeEmailProvider: d.activeEmailProvider ?? 'SMTP',
       });
       setTemplates(Array.isArray(tmplRes.data) ? tmplRes.data : []);
       setLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
@@ -361,6 +363,19 @@ export default function SuperAdminEmailCenter() {
         {/* ── SMTP TAB ── */}
         {activeTab === 'smtp' && (
           <div className="space-y-6">
+            {/* Active delivery mechanism — the SMTP form below is only meaningful when
+                SMTP is actually what's sending. When an HTTP provider is active, saying
+                so up front avoids the confusion of an admin fixing SMTP settings that
+                aren't being used for real sends at all. */}
+            {smtp.activeEmailProvider && smtp.activeEmailProvider !== 'SMTP' && (
+              <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10 px-4 py-3">
+                <Wifi size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Email API active</strong> ({smtp.activeEmailProvider}) — emails are sent over HTTPS, not SMTP. The SMTP settings below are not used for real sends while EMAIL_PROVIDER={smtp.activeEmailProvider}.
+                </p>
+              </div>
+            )}
+
             {/* Status cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
@@ -402,7 +417,30 @@ export default function SuperAdminEmailCenter() {
                   )}
                 </label>
                 <label className="space-y-1.5"><span className={labelCls}>SMTP Host</span><input type="text" value={smtp.smtpHost} onChange={e => setSmtp({ ...smtp, smtpHost: e.target.value })} placeholder="smtp.zoho.com" className={fieldCls} /></label>
-                <label className="space-y-1.5"><span className={labelCls}>SMTP Port</span><input type="number" value={smtp.smtpPort} onChange={e => setSmtp({ ...smtp, smtpPort: Number(e.target.value) })} className={fieldCls} /></label>
+                <label className="space-y-1.5">
+                  <span className={labelCls}>SMTP Port</span>
+                  <input
+                    type="number"
+                    value={smtp.smtpPort}
+                    onChange={e => {
+                      const port = Number(e.target.value);
+                      // Port 465 and 587 each have exactly one correct encryption mode —
+                      // implicit SSL vs STARTTLS can never both be right for the same port,
+                      // so switching to one of these auto-corrects the mode instead of
+                      // silently leaving an invalid combination for the admin to discover
+                      // only when Save/Diagnose fails.
+                      const modeOverride = port === 465
+                        ? { smtpSslEnabled: true, smtpUseTls: false }
+                        : port === 587
+                        ? { smtpUseTls: true, smtpSslEnabled: false }
+                        : {};
+                      setSmtp({ ...smtp, smtpPort: port, ...modeOverride });
+                    }}
+                    className={fieldCls}
+                  />
+                  {smtp.smtpPort === 465 && <p className="text-xs text-slate-400 mt-1">Port 465 uses implicit SSL — STARTTLS is disabled automatically.</p>}
+                  {smtp.smtpPort === 587 && <p className="text-xs text-slate-400 mt-1">Port 587 uses STARTTLS — SSL is disabled automatically.</p>}
+                </label>
                 <label className="space-y-1.5"><span className={labelCls}>SMTP Username (email)</span><input type="email" value={smtp.smtpUsername} onChange={e => setSmtp({ ...smtp, smtpUsername: e.target.value })} placeholder="noreply@yourdomain.com" className={fieldCls} /></label>
                 <label className="space-y-1.5">
                   <span className={labelCls}>SMTP Password</span>
@@ -503,6 +541,14 @@ export default function SuperAdminEmailCenter() {
                 {diagnoseResults && (
                   <div className="mt-2 space-y-2">
                     {diagnoseResults.map((r: any, i: number) => {
+                      if (r.errorCode === 'EMAIL_HOSTING_NETWORK_BLOCKED') {
+                        return (
+                          <div key={i} className="p-3 rounded-xl text-xs border bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30">
+                            <p className="font-bold text-rose-700 dark:text-rose-300">SMTP unavailable from hosting network</p>
+                            <p className="mt-1 text-slate-600 dark:text-slate-300 font-sans">{r.message}</p>
+                          </div>
+                        );
+                      }
                       const stageBadge = (label: string, value: string | undefined) => {
                         const v = value ?? 'NOT_TESTED';
                         const cls = v === 'OK' ? 'bg-emerald-100 text-emerald-700'
