@@ -37,6 +37,10 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 const APP_TITLE = 'RentCar';
 const POLL_INTERVAL_MS = 30_000;
+// At capped 30s backoff intervals, this is ~10 minutes of continuous failure
+// before giving up on the real-time channel entirely (the 30s notifications
+// poll keeps working regardless — this only stops the SSE reconnect loop).
+const MAX_CONSECUTIVE_SSE_FAILURES = 20;
 
 function showBrowserNotification(n: AppNotification) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -73,6 +77,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const consecutiveFailuresRef = useRef(0);
   const isAuthenticatedRef = useRef(isAuthenticated);
   const knownIdsRef = useRef<Set<number>>(new Set());
   isAuthenticatedRef.current = isAuthenticated;
@@ -137,6 +142,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     es.onopen = () => {
       reconnectAttemptsRef.current = 0;
+      consecutiveFailuresRef.current = 0;
     };
 
     es.addEventListener('notification', (event) => {
@@ -183,6 +189,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (eventSourceRef.current === es) eventSourceRef.current = null;
       if (!isAuthenticatedRef.current) return;
 
+      // EventSource's API never exposes the HTTP status code that caused the
+      // error (a browser limitation, not something this code can work around),
+      // so a permanently-invalid session (401/403) looks identical to a
+      // transient network blip. A hard ceiling on consecutive failed attempts
+      // is the practical substitute for "stop reconnecting on 401/403": once
+      // reconnection has failed this many times in a row, the session is
+      // treated as genuinely dead rather than retried forever at 30s
+      // intervals. The 30s notifications poll (startPolling) keeps working
+      // regardless, so this only silently drops the *real-time* channel.
+      consecutiveFailuresRef.current += 1;
+      if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_SSE_FAILURES) return;
+
       const attempt = Math.min(reconnectAttemptsRef.current + 1, 5);
       reconnectAttemptsRef.current = attempt;
       const delay = Math.min(3000 * 2 ** (attempt - 1), 30000);
@@ -218,6 +236,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setNotifications([]);
       knownIdsRef.current = new Set();
       reconnectAttemptsRef.current = 0;
+      consecutiveFailuresRef.current = 0;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;

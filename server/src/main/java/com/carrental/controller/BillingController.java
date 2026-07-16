@@ -501,11 +501,21 @@ public class BillingController {
     private String createWhopCheckoutLink(String whopPlanId, Long tenantId, String promoCode) throws Exception {
         String requestBody = buildWhopCheckoutBody(whopPlanId, tenantId, promoCode);
 
-        HttpClient client = HttpClient.newHttpClient();
+        // Both timeouts are required: without connectTimeout, an unreachable host can hang
+        // on TCP connect for the OS default (minutes); without the per-request timeout(), a
+        // host that accepts the connection but never responds hangs indefinitely. Either one
+        // alone blocks this Tomcat request thread — held during a synchronous @Transactional
+        // checkout call — for as long as Whop's API takes, which on a bounded thread pool
+        // means enough slow/hung checkout requests can exhaust every worker thread and make
+        // the whole application (including unrelated requests and the health check) unresponsive.
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(10))
+                .build();
         HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(whopBaseUrl + "/api/v2/memberships"))
                 .header("Authorization", "Bearer " + whopApiKey)
                 .header("Content-Type", "application/json")
+                .timeout(java.time.Duration.ofSeconds(10))
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody));
 
         HttpResponse<String> response = client.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
