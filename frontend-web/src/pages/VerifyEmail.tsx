@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { Car, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -36,6 +38,12 @@ export default function VerifyEmail() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center p-6 relative overflow-hidden">
+      <SeoHead
+        title="Verify Email"
+        description="Verify your email address for your Innovacar account."
+        canonical="https://innovacar.app/#/verify-email"
+        robots={ROBOTS_PRIVATE}
+      />
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-500/3 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3"></div>
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-400/5 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3"></div>
 

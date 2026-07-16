@@ -5,6 +5,8 @@ import api, { translateApiError } from '../api/axios';
 import { Car, Loader2, ArrowLeft, CheckCircle, Lock, Eye, EyeOff } from 'lucide-react';
 import { ErrorBox } from './ForgotPassword';
 import { checkPasswordStrength } from '../lib/passwordPolicy';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
 
 function StrengthItem({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -78,6 +80,12 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center p-6 relative overflow-hidden">
+      <SeoHead
+        title="Reset Password"
+        description="Set a new password for your Innovacar account."
+        canonical="https://innovacar.app/#/reset-password"
+        robots={ROBOTS_PRIVATE}
+      />
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-500/3 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-400/5 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3" />
 

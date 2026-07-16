@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { CheckCircle2, Mail } from 'lucide-react';
 import api from '../api/axios';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PUBLIC_INDEXABLE } from '../components/seo/robotsPresets';
 
 const CATEGORIES = [
   { value: 'GENERAL', label: 'General question' },
@@ -60,6 +62,12 @@ export default function PublicContact() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f7f7f4] px-4 py-10 dark:bg-[#101418]">
+      <SeoHead
+        title="Contact Us"
+        description="Get in touch with the Innovacar team for sales questions, demo requests or general support."
+        canonical="https://innovacar.app/#/contact"
+        robots={ROBOTS_PUBLIC_INDEXABLE}
+      />
       <div className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 shadow-soft">
         <div className="flex items-center gap-2">
           <Mail size={20} className="text-[var(--brand-primary)]" />

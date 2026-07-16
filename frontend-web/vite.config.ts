@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { networkInterfaces } from 'os'
 
@@ -23,9 +23,30 @@ function firstLanIPv4(): string | undefined {
   return undefined
 }
 
+// Injects the Google Search Console HTML-verification meta tag into the
+// built index.html at build time, from VITE_GOOGLE_SITE_VERIFICATION — the
+// tag must exist in the raw HTML source (not only after React mounts) for
+// Search Console to accept it. Leaves the placeholder comment untouched
+// (i.e. no meta tag at all) when the env var isn't set, rather than ever
+// emitting a fake/placeholder token.
+function googleSiteVerificationPlugin(token: string | undefined): Plugin {
+  return {
+    name: 'inject-google-site-verification',
+    transformIndexHtml(html) {
+      if (!token) return html
+      return html.replace(
+        '<!--GOOGLE_SITE_VERIFICATION_META-->',
+        `<meta name="google-site-verification" content="${token}" />`
+      )
+    },
+  }
+}
+
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  return {
+  plugins: [react(), googleSiteVerificationPlugin(env.VITE_GOOGLE_SITE_VERIFICATION)],
   server: {
     host: '0.0.0.0',
     port: 5174,
@@ -34,4 +55,5 @@ export default defineConfig({
       host: firstLanIPv4() ?? 'localhost',
     },
   },
+  }
 })

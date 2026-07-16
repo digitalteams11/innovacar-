@@ -3,8 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/brand/innovacar-logo.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!--
+      apple-touch-icon.png, favicon-16x16.png, favicon-32x32.png, and the
+      android-chrome-*.png sizes referenced by site.webmanifest do not exist
+      yet — generating real PNGs at those exact sizes from the source logo
+      needs image tooling (ImageMagick/sharp/a designer) not available in
+      this environment. Only the icons that actually exist are linked below;
+      see docs/seo-route-inventory.md for this as a follow-up.
+    -->
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>InnovaCar | Premium SaaS Dashboard</title>
+
+    <!--
+      Safe default: almost every route in this SPA is an authenticated
+      dashboard, login/reset flow, or a tokenized private link (see
+      docs/seo-route-inventory.md) — none of that should ever be indexable.
+      This is the tag search engines see in the raw HTML shell before React
+      mounts. src/components/seo/SeoHead.tsx overrides it to "index,follow..."
+      only on pages that are genuinely public (currently just /#/contact).
+    -->
+    <meta name="robots" content="noindex,follow,noarchive" />
+
+    <!--
+      Google Search Console HTML verification (alternative to the DNS TXT
+      method — see docs/google-search-console-setup.md). Only rendered when
+      VITE_GOOGLE_SITE_VERIFICATION is set; see vite.config.ts for the
+      build-time injection. Never hardcode a token here.
+    -->
+    <!--GOOGLE_SITE_VERIFICATION_META-->
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +42,21 @@
     <!-- Google Identity Services for OAuth -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Innovax Technologies",
+      "url": "https://innovacar.app",
+      "logo": "https://innovacar.app/brand/innovacar-logo.png",
+      "description": "Innovax Technologies builds Innovacar, a car rental management platform for rental agencies.",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://innovacar.app/#/contact"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

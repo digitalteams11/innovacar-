@@ -22,7 +22,11 @@ export interface SeoHeadProps {
 
 const MANAGED_SELECTOR = '[data-seo-managed="1"]';
 const SITE_NAME = 'Innovacar';
-const DEFAULT_OG_IMAGE = 'https://innovacar.app/og/innovacar-og.jpg';
+// TODO: replace with a real 1200x630 social-preview image once one is
+// designed (public/og/innovacar-og.jpg) — no image-generation tooling was
+// available to produce one here. Falling back to the real logo rather than
+// a path that would 404 on every share.
+const DEFAULT_OG_IMAGE = 'https://innovacar.app/brand/innovacar-logo.png';
 
 function setMeta(attr: 'name' | 'property', key: string, content: string) {
   const el = document.createElement('meta');
@@ -66,8 +70,9 @@ export default function SeoHead({
     setMeta('property', 'og:url', canonical);
     setMeta('property', 'og:type', ogType);
     setMeta('property', 'og:image', ogImage);
-    setMeta('property', 'og:image:width', '1200');
-    setMeta('property', 'og:image:height', '630');
+    // og:image:width/height omitted deliberately — they must match the real
+    // image's actual pixel dimensions, which vary between the logo fallback
+    // and any future proper 1200x630 social-preview asset (see DEFAULT_OG_IMAGE).
 
     setMeta('name', 'twitter:card', 'summary_large_image');
     setMeta('name', 'twitter:title', fullTitle);

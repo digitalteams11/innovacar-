@@ -15,6 +15,8 @@ import {
   Calendar, User, Car, Shield, CheckCircle2, Loader2, Building2,
   MapPin, Phone, Mail, Landmark, AlertCircle, Check, FileText
 } from 'lucide-react';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
 
 interface PublicContractData {
   contractNumber: string;
@@ -189,6 +191,12 @@ export default function PublicContract() {
   if (error || !contract) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <SeoHead
+          title="Contract Signing"
+          description="Secure contract signing link."
+          canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'}
+          robots={ROBOTS_PRIVATE}
+        />
         <div className="text-center space-y-4 max-w-sm">
           <div className="w-16 h-16 bg-danger-50 rounded-2xl flex items-center justify-center mx-auto">
             <AlertCircle size={28} className="text-danger-500" />
@@ -247,6 +255,12 @@ export default function PublicContract() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-8 md:pb-0 animate-fade">
+      <SeoHead
+        title="Contract Signing"
+        description="Secure contract signing link."
+        canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'}
+        robots={ROBOTS_PRIVATE}
+      />
       {/* Header */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-3">

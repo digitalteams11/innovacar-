@@ -1,0 +1,14 @@
+# innovacar.app serves a single-page app with HashRouter — every real URL
+# path (before the #) returns the same index.html shell regardless of route,
+# so a path-based Disallow list here cannot actually distinguish
+# /dashboard from any other path the way it could on a server-rendered site.
+# That's not an oversight: per Google's own guidance, robots.txt controls
+# crawling, not indexing — the real mechanism keeping private/authenticated
+# pages, login/register/reset flows, and tokenized contract-signing/
+# inspection links out of search results is the per-page <meta name="robots">
+# tag (see src/components/seo/SeoHead.tsx and docs/seo-route-inventory.md),
+# not this file.
+User-agent: *
+Allow: /
+
+Sitemap: https://innovacar.app/sitemap.xml

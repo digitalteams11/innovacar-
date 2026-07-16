@@ -4,6 +4,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { translateApiError } from '../api/axios';
 import { Car, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { ErrorBox } from './ForgotPassword';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
 
 const RESEND_COOLDOWN = 60;
 
@@ -63,6 +65,12 @@ export default function VerifyResetCode() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center p-6 relative overflow-hidden">
+      <SeoHead
+        title="Verify Reset Code"
+        description="Verify the password reset code sent to your email."
+        canonical="https://innovacar.app/#/verify-reset-code"
+        robots={ROBOTS_PUBLIC_NOINDEX}
+      />
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-500/3 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-400/5 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3" />
 

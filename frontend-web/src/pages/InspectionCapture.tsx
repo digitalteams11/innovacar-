@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { Camera, CheckCircle2, Loader2, RotateCcw, ShieldCheck, Upload } from 'lucide-react';
 import { API_ORIGIN } from '../lib/api';
 import api from '../api/axios';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
 
 const PHOTO_STEPS = [
   { label: 'FRONT_SIDE', title: 'Front Side' },
@@ -84,6 +86,12 @@ export default function InspectionCapture() {
 
   return (
     <main className="min-h-screen bg-[#f6f6f1] px-4 py-5 text-slate-900">
+      <SeoHead
+        title="Vehicle Inspection"
+        description="Secure vehicle inspection capture link."
+        canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'}
+        robots={ROBOTS_PRIVATE}
+      />
       <div className="mx-auto max-w-md space-y-4">
         <header className="rounded-3xl bg-slate-950 p-5 text-white shadow-xl">
           <div className="mb-4 flex items-center justify-between">
