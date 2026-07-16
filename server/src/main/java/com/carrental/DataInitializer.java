@@ -301,6 +301,15 @@ public class DataInitializer implements CommandLineRunner {
                         .map(role -> "'" + role.name() + "'")
                         .collect(Collectors.joining(", "));
                 try (Statement statement = connection.createStatement()) {
+                    // ALTER TABLE takes an ACCESS EXCLUSIVE lock on `users`. This runs
+                    // unconditionally on every boot, so without a lock_timeout a single
+                    // stale/zombie connection still holding a lock on this table (e.g.
+                    // left over from a prior instance that was SIGKILLed by a container
+                    // OOM-kill instead of shutting down cleanly) would hang this
+                    // CommandLineRunner — and therefore the entire startup sequence —
+                    // indefinitely. Fail fast instead so DataInitializer still completes
+                    // and the app still becomes ready; the outer catch below just logs it.
+                    statement.execute("SET LOCAL lock_timeout = '3s'");
                     statement.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
                     statement.execute("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN (" + allowedRoles + "))");
                 }
