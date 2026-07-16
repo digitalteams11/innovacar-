@@ -1,3 +1,15 @@
+server:
+  tomcat:
+    # Default max-threads is 200; at ~1MB of native stack per thread that's up
+    # to 200MB of memory the JVM's -XX:MaxRAMPercentage heap cap doesn't
+    # account for, on a container-sized Railway plan. This app's traffic
+    # doesn't need anywhere near 200 concurrent request threads, so bound it
+    # to keep total process memory (heap + metaspace + thread stacks) inside
+    # the container limit instead of relying on the container to guess.
+    threads:
+      max: "${SERVER_TOMCAT_MAX_THREADS:50}"
+      min-spare: "${SERVER_TOMCAT_MIN_SPARE_THREADS:10}"
+
 spring:
   flyway:
     enabled: "${SPRING_FLYWAY_ENABLED:true}"
