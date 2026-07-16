@@ -49,12 +49,18 @@ public class AiProviderSeeder implements ApplicationRunner {
         log.info("[STARTUP_STEP_BEGIN] AiProviderSeeder");
         try {
             runInternal();
+            log.info("[STARTUP_STEP_OK] AiProviderSeeder durationMs={}",
+                    (System.nanoTime() - startNanos) / 1_000_000);
         } catch (RuntimeException e) {
-            log.error("[STARTUP_STEP_FAILED] AiProviderSeeder exceptionClass={}", e.getClass().getName());
-            throw e;
+            // Deliberately NOT rethrown — see DataInitializer for the full explanation.
+            // This ApplicationRunner executes after Tomcat is already accepting
+            // connections; letting an exception propagate here closes the whole
+            // ApplicationContext and crashes the app over what is, at worst, a missing
+            // default AI provider row.
+            log.error("[STARTUP_STEP_FAILED] AiProviderSeeder exceptionClass={} message={} — "
+                            + "continuing startup; default Groq provider was not seeded this boot",
+                    e.getClass().getName(), e.getMessage());
         }
-        log.info("[STARTUP_STEP_OK] AiProviderSeeder durationMs={}",
-                (System.nanoTime() - startNanos) / 1_000_000);
     }
 
     private void runInternal() {

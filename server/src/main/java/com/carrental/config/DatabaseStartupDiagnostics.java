@@ -23,17 +23,20 @@ public class DatabaseStartupDiagnostics implements ApplicationRunner {
     private final Environment environment;
 
     @Override
-    public void run(ApplicationArguments args) throws Exception {
+    public void run(ApplicationArguments args) {
         long startNanos = System.nanoTime();
         log.info("[STARTUP_STEP_BEGIN] DatabaseStartupDiagnostics");
         try {
             runInternal();
+            log.info("[STARTUP_STEP_OK] DatabaseStartupDiagnostics durationMs={}",
+                    (System.nanoTime() - startNanos) / 1_000_000);
         } catch (Exception e) {
-            log.error("[STARTUP_STEP_FAILED] DatabaseStartupDiagnostics exceptionClass={}", e.getClass().getName());
-            throw e;
+            // Deliberately NOT rethrown — see DataInitializer for the full explanation.
+            // This is pure diagnostic logging (row counts); it must never be able to
+            // crash the app it's only trying to describe.
+            log.error("[STARTUP_STEP_FAILED] DatabaseStartupDiagnostics exceptionClass={} message={}",
+                    e.getClass().getName(), e.getMessage());
         }
-        log.info("[STARTUP_STEP_OK] DatabaseStartupDiagnostics durationMs={}",
-                (System.nanoTime() - startNanos) / 1_000_000);
     }
 
     private void runInternal() throws Exception {

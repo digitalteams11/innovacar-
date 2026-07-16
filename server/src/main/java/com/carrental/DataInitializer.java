@@ -65,12 +65,21 @@ public class DataInitializer implements CommandLineRunner {
         log.info("[STARTUP_STEP_BEGIN] DataInitializer");
         try {
             runInternal();
+            log.info("[STARTUP_STEP_OK] DataInitializer durationMs={}",
+                    (System.nanoTime() - startNanos) / 1_000_000);
         } catch (RuntimeException e) {
-            log.error("[STARTUP_STEP_FAILED] DataInitializer exceptionClass={}", e.getClass().getName());
-            throw e;
+            // Deliberately NOT rethrown: this is a CommandLineRunner, which Spring Boot
+            // invokes AFTER Tomcat is already up and "Started LocationCarApplication" has
+            // already been logged (confirmed empirically — Tomcat/Started log both precede
+            // this runner in the startup log). If this exception were allowed to propagate,
+            // SpringApplication.run()'s failure handling closes the whole ApplicationContext
+            // (stopping the just-started Tomcat) and the JVM exits — turning any transient
+            // or edge-case seeding failure into a full app crash and Railway healthcheck
+            // failure / restart loop, even though seed data is optional, non-critical state.
+            log.error("[STARTUP_STEP_FAILED] DataInitializer exceptionClass={} message={} — "
+                            + "continuing startup; seed/repair data may be incomplete until next successful run",
+                    e.getClass().getName(), e.getMessage());
         }
-        log.info("[STARTUP_STEP_OK] DataInitializer durationMs={}",
-                (System.nanoTime() - startNanos) / 1_000_000);
     }
 
     private void runInternal() {

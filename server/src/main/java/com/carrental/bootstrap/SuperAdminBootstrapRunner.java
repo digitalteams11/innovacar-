@@ -73,12 +73,19 @@ public class SuperAdminBootstrapRunner implements ApplicationRunner {
         log.info("[STARTUP_STEP_BEGIN] SuperAdminBootstrapRunner");
         try {
             runInternal();
+            log.info("[STARTUP_STEP_OK] SuperAdminBootstrapRunner durationMs={}",
+                    (System.nanoTime() - startNanos) / 1_000_000);
         } catch (RuntimeException e) {
-            log.error("[STARTUP_STEP_FAILED] SuperAdminBootstrapRunner exceptionClass={}", e.getClass().getName());
-            throw e;
+            // Deliberately NOT rethrown — see DataInitializer for the full explanation.
+            // This ApplicationRunner executes after Tomcat is already accepting
+            // connections; letting an exception propagate here closes the whole
+            // ApplicationContext and crashes the app, turning a misconfigured
+            // BOOTSTRAP_SUPERADMIN_* env var into a Railway healthcheck failure
+            // instead of a clearly logged no-op.
+            log.error("[STARTUP_STEP_FAILED] SuperAdminBootstrapRunner exceptionClass={} message={} — "
+                            + "continuing startup; Super Admin bootstrap did not run this boot",
+                    e.getClass().getName(), e.getMessage());
         }
-        log.info("[STARTUP_STEP_OK] SuperAdminBootstrapRunner durationMs={}",
-                (System.nanoTime() - startNanos) / 1_000_000);
     }
 
     private void runInternal() {

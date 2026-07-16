@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -161,22 +161,23 @@ class SuperAdminBootstrapRunnerTest {
     }
 
     @Test
-    void rejectsWeakPassword() {
+    void rejectsWeakPasswordWithoutCrashingStartup() {
         configure(true, VALID_EMAIL, "password", null);
 
-        assertThatThrownBy(() -> runner.run(null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("BOOTSTRAP_SUPERADMIN_PASSWORD");
+        // run() is a Spring ApplicationRunner invoked after Tomcat is already up —
+        // it must never let a misconfigured env var propagate and crash the whole
+        // application context (see the "Deliberately NOT rethrown" comment on
+        // SuperAdminBootstrapRunner.run()). A weak/invalid password is misconfiguration,
+        // not a reason to fail the Railway healthcheck.
+        assertThatCode(() -> runner.run(null)).doesNotThrowAnyException();
         verify(userRepository, never()).save(any());
     }
 
     @Test
-    void rejectsInvalidEmail() {
+    void rejectsInvalidEmailWithoutCrashingStartup() {
         configure(true, "not-an-email", VALID_PASSWORD, null);
 
-        assertThatThrownBy(() -> runner.run(null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("BOOTSTRAP_SUPERADMIN_EMAIL");
+        assertThatCode(() -> runner.run(null)).doesNotThrowAnyException();
         verify(userRepository, never()).save(any());
     }
 }
