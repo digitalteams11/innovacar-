@@ -19,13 +19,17 @@ import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 /**
- * One-time production bootstrap for the very first SUPER_ADMIN account.
+ * Production bootstrap/repair for the SUPER_ADMIN account named by
+ * BOOTSTRAP_SUPERADMIN_EMAIL.
  *
  * <p>Entirely opt-in via BOOTSTRAP_SUPERADMIN_* environment variables, so no
  * plaintext credential ever needs to be inserted into the database by hand.
- * The account is created at most once: if any SUPER_ADMIN already exists —
- * whether created by this runner or any other way — every later run is a
- * no-op even if the environment variables are left in place.
+ * Idempotency is keyed on the bootstrap email specifically, not on "does any
+ * SUPER_ADMIN exist" — a pre-existing, unrelated SUPER_ADMIN (e.g. from the
+ * legacy demo bootstrap) must never cause this account to be silently
+ * skipped. If the account already exists, its password/role/status are
+ * repaired on every restart while BOOTSTRAP_SUPERADMIN_ENABLED=true; it is
+ * never duplicated.
  */
 @Slf4j
 @Component
@@ -60,12 +64,8 @@ public class SuperAdminBootstrapRunner implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        log.info("BOOTSTRAP_SUPERADMIN_ENABLED={}", enabled);
         if (!enabled) {
-            return;
-        }
-
-        if (userRepository.existsByRole(Role.SUPER_ADMIN)) {
-            log.info("BOOTSTRAP_SUPERADMIN_ENABLED is set but a SUPER_ADMIN already exists; skipping bootstrap.");
             return;
         }
 
@@ -81,57 +81,71 @@ public class SuperAdminBootstrapRunner implements ApplicationRunner {
                             + "12 characters and include an uppercase letter, a lowercase letter, a digit and a symbol.");
         }
 
-        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
-            log.warn("BOOTSTRAP_SUPERADMIN_ENABLED is set but a user with email {} already exists; skipping bootstrap.",
-                    normalizedEmail);
-            return;
+        User user = userRepository.findFirstByEmailIgnoreCaseOrderByIdAsc(normalizedEmail).orElse(null);
+        boolean existed = user != null;
+
+        if (!existed) {
+            Tenant systemTenant = tenantRepository.findByEmail(SYSTEM_TENANT_EMAIL)
+                    .orElseGet(() -> tenantRepository.save(Tenant.builder()
+                            .name("Innovax Technologies")
+                            .email(SYSTEM_TENANT_EMAIL)
+                            .subscriptionActive(true)
+                            .subscriptionEndDate(LocalDate.now().plusYears(100))
+                            .status("ACTIVE")
+                            .planName("Enterprise")
+                            .maxVehicles(9999)
+                            .maxEmployees(9999)
+                            .maxGpsDevices(9999)
+                            .maxReservations(99999)
+                            .storageLimitMb(1048576)
+                            .createdAt(LocalDateTime.now())
+                            .updatedAt(LocalDateTime.now())
+                            .build()));
+
+            String[] splitName = splitName(name);
+            user = User.builder()
+                    .email(normalizedEmail)
+                    .tenant(systemTenant)
+                    .firstName(splitName[0])
+                    .lastName(splitName[1])
+                    .failedLoginAttempts(0)
+                    .build();
         }
 
-        Tenant systemTenant = tenantRepository.findByEmail(SYSTEM_TENANT_EMAIL)
-                .orElseGet(() -> tenantRepository.save(Tenant.builder()
-                        .name("Innovax Technologies")
-                        .email(SYSTEM_TENANT_EMAIL)
-                        .subscriptionActive(true)
-                        .subscriptionEndDate(LocalDate.now().plusYears(100))
-                        .status("ACTIVE")
-                        .planName("Enterprise")
-                        .maxVehicles(9999)
-                        .maxEmployees(9999)
-                        .maxGpsDevices(9999)
-                        .maxReservations(99999)
-                        .storageLimitMb(1048576)
-                        .createdAt(LocalDateTime.now())
-                        .updatedAt(LocalDateTime.now())
-                        .build()));
+        // Repair path applies on both create and update — a pre-existing account
+        // with a stale password, wrong role, or locked/disabled state is fixed
+        // rather than left broken.
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRole(Role.SUPER_ADMIN);
+        user.setAccountEnabled(true);
+        user.setEmailVerified(true);
+        user.setLockedUntil(null);
+        user.setFailedLoginAttempts(0);
 
-        String firstName = null;
-        String lastName = null;
-        String trimmedName = name == null ? "" : name.trim();
-        if (!trimmedName.isEmpty()) {
-            int spaceIndex = trimmedName.indexOf(' ');
-            if (spaceIndex > 0) {
-                firstName = trimmedName.substring(0, spaceIndex);
-                lastName = trimmedName.substring(spaceIndex + 1).trim();
-            } else {
-                firstName = trimmedName;
-            }
+        User saved = userRepository.save(user);
+        boolean matches = passwordEncoder.matches(password, saved.getPassword());
+
+        log.info("Bootstrap SUPER_ADMIN {}: email={} role={} accountEnabled={} emailVerified={} locked={} passwordEncoderMatches={}",
+                existed ? "updated" : "created",
+                normalizedEmail, saved.getRole(), saved.getAccountEnabled(), saved.getEmailVerified(),
+                saved.isLocked(), matches);
+
+        if (!matches) {
+            log.error("Bootstrap SUPER_ADMIN password verification failed immediately after save for email={}; "
+                    + "login will not work until this is investigated.", normalizedEmail);
         }
+    }
 
-        userRepository.save(User.builder()
-                .email(normalizedEmail)
-                .password(passwordEncoder.encode(password))
-                .role(Role.SUPER_ADMIN)
-                .tenant(systemTenant)
-                .accountEnabled(true)
-                .emailVerified(true)
-                .failedLoginAttempts(0)
-                .firstName(firstName)
-                .lastName(lastName)
-                .build());
-
-        log.info("Bootstrap SUPER_ADMIN account created: email={}", normalizedEmail);
-        log.warn("SECURITY: remove BOOTSTRAP_SUPERADMIN_PASSWORD and set BOOTSTRAP_SUPERADMIN_ENABLED=false "
-                + "now that the initial Super Admin account has been created.");
+    private String[] splitName(String rawName) {
+        String trimmedName = rawName == null ? "" : rawName.trim();
+        if (trimmedName.isEmpty()) {
+            return new String[] { null, null };
+        }
+        int spaceIndex = trimmedName.indexOf(' ');
+        if (spaceIndex > 0) {
+            return new String[] { trimmedName.substring(0, spaceIndex), trimmedName.substring(spaceIndex + 1).trim() };
+        }
+        return new String[] { trimmedName, null };
     }
 
     private boolean hasText(String value) {

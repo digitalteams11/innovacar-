@@ -50,10 +50,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Active staff currently holding a given platform sub-role — used to guard the last SUPER_OWNER. */
     long countByRoleAndSuperAdminRole_CodeAndAccountEnabledTrue(Role role, String superAdminRoleCode);
-
-    /** Case-insensitive existence check, independent of tenant — used by the Super Admin bootstrap. */
-    boolean existsByEmailIgnoreCase(String email);
-
-    /** Whether any user currently holds the given role — used by the Super Admin bootstrap. */
-    boolean existsByRole(Role role);
 }
