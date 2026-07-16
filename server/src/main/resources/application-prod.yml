@@ -17,10 +17,22 @@ spring:
     hibernate:
       ddl-auto: "${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}"
     show-sql: false
+    open-in-view: false
     properties:
       hibernate:
         format_sql: false
         use_sql_comments: false
+
+app:
+  # Production defaults for a cross-site deployment (frontend on a different
+  # host than the Railway API, e.g. Vercel + innovacar.app vs the Railway
+  # domain) — a browser silently drops the cookie without Secure+SameSite=None
+  # over HTTPS. Still overridable via the same env vars if the frontend and
+  # backend ever end up same-site.
+  auth:
+    cookies:
+      secure: "${AUTH_COOKIE_SECURE:true}"
+      same-site: "${AUTH_COOKIE_SAME_SITE:None}"
 
 # Production log volume must stay well under Railway's per-replica rate limit
 # (500 logs/sec) — Hibernate SQL echo and framework DEBUG chatter are the main

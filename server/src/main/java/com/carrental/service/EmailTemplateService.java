@@ -62,13 +62,25 @@ public class EmailTemplateService {
     @PostConstruct
     @Transactional
     public void seedDefaultTemplates() {
-        if (templateRepository.countBySystemDefaultTrue() > 0) {
-            log.debug("[EMAIL_TEMPLATES] Default templates already seeded — skipping.");
-            return;
+        long startNanos = System.nanoTime();
+        log.info("[STARTUP_STEP_BEGIN] EmailTemplateService.seedDefaultTemplates");
+        try {
+            if (templateRepository.countBySystemDefaultTrue() > 0) {
+                log.debug("[EMAIL_TEMPLATES] Default templates already seeded — skipping.");
+                log.info("[STARTUP_STEP_OK] EmailTemplateService.seedDefaultTemplates durationMs={}",
+                        (System.nanoTime() - startNanos) / 1_000_000);
+                return;
+            }
+            List<EmailTemplate> defaults = buildAllDefaults();
+            templateRepository.saveAll(defaults);
+            log.info("[EMAIL_TEMPLATES] Seeded {} default email templates.", defaults.size());
+            log.info("[STARTUP_STEP_OK] EmailTemplateService.seedDefaultTemplates durationMs={}",
+                    (System.nanoTime() - startNanos) / 1_000_000);
+        } catch (Exception e) {
+            log.error("[STARTUP_STEP_FAILED] EmailTemplateService.seedDefaultTemplates exceptionClass={}",
+                    e.getClass().getName());
+            throw e;
         }
-        List<EmailTemplate> defaults = buildAllDefaults();
-        templateRepository.saveAll(defaults);
-        log.info("[EMAIL_TEMPLATES] Seeded {} default email templates.", defaults.size());
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

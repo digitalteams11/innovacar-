@@ -24,6 +24,19 @@ public class DatabaseStartupDiagnostics implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        long startNanos = System.nanoTime();
+        log.info("[STARTUP_STEP_BEGIN] DatabaseStartupDiagnostics");
+        try {
+            runInternal();
+        } catch (Exception e) {
+            log.error("[STARTUP_STEP_FAILED] DatabaseStartupDiagnostics exceptionClass={}", e.getClass().getName());
+            throw e;
+        }
+        log.info("[STARTUP_STEP_OK] DatabaseStartupDiagnostics durationMs={}",
+                (System.nanoTime() - startNanos) / 1_000_000);
+    }
+
+    private void runInternal() throws Exception {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metadata = connection.getMetaData();
             log.info("Database safety diagnostics: profiles={}, url={}, database={}, schema={}, ddl-auto={}",

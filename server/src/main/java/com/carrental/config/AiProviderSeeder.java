@@ -45,6 +45,19 @@ public class AiProviderSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        long startNanos = System.nanoTime();
+        log.info("[STARTUP_STEP_BEGIN] AiProviderSeeder");
+        try {
+            runInternal();
+        } catch (RuntimeException e) {
+            log.error("[STARTUP_STEP_FAILED] AiProviderSeeder exceptionClass={}", e.getClass().getName());
+            throw e;
+        }
+        log.info("[STARTUP_STEP_OK] AiProviderSeeder durationMs={}",
+                (System.nanoTime() - startNanos) / 1_000_000);
+    }
+
+    private void runInternal() {
         if (aiProviderRepository.existsByIsDeletedFalse()) {
             return;
         }

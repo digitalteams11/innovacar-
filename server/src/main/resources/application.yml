@@ -68,7 +68,7 @@ spring:
 server:
   address: 0.0.0.0
   # Railway assigns a dynamic port via $PORT and expects the app to bind to it.
-  port: "${PORT:8082}"
+  port: "${PORT:8080}"
   # Railway's edge proxy terminates TLS and forwards plain HTTP with
   # X-Forwarded-* headers; without this, redirects/URLs built from the request
   # (e.g. Location headers) would resolve to the internal http:// origin

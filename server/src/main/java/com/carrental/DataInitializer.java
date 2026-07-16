@@ -61,6 +61,19 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        long startNanos = System.nanoTime();
+        log.info("[STARTUP_STEP_BEGIN] DataInitializer");
+        try {
+            runInternal();
+        } catch (RuntimeException e) {
+            log.error("[STARTUP_STEP_FAILED] DataInitializer exceptionClass={}", e.getClass().getName());
+            throw e;
+        }
+        log.info("[STARTUP_STEP_OK] DataInitializer durationMs={}",
+                (System.nanoTime() - startNanos) / 1_000_000);
+    }
+
+    private void runInternal() {
         // 1. Seed platform settings
         if (platformSettingsRepository.count() == 0) {
             platformSettingsRepository.save(PlatformSettings.builder()

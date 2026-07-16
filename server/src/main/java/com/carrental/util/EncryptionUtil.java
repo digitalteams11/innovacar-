@@ -38,12 +38,17 @@ public class EncryptionUtil {
 
     @PostConstruct
     public void init() {
+        long startNanos = System.nanoTime();
+        log.info("[STARTUP_STEP_BEGIN] EncryptionUtil.init");
         try {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             byte[] keyBytes = sha256.digest(encryptionSecret.getBytes(StandardCharsets.UTF_8));
             secretKey = new SecretKeySpec(keyBytes, "AES");
             log.info("EncryptionUtil initialized — secret length={}", encryptionSecret.length());
+            log.info("[STARTUP_STEP_OK] EncryptionUtil.init durationMs={}",
+                    (System.nanoTime() - startNanos) / 1_000_000);
         } catch (Exception e) {
+            log.error("[STARTUP_STEP_FAILED] EncryptionUtil.init exceptionClass={}", e.getClass().getName());
             throw new RuntimeException("Failed to initialize encryption", e);
         }
     }

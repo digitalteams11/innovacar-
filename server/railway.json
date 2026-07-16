@@ -4,7 +4,9 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "java -XX:MaxRAMPercentage=60.0 -XX:MaxMetaspaceSize=256m -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof -Dserver.port=${PORT:-8082} -jar target/location-car-0.0.1-SNAPSHOT.jar",
+    "startCommand": "java -XX:MaxRAMPercentage=50.0 -XX:MaxMetaspaceSize=256m -Xss512k -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof -Dserver.port=${PORT:-8080} -jar target/location-car-0.0.1-SNAPSHOT.jar",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
