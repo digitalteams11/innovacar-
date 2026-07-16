@@ -25,4 +25,13 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
 
     boolean existsByIdAndUserIdAndRevokedFalseAndExpiresAtAfter(
             Long id, Long userId, LocalDateTime now);
+
+    /**
+     * Most recent session among a set of user ids — pushed down to the database
+     * (ORDER BY + LIMIT 1) instead of loading every session row into memory just
+     * to compute a max() in application code. Used by CustomerSuccessService's
+     * daily risk scan, which previously loaded the entire sessions table once
+     * per run regardless of tenant count.
+     */
+    Optional<UserSession> findTopByUserIdInOrderByCreatedAtDesc(java.util.Collection<Long> userIds);
 }

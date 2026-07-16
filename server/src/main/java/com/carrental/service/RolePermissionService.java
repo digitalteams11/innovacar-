@@ -147,7 +147,7 @@ public class RolePermissionService {
     public RolePermission setPermission(Role role, String permissionCode, boolean enabled) {
         Long tenantId = TenantContext.getCurrentTenantId();
         User currentUser = currentUser();
-        log.info("[ROLE_ACCESS_UPDATE_DEBUG] currentUserId={} currentUserRole={} agencyId={} targetRole={} permissionKey={} enabled={} requestPayload=[enabled={}]",
+        log.debug("[ROLE_ACCESS_UPDATE_DEBUG] currentUserId={} currentUserRole={} agencyId={} targetRole={} permissionKey={} enabled={} requestPayload=[enabled={}]",
                 currentUser.getId(), currentUser.getRole(), tenantId, role, permissionCode, enabled, enabled);
 
         if (role == Role.SUPER_ADMIN) {
@@ -173,7 +173,7 @@ public class RolePermissionService {
         List<RolePermission> existing = rolePermissionRepository
                 .findAllByTenantIdAndRoleAndPermissionCode(tenantId, role, permissionCode);
         boolean roleExists = !existing.isEmpty();
-        log.info("[ROLE_ACCESS_UPDATE_DEBUG] roleExists={} permissionExists={}", roleExists, permissionExists);
+        log.debug("[ROLE_ACCESS_UPDATE_DEBUG] roleExists={} permissionExists={}", roleExists, permissionExists);
         if (!roleExists) {
             log.warn("[ROLE_ACCESS_UPDATE_DEBUG] errorCode=ROLE_PERMISSION_NOT_FOUND targetRole={} permissionKey={}", role, permissionCode);
             throw new ResourceNotFoundException("Role permission not found");
@@ -187,7 +187,7 @@ public class RolePermissionService {
         boolean oldValue = Boolean.TRUE.equals(permission.getEnabled());
         permission.setEnabled(enabled);
         RolePermission saved = rolePermissionRepository.save(permission);
-        log.info("[ROLE_ACCESS_UPDATE_DEBUG] currentUserId={} agencyId={} targetRole={} permissionKey={} oldValue={} newValue={} saved=true",
+        log.debug("[ROLE_ACCESS_UPDATE_DEBUG] currentUserId={} agencyId={} targetRole={} permissionKey={} oldValue={} newValue={} saved=true",
                 currentUser.getId(), tenantId, role, permissionCode, oldValue, enabled);
         return saved;
     }

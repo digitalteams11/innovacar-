@@ -347,7 +347,7 @@ public class BillingController {
         boolean hasStaticUrl = ("YEARLY".equals(cycle) ? plan.getWhopCheckoutUrlYearly() : plan.getWhopCheckoutUrlMonthly()) != null
                 && !("YEARLY".equals(cycle) ? plan.getWhopCheckoutUrlYearly() : plan.getWhopCheckoutUrlMonthly()).isBlank();
         boolean hasDynamicId = plan.getWhopPlanId() != null && !plan.getWhopPlanId().isBlank();
-        log.info("[WHOP_CHECKOUT_DEBUG] agencyId={} planCode={} planId={} whopPlanId={} whopCheckoutLinkPresent={} apiKeyPresent={} checkoutMode={}",
+        log.debug("[WHOP_CHECKOUT_DEBUG] agencyId={} planCode={} planId={} whopPlanId={} whopCheckoutLinkPresent={} apiKeyPresent={} checkoutMode={}",
                 tenantId, plan.getCode(), plan.getId(),
                 plan.getWhopPlanId(), hasStaticUrl, apiKeyPresent,
                 apiKeyPresent && hasDynamicId ? "API_CREATE" : hasStaticUrl ? "STORED_LINK" : "NONE");
@@ -660,7 +660,7 @@ public class BillingController {
         try { agencyId = TenantContext.getCurrentTenantId(); } catch (Exception ignored) {}
         long totalInDb = planRepository.count();
 
-        log.info("[BILLING_PLANS_API_DEBUG] userId={} agencyId={} role={} totalPlans={} activePlans={} returnedPlans={}",
+        log.debug("[BILLING_PLANS_API_DEBUG] userId={} agencyId={} role={} totalPlans={} activePlans={} returnedPlans={}",
                 userId, agencyId, role, totalInDb, plans.size(), planList.size());
 
         return ResponseEntity.ok(Map.of("success", true, "data", planList));

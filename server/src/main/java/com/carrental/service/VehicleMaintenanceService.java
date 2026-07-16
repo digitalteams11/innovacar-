@@ -56,7 +56,7 @@ public class VehicleMaintenanceService {
                 .map(r -> r.getCost() != null ? r.getCost() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        log.info("[MAINTENANCE_LIST_DEBUG] tenantId={} vehicleId={} count={} scheduled={} inProgress={} completed={} totalCost={} firstId={}",
+        log.debug("[MAINTENANCE_LIST_DEBUG] tenantId={} vehicleId={} count={} scheduled={} inProgress={} completed={} totalCost={} firstId={}",
                 tenantId, vehicleId, rows.size(), scheduled, inProgress, completed, totalCost,
                 rows.isEmpty() ? null : rows.get(0).getId());
 
@@ -68,7 +68,7 @@ public class VehicleMaintenanceService {
         User user = currentUser();
         Long tenantId = TenantContext.getCurrentTenantId();
 
-        log.info("[MAINTENANCE_CREATE_DEBUG] currentUserId={} currentUserRole={} agencyId={} vehicleId={} title={} "
+        log.debug("[MAINTENANCE_CREATE_DEBUG] currentUserId={} currentUserRole={} agencyId={} vehicleId={} title={} "
                 + "serviceProvider={} scheduledDateRaw={} scheduledDateParsed={} cost={} mileage={} descriptionPresent={} "
                 + "notificationEnabled=true requestPayload={}",
                 user != null ? user.getId() : null,
@@ -98,7 +98,7 @@ public class VehicleMaintenanceService {
         }
 
         Vehicle anyVehicle = vehicleRepository.findById(request.getVehicleId()).orElse(null);
-        log.info("[MAINTENANCE_CREATE_DEBUG] vehicleExists={} payloadVehicleId={}", anyVehicle != null, request.getVehicleId());
+        log.debug("[MAINTENANCE_CREATE_DEBUG] vehicleExists={} payloadVehicleId={}", anyVehicle != null, request.getVehicleId());
         if (anyVehicle == null) {
             log.warn("[MAINTENANCE_CREATE_DEBUG] result=FAILED errorCode=VEHICLE_NOT_FOUND payloadVehicleId={} agencyId={}",
                     request.getVehicleId(), tenantId);
@@ -126,7 +126,7 @@ public class VehicleMaintenanceService {
                     "VEHICLE_CURRENTLY_RENTED");
         }
 
-        log.info("[MAINTENANCE_CREATE_DEBUG] vehicleExists=true vehicleAgencyId={} vehicleStatusBefore={} status={}",
+        log.debug("[MAINTENANCE_CREATE_DEBUG] vehicleExists=true vehicleAgencyId={} vehicleStatusBefore={} status={}",
                 vehicleAgencyId, vehicleStatusBefore, status);
 
         VehicleMaintenance maintenance = VehicleMaintenance.builder()
@@ -147,7 +147,7 @@ public class VehicleMaintenanceService {
         vehicleRepository.saveAndFlush(vehicle);
 
         VehicleMaintenance saved = maintenanceRepository.saveAndFlush(maintenance);
-        log.info("[MAINTENANCE_CREATE_DEBUG] workOrderSaved=true workOrderId={} vehicleId={} vehicleStatusBefore={} vehicleStatusAfter={} scheduledDateParsed={} result=SUCCESS",
+        log.debug("[MAINTENANCE_CREATE_DEBUG] workOrderSaved=true workOrderId={} vehicleId={} vehicleStatusBefore={} vehicleStatusAfter={} scheduledDateParsed={} result=SUCCESS",
                 saved.getId(), vehicle.getId(), vehicleStatusBefore, vehicle.getStatut(), saved.getScheduledAt());
 
         Hibernate.initialize(saved.getVehicle());
@@ -179,7 +179,7 @@ public class VehicleMaintenanceService {
         VehicleStatus vehicleStatusAfterForLog = null;
         Notification.NotificationType notificationTypeForLog = null;
 
-        log.info("[MAINTENANCE_STATUS_DEBUG] userId={} email={} role={} agencyId={} workOrderId={} requestedStatus={}",
+        log.debug("[MAINTENANCE_STATUS_DEBUG] userId={} email={} role={} agencyId={} workOrderId={} requestedStatus={}",
                 user != null ? user.getId() : null,
                 user != null ? user.getEmail() : null,
                 user != null ? user.getRole() : null,
@@ -205,7 +205,7 @@ public class VehicleMaintenanceService {
 
             MaintenanceStatus currentStatus = maintenance.getStatus();
             currentStatusForLog = currentStatus;
-            log.info("[MAINTENANCE_STATUS_DEBUG] workOrderId={} workOrderExists=true workOrderAgencyId={} currentStatus={}",
+            log.debug("[MAINTENANCE_STATUS_DEBUG] workOrderId={} workOrderExists=true workOrderAgencyId={} currentStatus={}",
                     id, tenantId, currentStatus);
 
             // Step 2: enforce the allowed status transition matrix
@@ -218,7 +218,7 @@ public class VehicleMaintenanceService {
                 log.error("[MAINTENANCE_STATUS_DEBUG] workOrderId={} result=VEHICLE_ID_NULL", id);
                 throw new ResourceNotFoundException("Vehicle not found for this maintenance record.");
             }
-            log.info("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={}", id, vehicleId);
+            log.debug("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={}", id, vehicleId);
 
             // Step 4: load vehicle with pessimistic write lock
             Vehicle vehicle = vehicleRepository.findByIdAndTenantIdForUpdate(vehicleId, tenantId)
@@ -230,7 +230,7 @@ public class VehicleMaintenanceService {
 
             VehicleStatus vehicleStatusBefore = vehicle.getStatut();
             vehicleStatusBeforeForLog = vehicleStatusBefore;
-            log.info("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={} vehicleExists=true vehicleStatusBefore={}",
+            log.debug("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={} vehicleExists=true vehicleStatusBefore={}",
                     id, vehicleId, vehicleStatusBefore);
 
             // Step 5: apply status transition
@@ -243,7 +243,7 @@ public class VehicleMaintenanceService {
                 int activeMaintenanceCount = countOtherOpenMaintenance(tenantId, vehicleId, maintenance.getId());
                 boolean hasReservation     = hasActiveReservation(tenantId, vehicleId);
                 boolean hasContract        = hasActiveContract(tenantId, vehicleId);
-                log.info("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={} activeMaintenanceCount={} activeReservationCount={} activeContractCount={}",
+                log.debug("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={} activeMaintenanceCount={} activeReservationCount={} activeContractCount={}",
                         id, vehicleId, activeMaintenanceCount, hasReservation ? 1 : 0, hasContract ? 1 : 0);
                 if (activeMaintenanceCount == 0 && !hasReservation && !hasContract) {
                     vehicle.setStatut(VehicleStatus.AVAILABLE);
@@ -257,7 +257,7 @@ public class VehicleMaintenanceService {
             vehicleRepository.save(vehicle);
             VehicleMaintenance saved = maintenanceRepository.save(maintenance);
 
-            log.info("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={} vehicleStatusBefore={} vehicleStatusAfter={} newStatus={} result=SUCCESS",
+            log.debug("[MAINTENANCE_STATUS_DEBUG] workOrderId={} vehicleId={} vehicleStatusBefore={} vehicleStatusAfter={} newStatus={} result=SUCCESS",
                     saved.getId(), vehicleId, vehicleStatusBefore, vehicleStatusAfter, saved.getStatus());
 
             // Step 7: eagerly initialize lazy associations for toResponse()
@@ -291,7 +291,7 @@ public class VehicleMaintenanceService {
             MaintenanceResponse response = toResponse(saved, tenantId);
             response.setWarnings(warnings);
 
-            log.info("[MAINTENANCE_STATUS_UPDATE_DEBUG] currentUserId={} agencyId={} workOrderId={} oldStatus={} newStatus={} "
+            log.debug("[MAINTENANCE_STATUS_UPDATE_DEBUG] currentUserId={} agencyId={} workOrderId={} oldStatus={} newStatus={} "
                     + "vehicleId={} vehicleStatusBefore={} vehicleStatusAfter={} notificationType={} result=SUCCESS",
                     user.getId(), tenantId, id, currentStatusForLog, status,
                     vehicleIdForLog, vehicleStatusBeforeForLog, vehicleStatusAfterForLog, notificationTypeForLog);
@@ -359,7 +359,7 @@ public class VehicleMaintenanceService {
                         .build();
                 maintenanceRepository.save(repair);
                 repairedIds.add(vehicle.getId());
-                log.info("[MAINTENANCE_REPAIR_DEBUG] auto-created work order vehicleId={} tenantId={}", vehicle.getId(), tenantId);
+                log.debug("[MAINTENANCE_REPAIR_DEBUG] auto-created work order vehicleId={} tenantId={}", vehicle.getId(), tenantId);
             }
         }
 
@@ -486,7 +486,7 @@ public class VehicleMaintenanceService {
             Long workOrderId, Long tenantId) {
         try {
             notificationService.notifyMaintenance(title, message, type, severity, workOrderId, tenantId);
-            log.info("[MAINTENANCE_NOTIFICATION_DEBUG] workOrderId={} notificationType={} notificationResult=SUCCESS",
+            log.debug("[MAINTENANCE_NOTIFICATION_DEBUG] workOrderId={} notificationType={} notificationResult=SUCCESS",
                     workOrderId, type);
             return List.of();
         } catch (Exception ex) {

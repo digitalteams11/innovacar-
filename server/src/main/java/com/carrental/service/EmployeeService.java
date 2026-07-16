@@ -96,7 +96,7 @@ public class EmployeeService {
                 ? request.getStatus()
                 : EmployeeStatus.ACTIVE;
         Role role = parseRole(resolveRole(request));
-        log.info("[EMPLOYEE_CREATE_DEBUG] tenantId={} email={} roleCode={} result=creating",
+        log.debug("[EMPLOYEE_CREATE_DEBUG] tenantId={} email={} roleCode={} result=creating",
                 tenantId, request.getEmail(), role.name());
 
         String email = request.getEmail() == null ? "" : request.getEmail().trim().toLowerCase();

@@ -6,6 +6,12 @@ import { PageHeader, TabGroup, FormField, TextInput, TextArea, ToggleSwitch } fr
 import { useToast } from '../../context/ToastContext';
 import { generateId } from '../../lib/generateId';
 
+const defaultSmtp = {
+  smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '',
+  hasPassword: false, smtpUseTls: true, smtpSslEnabled: false, smtpEnabled: false,
+  fromEmail: '', fromName: '',
+};
+
 export default function SuperAdminSettings() {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -18,8 +24,17 @@ export default function SuperAdminSettings() {
   const [agencies, setAgencies] = useState<Array<{ id: number; name: string }>>([]);
   const [themeTarget, setThemeTarget] = useState('all');
 
+  // SMTP lives on its own state/endpoint (PUT /email/settings) — kept separate from the
+  // generic platform settings above, which no longer persists SMTP fields (see backend:
+  // updatePlatformSettings no longer touches smtpHost/etc). This is the one canonical SMTP
+  // form; it mirrors the fuller Email Center SMTP tab in the web app.
+  const [smtp, setSmtp] = useState(defaultSmtp);
+  const [smtpLoading, setSmtpLoading] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+
   useEffect(() => {
     fetchSettings();
+    fetchSmtp();
   }, []);
 
   const fetchSettings = async () => {
@@ -43,6 +58,57 @@ export default function SuperAdminSettings() {
       setAgencies([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSmtp = async () => {
+    setSmtpLoading(true);
+    try {
+      const res = await superAdminApi.getSmtpSettings();
+      const d = res.data ?? {};
+      setSmtp({
+        smtpHost: d.smtpHost ?? '', smtpPort: d.smtpPort ?? 587,
+        smtpUsername: d.smtpUsername ?? '', smtpPassword: '',
+        hasPassword: Boolean(d.hasPassword),
+        smtpUseTls: d.smtpUseTls !== undefined ? Boolean(d.smtpUseTls) : true,
+        smtpSslEnabled: Boolean(d.smtpSslEnabled),
+        smtpEnabled: Boolean(d.smtpEnabled),
+        fromEmail: d.fromEmail ?? '', fromName: d.fromName ?? '',
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const updateSmtpField = (field: string, value: any) => {
+    setSmtp((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveSmtp = async () => {
+    setSmtpSaving(true);
+    try {
+      const payload: any = { ...smtp };
+      if (!payload.smtpPassword) delete payload.smtpPassword;
+      delete payload.hasPassword;
+      const res = await superAdminApi.updateSmtpSettings(payload);
+      const d = res.data ?? {};
+      setSmtp((prev) => ({
+        ...prev,
+        smtpHost: d.smtpHost ?? prev.smtpHost, smtpPort: d.smtpPort ?? prev.smtpPort,
+        smtpUsername: d.smtpUsername ?? prev.smtpUsername, smtpPassword: '',
+        hasPassword: Boolean(d.hasPassword),
+        smtpUseTls: d.smtpUseTls !== undefined ? Boolean(d.smtpUseTls) : prev.smtpUseTls,
+        smtpSslEnabled: Boolean(d.smtpSslEnabled),
+        smtpEnabled: Boolean(d.smtpEnabled),
+        fromEmail: d.fromEmail ?? prev.fromEmail, fromName: d.fromName ?? prev.fromName,
+      }));
+      showToast('SMTP settings saved successfully', 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Unable to save SMTP settings', 'error');
+    } finally {
+      setSmtpSaving(false);
     }
   };
 
@@ -145,14 +211,25 @@ export default function SuperAdminSettings() {
   return (
     <div className="space-y-6 animate-fade">
       <PageHeader title={t('superAdmin.settings.title')} subtitle={t('superAdmin.settings.subtitle')}>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-soft disabled:opacity-60"
-        >
-          <Save size={16} />
-          {saving ? t('superAdmin.settings.saving') : t('superAdmin.settings.saveChanges')}
-        </button>
+        {activeTab === 'smtp' ? (
+          <button
+            onClick={handleSaveSmtp}
+            disabled={smtpSaving}
+            className="flex items-center gap-2 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-soft disabled:opacity-60"
+          >
+            <Save size={16} />
+            {smtpSaving ? t('superAdmin.settings.saving') : t('superAdmin.settings.saveChanges')}
+          </button>
+        ) : (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-soft disabled:opacity-60"
+          >
+            <Save size={16} />
+            {saving ? t('superAdmin.settings.saving') : t('superAdmin.settings.saveChanges')}
+          </button>
+        )}
       </PageHeader>
 
       <TabGroup tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -376,27 +453,48 @@ export default function SuperAdminSettings() {
               <Mail size={20} className="text-[#0a0f2c] dark:text-white" />
               <h3 className="text-base font-bold text-[#1e293b] dark:text-white">Email Configuration</h3>
             </div>
+            {smtpLoading && <p className="text-xs text-slate-400">Loading SMTP settings…</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label={t('superAdmin.settings.smtpHost')}>
-                <TextInput value={settings.smtpHost || ''} onChange={(v) => updateField('smtpHost', v)} placeholder="smtp.example.com" />
+                <TextInput value={smtp.smtpHost} onChange={(v) => updateSmtpField('smtpHost', v)} placeholder="smtp.zoho.com" />
               </FormField>
               <FormField label={t('superAdmin.settings.smtpPort')}>
-                <TextInput value={settings.smtpPort || ''} onChange={(v) => updateField('smtpPort', Number(v))} type="number" placeholder="587" />
+                <TextInput value={smtp.smtpPort} onChange={(v) => updateSmtpField('smtpPort', Number(v))} type="number" placeholder="587" />
               </FormField>
             </div>
             <FormField label={t('superAdmin.settings.smtpUsername')}>
-              <TextInput value={settings.smtpUsername || ''} onChange={(v) => updateField('smtpUsername', v)} />
+              <TextInput value={smtp.smtpUsername} onChange={(v) => updateSmtpField('smtpUsername', v)} placeholder="contact@yourdomain.com" />
             </FormField>
             <FormField label="SMTP Password">
-              <input type="password" value={settings.smtpPassword || ''} onChange={(e) => updateField('smtpPassword', e.target.value)} placeholder="••••••••" className="w-full px-4 py-2.5 rounded-xl border border-[#e8e6e1] dark:border-white/5 bg-white dark:bg-[#1e293b] text-sm text-[#1e293b] dark:text-white placeholder:text-slate-400 outline-none" />
+              <input
+                type="password"
+                value={smtp.smtpPassword}
+                onChange={(e) => updateSmtpField('smtpPassword', e.target.value)}
+                placeholder={smtp.hasPassword ? 'Stored securely — enter a new password to replace' : 'Enter SMTP password'}
+                className="w-full px-4 py-2.5 rounded-xl border border-[#e8e6e1] dark:border-white/5 bg-white dark:bg-[#1e293b] text-sm text-[#1e293b] dark:text-white placeholder:text-slate-400 outline-none"
+              />
+              {smtp.hasPassword && !smtp.smtpPassword && <p className="text-xs text-emerald-600 mt-1">Password stored securely — enter a new one to replace.</p>}
             </FormField>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label={t('superAdmin.settings.fromEmail')}>
-                <TextInput value={settings.fromEmail || ''} onChange={(v) => updateField('fromEmail', v)} placeholder="noreply@example.com" />
+                <TextInput value={smtp.fromEmail} onChange={(v) => updateSmtpField('fromEmail', v)} placeholder="noreply@example.com" />
               </FormField>
               <FormField label={t('superAdmin.settings.fromName')}>
-                <TextInput value={settings.fromName || ''} onChange={(v) => updateField('fromName', v)} placeholder="Innovax Technologies" />
+                <TextInput value={smtp.fromName} onChange={(v) => updateSmtpField('fromName', v)} placeholder="Innovax Technologies" />
               </FormField>
+            </div>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <ToggleSwitch
+                checked={smtp.smtpUseTls}
+                onChange={(v) => setSmtp((prev) => ({ ...prev, smtpUseTls: v, smtpSslEnabled: v ? false : prev.smtpSslEnabled }))}
+                label="Use TLS (STARTTLS, port 587)"
+              />
+              <ToggleSwitch
+                checked={smtp.smtpSslEnabled}
+                onChange={(v) => setSmtp((prev) => ({ ...prev, smtpSslEnabled: v, smtpUseTls: v ? false : prev.smtpUseTls }))}
+                label="Use SSL (implicit, port 465)"
+              />
+              <ToggleSwitch checked={smtp.smtpEnabled} onChange={(v) => updateSmtpField('smtpEnabled', v)} label="Platform email enabled" />
             </div>
           </div>
         )}

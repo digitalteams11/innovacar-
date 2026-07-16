@@ -231,7 +231,7 @@ public class PlatformEmailService {
                 .build());
 
         // Record test result in PlatformSettings
-        platformSettingsRepository.findAll().stream().findFirst().ifPresent(ps -> {
+        platformSettingsRepository.findTopByOrderByIdAsc().ifPresent(ps -> {
             ps.setLastSmtpTestStatus(result.sent() ? "SENT" : "FAILED");
             ps.setLastSmtpTestAt(java.time.LocalDateTime.now());
             platformSettingsRepository.save(ps);

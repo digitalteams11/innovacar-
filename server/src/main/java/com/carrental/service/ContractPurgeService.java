@@ -74,7 +74,7 @@ public class ContractPurgeService {
         Long reservationId = contract.getReservation() != null ? contract.getReservation().getId() : null;
         Long vehicleId     = contract.getVehicle()     != null ? contract.getVehicle().getId()     : null;
 
-        log.info("[CONTRACT_PURGE_DEBUG] contractId={} contractNumber={} deleted={} reservationId={} vehicleId={} — starting permanent delete",
+        log.debug("[CONTRACT_PURGE_DEBUG] contractId={} contractNumber={} deleted={} reservationId={} vehicleId={} — starting permanent delete",
                 id, contractNumber, deleted, reservationId, vehicleId);
 
         // ── Step 1: inspection_media (FK: inspection_media.inspection_id → inspections.id) ──
@@ -113,7 +113,7 @@ public class ContractPurgeService {
         // is found and removed — em.delete() with the filter active would silently no-op.
         contractRepository.deleteNativeById(id);
 
-        log.info("[CONTRACT_PURGE_DEBUG] contractId={} contractNumber={} deleted={} reservationId={} vehicleId={} " +
+        log.debug("[CONTRACT_PURGE_DEBUG] contractId={} contractNumber={} deleted={} reservationId={} vehicleId={} " +
                  "paymentsDeleted={} depositsDeleted={} documentsDeleted={} auditLogsDeleted={} " +
                  "inspectionsDeleted=performed inspectionMediaDeleted=performed notificationsDeleted=performed " +
                  "reservationDeleted=false vehicleDeleted=false clientDeleted=false purgeSuccess=true",

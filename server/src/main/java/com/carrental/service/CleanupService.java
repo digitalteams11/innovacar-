@@ -29,7 +29,12 @@ public class CleanupService {
     @Transactional
     public void cleanupExpiredRefreshTokens() {
         log.info("Running scheduled cleanup: expired refresh tokens");
-        refreshTokenService.cleanupExpiredTokens();
+        try {
+            refreshTokenService.cleanupExpiredTokens();
+        } catch (Exception ex) {
+            log.error("[CLEANUP_REFRESH_TOKENS] Failed — exceptionClass={} message={}",
+                    ex.getClass().getName(), ex.getMessage());
+        }
     }
 
     /**
@@ -39,7 +44,12 @@ public class CleanupService {
     @Transactional
     public void cleanupExpiredSessions() {
         log.info("Running scheduled cleanup: expired sessions");
-        sessionService.cleanupExpiredSessions();
+        try {
+            sessionService.cleanupExpiredSessions();
+        } catch (Exception ex) {
+            log.error("[CLEANUP_SESSIONS] Failed — exceptionClass={} message={}",
+                    ex.getClass().getName(), ex.getMessage());
+        }
     }
 
     /**
@@ -49,7 +59,12 @@ public class CleanupService {
     @Transactional
     public void cleanupOldLoginAttempts() {
         log.info("Running scheduled cleanup: old login attempts");
-        rateLimitService.cleanupOldAttempts();
+        try {
+            rateLimitService.cleanupOldAttempts();
+        } catch (Exception ex) {
+            log.error("[CLEANUP_LOGIN_ATTEMPTS] Failed — exceptionClass={} message={}",
+                    ex.getClass().getName(), ex.getMessage());
+        }
     }
 
     /**
@@ -59,6 +74,11 @@ public class CleanupService {
     @Transactional
     public void cleanupExpiredPhoneOtps() {
         log.info("Running scheduled cleanup: expired phone OTPs");
-        phoneOtpRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        try {
+            phoneOtpRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        } catch (Exception ex) {
+            log.error("[CLEANUP_PHONE_OTPS] Failed — exceptionClass={} message={}",
+                    ex.getClass().getName(), ex.getMessage());
+        }
     }
 }

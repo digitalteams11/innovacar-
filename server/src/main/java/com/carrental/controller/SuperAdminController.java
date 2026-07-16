@@ -53,6 +53,7 @@ public class SuperAdminController {
     private final SupportTicketRepository ticketRepository;
     private final AuditLogRepository auditLogRepository;
     private final PlatformSettingsRepository platformSettingsRepository;
+    private final com.carrental.service.PlatformSettingsService platformSettingsService;
     private final PromoCodeRepository promoCodeRepository;
     private final PromoCodeRedemptionRepository promoCodeRedemptionRepository;
     private final PromoCodePlanLinkRepository promoCodePlanLinkRepository;
@@ -947,17 +948,12 @@ public class SuperAdminController {
 
     @GetMapping("/settings")
     public ResponseEntity<PlatformSettings> getPlatformSettings() {
-        List<PlatformSettings> settings = platformSettingsRepository.findAll();
-        if (settings.isEmpty()) {
-            return ResponseEntity.ok(platformSettingsRepository.save(PlatformSettings.builder().build()));
-        }
-        return ResponseEntity.ok(settings.get(0));
+        return ResponseEntity.ok(platformSettings());
     }
 
     @PutMapping("/settings")
     public ResponseEntity<PlatformSettings> updatePlatformSettings(@RequestBody Map<String, Object> updates) {
-        List<PlatformSettings> settings = platformSettingsRepository.findAll();
-        PlatformSettings ps = settings.isEmpty() ? PlatformSettings.builder().build() : settings.get(0);
+        PlatformSettings ps = platformSettings();
 
         if (updates.containsKey("platformName")) ps.setPlatformName(toStr(updates.get("platformName")));
         if (updates.containsKey("logoUrl")) ps.setLogoUrl(toStr(updates.get("logoUrl")));
@@ -967,11 +963,12 @@ public class SuperAdminController {
         if (updates.containsKey("defaultLanguage")) ps.setDefaultLanguage(toStr(updates.get("defaultLanguage")));
         if (updates.containsKey("supportedLanguages")) ps.setSupportedLanguages(toStr(updates.get("supportedLanguages")));
         if (updates.containsKey("defaultCurrency")) ps.setDefaultCurrency(toStr(updates.get("defaultCurrency")));
-        if (updates.containsKey("smtpHost")) ps.setSmtpHost(toStr(updates.get("smtpHost")));
-        if (updates.containsKey("smtpPort")) ps.setSmtpPort(toInt(updates.get("smtpPort")));
-        if (updates.containsKey("smtpUsername")) ps.setSmtpUsername(toStr(updates.get("smtpUsername")));
-        if (updates.containsKey("fromEmail")) ps.setFromEmail(toStr(updates.get("fromEmail")));
-        if (updates.containsKey("fromName")) ps.setFromName(toStr(updates.get("fromName")));
+        // SMTP fields (smtpHost/smtpPort/smtpUsername/smtpPassword/fromEmail/fromName/etc.) are
+        // intentionally NOT handled here. They are owned exclusively by PUT /email/settings
+        // (updateSmtpSettings) — this endpoint used to also accept a subset of them (host/port/
+        // username/fromEmail/fromName but never password/enabled/TLS), which let an admin using
+        // the generic Settings page save a "half configured" SMTP row that looked saved but could
+        // never actually send. See Email Center → SMTP for the one true SMTP form.
         if (updates.containsKey("apiRateLimit")) ps.setApiRateLimit(toInt(updates.get("apiRateLimit")));
         if (updates.containsKey("sessionTimeoutMinutes")) ps.setSessionTimeoutMinutes(toInt(updates.get("sessionTimeoutMinutes")));
         if (updates.containsKey("maxLoginAttempts")) ps.setMaxLoginAttempts(toInt(updates.get("maxLoginAttempts")));
@@ -1443,6 +1440,17 @@ public class SuperAdminController {
                 .build());
     }
 
+    /** Same as {@link #logAgencyAction}, but for platform-wide settings with no owning tenant. */
+    private void logPlatformAction(String action, String description) {
+        auditLogRepository.save(AuditLog.builder()
+                .action(action)
+                .entityType("PLATFORM")
+                .description(description)
+                .performedBy(currentSuperAdminEmail())
+                .isSuccess(true)
+                .build());
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 13. PROMO CODES
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1858,8 +1866,7 @@ public class SuperAdminController {
 
     @GetMapping("/email/settings")
     public ResponseEntity<Map<String, Object>> getSmtpSettings() {
-        PlatformSettings ps = platformSettingsRepository.findAll().stream()
-                .findFirst().orElseGet(() -> platformSettingsRepository.save(PlatformSettings.builder().build()));
+        PlatformSettings ps = platformSettingsService.getOrCreateSingleton();
         Map<String, Object> result = new LinkedHashMap<>();
         // Always return non-null strings so the frontend never receives null for input values
         result.put("smtpProvider",      ps.getSmtpProvider() != null ? ps.getSmtpProvider() : "ZOHO");
@@ -1868,6 +1875,7 @@ public class SuperAdminController {
         result.put("smtpUsername",     ps.getSmtpUsername() != null ? ps.getSmtpUsername() : "");
         result.put("hasPassword",      ps.getSmtpPasswordEncrypted() != null && !ps.getSmtpPasswordEncrypted().isBlank());
         result.put("smtpUseTls",       ps.getSmtpUseTls() == null ? true : ps.getSmtpUseTls());
+        result.put("smtpSslEnabled",   Boolean.TRUE.equals(ps.getSmtpSslEnabled()));
         result.put("smtpEnabled",      ps.getSmtpEnabled() == null ? false : ps.getSmtpEnabled());
         result.put("fromEmail",        ps.getFromEmail() != null ? ps.getFromEmail() : "");
         result.put("fromName",         ps.getFromName() != null ? ps.getFromName() : "");
@@ -1880,12 +1888,25 @@ public class SuperAdminController {
 
     @PutMapping("/email/settings")
     public ResponseEntity<Map<String, Object>> updateSmtpSettings(@RequestBody Map<String, Object> updates) {
-        PlatformSettings ps = platformSettingsRepository.findAll().stream()
-                .findFirst().orElseGet(() -> platformSettingsRepository.save(PlatformSettings.builder().build()));
+        PlatformSettings ps = platformSettingsService.getOrCreateSingleton();
+
+        String host       = updates.containsKey("smtpHost")     ? trimStr(updates.get("smtpHost"))     : ps.getSmtpHost();
+        Integer port      = updates.containsKey("smtpPort")     ? toInt(updates.get("smtpPort"))       : ps.getSmtpPort();
+        String username    = updates.containsKey("smtpUsername") ? trimStr(updates.get("smtpUsername")) : ps.getSmtpUsername();
+        String fromEmail  = updates.containsKey("fromEmail")    ? trimStr(updates.get("fromEmail"))    : ps.getFromEmail();
+        Boolean enabled   = updates.containsKey("smtpEnabled")  ? toBool(updates.get("smtpEnabled"))   : ps.getSmtpEnabled();
+        boolean useTls    = updates.containsKey("smtpUseTls")   ? Boolean.TRUE.equals(toBool(updates.get("smtpUseTls"))) : (ps.getSmtpUseTls() == null || ps.getSmtpUseTls());
+        boolean useSsl    = updates.containsKey("smtpSslEnabled") ? Boolean.TRUE.equals(toBool(updates.get("smtpSslEnabled"))) : Boolean.TRUE.equals(ps.getSmtpSslEnabled());
+
+        Map<String, Object> validationError = validateSmtpSettings(host, port, username, fromEmail, enabled, useTls, useSsl);
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(validationError);
+        }
+
         if (updates.containsKey("smtpProvider")) ps.setSmtpProvider(trimStr(updates.get("smtpProvider")));
-        if (updates.containsKey("smtpHost"))     ps.setSmtpHost(trimStr(updates.get("smtpHost")));
-        if (updates.containsKey("smtpPort"))     ps.setSmtpPort(toInt(updates.get("smtpPort")));
-        if (updates.containsKey("smtpUsername")) ps.setSmtpUsername(trimStr(updates.get("smtpUsername")));
+        if (updates.containsKey("smtpHost"))     ps.setSmtpHost(host);
+        if (updates.containsKey("smtpPort"))     ps.setSmtpPort(port);
+        if (updates.containsKey("smtpUsername")) ps.setSmtpUsername(username);
         boolean newPasswordProvided = false;
         if (updates.containsKey("smtpPassword")) {
             String pw = toStr(updates.get("smtpPassword"));
@@ -1899,25 +1920,61 @@ public class SuperAdminController {
                 }
             }
         }
-        if (updates.containsKey("smtpUseTls"))   ps.setSmtpUseTls(toBool(updates.get("smtpUseTls")));
-        if (updates.containsKey("smtpEnabled"))  ps.setSmtpEnabled(toBool(updates.get("smtpEnabled")));
-        if (updates.containsKey("fromEmail"))    ps.setFromEmail(trimStr(updates.get("fromEmail")));
-        if (updates.containsKey("fromName"))     ps.setFromName(trimStr(updates.get("fromName")));
-        if (updates.containsKey("smtpReplyTo"))  ps.setSmtpReplyTo(trimStr(updates.get("smtpReplyTo")));
+        if (updates.containsKey("smtpUseTls"))       ps.setSmtpUseTls(useTls);
+        if (updates.containsKey("smtpSslEnabled"))   ps.setSmtpSslEnabled(useSsl);
+        if (updates.containsKey("smtpEnabled"))      ps.setSmtpEnabled(enabled);
+        if (updates.containsKey("fromEmail"))        ps.setFromEmail(fromEmail);
+        if (updates.containsKey("fromName"))         ps.setFromName(trimStr(updates.get("fromName")));
+        if (updates.containsKey("smtpReplyTo"))      ps.setSmtpReplyTo(trimStr(updates.get("smtpReplyTo")));
         platformSettingsRepository.save(ps);
         boolean passwordStored = ps.getSmtpPasswordEncrypted() != null && !ps.getSmtpPasswordEncrypted().isBlank();
-        log.info("[SMTP_SAVE_DEBUG] host={} port={} username={} fromEmail={} passwordProvided={} passwordStored={}",
+        log.debug("[SMTP_SAVE_DEBUG] host={} port={} username={} fromEmail={} passwordProvided={} passwordStored={}",
                 ps.getSmtpHost(), ps.getSmtpPort(), ps.getSmtpUsername(), ps.getFromEmail(),
                 newPasswordProvided, passwordStored);
+        logPlatformAction("SMTP_SETTINGS_UPDATED", "Updated SMTP settings: host=" + ps.getSmtpHost()
+                + " port=" + ps.getSmtpPort() + " enabled=" + ps.getSmtpEnabled()
+                + " tls=" + ps.getSmtpUseTls() + " ssl=" + ps.getSmtpSslEnabled()
+                + " passwordChanged=" + newPasswordProvided);
+
+        // Re-read from the DB to confirm persistence before reporting success, rather than
+        // trusting the in-memory entity we just saved.
         return getSmtpSettings();
+    }
+
+    /** Returns a 400-shaped error map if the resulting SMTP config would be invalid, else null. */
+    private Map<String, Object> validateSmtpSettings(String host, Integer port, String username, String fromEmail,
+                                                       Boolean enabled, boolean useTls, boolean useSsl) {
+        if (Boolean.TRUE.equals(enabled)) {
+            if (!org.springframework.util.StringUtils.hasText(host)) {
+                return Map.of("success", false, "errorCode", "SMTP_HOST_MISSING",
+                        "message", "SMTP host is required.");
+            }
+            if (!org.springframework.util.StringUtils.hasText(username)) {
+                return Map.of("success", false, "errorCode", "SMTP_USERNAME_MISSING",
+                        "message", "SMTP username is required.");
+            }
+        }
+        if (port != null && (port < 1 || port > 65535)) {
+            return Map.of("success", false, "errorCode", "SMTP_PORT_INVALID",
+                    "message", "SMTP port must be between 1 and 65535.");
+        }
+        if (org.springframework.util.StringUtils.hasText(fromEmail)
+                && !fromEmail.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$")) {
+            return Map.of("success", false, "errorCode", "SMTP_FROM_EMAIL_INVALID",
+                    "message", "From Email must be a valid email address.");
+        }
+        if (useTls && useSsl) {
+            return Map.of("success", false, "errorCode", "SMTP_TLS_SSL_CONFLICT",
+                    "message", "STARTTLS and SSL cannot both be enabled for the same connection.");
+        }
+        return null;
     }
 
     // ── Support Center routing settings (Super Admin only) ───────────────────
 
     @GetMapping("/support/settings")
     public ResponseEntity<Map<String, Object>> getSupportRoutingSettings() {
-        PlatformSettings ps = platformSettingsRepository.findAll().stream()
-                .findFirst().orElseGet(() -> platformSettingsRepository.save(PlatformSettings.builder().build()));
+        PlatformSettings ps = platformSettingsService.getOrCreateSingleton();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("contactEmail",   ps.getContactEmail() != null ? ps.getContactEmail() : "");
         result.put("supportEmail",   ps.getSupportEmail() != null ? ps.getSupportEmail() : "");
@@ -1930,8 +1987,7 @@ public class SuperAdminController {
 
     @PutMapping("/support/settings")
     public ResponseEntity<Map<String, Object>> updateSupportRoutingSettings(@RequestBody Map<String, Object> updates) {
-        PlatformSettings ps = platformSettingsRepository.findAll().stream()
-                .findFirst().orElseGet(() -> platformSettingsRepository.save(PlatformSettings.builder().build()));
+        PlatformSettings ps = platformSettingsService.getOrCreateSingleton();
         if (updates.containsKey("contactEmail"))   ps.setContactEmail(trimStr(updates.get("contactEmail")));
         if (updates.containsKey("supportEmail"))   ps.setSupportEmail(trimStr(updates.get("supportEmail")));
         if (updates.containsKey("technicalEmail")) ps.setTechnicalEmail(trimStr(updates.get("technicalEmail")));
@@ -1944,6 +2000,7 @@ public class SuperAdminController {
 
     @PostMapping("/email/test")
     public ResponseEntity<Map<String, Object>> sendTestEmail(@RequestBody Map<String, Object> body) {
+        logPlatformAction("SMTP_TEST_EMAIL_REQUESTED", "Super Admin requested an SMTP test email");
         String recipient = toStr(body.get("to"));
         if (recipient == null || recipient.isBlank()) {
             Map<String, Object> err = new LinkedHashMap<>();
@@ -1961,7 +2018,7 @@ public class SuperAdminController {
         }
 
         // ── Pre-flight config validation ──────────────────────────────────────
-        PlatformSettings psCheck = platformSettingsRepository.findAll().stream().findFirst().orElse(null);
+        PlatformSettings psCheck = platformSettingsRepository.findTopByOrderByIdAsc().orElse(null);
         if (psCheck == null || !org.springframework.util.StringUtils.hasText(psCheck.getSmtpHost())) {
             return ResponseEntity.ok(Map.of("success", false, "errorCode", "SMTP_HOST_MISSING",
                     "message", "SMTP host is not configured. Set it in the SMTP Configuration form and save before testing."));
@@ -1994,7 +2051,7 @@ public class SuperAdminController {
             pwLen = dec != null ? dec.length() : 0;
             pwDecryptOk = pwLen > 0;
         } catch (Exception ignored) {}
-        log.info("[SMTP_DIAG_DEBUG] provider={} host={} port={} username={} fromEmail={} replyTo={} useTls={} enabled={} passwordProvided=true encryptedPasswordExists={} passwordDecryptOk={} passwordLength={} testRecipient={}",
+        log.debug("[SMTP_DIAG_DEBUG] provider={} host={} port={} username={} fromEmail={} replyTo={} useTls={} enabled={} passwordProvided=true encryptedPasswordExists={} passwordDecryptOk={} passwordLength={} testRecipient={}",
                 psCheck.getSmtpProvider(), psCheck.getSmtpHost(), psCheck.getSmtpPort(),
                 psCheck.getSmtpUsername(), psCheck.getFromEmail(), psCheck.getSmtpReplyTo(),
                 psCheck.getSmtpUseTls(), psCheck.getSmtpEnabled(),
@@ -2015,11 +2072,11 @@ public class SuperAdminController {
         if (password != null) {
             Map<String, Object> preCheck = probeSmtpHost(effectiveHost, effectivePort, psCheck.getSmtpUsername(),
                     org.springframework.util.StringUtils.hasText(psCheck.getFromEmail()) ? psCheck.getFromEmail() : psCheck.getSmtpUsername(),
-                    password);
+                    password, Boolean.TRUE.equals(psCheck.getSmtpSslEnabled()));
             authOkFromDiagnose = "OK".equals(preCheck.get("auth"));
         }
 
-        log.info("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
+        log.debug("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
                         + "startTls={} authOkFromDiagnose={} sendAttempted=true",
                 effectiveHost, effectivePort, psCheck.getSmtpUsername(), psCheck.getFromEmail(),
                 password != null, recipient, startTls, authOkFromDiagnose);
@@ -2027,13 +2084,13 @@ public class SuperAdminController {
         // ── Attempt send ──────────────────────────────────────────────────────
         com.carrental.service.SmtpMailService.SmtpResult result = platformEmailService.sendTestEmail(recipient);
 
-        log.info("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
+        log.debug("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
                         + "sendAttempted=true exceptionClass={} exceptionMessage={} errorCode={}",
                 effectiveHost, effectivePort, psCheck.getSmtpUsername(), psCheck.getFromEmail(),
                 password != null, recipient, result.exceptionClass(), result.errorMessage(), result.errorCode());
 
         if (result.sent()) {
-            log.info("[SMTP_DIAG_DEBUG] connectionResult=OK authResult=OK errorCode=null testRecipient={}", recipient);
+            log.debug("[SMTP_DIAG_DEBUG] connectionResult=OK authResult=OK errorCode=null testRecipient={}", recipient);
             psCheck.setLastSmtpTestStatus("SENT");
             psCheck.setLastSmtpTestAt(java.time.LocalDateTime.now());
             psCheck.setLastSmtpTestErrorCode(null);
@@ -2078,7 +2135,8 @@ public class SuperAdminController {
     /** Probes one or both Zoho SMTP hosts with the stored credentials and returns safe diagnostics. */
     @PostMapping("/email/diagnose-smtp")
     public ResponseEntity<List<Map<String, Object>>> diagnoseSmtp() {
-        PlatformSettings ps = platformSettingsRepository.findAll().stream().findFirst().orElse(null);
+        logPlatformAction("SMTP_DIAGNOSTIC_RUN", "Super Admin ran the SMTP diagnostic tool");
+        PlatformSettings ps = platformSettingsRepository.findTopByOrderByIdAsc().orElse(null);
         if (ps == null || ps.getSmtpPasswordEncrypted() == null || ps.getSmtpPasswordEncrypted().isBlank()) {
             Map<String, Object> err = new LinkedHashMap<>();
             err.put("errorCode", "SMTP_PASSWORD_MISSING");
@@ -2098,30 +2156,33 @@ public class SuperAdminController {
         String configuredHost = org.springframework.util.StringUtils.hasText(ps.getSmtpHost()) ? ps.getSmtpHost().strip() : "smtp.zoho.com";
         int    configuredPort = ps.getSmtpPort() != null ? ps.getSmtpPort() : 587;
         boolean isZoho        = configuredHost.toLowerCase().contains("zoho");
+        boolean sslEnabled    = Boolean.TRUE.equals(ps.getSmtpSslEnabled());
 
-        log.info("[SMTP_DIAG_DEBUG] provider={} host={} port={} username={} fromEmail={} replyTo={} useTls={} enabled={} passwordProvided=true encryptedPasswordExists=true",
+        log.debug("[SMTP_DIAG_DEBUG] provider={} host={} port={} username={} fromEmail={} replyTo={} useTls={} ssl={} enabled={} passwordProvided=true encryptedPasswordExists=true",
                 ps.getSmtpProvider(), configuredHost, configuredPort, username, fromEmail,
-                ps.getSmtpReplyTo(), ps.getSmtpUseTls(), ps.getSmtpEnabled());
+                ps.getSmtpReplyTo(), ps.getSmtpUseTls(), sslEnabled, ps.getSmtpEnabled());
 
         List<Map<String, Object>> results = new ArrayList<>();
 
-        // Always probe the configured host first
-        results.add(probeSmtpHost(configuredHost, configuredPort, username, fromEmail, password));
+        // Always probe the configured host/port/mode first
+        results.add(probeSmtpHost(configuredHost, configuredPort, username, fromEmail, password, sslEnabled));
 
-        // For Zoho: also probe the alternate host so the admin can see which one works
-        if (isZoho) {
+        // For Zoho in STARTTLS mode: also probe the alternate 587 host so the admin can see
+        // which one works. SSL mode (465) is a deliberate account choice — don't guess at it
+        // for accounts that were never configured for it.
+        if (isZoho && !sslEnabled) {
             if (!configuredHost.equalsIgnoreCase("smtp.zoho.com")) {
-                results.add(probeSmtpHost("smtp.zoho.com", 587, username, fromEmail, password));
+                results.add(probeSmtpHost("smtp.zoho.com", 587, username, fromEmail, password, false));
             }
             if (!configuredHost.equalsIgnoreCase("smtppro.zoho.com")) {
-                results.add(probeSmtpHost("smtppro.zoho.com", 587, username, fromEmail, password));
+                results.add(probeSmtpHost("smtppro.zoho.com", 587, username, fromEmail, password, false));
             }
         }
 
         return ResponseEntity.ok(results);
     }
 
-    private Map<String, Object> probeSmtpHost(String host, int port, String username, String fromEmail, String password) {
+    private Map<String, Object> probeSmtpHost(String host, int port, String username, String fromEmail, String password, boolean ssl) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("host", host);
         result.put("port", port);
@@ -2137,8 +2198,14 @@ public class SuperAdminController {
             java.util.Properties props = new java.util.Properties();
             props.put("mail.transport.protocol", "smtp");
             props.put("mail.smtp.auth", "true");
-            props.put("mail.smtp.starttls.enable", "true");
-            props.put("mail.smtp.starttls.required", "true");
+            if (ssl) {
+                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.smtp.starttls.enable", "false");
+            } else {
+                props.put("mail.smtp.ssl.enable", "false");
+                props.put("mail.smtp.starttls.enable", "true");
+                props.put("mail.smtp.starttls.required", "true");
+            }
             props.put("mail.smtp.ssl.trust", isZoho ? "smtp.zoho.com smtppro.zoho.com" : host);
             props.put("mail.smtp.connectiontimeout", "8000");
             props.put("mail.smtp.timeout", "8000");
@@ -2148,7 +2215,7 @@ public class SuperAdminController {
             result.put("connection", "OK");
             result.put("auth", "OK");
             result.put("errorCode", null);
-            log.info("[SMTP_DIAG_DEBUG] host={} port={} username={} connectionResult=OK authResult=OK", host, port, username);
+            log.debug("[SMTP_DIAG_DEBUG] host={} port={} username={} connectionResult=OK authResult=OK", host, port, username);
         } catch (Exception ex) {
             String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
             String exType = ex.getClass().getSimpleName().toLowerCase();
@@ -2391,9 +2458,7 @@ public class SuperAdminController {
     // ═══════════════════════════════════════════════════════════════════════════
 
     private PlatformSettings platformSettings() {
-        return platformSettingsRepository.findAll().stream()
-                .findFirst()
-                .orElseGet(() -> platformSettingsRepository.save(PlatformSettings.builder().build()));
+        return platformSettingsService.getOrCreateSingleton();
     }
 
     private Map<String, Object> marketingOnboardingData(PlatformSettings settings) {

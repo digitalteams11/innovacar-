@@ -32,9 +32,11 @@ server/storage/
 # Environment-specific Spring config that may hold real credentials
 application-prod.properties
 application-local.properties
-application-prod.yml
 application-local.yml
 application-dev.yml
+# application-prod.yml is intentionally tracked (see server/src/main/resources/application-prod.yml) —
+# it holds no credentials, only prod-only Flyway/JPA/logging overrides, and being gitignored
+# previously meant it silently never reached Railway even though a local copy existed.
 
 # Editor and OS files
 .idea/

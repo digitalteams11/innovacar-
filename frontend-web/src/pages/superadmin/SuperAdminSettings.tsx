@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { superAdminApi } from '../../api/superAdminApi';
-import { Save, Mail, Palette, Shield, Database, Upload, Plus, Send, Trash2, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { Save, Palette, Shield, Database, Upload, Plus, Send, Trash2, RotateCcw, Image as ImageIcon } from 'lucide-react';
 import { PageHeader, TabGroup, FormField, TextInput, TextArea, SelectInput, ToggleSwitch } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
 import { generateId } from '../../lib/generateId';
@@ -183,7 +183,6 @@ export default function SuperAdminSettings() {
   const tabs = [
     { id: 'branding', label: 'Branding' },
     { id: 'themes', label: 'Agency Themes' },
-    { id: 'smtp', label: 'SMTP' },
     { id: 'security', label: 'Security' },
     { id: 'features', label: 'Features' },
   ];
@@ -588,37 +587,6 @@ export default function SuperAdminSettings() {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {activeTab === 'smtp' && (
-          <div className="max-w-2xl space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <Mail size={20} className="text-[#0a0f2c] dark:text-white" />
-              <h3 className="text-base font-bold text-[#1e293b] dark:text-white">Email Configuration</h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label={t('superAdmin.settings.smtpHost')}>
-                <TextInput value={settings.smtpHost || ''} onChange={(v) => updateField('smtpHost', v)} placeholder="smtp.example.com" />
-              </FormField>
-              <FormField label={t('superAdmin.settings.smtpPort')}>
-                <TextInput value={settings.smtpPort || ''} onChange={(v) => updateField('smtpPort', Number(v))} type="number" placeholder="587" />
-              </FormField>
-            </div>
-            <FormField label={t('superAdmin.settings.smtpUsername')}>
-              <TextInput value={settings.smtpUsername || ''} onChange={(v) => updateField('smtpUsername', v)} />
-            </FormField>
-            <FormField label="SMTP Password">
-              <input type="password" value={settings.smtpPassword || ''} onChange={(e) => updateField('smtpPassword', e.target.value)} placeholder="••••••••" className="w-full px-4 py-2.5 rounded-xl border border-[#e8e6e1] dark:border-white/5 bg-white dark:bg-[#1e293b] text-sm text-[#1e293b] dark:text-white placeholder:text-slate-400 outline-none" />
-            </FormField>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label={t('superAdmin.settings.fromEmail')}>
-                <TextInput value={settings.fromEmail || ''} onChange={(v) => updateField('fromEmail', v)} placeholder="noreply@example.com" />
-              </FormField>
-              <FormField label={t('superAdmin.settings.fromName')}>
-                <TextInput value={settings.fromName || ''} onChange={(v) => updateField('fromName', v)} placeholder="Innovax Technologies" />
-              </FormField>
-            </div>
           </div>
         )}
 

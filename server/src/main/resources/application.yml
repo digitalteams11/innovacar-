@@ -40,13 +40,17 @@ spring:
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+    # SQL echo defaults to off — Hibernate's show-sql writes straight to stdout
+    # (not through SLF4J), so leaving it on in production floods the log
+    # pipeline. application-dev.yml re-enables it for local development.
+    show-sql: false
     open-in-view: false
     hibernate:
       ddl-auto: "${SPRING_JPA_HIBERNATE_DDL_AUTO:update}"
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
+        use_sql_comments: false
 
   task:
     scheduling:
@@ -237,13 +241,3 @@ whop:
   webhook:
     secret: "${WHOP_WEBHOOK_SECRET:}"
 
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-  flyway:
-    enabled: "${SPRING_FLYWAY_ENABLED:true}"
-  jpa:
-    hibernate:
-      ddl-auto: "${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}"

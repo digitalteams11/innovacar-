@@ -215,7 +215,7 @@ public class TwoFactorService {
         if (hasFreshPending) {
             // Reuse the same pending secret — the QR code shown to the user stays valid.
             secret = encryptionUtil.decrypt(user.getPendingTwoFactorSecretEncrypted());
-            log.info("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=false existingPendingSecret=true issuer=RentCar account={} period=30 digits=6 algorithm=SHA1",
+            log.debug("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=false existingPendingSecret=true issuer=RentCar account={} period=30 digits=6 algorithm=SHA1",
                     user.getId(), user.getEmail(), user.getRole(), user.getEmail());
         } else {
             // Generate a new secret and store it in the pending fields.
@@ -223,7 +223,7 @@ public class TwoFactorService {
             user.setPendingTwoFactorSecretEncrypted(encryptionUtil.encrypt(secret));
             user.setPendingTwoFactorSetupAt(java.time.LocalDateTime.now());
             userRepository.save(user);
-            log.info("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=true existingPendingSecret=false issuer=RentCar account={} period=30 digits=6 algorithm=SHA1",
+            log.debug("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=true existingPendingSecret=false issuer=RentCar account={} period=30 digits=6 algorithm=SHA1",
                     user.getId(), user.getEmail(), user.getRole(), user.getEmail());
         }
 
@@ -269,7 +269,7 @@ public class TwoFactorService {
         String normalizedCode = code == null ? "" : code.trim().replace(" ", "");
         boolean verificationResult = verifyCode(pendingSecret, normalizedCode);
 
-        log.info("[TWO_FA_CONFIRM_DEBUG] userId={} email={} role={} codeLength={} codeDigitsOnly={} pendingSecretExists=true enabledBefore=false timeStep={} driftAllowed=1 verificationResult={} errorCode={}",
+        log.debug("[TWO_FA_CONFIRM_DEBUG] userId={} email={} role={} codeLength={} codeDigitsOnly={} pendingSecretExists=true enabledBefore=false timeStep={} driftAllowed=1 verificationResult={} errorCode={}",
                 user.getId(), user.getEmail(), user.getRole(),
                 normalizedCode.length(),
                 normalizedCode.matches("\\d+"),

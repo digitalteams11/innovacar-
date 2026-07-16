@@ -1,0 +1,25 @@
+spring:
+  flyway:
+    enabled: "${SPRING_FLYWAY_ENABLED:true}"
+  jpa:
+    hibernate:
+      ddl-auto: "${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}"
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+# Production log volume must stay well under Railway's per-replica rate limit
+# (500 logs/sec) — Hibernate SQL echo and framework DEBUG chatter are the main
+# offenders, so they're capped at WARN here rather than left at their
+# framework defaults. com.carrental stays at INFO for our own structured logs.
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.type.descriptor.sql: WARN
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    com.carrental: INFO

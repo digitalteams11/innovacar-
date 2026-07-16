@@ -126,7 +126,7 @@ public class PaymentController {
         try {
             User user = authentication != null && authentication.getPrincipal() instanceof User u ? u : null;
             boolean hasPermission = rolePermissionService.has(requiredPermission);
-            log.info("[PAYMENTS_ACCESS_DEBUG] endpoint={} userId={} email={} role={} agencyId={} requiredPermission={} hasPermission={} requiredFeature={} result={}",
+            log.debug("[PAYMENTS_ACCESS_DEBUG] endpoint={} userId={} email={} role={} agencyId={} requiredPermission={} hasPermission={} requiredFeature={} result={}",
                     endpoint,
                     user != null ? user.getId() : "unknown",
                     user != null ? user.getEmail() : "unknown",

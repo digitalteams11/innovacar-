@@ -176,7 +176,7 @@ public class SuperAdminDataResetService {
 
     @Transactional
     public Map<String, Object> execute(DataResetRequest request, User currentUser, String ipAddress) {
-        log.info("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} scope={} agencyId={} action={} previewLoaded=true",
+        log.debug("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} scope={} agencyId={} action={} previewLoaded=true",
                 currentUser.getId(), request.getScope(), request.getAgencyId(), request.getAction());
         requirePermission(currentUser);
         requireEmailVerified(currentUser);
@@ -186,7 +186,7 @@ public class SuperAdminDataResetService {
             requirePasswordValid(currentUser, request.getCurrentPassword());
             passwordValid = true;
         } catch (DataResetSecurityException ex) {
-            log.info("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} passwordValid=false errorCode={}",
+            log.debug("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} passwordValid=false errorCode={}",
                     currentUser.getId(), ex.getErrorCode());
             throw ex;
         }
@@ -195,11 +195,11 @@ public class SuperAdminDataResetService {
             requireTwoFactorCodeValid(currentUser, request.getTwoFactorCode());
             twoFactorValid = true;
         } catch (DataResetSecurityException ex) {
-            log.info("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} passwordValid={} twoFactorValid=false errorCode={}",
+            log.debug("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} passwordValid={} twoFactorValid=false errorCode={}",
                     currentUser.getId(), passwordValid, ex.getErrorCode());
             throw ex;
         }
-        log.info("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} passwordValid={} twoFactorValid={} — validating confirmationCode",
+        log.debug("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} passwordValid={} twoFactorValid={} — validating confirmationCode",
                 currentUser.getId(), passwordValid, twoFactorValid);
 
         if (request.getAction() == DataResetAction.FULL_PLATFORM_RESET && !isDevProfile()) {
@@ -213,7 +213,7 @@ public class SuperAdminDataResetService {
 
         Tenant tenant = request.getScope() == DataResetScope.PLATFORM ? null : resolveTenant(request.getAgencyId());
         requireConfirmationCode(request, tenant);
-        log.info("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} agencyId={} agencyName={} action={} executeAllowed=true",
+        log.debug("[DATA_RESET_CONFIRM_DEBUG] superAdminId={} agencyId={} agencyName={} action={} executeAllowed=true",
                 currentUser.getId(), tenant != null ? tenant.getId() : null,
                 tenant != null ? tenant.getName() : "PLATFORM", request.getAction());
 
@@ -446,7 +446,7 @@ public class SuperAdminDataResetService {
         String expected = tenant != null ? confirmationCodeFor(tenant) : confirmationCodeForPlatform();
         String provided = request.getConfirmationCode();
         boolean matches = provided != null && provided.equals(expected);
-        log.info("[DATA_RESET_CONFIRM_DEBUG] agencyId={} agencyName={} action={} expectedConfirmationCode={} providedConfirmationCodeMatches={}",
+        log.debug("[DATA_RESET_CONFIRM_DEBUG] agencyId={} agencyName={} action={} expectedConfirmationCode={} providedConfirmationCodeMatches={}",
                 tenant != null ? tenant.getId() : null,
                 tenant != null ? tenant.getName() : "PLATFORM",
                 request.getAction(), expected, matches);

@@ -379,7 +379,7 @@ public class InspectionService {
             InspectionMedia saved = mediaRepository.save(media);
             inspection.getMedia().add(saved);
 
-            log.info("[INSPECTION_UPLOAD_DEBUG] contractId={} reservationId={} vehicleId={} clientId={} category={} originalFilename={} storedFilename={} storedPath={} publicUrl={} fileExistsOnDisk={} fileSize={}",
+            log.debug("[INSPECTION_UPLOAD_DEBUG] contractId={} reservationId={} vehicleId={} clientId={} category={} originalFilename={} storedFilename={} storedPath={} publicUrl={} fileExistsOnDisk={} fileSize={}",
                     inspection.getContract() != null ? inspection.getContract().getId() : null,
                     inspection.getReservation() != null ? inspection.getReservation().getId() : null,
                     inspection.getVehicle() != null ? inspection.getVehicle().getId() : null,

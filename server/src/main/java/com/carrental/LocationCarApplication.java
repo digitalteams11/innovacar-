@@ -1,5 +1,6 @@
 package com.carrental;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -19,8 +20,18 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableJpaRepositories(basePackages = "com.carrental",
         excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.carrental\\.legal\\.repository\\..*"))
 @EnableScheduling
+@Slf4j
 public class LocationCarApplication {
     public static void main(String[] args) {
+        // Safety net for any background thread this application doesn't manage
+        // directly (Spring's own @Scheduled/@Async infrastructure already logs
+        // and suppresses task exceptions on its own executors) — a raw thread
+        // spawned by a third-party library must never silently die or, worse,
+        // take the whole JVM down without a trace in the logs.
+        Thread.setDefaultUncaughtExceptionHandler((thread, ex) ->
+                log.error("[UNCAUGHT_EXCEPTION] thread={} exceptionClass={} message={}",
+                        thread.getName(), ex.getClass().getName(), ex.getMessage(), ex));
+
         SpringApplication.run(LocationCarApplication.class, args);
     }
 }

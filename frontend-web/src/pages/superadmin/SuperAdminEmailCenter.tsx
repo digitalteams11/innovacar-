@@ -14,7 +14,7 @@ import { useToast } from '../../context/ToastContext';
 interface SmtpSettings {
   smtpProvider: string;
   smtpHost: string; smtpPort: number; smtpUsername: string; smtpPassword: string;
-  hasPassword: boolean; smtpUseTls: boolean; smtpEnabled: boolean;
+  hasPassword: boolean; smtpUseTls: boolean; smtpSslEnabled: boolean; smtpEnabled: boolean;
   fromEmail: string; fromName: string; smtpReplyTo: string;
   lastTestStatus: string | null; lastTestAt: string | null; lastTestErrorCode: string | null;
 }
@@ -30,7 +30,7 @@ interface TemplateVar { name: string; description: string; example: string; }
 const defaultSmtp: SmtpSettings = {
   smtpProvider: 'ZOHO',
   smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '',
-  hasPassword: false, smtpUseTls: true, smtpEnabled: false,
+  hasPassword: false, smtpUseTls: true, smtpSslEnabled: false, smtpEnabled: false,
   fromEmail: '', fromName: '', smtpReplyTo: '',
   lastTestStatus: null, lastTestAt: null, lastTestErrorCode: null,
 };
@@ -147,6 +147,7 @@ export default function SuperAdminEmailCenter() {
         smtpUsername: d.smtpUsername ?? '', smtpPassword: '',
         hasPassword: Boolean(d.hasPassword),
         smtpUseTls: d.smtpUseTls !== undefined ? Boolean(d.smtpUseTls) : true,
+        smtpSslEnabled: Boolean(d.smtpSslEnabled),
         smtpEnabled: Boolean(d.smtpEnabled),
         fromEmail: d.fromEmail ?? '', fromName: d.fromName ?? '',
         smtpReplyTo: d.smtpReplyTo ?? '',
@@ -418,7 +419,8 @@ export default function SuperAdminEmailCenter() {
                 <label className="space-y-1.5"><span className={labelCls}>Reply-To (optional)</span><input type="email" value={smtp.smtpReplyTo} onChange={e => setSmtp({ ...smtp, smtpReplyTo: e.target.value })} placeholder="support@yourdomain.com" className={fieldCls} /></label>
               </div>
               <div className="flex flex-wrap gap-4 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={smtp.smtpUseTls} onChange={e => setSmtp({ ...smtp, smtpUseTls: e.target.checked })} className="w-4 h-4 accent-brand-500 rounded" /><span className="text-sm text-[#1e293b] dark:text-white">Use TLS (STARTTLS)</span></label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={smtp.smtpUseTls} onChange={e => setSmtp({ ...smtp, smtpUseTls: e.target.checked, smtpSslEnabled: e.target.checked ? false : smtp.smtpSslEnabled })} className="w-4 h-4 accent-brand-500 rounded" /><span className="text-sm text-[#1e293b] dark:text-white">Use TLS (STARTTLS, port 587)</span></label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={smtp.smtpSslEnabled} onChange={e => setSmtp({ ...smtp, smtpSslEnabled: e.target.checked, smtpUseTls: e.target.checked ? false : smtp.smtpUseTls })} className="w-4 h-4 accent-brand-500 rounded" /><span className="text-sm text-[#1e293b] dark:text-white">Use SSL (implicit, port 465)</span></label>
                 <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={smtp.smtpEnabled} onChange={e => setSmtp({ ...smtp, smtpEnabled: e.target.checked })} className="w-4 h-4 accent-brand-500 rounded" /><span className={`text-sm font-semibold ${smtp.smtpEnabled ? 'text-emerald-600' : 'text-slate-400'}`}>{smtp.smtpEnabled ? 'Platform email enabled' : 'Platform email disabled'}</span></label>
               </div>
               {smtp.smtpHost?.toLowerCase().includes('zoho') && (

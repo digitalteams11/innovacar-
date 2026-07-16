@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -22,6 +23,11 @@ public class FeatureAccessService {
     private final FeatureDefinitionRepository featureRepository;
     private final PlanFeatureRepository planFeatureRepository;
     private final TenantFeatureOverrideRepository featureOverrideRepository;
+
+    // resolveTenantPlan() runs on every feature-gated request; without this,
+    // a tenant with a drifted planName would log the same WARN on every single
+    // request instead of once per misconfiguration.
+    private final Set<Long> planDriftWarnedTenantIds = ConcurrentHashMap.newKeySet();
 
     @Transactional(readOnly = true)
     public Map<String, Object> getCurrentTenantAccess() {
@@ -134,10 +140,11 @@ public class FeatureAccessService {
         if (tenant.getPlanName() == null) return null;
         Optional<SubscriptionPlan> plan = planRepository.findByName(tenant.getPlanName())
                 .or(() -> planRepository.findByCode(tenant.getPlanName().toLowerCase(Locale.ROOT)));
-        if (plan.isEmpty()) {
+        if (plan.isEmpty() && planDriftWarnedTenantIds.add(tenant.getId())) {
             log.warn("[FEATURE_ACCESS] Tenant id={} has planName='{}' which does not match any subscription_plans "
                             + "row (by name or code) — every plan-gated feature will resolve as disabled for this "
-                            + "tenant until the plan name is corrected or the missing plan is seeded.",
+                            + "tenant until the plan name is corrected or the missing plan is seeded. "
+                            + "(logged once per tenant per instance)",
                     tenant.getId(), tenant.getPlanName());
         }
         return plan.orElse(null);

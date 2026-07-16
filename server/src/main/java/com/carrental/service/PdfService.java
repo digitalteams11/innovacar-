@@ -368,7 +368,7 @@ public class PdfService {
         String stampSource = effectiveStamp(contract, tenant);
         String terms = effectiveTerms(contract, tenant);
         boolean usingFallbackInitials = logoSource == null || logoSource.isBlank();
-        log.info("[PDF_AGENCY_DATA_DEBUG] contractId={} agencyId={} agencyName={} agencyAddressPresent={} " +
+        log.debug("[PDF_AGENCY_DATA_DEBUG] contractId={} agencyId={} agencyName={} agencyAddressPresent={} " +
                 "agencyPhonePresent={} agencyEmail={} agencyRcIcePresent={} logoPresent={} logoSource={} " +
                 "termsPresent={} termsLength={} signaturePresent={} stampPresent={} usingFallbackInitials={}",
                 contract != null ? contract.getId() : null,

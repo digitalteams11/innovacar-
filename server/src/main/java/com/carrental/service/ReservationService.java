@@ -114,7 +114,7 @@ public class ReservationService {
         }
 
         List<ReservationResponse> mapped = stream.map(ReservationResponse::from).toList();
-        log.info("[RESERVATION_LIST_DEBUG] tenantId={} totalReturned={} deletedIncluded=false filter={}",
+        log.debug("[RESERVATION_LIST_DEBUG] tenantId={} totalReturned={} deletedIncluded=false filter={}",
                 tenantId, mapped.size(), status != null ? status : "ALL");
         if (page == null || size == null || page < 0 || size <= 0) {
             return mapped;
@@ -341,7 +341,7 @@ public class ReservationService {
         String linkedContractStatus = linkedContract != null && linkedContract.getStatus() != null
                 ? linkedContract.getStatus().name() : null;
 
-        log.info("[RESERVATION_DELETE_DEBUG] reservationId={} reservationNumber={} beforeDeleted={} beforeStatus={} linkedContractId={} linkedContractDeleted={} linkedContractStatus={} action=SOFT_DELETE",
+        log.debug("[RESERVATION_DELETE_DEBUG] reservationId={} reservationNumber={} beforeDeleted={} beforeStatus={} linkedContractId={} linkedContractDeleted={} linkedContractStatus={} action=SOFT_DELETE",
                 id, reservationNumber, reservation.getDeleted(), beforeStatus,
                 linkedContractId, linkedContractDeleted, linkedContractStatus);
 
@@ -367,7 +367,7 @@ public class ReservationService {
         Reservation saved = reservationRepository.save(reservation);
         releaseVehicleIfUnused(reservation);
 
-        log.info("[RESERVATION_DELETE_DEBUG] reservationId={} reservationNumber={} beforeDeleted=false afterDeleted=true beforeStatus={} afterStatus={} linkedContractId={} linkedContractDeleted={} linkedContractStatus={} action=SOFT_DELETE saved=true",
+        log.debug("[RESERVATION_DELETE_DEBUG] reservationId={} reservationNumber={} beforeDeleted=false afterDeleted=true beforeStatus={} afterStatus={} linkedContractId={} linkedContractDeleted={} linkedContractStatus={} action=SOFT_DELETE saved=true",
                 id, reservationNumber, beforeStatus, saved.getStatus(),
                 linkedContractId, linkedContractDeleted, linkedContractStatus);
 

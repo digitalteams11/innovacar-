@@ -59,7 +59,7 @@ public class EmailOtpService {
         String maskedEmail = maskEmail(user.getEmail());
 
         if (!isSmtpConfigured()) {
-            log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} emailMasked={} smtpConfigured=false",
+            log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} emailMasked={} smtpConfigured=false",
                     user.getId(), purpose, maskedEmail);
             throw new IllegalStateException("SMTP_NOT_CONFIGURED");
         }
@@ -122,7 +122,7 @@ public class EmailOtpService {
             throw new IllegalStateException(errorCode);
         }
 
-        log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} emailMasked={} smtpConfigured=true codeCreated=true sendStatus=OK",
+        log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} emailMasked={} smtpConfigured=true codeCreated=true sendStatus=OK",
                 user.getId(), purpose, maskedEmail);
     }
 
@@ -145,19 +145,19 @@ public class EmailOtpService {
             if (!latest.isEmpty()) {
                 EmailOtpCode last = latest.get(0);
                 if (last.isExpired()) {
-                    log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=EXPIRED", userId, purpose);
+                    log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=EXPIRED", userId, purpose);
                     throw new IllegalStateException("EMAIL_OTP_EXPIRED");
                 }
                 if (last.isExhausted()) {
-                    log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=TOO_MANY_ATTEMPTS", userId, purpose);
+                    log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=TOO_MANY_ATTEMPTS", userId, purpose);
                     throw new IllegalStateException("EMAIL_OTP_TOO_MANY_ATTEMPTS");
                 }
                 if (last.isUsed()) {
-                    log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=ALREADY_USED", userId, purpose);
+                    log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=ALREADY_USED", userId, purpose);
                     throw new IllegalStateException("EMAIL_OTP_EXPIRED");
                 }
             }
-            log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=NOT_FOUND", userId, purpose);
+            log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=NOT_FOUND", userId, purpose);
             throw new IllegalStateException("EMAIL_OTP_EXPIRED");
         }
 
@@ -166,7 +166,7 @@ public class EmailOtpService {
         if (!passwordEncoder.matches(rawCode, otpCode.getCodeHash())) {
             otpCode.setAttempts(otpCode.getAttempts() + 1);
             otpRepository.save(otpCode);
-            log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=INVALID attempts={}",
+            log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=INVALID attempts={}",
                     userId, purpose, otpCode.getAttempts());
 
             if (otpCode.isExhausted()) {
@@ -178,7 +178,7 @@ public class EmailOtpService {
         // Correct — mark as used
         otpCode.setUsedAt(LocalDateTime.now());
         otpRepository.save(otpCode);
-        log.info("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=SUCCESS attempts={}",
+        log.debug("[EMAIL_OTP_DEBUG] userId={} purpose={} verifyStatus=SUCCESS attempts={}",
                 userId, purpose, otpCode.getAttempts());
         return true;
     }
@@ -191,7 +191,7 @@ public class EmailOtpService {
         user.setLastEmailOtpEnabledAt(LocalDateTime.now());
         user.setLastSecurityChangeAt(LocalDateTime.now());
         userRepository.save(user);
-        log.info("[EMAIL_OTP_DEBUG] userId={} emailOtpEnabled=true", user.getId());
+        log.debug("[EMAIL_OTP_DEBUG] userId={} emailOtpEnabled=true", user.getId());
     }
 
     @Transactional
@@ -199,7 +199,7 @@ public class EmailOtpService {
         user.setEmailOtpEnabled(false);
         user.setLastSecurityChangeAt(LocalDateTime.now());
         userRepository.save(user);
-        log.info("[EMAIL_OTP_DEBUG] userId={} emailOtpEnabled=false", user.getId());
+        log.debug("[EMAIL_OTP_DEBUG] userId={} emailOtpEnabled=false", user.getId());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

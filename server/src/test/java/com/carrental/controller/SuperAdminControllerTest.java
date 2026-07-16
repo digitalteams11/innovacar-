@@ -11,6 +11,7 @@ import com.carrental.entity.PlatformSettings;
 import com.carrental.entity.SupportMessage;
 import com.carrental.entity.SupportTicket;
 import com.carrental.entity.Tenant;
+import com.carrental.entity.User;
 import com.carrental.repository.AuditLogRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.EmailLogRepository;
@@ -34,14 +35,20 @@ import com.carrental.repository.TrustedDeviceRepository;
 import com.carrental.repository.UserRepository;
 import com.carrental.repository.UserSessionRepository;
 import com.carrental.repository.VehicleRepository;
+import com.carrental.service.PlatformSettingsService;
 import com.carrental.service.SystemHealthService;
+import com.carrental.util.EncryptionUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -82,8 +89,22 @@ class SuperAdminControllerTest {
     @Mock private TrustedDeviceRepository trustedDeviceRepository;
     @Mock private OnboardingProgressRepository onboardingProgressRepository;
     @Mock private SystemHealthService systemHealthService;
+    @Mock private PlatformSettingsService platformSettingsService;
+    @Mock private EncryptionUtil encryptionUtil;
 
     @InjectMocks private SuperAdminController superAdminController;
+
+    @BeforeEach
+    void authenticateAsSuperAdmin() {
+        User superAdmin = User.builder().id(1L).email("superadmin@test.com").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(superAdmin, null, List.of()));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void getSupportAnalyticsCalculatesResolutionTimeFromTickets() {
@@ -151,7 +172,8 @@ class SuperAdminControllerTest {
 
     @Test
     void sendTestEmailRejectsMissingSmtpHost() {
-        when(platformSettingsRepository.findAll()).thenReturn(List.of(PlatformSettings.builder().build()));
+        when(platformSettingsRepository.findTopByOrderByIdAsc())
+                .thenReturn(Optional.of(PlatformSettings.builder().build()));
 
         Map<String, Object> response = superAdminController
                 .sendTestEmail(Map.of("to", " admin@example.com "))
@@ -261,7 +283,7 @@ class SuperAdminControllerTest {
         PlatformSettings settings = PlatformSettings.builder()
                 .marketingOnboardingJson("{\"step1Title\":\"Custom Welcome\",\"ctaText\":\"Book Demo\"}")
                 .build();
-        when(platformSettingsRepository.findAll()).thenReturn(List.of(settings));
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(settings);
         when(objectMapper.readValue(settings.getMarketingOnboardingJson(), Map.class))
                 .thenReturn(Map.of("step1Title", "Custom Welcome", "ctaText", "Book Demo"));
 
@@ -277,7 +299,7 @@ class SuperAdminControllerTest {
     @Test
     void updateMarketingOnboardingPersistsSettingsJson() throws Exception {
         PlatformSettings settings = PlatformSettings.builder().build();
-        when(platformSettingsRepository.findAll()).thenReturn(List.of(settings));
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(settings);
         when(objectMapper.writeValueAsString(any(Map.class))).thenReturn("{\"step1Title\":\"New Flow\"}");
 
         Map<String, Object> response = superAdminController
@@ -290,6 +312,124 @@ class SuperAdminControllerTest {
         assertThat((Map<String, Object>) response.get("data"))
                 .containsEntry("step1Title", "New Flow")
                 .containsEntry("step2Title", "Configure Your Fleet");
+    }
+
+    // ── SMTP settings persistence/validation ─────────────────────────────────
+
+    @Test
+    void savingSmtpSettingsThenReloadingReturnsTheSamePersistedValues() {
+        PlatformSettings ps = PlatformSettings.builder().id(1L).build();
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(ps);
+        when(encryptionUtil.encrypt("app-password")).thenReturn("ENC(app-password)");
+
+        Map<String, Object> saveResponse = superAdminController.updateSmtpSettings(Map.of(
+                "smtpHost", "smtp.zoho.com",
+                "smtpPort", 587,
+                "smtpUsername", "contact@innovacar.app",
+                "smtpPassword", "app-password",
+                "fromEmail", "contact@innovacar.app",
+                "smtpEnabled", true
+        )).getBody();
+
+        assertThat(saveResponse)
+                .containsEntry("smtpHost", "smtp.zoho.com")
+                .containsEntry("smtpPort", 587)
+                .containsEntry("smtpUsername", "contact@innovacar.app")
+                .containsEntry("hasPassword", true)
+                .containsEntry("smtpEnabled", true);
+
+        // Reload — the row must still report the same values (proves the singleton fix:
+        // save and read no longer bind to different platform_settings rows).
+        Map<String, Object> reloadResponse = superAdminController.getSmtpSettings().getBody();
+        assertThat(reloadResponse)
+                .containsEntry("smtpHost", "smtp.zoho.com")
+                .containsEntry("smtpPort", 587)
+                .containsEntry("smtpUsername", "contact@innovacar.app")
+                .containsEntry("hasPassword", true);
+    }
+
+    @Test
+    void blankPasswordOnUpdatePreservesExistingEncryptedPassword() {
+        PlatformSettings ps = PlatformSettings.builder()
+                .id(1L)
+                .smtpHost("smtp.zoho.com")
+                .smtpUsername("contact@innovacar.app")
+                .smtpPasswordEncrypted("ENC(existing-password)")
+                .build();
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(ps);
+
+        superAdminController.updateSmtpSettings(Map.of(
+                "smtpHost", "smtp.zoho.com",
+                "smtpPassword", ""
+        ));
+
+        assertThat(ps.getSmtpPasswordEncrypted()).isEqualTo("ENC(existing-password)");
+    }
+
+    @Test
+    void getSmtpSettingsNeverReturnsThePasswordValue() {
+        PlatformSettings ps = PlatformSettings.builder()
+                .id(1L)
+                .smtpPasswordEncrypted("ENC(super-secret)")
+                .build();
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(ps);
+
+        Map<String, Object> response = superAdminController.getSmtpSettings().getBody();
+
+        assertThat(response).doesNotContainKey("smtpPassword");
+        assertThat(response.values()).noneMatch(v -> "ENC(super-secret)".equals(v));
+        assertThat(response).containsEntry("hasPassword", true);
+    }
+
+    @Test
+    void updateSmtpSettingsRejectsEnabledConfigWithoutHost() {
+        PlatformSettings ps = PlatformSettings.builder().id(1L).build();
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(ps);
+
+        org.springframework.http.ResponseEntity<Map<String, Object>> response = superAdminController.updateSmtpSettings(Map.of(
+                "smtpEnabled", true,
+                "smtpUsername", "contact@innovacar.app"
+        ));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody()).containsEntry("errorCode", "SMTP_HOST_MISSING");
+        assertThat(ps.getSmtpHost()).isNull();
+    }
+
+    @Test
+    void updateSmtpSettingsRejectsTlsAndSslEnabledTogether() {
+        PlatformSettings ps = PlatformSettings.builder().id(1L).build();
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(ps);
+
+        org.springframework.http.ResponseEntity<Map<String, Object>> response = superAdminController.updateSmtpSettings(Map.of(
+                "smtpUseTls", true,
+                "smtpSslEnabled", true
+        ));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody()).containsEntry("errorCode", "SMTP_TLS_SSL_CONFLICT");
+    }
+
+    @Test
+    void updatePlatformSettingsNoLongerWritesSmtpFields() {
+        PlatformSettings ps = PlatformSettings.builder()
+                .id(1L)
+                .smtpHost("smtp.zoho.com")
+                .smtpUsername("contact@innovacar.app")
+                .build();
+        when(platformSettingsService.getOrCreateSingleton()).thenReturn(ps);
+
+        superAdminController.updatePlatformSettings(Map.of(
+                "smtpHost", "attacker-controlled.example.com",
+                "smtpUsername", "attacker@example.com",
+                "platformName", "Innovacar"
+        ));
+
+        // The generic /settings endpoint must never change SMTP fields — those are owned
+        // exclusively by /email/settings (updateSmtpSettings).
+        assertThat(ps.getSmtpHost()).isEqualTo("smtp.zoho.com");
+        assertThat(ps.getSmtpUsername()).isEqualTo("contact@innovacar.app");
+        assertThat(ps.getPlatformName()).isEqualTo("Innovacar");
     }
 
     private SupportTicket ticket(String status, String priority, LocalDateTime createdAt, LocalDateTime resolvedAt) {

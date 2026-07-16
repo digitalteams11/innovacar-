@@ -118,8 +118,18 @@ public class PlatformSettingsService {
     }
 
     private PlatformSettings loadOrCreate() {
-        return platformSettingsRepository.findAll().stream()
-                .findFirst()
+        return getOrCreateSingleton();
+    }
+
+    /**
+     * Returns the single platform_settings row, creating it if the table is empty.
+     * {@code synchronized} on this Spring-managed singleton bean so concurrent callers
+     * — e.g. Email Center firing several settings requests in parallel on first load —
+     * can never each insert their own row and cause save/read endpoints to silently
+     * diverge onto different rows.
+     */
+    public synchronized PlatformSettings getOrCreateSingleton() {
+        return platformSettingsRepository.findTopByOrderByIdAsc()
                 .orElseGet(() -> platformSettingsRepository.save(PlatformSettings.builder().build()));
     }
 

@@ -129,9 +129,13 @@ public class PlatformSettings {
     @Column(name = "smtp_password_encrypted")
     private String smtpPasswordEncrypted;
 
-    /** SMTP use TLS */
+    /** SMTP use TLS (STARTTLS on port 587) */
     @Column(name = "smtp_use_tls")
     private Boolean smtpUseTls;
+
+    /** SMTP implicit SSL (port 465) — mutually exclusive with smtpUseTls */
+    @Column(name = "smtp_ssl_enabled")
+    private Boolean smtpSslEnabled;
 
     /** SMTP enabled flag — when false the platform SMTP will not deliver mail */
     @Column(name = "smtp_enabled")

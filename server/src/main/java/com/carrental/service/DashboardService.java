@@ -122,7 +122,7 @@ public class DashboardService {
         // ── Vehicle cards ────────────────────────────────────────────────────────
         List<Vehicle> allVehicles = safeMetric("all vehicles list", List.<Vehicle>of(),
                 () -> vehicleRepository.findAllByTenantId(tenantId));
-        log.info("[DASHBOARD_FLEET_DATA_DEBUG] endpoint=GET /api/dashboard tenantId={} count={} firstVehicle={}",
+        log.debug("[DASHBOARD_FLEET_DATA_DEBUG] endpoint=GET /api/dashboard tenantId={} count={} firstVehicle={}",
                 tenantId, allVehicles.size(),
                 allVehicles.isEmpty() ? "none" : allVehicles.get(0).getMarque() + "/" + allVehicles.get(0).getStatut());
         long maintenanceVehicles = allVehicles.stream()

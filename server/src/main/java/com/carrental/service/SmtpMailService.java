@@ -51,7 +51,7 @@ public class SmtpMailService {
     }
 
     private record SmtpConfig(String host, int port, String username, String password,
-                               boolean tls, String fromEmail, String fromName, String label) {
+                               boolean tls, boolean ssl, String fromEmail, String fromName, String label) {
     }
 
     /** Non-secret snapshot of the platform SMTP config — safe to log (never includes the password). */
@@ -66,8 +66,7 @@ public class SmtpMailService {
     /** Describes the currently resolved platform SMTP config for safe debug logging. */
     @Transactional(readOnly = true)
     public PlatformSmtpDiagnostics describePlatformConfig() {
-        return platformSettingsRepository.findAll().stream()
-                .findFirst()
+        return platformSettingsRepository.findTopByOrderByIdAsc()
                 .map(settings -> new PlatformSmtpDiagnostics(
                         StringUtils.hasText(settings.getSmtpHost())
                                 && StringUtils.hasText(settings.getSmtpUsername())
@@ -179,9 +178,16 @@ public class SmtpMailService {
             Properties props = sender.getJavaMailProperties();
             props.put("mail.transport.protocol", "smtp");
             props.put("mail.smtp.auth", "true");
-            props.put("mail.smtp.starttls.enable", String.valueOf(config.tls()));
-            if (config.tls()) {
-                props.put("mail.smtp.starttls.required", "true");
+            if (config.ssl()) {
+                // Implicit SSL (port 465): no STARTTLS negotiation, TLS from the first byte.
+                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.smtp.starttls.enable", "false");
+            } else {
+                props.put("mail.smtp.ssl.enable", "false");
+                props.put("mail.smtp.starttls.enable", String.valueOf(config.tls()));
+                if (config.tls()) {
+                    props.put("mail.smtp.starttls.required", "true");
+                }
             }
             // Trust Zoho hosts (both standard + pro) so STARTTLS cert validation
             // does not fail when the tenant switches between them.
@@ -328,6 +334,7 @@ public class SmtpMailService {
                             settings.getSmtpUsername(),
                             password,
                             settings.getSmtpTls() == null || settings.getSmtpTls(),
+                            false,
                             settings.getSmtpUsername(),
                             null,
                             "tenant SMTP");
@@ -336,8 +343,7 @@ public class SmtpMailService {
     }
 
     private SmtpConfig resolvePlatformConfig() {
-        return platformSettingsRepository.findAll().stream()
-                .findFirst()
+        return platformSettingsRepository.findTopByOrderByIdAsc()
                 .filter(settings -> StringUtils.hasText(settings.getSmtpHost())
                         && StringUtils.hasText(settings.getSmtpUsername())
                         && settings.getSmtpPasswordEncrypted() != null
@@ -356,6 +362,7 @@ public class SmtpMailService {
                             settings.getSmtpUsername(),
                             password,
                             settings.getSmtpUseTls() == null || settings.getSmtpUseTls(),
+                            Boolean.TRUE.equals(settings.getSmtpSslEnabled()),
                             StringUtils.hasText(settings.getFromEmail()) ? settings.getFromEmail() : settings.getSmtpUsername(),
                             StringUtils.hasText(settings.getFromName()) ? settings.getFromName() : "RentCar",
                             "platform SMTP");

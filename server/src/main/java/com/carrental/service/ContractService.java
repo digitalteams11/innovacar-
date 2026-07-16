@@ -1070,10 +1070,10 @@ public class ContractService {
     public Map<String, Object> deleteContract(Long id) {
         Long tenantId = TenantContext.getCurrentTenantId();
         String currentUser = getCurrentUser();
-        log.info("[CONTRACT_DELETE_DEBUG] contractId={} currentUserId={} agencyId={}", id, currentUser, tenantId);
+        log.debug("[CONTRACT_DELETE_DEBUG] contractId={} currentUserId={} agencyId={}", id, currentUser, tenantId);
 
         Optional<Contract> found = contractRepository.findByIdAndTenantId(id, tenantId);
-        log.info("[CONTRACT_DELETE_DEBUG] foundByIdAndAgency={}", found.isPresent());
+        log.debug("[CONTRACT_DELETE_DEBUG] foundByIdAndAgency={}", found.isPresent());
 
         if (found.isEmpty()) {
             // Distinguish "doesn't exist", "belongs to another agency", and
@@ -1083,9 +1083,9 @@ public class ContractService {
             contractRepository.findRawStateById(id).ifPresentOrElse(row -> {
                 Long rawTenantId = row[0] == null ? null : ((Number) row[0]).longValue();
                 Boolean rawDeleted = row[1] != null && (Boolean) row[1];
-                log.info("[CONTRACT_DELETE_DEBUG] foundById=true rawTenantId={} deletedFlag={} status={}",
+                log.debug("[CONTRACT_DELETE_DEBUG] foundById=true rawTenantId={} deletedFlag={} status={}",
                         rawTenantId, rawDeleted, row[2]);
-            }, () -> log.info("[CONTRACT_DELETE_DEBUG] foundById=false — contract does not exist"));
+            }, () -> log.debug("[CONTRACT_DELETE_DEBUG] foundById=false — contract does not exist"));
             throw new ResourceNotFoundException("Contract not found with id: " + id);
         }
 
@@ -1097,7 +1097,7 @@ public class ContractService {
         // @SQLRestriction) can never throw EntityNotFoundException here.
         Long vehicleId = contract.getVehicle() != null ? contract.getVehicle().getId() : null;
         boolean vehicleExists = vehicleId != null && vehicleRepository.existsById(vehicleId);
-        log.info("[CONTRACT_DELETE_DEBUG] contractNumber={} vehicleId={} vehicleExists={} deletedFlag={}",
+        log.debug("[CONTRACT_DELETE_DEBUG] contractNumber={} vehicleId={} vehicleExists={} deletedFlag={}",
                 contract.getContractNumber(), vehicleId, vehicleExists, contract.getDeleted());
 
         if (contract.getStatus() == ContractStatus.COMPLETED) {
@@ -1105,7 +1105,7 @@ public class ContractService {
         }
         ContractStatus statusBeforeDelete = contract.getStatus();
         LocalDateTime deletedAt = LocalDateTime.now();
-        log.info("[CONTRACT_DELETE_STATUS_DEBUG] contractId={} contractNumber={} beforeContractStatus={} deletedBefore={} action=SOFT_DELETE",
+        log.debug("[CONTRACT_DELETE_STATUS_DEBUG] contractId={} contractNumber={} beforeContractStatus={} deletedBefore={} action=SOFT_DELETE",
                 id, contract.getContractNumber(), statusBeforeDelete, contract.getDeleted());
 
         // Preserve the business status so restore can put the contract back exactly
@@ -1134,7 +1134,7 @@ public class ContractService {
             log.error("[CONTRACT_DELETE_STATUS_DEBUG] contractId={} contractNumber={} STATUS_CHANGED_DURING_DELETE! beforeStatus={} afterStatus={} — this is a bug",
                     id, saved.getContractNumber(), statusBeforeDelete, saved.getStatus());
         }
-        log.info("[CONTRACT_DELETE_STATUS_DEBUG] contractId={} contractNumber={} beforeContractStatus={} afterContractStatus={} deletedBefore=false deletedAfter=true action=SOFT_DELETE statusUnchanged={}",
+        log.debug("[CONTRACT_DELETE_STATUS_DEBUG] contractId={} contractNumber={} beforeContractStatus={} afterContractStatus={} deletedBefore=false deletedAfter=true action=SOFT_DELETE statusUnchanged={}",
                 id, saved.getContractNumber(), statusBeforeDelete, saved.getStatus(), statusBeforeDelete == saved.getStatus());
         log.info("[CONTRACT_ACTION] action=SOFT_DELETE contractId={} contractNumber={} tenantId={} beforeStatus={} afterStatus={} deletedBefore=false deletedAfter=true",
                 id, saved.getContractNumber(), tenantId, statusBeforeDelete, saved.getStatus());
@@ -1439,7 +1439,7 @@ public class ContractService {
                     && !tenant.getTermsAndConditions().isBlank()) {
                 contract.setBrandingTermsSnapshot(tenant.getTermsAndConditions());
             }
-            log.info("[CONTRACT_BRANDING_DEBUG] contractId={} brandingLogoUrl={} brandingStampUrl={} brandingTermsSnapshot={}",
+            log.debug("[CONTRACT_BRANDING_DEBUG] contractId={} brandingLogoUrl={} brandingStampUrl={} brandingTermsSnapshot={}",
                     contract.getId(),
                     contract.getBrandingLogoUrl() != null ? "SET" : "null",
                     contract.getBrandingStampUrl() != null ? "SET" : "null",
@@ -1962,14 +1962,14 @@ public class ContractService {
             currentUserId = ((com.carrental.entity.User) org.springframework.security.core.context.SecurityContextHolder
                     .getContext().getAuthentication().getPrincipal()).getId();
         } catch (Exception ignored) { /* system/anonymous context */ }
-        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] endpointHit=true reservationId={} currentUserId={} tenantId={}",
+        log.debug("[CONTRACT_FROM_RESERVATION_DEBUG] endpointHit=true reservationId={} currentUserId={} tenantId={}",
                 reservationId, currentUserId, tenantId);
 
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
 
         Reservation reservation = reservationRepository.findByIdAndTenantId(reservationId, tenantId).orElse(null);
-        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} reservationFound={} reservationTenantId={}",
+        log.debug("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} reservationFound={} reservationTenantId={}",
                 reservationId, reservation != null, reservation != null ? reservation.getTenant().getId() : null);
         if (reservation == null) {
             throw new ResourceNotFoundException("Reservation not found with id: " + reservationId);
@@ -1977,7 +1977,7 @@ public class ContractService {
 
         Client client = reservation.getClient();
         Vehicle vehicle = reservation.getVehicle();
-        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} clientId={} clientFound={} vehicleId={} vehicleFound={} "
+        log.debug("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} clientId={} clientFound={} vehicleId={} vehicleFound={} "
                         + "reservationStatus={} dateStart={} startTime={} dateEnd={} endTime={} totalPrice={} depositAmount={} "
                         + "paidAmount={} paymentStatus={} existingContractId={}",
                 reservationId,
@@ -1989,7 +1989,7 @@ public class ContractService {
                 reservation.getContract() != null ? reservation.getContract().getId() : null);
 
         if (reservation.getContract() != null) {
-            log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} result=ALREADY_EXISTS existingContractId={}",
+            log.debug("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} result=ALREADY_EXISTS existingContractId={}",
                     reservationId, reservation.getContract().getId());
             return new FromReservationResult(ContractResponse.from(reservation.getContract()), true);
         }
@@ -2098,7 +2098,7 @@ public class ContractService {
         }
 
         logAudit(saved, "CREATE", "Contract auto-generated from reservation " + reservationId, null, null);
-        log.info("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} result=CREATED contractId={} contractNumber={}",
+        log.debug("[CONTRACT_FROM_RESERVATION_DEBUG] reservationId={} result=CREATED contractId={} contractNumber={}",
                 reservationId, saved.getId(), saved.getContractNumber());
         return new FromReservationResult(ContractResponse.from(saved), false);
     }
@@ -2172,7 +2172,7 @@ public class ContractService {
             return;
         }
         if (!vehicleRepository.existsByIdAndTenantId(vehicleId, tenantId)) {
-            log.info("[CONTRACT_DELETE_DEBUG] vehicleId={} no longer exists — skipping vehicle status release", vehicleId);
+            log.debug("[CONTRACT_DELETE_DEBUG] vehicleId={} no longer exists — skipping vehicle status release", vehicleId);
             return;
         }
         // Recalculate from real blockers (maintenance, other contracts, non-expired
