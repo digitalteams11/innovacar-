@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, Lock, Mail, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
 import { usePublicBranding } from '../hooks/usePublicBranding';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
 
 const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
 
@@ -318,6 +320,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden" style={{ backgroundColor: 'var(--bg-page)' }}>
+      <SeoHead
+        title="Log In"
+        description="Log in to your Innovacar account to manage vehicles, reservations, contracts and clients."
+        canonical="https://innovacar.app/#/login"
+        robots={ROBOTS_PUBLIC_NOINDEX}
+      />
       <AnimatedBackground />
 
       <motion.div

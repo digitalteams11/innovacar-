@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import SeoHead from '../components/seo/SeoHead';
+import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
 import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, Car, Loader2, ArrowLeft, Eye, EyeOff, Check, X } from 'lucide-react';
 import { checkPasswordStrength, isPasswordStrong } from '../lib/passwordPolicy';
@@ -204,6 +206,12 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden" style={{ backgroundColor: 'var(--bg-page)' }}>
+      <SeoHead
+        title="Create Account"
+        description="Create your Innovacar account to start managing your car rental agency's fleet, reservations and contracts."
+        canonical="https://innovacar.app/#/register"
+        robots={ROBOTS_PUBLIC_NOINDEX}
+      />
       <AnimatedBackground />
 
       <motion.div
