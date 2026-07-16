@@ -73,7 +73,7 @@ public class SmtpMailService {
                                 && settings.getSmtpPasswordEncrypted() != null
                                 && !Boolean.FALSE.equals(settings.getSmtpEnabled()),
                         "DATABASE",
-                        normalizeSmtpHost(settings.getSmtpHost()),
+                        settings.getSmtpHost(),
                         settings.getSmtpPort() != null ? settings.getSmtpPort() : 587,
                         StringUtils.hasText(settings.getSmtpUsername()),
                         settings.getFromEmail(),
@@ -169,7 +169,12 @@ public class SmtpMailService {
         }
         try {
             JavaMailSenderImpl sender = new JavaMailSenderImpl();
-            sender.setHost(normalizeSmtpHost(config.host()));
+            // Use exactly the host Super Admin (or the tenant) saved — never silently
+            // swap it for a "more reliable" alternative. Zoho account provisioning is
+            // genuinely per-host, so overriding it here would send through a
+            // different configuration than the one that was actually configured,
+            // tested, and saved.
+            sender.setHost(config.host());
             sender.setPort(config.port());
             sender.setUsername(config.username());
             sender.setPassword(config.password());
@@ -189,12 +194,9 @@ public class SmtpMailService {
                     props.put("mail.smtp.starttls.required", "true");
                 }
             }
-            // Trust Zoho hosts (both standard + pro) so STARTTLS cert validation
-            // does not fail when the tenant switches between them.
-            props.put("mail.smtp.ssl.trust",
-                    config.host().toLowerCase().contains("zoho")
-                            ? "smtp.zoho.com smtppro.zoho.com"
-                            : config.host());
+            // Trust only the host actually being connected to — never a wildcard
+            // or a list of alternate hosts not actually in use for this send.
+            props.put("mail.smtp.ssl.trust", config.host());
             props.put("mail.smtp.connectiontimeout", "10000");
             props.put("mail.smtp.timeout", "10000");
             props.put("mail.smtp.writetimeout", "10000");
@@ -270,20 +272,6 @@ public class SmtpMailService {
                 .trim();
     }
 
-    /**
-     * Zoho exposes two SMTP hosts — {@code smtp.zoho.com} (the standard, globally
-     * reliable endpoint) and {@code smtppro.zoho.com} (Zoho Mail Premium/legacy,
-     * region-pinned and known to reject standard-plan accounts). If a stored config
-     * points at smtppro but the account isn't actually provisioned for it, sends fail
-     * even though the credentials are correct. Since smtp.zoho.com works for every
-     * Zoho Mail plan, always prefer it over smtppro for the real send.
-     */
-    private static String normalizeSmtpHost(String host) {
-        if (host != null && host.trim().equalsIgnoreCase("smtppro.zoho.com")) {
-            return "smtp.zoho.com";
-        }
-        return host;
-    }
 
     private String classifySmtpException(Exception ex) {
         String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";

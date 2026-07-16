@@ -502,23 +502,40 @@ export default function SuperAdminEmailCenter() {
                 <p className="text-[10px] text-slate-400 mt-1">Tests connection + auth to your configured host (and both Zoho hosts if applicable). Password is never logged.</p>
                 {diagnoseResults && (
                   <div className="mt-2 space-y-2">
-                    {diagnoseResults.map((r: any, i: number) => (
-                      <div key={i} className={`p-3 rounded-xl text-xs border font-mono ${r.auth === 'OK' ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30' : r.connection === 'FAILED' ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30'}`}>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span className="font-bold text-slate-700 dark:text-slate-200">{r.host}:{r.port}</span>
-                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${r.connection === 'OK' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>conn: {r.connection ?? 'N/A'}</span>
-                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${r.auth === 'OK' ? 'bg-emerald-100 text-emerald-700' : r.auth === 'N/A' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>auth: {r.auth ?? 'N/A'}</span>
-                          {r.errorCode && <span className="text-rose-600 dark:text-rose-400">{r.errorCode}</span>}
-                        </div>
-                        {(r.usernameUsed || r.fromEmailUsed) && (
-                          <div className="mt-1 text-[10px] text-slate-400 dark:text-slate-500 space-y-0.5 font-sans">
-                            {r.usernameUsed  && <div>username: <span className="text-slate-600 dark:text-slate-300">{r.usernameUsed}</span></div>}
-                            {r.fromEmailUsed && <div>from:     <span className="text-slate-600 dark:text-slate-300">{r.fromEmailUsed}</span></div>}
+                    {diagnoseResults.map((r: any, i: number) => {
+                      const stageBadge = (label: string, value: string | undefined) => {
+                        const v = value ?? 'NOT_TESTED';
+                        const cls = v === 'OK' ? 'bg-emerald-100 text-emerald-700'
+                          : v === 'FAILED' ? 'bg-rose-100 text-rose-700'
+                          : 'bg-slate-100 text-slate-500';
+                        return <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${cls}`}>{label}: {v}</span>;
+                      };
+                      const overallOk = r.authentication === 'OK';
+                      const overallFailed = !overallOk && (r.configuration === 'FAILED' || r.dns === 'FAILED' || r.tcp === 'FAILED' || r.tls === 'FAILED' || r.authentication === 'FAILED' || r.send === 'FAILED');
+                      return (
+                        <div key={i} className={`p-3 rounded-xl text-xs border font-mono ${overallOk ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30' : overallFailed ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30'}`}>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-bold text-slate-700 dark:text-slate-200">{r.host}:{r.port}</span>
+                            {r.errorCode && <span className="text-rose-600 dark:text-rose-400">{r.errorCode}</span>}
                           </div>
-                        )}
-                        {r.hint && <p className="mt-1 text-slate-500 dark:text-slate-400 font-sans">{r.hint}</p>}
-                      </div>
-                    ))}
+                          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                            {stageBadge('config', r.configuration)}
+                            {stageBadge('dns', r.dns)}
+                            {stageBadge('tcp', r.tcp)}
+                            {stageBadge('tls', r.tls)}
+                            {stageBadge('auth', r.authentication)}
+                            {stageBadge('send', r.send)}
+                          </div>
+                          {(r.usernameUsed || r.fromEmailUsed) && (
+                            <div className="mt-1.5 text-[10px] text-slate-400 dark:text-slate-500 space-y-0.5 font-sans">
+                              {r.usernameUsed  && <div>username: <span className="text-slate-600 dark:text-slate-300">{r.usernameUsed}</span></div>}
+                              {r.fromEmailUsed && <div>from:     <span className="text-slate-600 dark:text-slate-300">{r.fromEmailUsed}</span></div>}
+                            </div>
+                          )}
+                          {r.message && <p className="mt-1 text-slate-500 dark:text-slate-400 font-sans">{r.message}</p>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

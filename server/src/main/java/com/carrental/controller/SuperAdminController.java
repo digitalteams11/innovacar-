@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -74,6 +73,7 @@ public class SuperAdminController {
     private final CancellationRequestRepository cancellationRequestRepository;
     private final com.carrental.util.EncryptionUtil encryptionUtil;
     private final com.carrental.service.PlatformEmailService platformEmailService;
+    private final com.carrental.service.SmtpDiagnosticsService smtpDiagnosticsService;
     private final com.carrental.service.EmailTemplateService emailTemplateService;
     private final com.carrental.service.SupportRoutingService supportRoutingService;
 
@@ -2057,12 +2057,13 @@ public class SuperAdminController {
                 psCheck.getSmtpUseTls(), psCheck.getSmtpEnabled(),
                 true, pwDecryptOk, pwLen, recipient);
 
-        // ── Same host normalization the actual send path applies: Zoho's smtppro
-        // host is region-pinned and can reject standard-plan accounts even with
-        // correct credentials, so the effective send always prefers smtp.zoho.com. ──
+        // Use exactly the host Super Admin saved — never silently swap it for a
+        // "more reliable" alternative. Zoho account provisioning is genuinely
+        // per-host (smtppro.zoho.com is a real, valid host for some plans), so
+        // overriding it here would make the diagnostic test a different
+        // configuration than the one actually saved and used for real sends.
         String password = encryptionUtil.tryDecrypt(psCheck.getSmtpPasswordEncrypted());
-        String effectiveHost = isZoho && "smtppro.zoho.com".equalsIgnoreCase(psCheck.getSmtpHost().trim())
-                ? "smtp.zoho.com" : psCheck.getSmtpHost();
+        String effectiveHost = psCheck.getSmtpHost();
         int effectivePort = psCheck.getSmtpPort() != null ? psCheck.getSmtpPort() : 587;
         boolean startTls = psCheck.getSmtpUseTls() == null || psCheck.getSmtpUseTls();
 
@@ -2070,10 +2071,10 @@ public class SuperAdminController {
         // reflects current reality, not a stale earlier Diagnose run.
         boolean authOkFromDiagnose = false;
         if (password != null) {
-            Map<String, Object> preCheck = probeSmtpHost(effectiveHost, effectivePort, psCheck.getSmtpUsername(),
+            var preCheck = smtpDiagnosticsService.probe(effectiveHost, effectivePort, psCheck.getSmtpUsername(),
                     org.springframework.util.StringUtils.hasText(psCheck.getFromEmail()) ? psCheck.getFromEmail() : psCheck.getSmtpUsername(),
                     password, Boolean.TRUE.equals(psCheck.getSmtpSslEnabled()));
-            authOkFromDiagnose = "OK".equals(preCheck.get("auth"));
+            authOkFromDiagnose = "OK".equals(preCheck.authentication());
         }
 
         log.debug("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
@@ -2164,93 +2165,40 @@ public class SuperAdminController {
 
         List<Map<String, Object>> results = new ArrayList<>();
 
-        // Always probe the configured host/port/mode first
-        results.add(probeSmtpHost(configuredHost, configuredPort, username, fromEmail, password, sslEnabled));
+        // Always probe the configured host/port/mode first — this is the host
+        // Super Admin actually saved, and normal sending never uses anything else.
+        results.add(toDiagnosticMap(smtpDiagnosticsService.probe(configuredHost, configuredPort, username, fromEmail, password, sslEnabled)));
 
         // For Zoho in STARTTLS mode: also probe the alternate 587 host so the admin can see
-        // which one works. SSL mode (465) is a deliberate account choice — don't guess at it
-        // for accounts that were never configured for it.
+        // which one works, purely as information — saving/sending never auto-switches to it.
+        // SSL mode (465) is a deliberate account choice — don't guess at it for accounts that
+        // were never configured for it.
         if (isZoho && !sslEnabled) {
             if (!configuredHost.equalsIgnoreCase("smtp.zoho.com")) {
-                results.add(probeSmtpHost("smtp.zoho.com", 587, username, fromEmail, password, false));
+                results.add(toDiagnosticMap(smtpDiagnosticsService.probe("smtp.zoho.com", 587, username, fromEmail, password, false)));
             }
             if (!configuredHost.equalsIgnoreCase("smtppro.zoho.com")) {
-                results.add(probeSmtpHost("smtppro.zoho.com", 587, username, fromEmail, password, false));
+                results.add(toDiagnosticMap(smtpDiagnosticsService.probe("smtppro.zoho.com", 587, username, fromEmail, password, false)));
             }
         }
 
         return ResponseEntity.ok(results);
     }
 
-    private Map<String, Object> probeSmtpHost(String host, int port, String username, String fromEmail, String password, boolean ssl) {
+    private Map<String, Object> toDiagnosticMap(com.carrental.service.SmtpDiagnosticsService.SmtpProbeResult probe) {
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("host", host);
-        result.put("port", port);
-        result.put("usernameUsed", username);
-        result.put("fromEmailUsed", fromEmail);
-        boolean isZoho = host.toLowerCase().contains("zoho");
-        try {
-            JavaMailSenderImpl sender = new JavaMailSenderImpl();
-            sender.setHost(host);
-            sender.setPort(port);
-            sender.setUsername(username);
-            sender.setPassword(password);
-            java.util.Properties props = new java.util.Properties();
-            props.put("mail.transport.protocol", "smtp");
-            props.put("mail.smtp.auth", "true");
-            if (ssl) {
-                props.put("mail.smtp.ssl.enable", "true");
-                props.put("mail.smtp.starttls.enable", "false");
-            } else {
-                props.put("mail.smtp.ssl.enable", "false");
-                props.put("mail.smtp.starttls.enable", "true");
-                props.put("mail.smtp.starttls.required", "true");
-            }
-            props.put("mail.smtp.ssl.trust", isZoho ? "smtp.zoho.com smtppro.zoho.com" : host);
-            props.put("mail.smtp.connectiontimeout", "8000");
-            props.put("mail.smtp.timeout", "8000");
-            props.put("mail.smtp.writetimeout", "8000");
-            sender.setJavaMailProperties(props);
-            sender.testConnection();
-            result.put("connection", "OK");
-            result.put("auth", "OK");
-            result.put("errorCode", null);
-            log.debug("[SMTP_DIAG_DEBUG] host={} port={} username={} connectionResult=OK authResult=OK", host, port, username);
-        } catch (Exception ex) {
-            String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
-            String exType = ex.getClass().getSimpleName().toLowerCase();
-            // Auth failure: 535 code, explicit "authentication", "credentials invalid", specific patterns
-            // Deliberately NOT matching plain "invalid" alone — too broad; Zoho uses "535 Authentication credentials invalid"
-            boolean isAuth = msg.contains("535") || msg.contains("authentication credentials")
-                    || msg.contains("authentication failed") || msg.contains("credentials invalid")
-                    || msg.contains("username and password not accepted")
-                    || exType.contains("authenticationfailed");
-            boolean isConn = !isAuth && (msg.contains("timeout") || msg.contains("timed out")
-                    || msg.contains("refused") || msg.contains("connect")
-                    || msg.contains("unknown host") || msg.contains("nodename nor servname")
-                    || msg.contains("unreachable"));
-            if (isAuth) {
-                result.put("connection", "OK");
-                result.put("auth", "FAILED");
-                result.put("errorCode", "SMTP_AUTH_FAILED");
-                result.put("hint", isZoho
-                        ? "Server reachable but Zoho rejected login for " + username + " on " + host +
-                          ". Generate an App Password from the same mailbox in Zoho Account → Security → App Passwords, then save it here."
-                        : "Server reachable but authentication failed. Verify username and password (or App Password).");
-            } else if (isConn) {
-                result.put("connection", "FAILED");
-                result.put("auth", "N/A");
-                result.put("errorCode", "SMTP_CONNECTION_FAILED");
-                result.put("hint", "Could not reach " + host + ":" + port + ". Port " + port + " may be blocked or the host name is wrong.");
-            } else {
-                result.put("connection", "FAILED");
-                result.put("auth", "N/A");
-                result.put("errorCode", "SMTP_SEND_FAILED");
-                result.put("hint", ex.getClass().getSimpleName() + ": " + ex.getMessage());
-            }
-            log.warn("[SMTP_DIAG_DEBUG] host={} port={} username={} connectionResult={} authResult={} errorCode={}",
-                    host, port, username, result.get("connection"), result.get("auth"), result.get("errorCode"));
-        }
+        result.put("host", probe.host());
+        result.put("port", probe.port());
+        result.put("usernameUsed", probe.usernameUsed());
+        result.put("fromEmailUsed", probe.fromEmailUsed());
+        result.put("configuration", probe.configuration());
+        result.put("dns", probe.dns());
+        result.put("tcp", probe.tcp());
+        result.put("tls", probe.tls());
+        result.put("authentication", probe.authentication());
+        result.put("send", probe.send());
+        result.put("errorCode", probe.errorCode());
+        result.put("message", probe.message());
         return result;
     }
 
