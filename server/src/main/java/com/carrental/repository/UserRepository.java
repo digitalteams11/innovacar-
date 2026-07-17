@@ -48,6 +48,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** All Innovax platform staff accounts (Super Admin control center). */
     List<User> findAllByRole(Role role);
 
+    /** Existence-only check — never loads the row, let alone the whole table. */
+    boolean existsByRole(Role role);
+
     /** Active staff currently holding a given platform sub-role — used to guard the last SUPER_OWNER. */
     long countByRoleAndSuperAdminRole_CodeAndAccountEnabledTrue(Role role, String superAdminRoleCode);
 }

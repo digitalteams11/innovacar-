@@ -185,9 +185,11 @@ public class DataInitializer implements CommandLineRunner {
         if (bootstrapDemoEnabled) {
             ensureDevelopmentAccounts(systemTenant);
         } else {
-            // Optional secure bootstrap for the first SUPER_ADMIN user in production
-            boolean superAdminExists = userRepository.findAll().stream()
-                    .anyMatch(u -> u.getRole() == Role.SUPER_ADMIN);
+            // Optional secure bootstrap for the first SUPER_ADMIN user in production.
+            // existsByRole (a single indexed EXISTS query), not findAll().stream() —
+            // this ran unconditionally on every boot and previously loaded every user
+            // row in the entire database into memory just to check one boolean.
+            boolean superAdminExists = userRepository.existsByRole(Role.SUPER_ADMIN);
 
             if (!superAdminExists) {
                 if (bootstrapSuperAdminEnabled && hasText(bootstrapSuperAdminPassword)) {
