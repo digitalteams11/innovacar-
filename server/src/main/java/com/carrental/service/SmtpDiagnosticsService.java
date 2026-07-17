@@ -186,27 +186,49 @@ public class SmtpDiagnosticsService {
         }
     }
 
+    /**
+     * Shared, bounded, and never torn down — {@link InetAddress#getAllByName}
+     * is a blocking native call that does not respond to
+     * {@link Thread#interrupt()}, so a DNS timeout below can never actually
+     * kill the worker thread; it leaks until the underlying OS-level lookup
+     * itself eventually gives up (which can take minutes on a blackholed
+     * network, exactly the "TCP times out" case this service exists to
+     * diagnose). Creating a brand-new {@code Executors.newSingleThreadExecutor()}
+     * per probe call — the previous implementation — meant every single
+     * "Diagnose SMTP" click leaked one more permanent thread (times up to 5
+     * candidate hosts probed per click), each reserving native stack memory,
+     * until the JVM could no longer create new threads at all
+     * ({@code OutOfMemoryError: unable to create native thread}) and the
+     * container was killed. A small fixed pool of daemon threads bounds the
+     * damage to at most {@link #DNS_EXECUTOR_POOL_SIZE} permanently-stuck
+     * threads total, no matter how many diagnostics ever run.
+     */
+    private static final int DNS_EXECUTOR_POOL_SIZE = 4;
+    private final ExecutorService dnsExecutor = Executors.newFixedThreadPool(DNS_EXECUTOR_POOL_SIZE, runnable -> {
+        Thread thread = new Thread(runnable, "smtp-dns-probe");
+        thread.setDaemon(true);
+        return thread;
+    });
+
     private String resolveDns(String host) {
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Callable<Boolean> lookup = () -> {
+            InetAddress.getAllByName(host);
+            return true;
+        };
+        Future<Boolean> future = dnsExecutor.submit(lookup);
         try {
-            Callable<Boolean> lookup = () -> {
-                InetAddress.getAllByName(host);
-                return true;
-            };
-            Future<Boolean> future = executor.submit(lookup);
-            try {
-                future.get(DNS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                return STAGE_OK;
-            } catch (TimeoutException e) {
-                future.cancel(true);
-                return STAGE_FAILED;
-            } catch (Exception e) {
-                Throwable cause = e.getCause();
-                if (cause instanceof UnknownHostException) return STAGE_FAILED;
-                return STAGE_FAILED;
-            }
-        } finally {
-            executor.shutdownNow();
+            future.get(DNS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            return STAGE_OK;
+        } catch (TimeoutException e) {
+            // Does NOT kill the underlying thread (see class-level note) — the
+            // pool is bounded specifically so this is an acceptable, capped cost
+            // rather than an unbounded leak.
+            future.cancel(true);
+            return STAGE_FAILED;
+        } catch (Exception e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof UnknownHostException) return STAGE_FAILED;
+            return STAGE_FAILED;
         }
     }
 
