@@ -5,16 +5,18 @@ const browserHost =
     : 'localhost';
 
 // Production builds must always have VITE_API_URL baked in at build time
-// (set in Vercel's project env vars) — silently falling back to the current
-// browser host would try to hit e.g. https://innovacar.app:8082/api, which is
-// both the wrong host and blocked as mixed content. This never throws (a
-// blank screen is worse than a console error), it just makes the
-// misconfiguration impossible to miss.
+// (set in Vercel's project env vars). This is still logged loudly when it's
+// missing so the misconfiguration is impossible to miss, but production no
+// longer falls back to a LAN-dev URL in that case (see PROD_DEFAULT_API_URL
+// below) — a missing env var must never send production traffic to
+// http://innovacar.app:8082, which is both the wrong host and blocked as
+// mixed content, and is exactly what previously surfaced as "Backend server
+// is not running on port 8082" in the Email Center.
 if (import.meta.env.PROD && !configuredApiUrl) {
   console.error(
     '[API] VITE_API_URL is not set in this production build. ' +
     'Set it in Vercel → Project Settings → Environment Variables ' +
-    '(e.g. VITE_API_URL=https://api.innovacar.app/api) and redeploy.'
+    '(e.g. VITE_API_URL=https://api.innovacar.app) and redeploy.'
   );
 }
 
@@ -29,9 +31,16 @@ function ensureApiSuffix(url: string): string {
   return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
 }
 
+// The one hardcoded production fallback — only used if VITE_API_URL is
+// somehow missing from the Vercel build. Never a LAN/localhost address:
+// production must never construct a :8082 URL under any circumstance.
+const PROD_DEFAULT_API_URL = 'https://api.innovacar.app';
+
 export const API_BASE_URL = configuredApiUrl
   ? ensureApiSuffix(configuredApiUrl)
-  : `http://${browserHost}:8082/api`;
+  : import.meta.env.PROD
+    ? ensureApiSuffix(PROD_DEFAULT_API_URL)
+    : `http://${browserHost}:8082/api`;
 
 export const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '');
 

@@ -147,7 +147,7 @@ function notifyNetworkFailure() {
   window.dispatchEvent(new CustomEvent('app-toast', {
     detail: {
       type: 'error',
-      message: 'Backend server is not running on port 8082.',
+      message: te('errors.NETWORK_ERROR', 'API server unavailable. Please check your connection and try again.'),
     },
   }));
 }
@@ -344,7 +344,7 @@ api.interceptors.response.use(
     if (!error.response) {
       // Network error — no response from server
       error.networkError = true;
-      error.userMessage = te('errors.NETWORK_ERROR', 'Backend server is not running on port 8082.');
+      error.userMessage = te('errors.NETWORK_ERROR', 'API server unavailable. Please check your connection and try again.');
       notifyNetworkFailure();
     } else if (status === 401) {
       error.userMessage = codeTranslation || te('errors.UNAUTHORIZED', 'Your session has expired. Please sign in again.');
@@ -366,8 +366,16 @@ api.interceptors.response.use(
     } else if (codeTranslation) {
       error.userMessage = codeTranslation;
     } else if (isSafeBusinessMessage(responseDataObj.message)) {
-      // Safe business message from backend — show it
+      // Safe business message from backend — show it. This still wins over the
+      // status===404 branch below: a genuine "entity not found" 404 (e.g. a
+      // deleted vehicle/contract) already carries a real backend message and
+      // must keep showing it, not a generic "misconfigured" message.
       error.userMessage = responseDataObj.message;
+    } else if (status === 404) {
+      // No usable backend message at all on a 404 — this is the shape of a
+      // request hitting a path the backend never mapped (a frontend/backend
+      // route mismatch), not a normal "not found" business response.
+      error.userMessage = te('errors.ENDPOINT_NOT_FOUND', 'This feature could not be reached. The app may be misconfigured — please contact support.');
     } else {
       // Unsafe or missing message — generic fallback
       error.userMessage = te('errors.REQUEST_FAILED', 'We could not complete this request. Please try again.');
