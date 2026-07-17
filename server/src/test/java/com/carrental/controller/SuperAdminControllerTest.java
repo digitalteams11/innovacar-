@@ -91,6 +91,7 @@ class SuperAdminControllerTest {
     @Mock private SystemHealthService systemHealthService;
     @Mock private PlatformSettingsService platformSettingsService;
     @Mock private EncryptionUtil encryptionUtil;
+    @Mock private com.carrental.service.SmtpMailService smtpMailService;
 
     @InjectMocks private SuperAdminController superAdminController;
 
