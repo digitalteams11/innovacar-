@@ -172,9 +172,8 @@ class SuperAdminControllerTest {
     }
 
     @Test
-    void sendTestEmailRejectsMissingSmtpHost() {
-        when(platformSettingsRepository.findTopByOrderByIdAsc())
-                .thenReturn(Optional.of(PlatformSettings.builder().build()));
+    void sendTestEmailRejectsWhenZeptoMailIsNotConfigured() {
+        when(smtpMailService.isPlatformConfigured()).thenReturn(false);
 
         Map<String, Object> response = superAdminController
                 .sendTestEmail(Map.of("to", " admin@example.com "))
@@ -182,7 +181,7 @@ class SuperAdminControllerTest {
 
         assertThat(response)
                 .containsEntry("success", false)
-                .containsEntry("errorCode", "SMTP_HOST_MISSING");
+                .containsEntry("errorCode", "EMAIL_CONFIGURATION_MISSING");
     }
 
     @Test

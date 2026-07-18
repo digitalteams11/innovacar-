@@ -30,8 +30,9 @@ public class EmailOtpService {
     private static final int RESEND_COOLDOWN_SEC   = 60;
 
     private static final Set<String> PASSTHROUGH_CODES = Set.of(
-            "EMAIL_AUTH_FAILED", "EMAIL_PROVIDER_UNREACHABLE",
-            "EMAIL_TLS_FAILED", "EMAIL_PROVIDER_TIMEOUT", "EMAIL_SEND_FAILED");
+            "EMAIL_API_AUTH_FAILED", "EMAIL_API_RATE_LIMITED", "EMAIL_API_PROVIDER_ERROR",
+            "EMAIL_API_REQUEST_REJECTED", "EMAIL_API_TIMEOUT", "EMAIL_CONFIGURATION_MISSING",
+            "EMAIL_NO_RECIPIENT", "EMAIL_SEND_FAILED");
 
     private final EmailOtpCodeRepository otpRepository;
     private final UserRepository userRepository;

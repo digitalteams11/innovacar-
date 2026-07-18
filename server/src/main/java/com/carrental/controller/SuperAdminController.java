@@ -73,7 +73,6 @@ public class SuperAdminController {
     private final CancellationRequestRepository cancellationRequestRepository;
     private final com.carrental.util.EncryptionUtil encryptionUtil;
     private final com.carrental.service.PlatformEmailService platformEmailService;
-    private final com.carrental.service.SmtpDiagnosticsService smtpDiagnosticsService;
     private final com.carrental.service.EmailTemplateService emailTemplateService;
     private final com.carrental.service.SupportRoutingService supportRoutingService;
 
@@ -1883,9 +1882,12 @@ public class SuperAdminController {
         result.put("lastTestStatus",   ps.getLastSmtpTestStatus());
         result.put("lastTestAt",       ps.getLastSmtpTestAt());
         result.put("lastTestErrorCode", ps.getLastSmtpTestErrorCode());
-        // EMAIL_PROVIDER value — never a secret, safe to expose. Lets the frontend show
-        // "Email API active" instead of the SMTP form implying SMTP is what's really sending.
+        // Email always sends via the ZeptoMail HTTP API now (see HttpEmailProvider) —
+        // SMTP is never attempted in production. Config is env-var-driven on Railway
+        // (ZEPTOMAIL_API_TOKEN, EMAIL_FROM_EMAIL), never stored in this table; the
+        // smtp* fields above are kept read-only for historical reference only.
         result.put("activeEmailProvider", smtpMailService.activeProvider());
+        result.put("emailProviderConfigured", smtpMailService.isPlatformConfigured());
         return ResponseEntity.ok(result);
     }
 
@@ -2019,7 +2021,7 @@ public class SuperAdminController {
 
     @PostMapping("/email/test")
     public ResponseEntity<Map<String, Object>> sendTestEmail(@RequestBody Map<String, Object> body) {
-        logPlatformAction("SMTP_TEST_EMAIL_REQUESTED", "Super Admin requested an SMTP test email");
+        logPlatformAction("EMAIL_TEST_EMAIL_REQUESTED", "Super Admin requested a test email");
         String recipient = toStr(body.get("to"));
         if (recipient == null || recipient.isBlank()) {
             Map<String, Object> err = new LinkedHashMap<>();
@@ -2037,216 +2039,63 @@ public class SuperAdminController {
         }
 
         // ── Pre-flight config validation ──────────────────────────────────────
-        PlatformSettings psCheck = platformSettingsRepository.findTopByOrderByIdAsc().orElse(null);
-        if (psCheck == null || !org.springframework.util.StringUtils.hasText(psCheck.getSmtpHost())) {
-            return ResponseEntity.ok(Map.of("success", false, "errorCode", "SMTP_HOST_MISSING",
-                    "message", "SMTP host is not configured. Set it in the SMTP Configuration form and save before testing."));
-        }
-        if (!org.springframework.util.StringUtils.hasText(psCheck.getSmtpUsername())) {
-            return ResponseEntity.ok(Map.of("success", false, "errorCode", "SMTP_USERNAME_MISSING",
-                    "message", "SMTP username is not configured."));
-        }
-        // Only invalid if there is literally no @ — a full address like contact@innovacar.app is always OK
-        if (!psCheck.getSmtpUsername().contains("@")) {
-            return ResponseEntity.ok(Map.of("success", false, "errorCode", "SMTP_USERNAME_INVALID",
-                    "message", "SMTP username must be a full email address (e.g. contact@yourdomain.com)."));
-        }
-        if (psCheck.getSmtpPasswordEncrypted() == null || psCheck.getSmtpPasswordEncrypted().isBlank()) {
-            return ResponseEntity.ok(Map.of("success", false, "errorCode", "SMTP_PASSWORD_MISSING",
-                    "message", "SMTP password is not saved. Enter and save the password before testing."));
-        }
-        if (!org.springframework.util.StringUtils.hasText(psCheck.getFromEmail())) {
-            return ResponseEntity.ok(Map.of("success", false, "errorCode", "SMTP_FROM_EMAIL_MISSING",
-                    "message", "From Email is not configured."));
+        // Email always sends via the ZeptoMail HTTP API (see HttpEmailProvider) —
+        // configuration is env-var-driven (ZEPTOMAIL_API_TOKEN, EMAIL_FROM_EMAIL),
+        // set on Railway, never stored in the database.
+        if (!smtpMailService.isPlatformConfigured()) {
+            return ResponseEntity.ok(Map.of("success", false, "errorCode", "EMAIL_CONFIGURATION_MISSING",
+                    "message", "ZeptoMail is not configured. Set ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL as environment variables on Railway."));
         }
 
-        boolean isZoho = psCheck.getSmtpHost().toLowerCase().contains("zoho");
-
-        // ── Safe debug log — password value never logged ──────────────────────
-        int pwLen = 0;
-        boolean pwDecryptOk = false;
-        try {
-            String dec = encryptionUtil.tryDecrypt(psCheck.getSmtpPasswordEncrypted());
-            pwLen = dec != null ? dec.length() : 0;
-            pwDecryptOk = pwLen > 0;
-        } catch (Exception ignored) {}
-        log.debug("[SMTP_DIAG_DEBUG] provider={} host={} port={} username={} fromEmail={} replyTo={} useTls={} enabled={} passwordProvided=true encryptedPasswordExists={} passwordDecryptOk={} passwordLength={} testRecipient={}",
-                psCheck.getSmtpProvider(), psCheck.getSmtpHost(), psCheck.getSmtpPort(),
-                psCheck.getSmtpUsername(), psCheck.getFromEmail(), psCheck.getSmtpReplyTo(),
-                psCheck.getSmtpUseTls(), psCheck.getSmtpEnabled(),
-                true, pwDecryptOk, pwLen, recipient);
-
-        // Use exactly the host Super Admin saved — never silently swap it for a
-        // "more reliable" alternative. Zoho account provisioning is genuinely
-        // per-host (smtppro.zoho.com is a real, valid host for some plans), so
-        // overriding it here would make the diagnostic test a different
-        // configuration than the one actually saved and used for real sends.
-        String password = encryptionUtil.tryDecrypt(psCheck.getSmtpPasswordEncrypted());
-        String effectiveHost = psCheck.getSmtpHost();
-        int effectivePort = psCheck.getSmtpPort() != null ? psCheck.getSmtpPort() : 587;
-        boolean startTls = psCheck.getSmtpUseTls() == null || psCheck.getSmtpUseTls();
-
-        // Re-verify connection+auth right before the real send so the debug log
-        // reflects current reality, not a stale earlier Diagnose run.
-        boolean authOkFromDiagnose = false;
-        if (password != null) {
-            var preCheck = smtpDiagnosticsService.probe(effectiveHost, effectivePort, psCheck.getSmtpUsername(),
-                    org.springframework.util.StringUtils.hasText(psCheck.getFromEmail()) ? psCheck.getFromEmail() : psCheck.getSmtpUsername(),
-                    password, Boolean.TRUE.equals(psCheck.getSmtpSslEnabled()));
-            authOkFromDiagnose = "OK".equals(preCheck.authentication());
-        }
-
-        log.debug("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
-                        + "startTls={} authOkFromDiagnose={} sendAttempted=true",
-                effectiveHost, effectivePort, psCheck.getSmtpUsername(), psCheck.getFromEmail(),
-                password != null, recipient, startTls, authOkFromDiagnose);
+        log.debug("[EMAIL_SEND_TEST_DEBUG] provider=ZEPTOMAIL testRecipient={} sendAttempted=true", recipient);
 
         // ── Attempt send ──────────────────────────────────────────────────────
         com.carrental.service.SmtpMailService.SmtpResult result = platformEmailService.sendTestEmail(recipient);
 
-        log.debug("[SMTP_SEND_TEST_DEBUG] host={} port={} username={} fromEmail={} passwordPresent={} toEmail={} "
-                        + "sendAttempted=true exceptionClass={} exceptionMessage={} errorCode={}",
-                effectiveHost, effectivePort, psCheck.getSmtpUsername(), psCheck.getFromEmail(),
-                password != null, recipient, result.exceptionClass(), result.errorMessage(), result.errorCode());
+        log.debug("[EMAIL_SEND_TEST_DEBUG] provider=ZEPTOMAIL testRecipient={} sendAttempted=true exceptionClass={} exceptionMessage={} errorCode={}",
+                recipient, result.exceptionClass(), result.errorMessage(), result.errorCode());
+
+        PlatformSettings psCheck = platformSettingsRepository.findTopByOrderByIdAsc().orElse(null);
 
         if (result.sent()) {
-            log.debug("[SMTP_DIAG_DEBUG] connectionResult=OK authResult=OK errorCode=null testRecipient={}", recipient);
-            psCheck.setLastSmtpTestStatus("SENT");
-            psCheck.setLastSmtpTestAt(java.time.LocalDateTime.now());
-            psCheck.setLastSmtpTestErrorCode(null);
-            platformSettingsRepository.save(psCheck);
+            log.debug("[EMAIL_DIAG_DEBUG] sendResult=OK errorCode=null testRecipient={}", recipient);
+            if (psCheck != null) {
+                psCheck.setLastSmtpTestStatus("SENT");
+                psCheck.setLastSmtpTestAt(java.time.LocalDateTime.now());
+                psCheck.setLastSmtpTestErrorCode(null);
+                platformSettingsRepository.save(psCheck);
+            }
             return ResponseEntity.ok(Map.of("success", true,
                     "message", "Test email sent successfully to " + recipient));
         }
 
-        // ── Use typed error code from SmtpMailService ─────────────────────────
-        String errorCode = result.errorCode() != null ? result.errorCode() : "SMTP_SEND_FAILED";
-        log.warn("[SMTP_DIAG_DEBUG] connectionResult=FAILED authResult=FAILED errorCode={} rawError={}",
-                errorCode, result.errorMessage());
+        // ── Use typed error code from HttpEmailProvider/SmtpMailService ───────
+        String errorCode = result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED";
+        log.warn("[EMAIL_DIAG_DEBUG] sendResult=FAILED errorCode={} rawError={}", errorCode, result.errorMessage());
 
         String safeMessage = switch (errorCode) {
-            case "EMAIL_AUTH_FAILED" -> isZoho
-                    ? "Zoho rejected the SMTP login. Make sure the App Password was generated from " +
-                      psCheck.getSmtpUsername() + " in Zoho Account → Security → App Passwords. " +
-                      "Also verify SMTP access is enabled in Zoho Mail → Settings → Mail Accounts → SMTP."
-                    : "SMTP authentication failed. Verify your SMTP username and App Password.";
-            case "EMAIL_TLS_FAILED"          -> "TLS/STARTTLS negotiation failed. Ensure 'Use TLS' is enabled and port 587 is selected.";
-            case "EMAIL_PROVIDER_TIMEOUT"    -> "Connection to " + psCheck.getSmtpHost() + ":" + psCheck.getSmtpPort() + " timed out. Check that outbound port " + psCheck.getSmtpPort() + " is not blocked by a firewall.";
-            case "EMAIL_PROVIDER_UNREACHABLE"-> "Could not reach " + psCheck.getSmtpHost() + ":" + psCheck.getSmtpPort() + ". Verify the host name and ensure the port is not blocked.";
-            case "EMAIL_FROM_REJECTED", "SMTP_FROM_EMAIL_INVALID"
-                                              -> "From Email (" + psCheck.getFromEmail() + ") does not match the SMTP account (" + psCheck.getSmtpUsername() + "). Zoho requires them to match unless it's a verified alias.";
-            case "EMAIL_NO_RECIPIENT"        -> "The test recipient address is missing or invalid.";
-            case "SMTP_NOT_CONFIGURED"       -> "No SMTP configuration found. Save your settings first.";
-            default                          -> "Test email could not be sent (" + errorCode + "). Verify all SMTP settings and try again.";
+            case "EMAIL_API_AUTH_FAILED"      -> "ZeptoMail rejected the API token. Verify ZEPTOMAIL_API_TOKEN in Railway is correct and active.";
+            case "EMAIL_API_RATE_LIMITED"     -> "ZeptoMail rate-limited this request. Wait a moment and try again.";
+            case "EMAIL_API_PROVIDER_ERROR"   -> "ZeptoMail returned a server error. Try again shortly.";
+            case "EMAIL_API_REQUEST_REJECTED" -> "ZeptoMail rejected the request. Verify the sending domain (EMAIL_FROM_EMAIL) is verified in your ZeptoMail account.";
+            case "EMAIL_API_TIMEOUT"          -> "The request to ZeptoMail timed out. Try again.";
+            case "EMAIL_CONFIGURATION_MISSING"-> "ZeptoMail is not fully configured. Set ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL in Railway.";
+            case "EMAIL_NO_RECIPIENT"         -> "The test recipient address is missing or invalid.";
+            default                           -> "Test email could not be sent (" + errorCode + "). Verify ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL are set correctly in Railway.";
         };
 
-        psCheck.setLastSmtpTestStatus("FAILED");
-        psCheck.setLastSmtpTestAt(java.time.LocalDateTime.now());
-        psCheck.setLastSmtpTestErrorCode(errorCode);
-        platformSettingsRepository.save(psCheck);
+        if (psCheck != null) {
+            psCheck.setLastSmtpTestStatus("FAILED");
+            psCheck.setLastSmtpTestAt(java.time.LocalDateTime.now());
+            psCheck.setLastSmtpTestErrorCode(errorCode);
+            platformSettingsRepository.save(psCheck);
+        }
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", false);
         response.put("errorCode", errorCode);
         response.put("message", safeMessage);
         return ResponseEntity.ok(response);
-    }
-
-    /** Probes one or both Zoho SMTP hosts with the stored credentials and returns safe diagnostics. */
-    @PostMapping("/email/diagnose-smtp")
-    public ResponseEntity<List<Map<String, Object>>> diagnoseSmtp() {
-        logPlatformAction("SMTP_DIAGNOSTIC_RUN", "Super Admin ran the SMTP diagnostic tool");
-        PlatformSettings ps = platformSettingsRepository.findTopByOrderByIdAsc().orElse(null);
-        if (ps == null || ps.getSmtpPasswordEncrypted() == null || ps.getSmtpPasswordEncrypted().isBlank()) {
-            Map<String, Object> err = new LinkedHashMap<>();
-            err.put("errorCode", "SMTP_PASSWORD_MISSING");
-            err.put("message", "Save an SMTP password first before running diagnostics.");
-            return ResponseEntity.ok(List.of(err));
-        }
-        String username  = org.springframework.util.StringUtils.hasText(ps.getSmtpUsername()) ? ps.getSmtpUsername().strip() : "";
-        String fromEmail = org.springframework.util.StringUtils.hasText(ps.getFromEmail())    ? ps.getFromEmail().strip()    : username;
-        String password  = encryptionUtil.tryDecrypt(ps.getSmtpPasswordEncrypted());
-        if (password == null) {
-            Map<String, Object> err = new LinkedHashMap<>();
-            err.put("errorCode", "SMTP_PASSWORD_DECRYPT_FAILED");
-            err.put("message", "Stored password could not be decrypted. Re-enter and save a fresh password.");
-            return ResponseEntity.ok(List.of(err));
-        }
-
-        String configuredHost = org.springframework.util.StringUtils.hasText(ps.getSmtpHost()) ? ps.getSmtpHost().strip() : "smtp.zoho.com";
-        int    configuredPort = ps.getSmtpPort() != null ? ps.getSmtpPort() : 587;
-        boolean isZoho        = configuredHost.toLowerCase().contains("zoho");
-        boolean sslEnabled    = Boolean.TRUE.equals(ps.getSmtpSslEnabled());
-
-        log.debug("[SMTP_DIAG_DEBUG] provider={} host={} port={} username={} fromEmail={} replyTo={} useTls={} ssl={} enabled={} passwordProvided=true encryptedPasswordExists=true",
-                ps.getSmtpProvider(), configuredHost, configuredPort, username, fromEmail,
-                ps.getSmtpReplyTo(), ps.getSmtpUseTls(), sslEnabled, ps.getSmtpEnabled());
-
-        // Candidates are probed concurrently with a hard overall time budget (see
-        // SmtpDiagnosticsService#probeAllWithBudget) — probing them one at a time
-        // could take 45-100+s total (5 candidates x up to ~24s worst case each),
-        // long past the frontend's request timeout, so a perfectly healthy backend
-        // would still be reported as "API server unavailable" by the browser.
-        List<com.carrental.service.SmtpDiagnosticsService.ProbeCandidate> candidates = new ArrayList<>();
-        candidates.add(new com.carrental.service.SmtpDiagnosticsService.ProbeCandidate(configuredHost, configuredPort, sslEnabled));
-        if (isZoho) {
-            addCandidateIfDifferent(candidates, "smtp.zoho.com", 587, false);
-            addCandidateIfDifferent(candidates, "smtppro.zoho.com", 587, false);
-            addCandidateIfDifferent(candidates, "smtp.zoho.com", 465, true);
-            addCandidateIfDifferent(candidates, "smtppro.zoho.com", 465, true);
-        }
-
-        long budgetMs = 12_000L;
-        List<Map<String, Object>> results = smtpDiagnosticsService
-                .probeAllWithBudget(candidates, username, fromEmail, password, budgetMs)
-                .stream()
-                .map(this::toDiagnosticMap)
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-
-        // Every single candidate failed to even establish a TCP connection — this is a
-        // hosting/network-level block (Railway or similar blocking outbound SMTP ports),
-        // not a credentials or TLS problem, and must be classified as such rather than
-        // left as a pile of individually-confusing SMTP_CONNECTION_TIMEOUT rows.
-        // Timed-out candidates (tcp still NOT_TESTED) don't count as a confirmed pass,
-        // so "did anything actually get through" is simply "was any tcp stage OK".
-        boolean allTcpFailed = !results.isEmpty() && results.stream()
-                .noneMatch(r -> "OK".equals(r.get("tcp")));
-        if (allTcpFailed) {
-            Map<String, Object> summary = new LinkedHashMap<>();
-            summary.put("errorCode", "EMAIL_HOSTING_NETWORK_BLOCKED");
-            summary.put("message", "Every candidate SMTP host/port failed to establish a TCP connection. "
-                    + "This looks like the hosting network is blocking outbound SMTP entirely, not a "
-                    + "credentials or TLS problem — configure an HTTP email API provider instead "
-                    + "(EMAIL_PROVIDER=ZEPTOMAIL) rather than continuing to retry SMTP.");
-            results.add(0, summary);
-        }
-
-        return ResponseEntity.ok(results);
-    }
-
-    private void addCandidateIfDifferent(List<com.carrental.service.SmtpDiagnosticsService.ProbeCandidate> candidates,
-                                          String candidateHost, int candidatePort, boolean candidateSsl) {
-        boolean alreadyPresent = candidates.stream().anyMatch(c ->
-                c.host().equalsIgnoreCase(candidateHost) && c.port() == candidatePort && c.ssl() == candidateSsl);
-        if (alreadyPresent) return;
-        candidates.add(new com.carrental.service.SmtpDiagnosticsService.ProbeCandidate(candidateHost, candidatePort, candidateSsl));
-    }
-
-    private Map<String, Object> toDiagnosticMap(com.carrental.service.SmtpDiagnosticsService.SmtpProbeResult probe) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("host", probe.host());
-        result.put("port", probe.port());
-        result.put("usernameUsed", probe.usernameUsed());
-        result.put("fromEmailUsed", probe.fromEmailUsed());
-        result.put("configuration", probe.configuration());
-        result.put("dns", probe.dns());
-        result.put("tcp", probe.tcp());
-        result.put("tls", probe.tls());
-        result.put("authentication", probe.authentication());
-        result.put("send", probe.send());
-        result.put("errorCode", probe.errorCode());
-        result.put("message", probe.message());
-        return result;
     }
 
     @GetMapping("/email/logs")

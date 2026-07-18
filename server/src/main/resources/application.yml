@@ -228,22 +228,17 @@ app:
     secret: "${APP_ENCRYPTION_SECRET:changeme-in-production-32bytes!}"
 
   # ── Email delivery provider ───────────────────────────────────────────────────
-  # SMTP is authoritative by default (Super Admin's saved SMTP settings, or a
-  # tenant's own SMTP). Set EMAIL_PROVIDER=ZEPTOMAIL when the hosting network
-  # blocks outbound SMTP ports entirely (diagnose-smtp reports
-  # EMAIL_HOSTING_NETWORK_BLOCKED — TCP fails on every SMTP host/port before
-  # TLS or auth is ever attempted, so no SMTP config change can fix it).
-  # EMAIL_PROVIDER=ZOHO_API is accepted but not implemented (it needs a full
-  # OAuth 2.0 flow) — use ZEPTOMAIL instead. The non-selected mechanism is
-  # never used automatically unless EMAIL_ALLOW_PROVIDER_FALLBACK=true.
+  # All email sends via ZeptoMail's HTTPS transactional API (port 443) —
+  # SMTP (465/587) is never attempted. Railway blocks outbound SMTP ports at
+  # the network level, so no SMTP configuration could ever succeed there.
   email:
-    provider: "${EMAIL_PROVIDER:SMTP}"
     api-base-url: "${EMAIL_API_BASE_URL:}"
     # Never log this value. Not exposed to the frontend anywhere.
-    api-token: "${EMAIL_API_TOKEN:}"
+    # ZEPTOMAIL_API_TOKEN is the canonical name; EMAIL_API_TOKEN is kept as a
+    # fallback in case that's what's actually set on Railway.
+    api-token: "${ZEPTOMAIL_API_TOKEN:${EMAIL_API_TOKEN:}}"
     from-email: "${EMAIL_FROM_EMAIL:}"
     from-name: "${EMAIL_FROM_NAME:RentCar}"
-    allow-provider-fallback: "${EMAIL_ALLOW_PROVIDER_FALLBACK:false}"
 
   # ── AI / Gemini ──────────────────────────────────────────────────────────────
   # Backend-only. Used only to seed the AiSettings row the first time it is

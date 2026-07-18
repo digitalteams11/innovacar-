@@ -12,12 +12,9 @@ import { useToast } from '../../context/ToastContext';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SmtpSettings {
-  smtpProvider: string;
-  smtpHost: string; smtpPort: number; smtpUsername: string; smtpPassword: string;
-  hasPassword: boolean; smtpUseTls: boolean; smtpSslEnabled: boolean; smtpEnabled: boolean;
-  fromEmail: string; fromName: string; smtpReplyTo: string;
   lastTestStatus: string | null; lastTestAt: string | null; lastTestErrorCode: string | null;
   activeEmailProvider?: string;
+  emailProviderConfigured?: boolean;
 }
 
 interface EmailTemplate {
@@ -29,11 +26,8 @@ interface EmailTemplate {
 interface TemplateVar { name: string; description: string; example: string; }
 
 const defaultSmtp: SmtpSettings = {
-  smtpProvider: 'ZOHO',
-  smtpHost: '', smtpPort: 587, smtpUsername: '', smtpPassword: '',
-  hasPassword: false, smtpUseTls: true, smtpSslEnabled: false, smtpEnabled: false,
-  fromEmail: '', fromName: '', smtpReplyTo: '',
   lastTestStatus: null, lastTestAt: null, lastTestErrorCode: null,
+  activeEmailProvider: 'ZEPTOMAIL', emailProviderConfigured: false,
 };
 
 // Distinguishes *why* an Email Center request failed instead of collapsing
@@ -84,12 +78,6 @@ function classifyEmailCenterError(err: any): { code: EmailCenterErrorCode; messa
   }
 }
 
-const PROVIDER_PRESETS: Record<string, { host: string; port: number; tls: boolean }> = {
-  ZOHO:   { host: 'smtp.zoho.com',    port: 587, tls: true  },
-  GMAIL:  { host: 'smtp.gmail.com',   port: 587, tls: true  },
-  CUSTOM: { host: '',                  port: 587, tls: true  },
-};
-
 const EXAMPLE_VARS: Record<string, string> = {
   userName: 'Mohamed Amddah', agencyName: 'Innovacar Agency', clientName: 'Ahmed Yacoubi',
   contractNumber: 'CTR-2026-00002', reservationNumber: 'RES-2026-00010',
@@ -132,15 +120,11 @@ export default function SuperAdminEmailCenter() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('smtp');
 
-  // SMTP
+  // Email (ZeptoMail — configured via Railway env vars, not editable here)
   const [smtp, setSmtp] = useState<SmtpSettings>(defaultSmtp);
-  const [smtpLoading, setSmtpLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [testEmailAddr, setTestEmailAddr] = useState('');
   const [testLoading, setTestLoading] = useState(false);
   const [testErrorCode, setTestErrorCode] = useState<string | null>(null);
-  const [diagnoseLoading, setDiagnoseLoading] = useState(false);
-  const [diagnoseResults, setDiagnoseResults] = useState<any[] | null>(null);
 
   // Templates
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -195,18 +179,10 @@ export default function SuperAdminEmailCenter() {
       ]);
       const d = smtpRes.data ?? {};
       setSmtp({
-        smtpProvider: d.smtpProvider ?? 'ZOHO',
-        smtpHost: d.smtpHost ?? '', smtpPort: d.smtpPort ?? 587,
-        smtpUsername: d.smtpUsername ?? '', smtpPassword: '',
-        hasPassword: Boolean(d.hasPassword),
-        smtpUseTls: d.smtpUseTls !== undefined ? Boolean(d.smtpUseTls) : true,
-        smtpSslEnabled: Boolean(d.smtpSslEnabled),
-        smtpEnabled: Boolean(d.smtpEnabled),
-        fromEmail: d.fromEmail ?? '', fromName: d.fromName ?? '',
-        smtpReplyTo: d.smtpReplyTo ?? '',
         lastTestStatus: d.lastTestStatus ?? null, lastTestAt: d.lastTestAt ?? null,
         lastTestErrorCode: d.lastTestErrorCode ?? null,
-        activeEmailProvider: d.activeEmailProvider ?? 'SMTP',
+        activeEmailProvider: d.activeEmailProvider ?? 'ZEPTOMAIL',
+        emailProviderConfigured: Boolean(d.emailProviderConfigured),
       });
       setTemplates(Array.isArray(tmplRes.data) ? tmplRes.data : []);
       setLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
@@ -239,27 +215,7 @@ export default function SuperAdminEmailCenter() {
     } finally { setRoutingLoading(false); }
   };
 
-  // ── SMTP handlers ─────────────────────────────────────────────────────────
-  const handleSaveSmtp = async () => {
-    setSmtpLoading(true);
-    try {
-      const payload: any = { ...smtp };
-      if (!payload.smtpPassword) delete payload.smtpPassword;
-      delete payload.hasPassword; delete payload.lastTestStatus; delete payload.lastTestAt; delete payload.lastTestErrorCode;
-      const res = await superAdminApi.updateSmtpSettings(payload);
-      const d = res.data ?? {};
-      setSmtp(prev => ({
-        ...prev, ...d, smtpPassword: '',
-        hasPassword: Boolean(d.hasPassword),
-        lastTestErrorCode: d.lastTestErrorCode ?? prev.lastTestErrorCode,
-      }));
-      showToast('SMTP settings saved successfully', 'success');
-    } catch (err: any) {
-      const { message } = classifyEmailCenterError(err);
-      showToast(message, 'error');
-    } finally { setSmtpLoading(false); }
-  };
-
+  // ── Email test handler (ZeptoMail — config is Railway env vars, nothing to save here) ──
   const handleTestSmtp = async () => {
     if (!testEmailAddr.trim()) { showToast('Enter a recipient email', 'error'); return; }
     setTestLoading(true); setTestErrorCode(null);
@@ -273,17 +229,6 @@ export default function SuperAdminEmailCenter() {
       setTestErrorCode(err?.response?.data?.errorCode ?? code);
       showToast(message, 'error');
     } finally { setTestLoading(false); }
-  };
-
-  const handleDiagnose = async () => {
-    setDiagnoseLoading(true); setDiagnoseResults(null);
-    try {
-      const res = await superAdminApi.diagnoseSmtp();
-      setDiagnoseResults(Array.isArray(res.data) ? res.data : [res.data]);
-    } catch (err: any) {
-      const { message } = classifyEmailCenterError(err);
-      showToast(message, 'error');
-    } finally { setDiagnoseLoading(false); }
   };
 
   // ── Template handlers ─────────────────────────────────────────────────────
@@ -417,25 +362,24 @@ export default function SuperAdminEmailCenter() {
         {/* ── SMTP TAB ── */}
         {activeTab === 'smtp' && (
           <div className="space-y-6">
-            {/* Active delivery mechanism — the SMTP form below is only meaningful when
-                SMTP is actually what's sending. When an HTTP provider is active, saying
-                so up front avoids the confusion of an admin fixing SMTP settings that
-                aren't being used for real sends at all. */}
-            {smtp.activeEmailProvider && smtp.activeEmailProvider !== 'SMTP' && (
-              <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10 px-4 py-3">
-                <Wifi size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Email API active</strong> ({smtp.activeEmailProvider}) — emails are sent over HTTPS, not SMTP. The SMTP settings below are not used for real sends while EMAIL_PROVIDER={smtp.activeEmailProvider}.
-                </p>
-              </div>
-            )}
+            {/* Delivery mechanism — email always sends via ZeptoMail's HTTPS API now;
+                SMTP is never attempted (Railway blocks outbound SMTP ports 465/587 at
+                the network level). Configuration lives entirely in Railway env vars,
+                not in this database-backed form, so there is nothing to edit here. */}
+            <div className={`flex items-center gap-2 rounded-xl border px-4 py-3 ${smtp.emailProviderConfigured ? 'border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10'}`}>
+              <Wifi size={16} className={`shrink-0 ${smtp.emailProviderConfigured ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}`} />
+              <p className={`text-sm ${smtp.emailProviderConfigured ? 'text-blue-700 dark:text-blue-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                {smtp.emailProviderConfigured
+                  ? <><strong>ZeptoMail API active</strong> — all email is sent over HTTPS, not SMTP.</>
+                  : <><strong>ZeptoMail is not configured.</strong> Set <code className="font-mono bg-black/5 dark:bg-white/10 px-1 rounded">ZEPTOMAIL_API_TOKEN</code>, <code className="font-mono bg-black/5 dark:bg-white/10 px-1 rounded">EMAIL_FROM_EMAIL</code>, and optionally <code className="font-mono bg-black/5 dark:bg-white/10 px-1 rounded">EMAIL_FROM_NAME</code> as environment variables on Railway.</>}
+              </p>
+            </div>
 
             {/* Status cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
-                { label: 'Status', value: smtp.smtpEnabled ? 'Enabled' : 'Disabled', icon: smtp.smtpEnabled ? Wifi : WifiOff, color: smtp.smtpEnabled ? 'text-emerald-600' : 'text-slate-400' },
-                { label: 'From Email', value: smtp.fromEmail || '—', icon: Mail, color: 'text-brand-500' },
-                { label: 'Host', value: smtp.smtpHost || '—', icon: Settings, color: 'text-slate-500' },
+                { label: 'Provider', value: smtp.activeEmailProvider || 'ZEPTOMAIL', icon: smtp.emailProviderConfigured ? Wifi : WifiOff, color: smtp.emailProviderConfigured ? 'text-emerald-600' : 'text-slate-400' },
+                { label: 'Configured', value: smtp.emailProviderConfigured ? 'Yes' : 'No', icon: smtp.emailProviderConfigured ? CheckCircle : XCircle, color: smtp.emailProviderConfigured ? 'text-emerald-600' : 'text-rose-500' },
                 { label: 'Last Test', value: smtp.lastTestStatus ? (lastTestOk ? 'Passed' : 'Failed') : 'Not tested', icon: smtp.lastTestStatus ? (lastTestOk ? CheckCircle : XCircle) : Clock, color: smtp.lastTestStatus ? (lastTestOk ? 'text-emerald-600' : 'text-rose-500') : 'text-slate-400' },
               ].map(item => (
                 <div key={item.label} className="bg-slate-50 dark:bg-white/5 rounded-xl p-4">
@@ -445,98 +389,10 @@ export default function SuperAdminEmailCenter() {
               ))}
             </div>
 
-            {/* Form */}
-            <div className="border-t border-[#e8e6e1]/60 pt-5 space-y-4">
-              <h3 className="text-sm font-bold text-[#1e293b] dark:text-white flex items-center gap-2"><Settings size={15} /> SMTP Configuration</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label className="space-y-1.5 sm:col-span-2">
-                  <span className={labelCls}>Provider</span>
-                  <div className="flex gap-2">
-                    {(['ZOHO', 'GMAIL', 'CUSTOM'] as const).map(p => (
-                      <button key={p} type="button"
-                        onClick={() => {
-                          const preset = PROVIDER_PRESETS[p];
-                          setSmtp(prev => ({
-                            ...prev,
-                            smtpProvider: p,
-                            ...(p !== 'CUSTOM' ? { smtpHost: preset.host, smtpPort: preset.port, smtpUseTls: preset.tls } : {}),
-                          }));
-                        }}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-colors ${smtp.smtpProvider === p ? 'bg-[#0a0f2c] text-white border-[#0a0f2c]' : 'bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-[#e8e6e1] dark:border-white/10 hover:border-slate-400'}`}
-                      >{p}</button>
-                    ))}
-                  </div>
-                  {smtp.smtpProvider === 'GMAIL' && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Gmail: use an <strong>App Password</strong> (not your Gmail password). Enable 2-Step Verification → App Passwords in your Google Account.</p>
-                  )}
-                </label>
-                <label className="space-y-1.5"><span className={labelCls}>SMTP Host</span><input type="text" value={smtp.smtpHost} onChange={e => setSmtp({ ...smtp, smtpHost: e.target.value })} placeholder="smtp.zoho.com" className={fieldCls} /></label>
-                <label className="space-y-1.5">
-                  <span className={labelCls}>SMTP Port</span>
-                  <input
-                    type="number"
-                    value={smtp.smtpPort}
-                    onChange={e => {
-                      const port = Number(e.target.value);
-                      // Port 465 and 587 each have exactly one correct encryption mode —
-                      // implicit SSL vs STARTTLS can never both be right for the same port,
-                      // so switching to one of these auto-corrects the mode instead of
-                      // silently leaving an invalid combination for the admin to discover
-                      // only when Save/Diagnose fails.
-                      const modeOverride = port === 465
-                        ? { smtpSslEnabled: true, smtpUseTls: false }
-                        : port === 587
-                        ? { smtpUseTls: true, smtpSslEnabled: false }
-                        : {};
-                      setSmtp({ ...smtp, smtpPort: port, ...modeOverride });
-                    }}
-                    className={fieldCls}
-                  />
-                  {smtp.smtpPort === 465 && <p className="text-xs text-slate-400 mt-1">Port 465 uses implicit SSL — STARTTLS is disabled automatically.</p>}
-                  {smtp.smtpPort === 587 && <p className="text-xs text-slate-400 mt-1">Port 587 uses STARTTLS — SSL is disabled automatically.</p>}
-                </label>
-                <label className="space-y-1.5"><span className={labelCls}>SMTP Username (email)</span><input type="email" value={smtp.smtpUsername} onChange={e => setSmtp({ ...smtp, smtpUsername: e.target.value })} placeholder="noreply@yourdomain.com" className={fieldCls} /></label>
-                <label className="space-y-1.5">
-                  <span className={labelCls}>SMTP Password</span>
-                  <div className="relative">
-                    <input type={showPassword ? 'text' : 'password'} value={smtp.smtpPassword} onChange={e => setSmtp({ ...smtp, smtpPassword: e.target.value })} placeholder={smtp.hasPassword ? 'Stored securely — enter a new password to replace' : 'Enter SMTP password'} className={`${fieldCls} pr-10`} />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{showPassword ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-                  </div>
-                  {smtp.hasPassword && !smtp.smtpPassword && <p className="text-xs text-emerald-600 mt-1">Password stored securely — enter a new one to replace.</p>}
-                  {smtp.smtpPassword && <p className="text-xs text-amber-600 font-semibold mt-1">New password entered — it will replace the stored one when you save.</p>}
-                  <p className="text-xs text-slate-400 mt-1">For Zoho: use an App Password from <strong>Zoho Account → Security → App Passwords</strong>. Generate it from the same mailbox account (<code className="font-mono bg-slate-100 dark:bg-white/10 px-1 rounded">{smtp.smtpUsername || 'your-email@domain.com'}</code>), not from another admin account.</p>
-                </label>
-                <label className="space-y-1.5"><span className={labelCls}>From Email</span><input type="email" value={smtp.fromEmail} onChange={e => setSmtp({ ...smtp, fromEmail: e.target.value })} placeholder="noreply@yourdomain.com" className={fieldCls} /></label>
-                <label className="space-y-1.5"><span className={labelCls}>From Name</span><input type="text" value={smtp.fromName} onChange={e => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Innovax Technologies" className={fieldCls} /></label>
-                <label className="space-y-1.5"><span className={labelCls}>Reply-To (optional)</span><input type="email" value={smtp.smtpReplyTo} onChange={e => setSmtp({ ...smtp, smtpReplyTo: e.target.value })} placeholder="support@yourdomain.com" className={fieldCls} /></label>
-              </div>
-              <div className="flex flex-wrap gap-4 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={smtp.smtpUseTls} onChange={e => setSmtp({ ...smtp, smtpUseTls: e.target.checked, smtpSslEnabled: e.target.checked ? false : smtp.smtpSslEnabled })} className="w-4 h-4 accent-brand-500 rounded" /><span className="text-sm text-[#1e293b] dark:text-white">Use TLS (STARTTLS, port 587)</span></label>
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={smtp.smtpSslEnabled} onChange={e => setSmtp({ ...smtp, smtpSslEnabled: e.target.checked, smtpUseTls: e.target.checked ? false : smtp.smtpUseTls })} className="w-4 h-4 accent-brand-500 rounded" /><span className="text-sm text-[#1e293b] dark:text-white">Use SSL (implicit, port 465)</span></label>
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={smtp.smtpEnabled} onChange={e => setSmtp({ ...smtp, smtpEnabled: e.target.checked })} className="w-4 h-4 accent-brand-500 rounded" /><span className={`text-sm font-semibold ${smtp.smtpEnabled ? 'text-emerald-600' : 'text-slate-400'}`}>{smtp.smtpEnabled ? 'Platform email enabled' : 'Platform email disabled'}</span></label>
-              </div>
-              {smtp.smtpHost?.toLowerCase().includes('zoho') && (
-                <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5"><AlertTriangle size={12} /> Zoho SMTP Checklist — verify before testing</p>
-                  <ul className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
-                    <li>✓ <strong>SMTP Username</strong> is the <em>full</em> Zoho email (e.g. contact@yourdomain.com)</li>
-                    <li>✓ <strong>SMTP Password</strong> is an <em>App Password</em> — Zoho Account → Security → App Passwords (NOT your Zoho login password)</li>
-                    <li>✓ <strong>From Email</strong> matches the same verified Zoho address as the username</li>
-                    <li>✓ <strong>Host</strong>: use <code className="font-mono bg-blue-100 dark:bg-blue-900/30 px-1 rounded">smtp.zoho.com</code> for free/standard or <code className="font-mono bg-blue-100 dark:bg-blue-900/30 px-1 rounded">smtppro.zoho.com</code> for Zoho Workplace</li>
-                    <li>✓ <strong>Port 587</strong> with <strong>STARTTLS</strong> enabled</li>
-                    <li>✓ <strong>SMTP Access</strong> is turned on in Zoho Mail → Settings → Mail Accounts → IMAP/SMTP</li>
-                  </ul>
-                </div>
-              )}
-              <button onClick={handleSaveSmtp} disabled={smtpLoading} className="flex items-center gap-2 px-5 py-2.5 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white rounded-xl text-sm font-semibold disabled:opacity-60 transition-colors">
-                {smtpLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Settings size={14} />} Save SMTP Settings
-              </button>
-            </div>
-
             {/* Test */}
             <div className="border-t border-[#e8e6e1]/60 pt-5 space-y-3">
               <h3 className="text-sm font-bold text-[#1e293b] dark:text-white flex items-center gap-2"><Send size={15} /> Send Test Email</h3>
-              <p className="text-xs text-slate-500">Save SMTP settings first, then send a test to verify delivery.</p>
+              <p className="text-xs text-slate-500">Sends a real test email through ZeptoMail to verify delivery end-to-end.</p>
               <div className="flex gap-3">
                 <input type="email" value={testEmailAddr} onChange={e => setTestEmailAddr(e.target.value)} placeholder="you@example.com" className={`flex-1 ${fieldCls}`} />
                 <button onClick={handleTestSmtp} disabled={testLoading || !testEmailAddr.trim()} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors">
@@ -547,15 +403,12 @@ export default function SuperAdminEmailCenter() {
                 <p className="text-xs text-slate-400">Last test: {new Date(smtp.lastTestAt).toLocaleString()} — <span className={lastTestOk ? 'text-emerald-600 font-semibold' : 'text-rose-500 font-semibold'}>{lastTestOk ? 'Passed' : 'Failed'}{smtp.lastTestErrorCode && !lastTestOk ? ` (${smtp.lastTestErrorCode})` : ''}</span></p>
               )}
               {testErrorCode && (() => {
-                const isAuthFail  = testErrorCode === 'SMTP_AUTH_FAILED' || testErrorCode === 'EMAIL_AUTH_FAILED';
+                const isAuthFail  = testErrorCode === 'EMAIL_API_AUTH_FAILED';
                 const isRecipient = testErrorCode === 'TEST_RECIPIENT_INVALID' || testErrorCode === 'TEST_RECIPIENT_MISSING';
                 const knownCodes  = [
-                  'SMTP_AUTH_FAILED','EMAIL_AUTH_FAILED',
-                  'SMTP_PASSWORD_MISSING','SMTP_HOST_MISSING','SMTP_FROM_EMAIL_MISSING',
-                  'SMTP_CONNECTION_FAILED','SMTP_TLS_FAILED','EMAIL_TLS_FAILED',
-                  'EMAIL_PROVIDER_UNREACHABLE','EMAIL_PROVIDER_TIMEOUT',
-                  'SMTP_USERNAME_INVALID','SMTP_USERNAME_MISSING',
-                  'TEST_RECIPIENT_INVALID','TEST_RECIPIENT_MISSING',
+                  'EMAIL_API_AUTH_FAILED', 'EMAIL_API_RATE_LIMITED', 'EMAIL_API_PROVIDER_ERROR',
+                  'EMAIL_API_REQUEST_REJECTED', 'EMAIL_API_TIMEOUT', 'EMAIL_CONFIGURATION_MISSING',
+                  'TEST_RECIPIENT_INVALID', 'TEST_RECIPIENT_MISSING',
                 ];
                 const colorClass = isAuthFail
                   ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
@@ -564,81 +417,18 @@ export default function SuperAdminEmailCenter() {
                   <div className={`flex gap-2 p-3 rounded-xl text-xs border ${colorClass}`}>
                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                     <span>
-                      {isAuthFail && (
-                        <><strong>Auth failed (Zoho):</strong> Normal account passwords are rejected. Generate an <strong>App Password</strong> in Zoho Account → Security → App Passwords, then paste it in the password field and save before testing. The SMTP Username and From Email must match the same verified Zoho address.<br />Try also: use <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">smtppro.zoho.com</code> instead of <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">smtp.zoho.com</code> and run Diagnose to compare both hosts.</>
-                      )}
+                      {isAuthFail && <><strong>ZeptoMail rejected the API token.</strong> Verify ZEPTOMAIL_API_TOKEN in Railway is correct and active.</>}
                       {isRecipient && <><strong>Invalid test recipient.</strong> Enter a valid email address in the "Send test to" field (e.g. you@example.com).</>}
-                      {testErrorCode === 'SMTP_PASSWORD_MISSING' && <><strong>No password saved.</strong> Enter your App Password above and click Save SMTP Settings first.</>}
-                      {testErrorCode === 'SMTP_HOST_MISSING' && <><strong>SMTP host not set.</strong> Enter your SMTP host (e.g. smtppro.zoho.com) and save.</>}
-                      {testErrorCode === 'SMTP_FROM_EMAIL_MISSING' && <><strong>From Email not set.</strong> Enter your From Email address and save.</>}
-                      {(testErrorCode === 'SMTP_CONNECTION_FAILED' || testErrorCode === 'EMAIL_PROVIDER_UNREACHABLE') && <><strong>Connection failed.</strong> Check host/port and ensure outbound port 587 is not blocked by your firewall.</>}
-                      {(testErrorCode === 'SMTP_TLS_FAILED' || testErrorCode === 'EMAIL_TLS_FAILED') && <><strong>TLS failed.</strong> Ensure "Use TLS" is enabled and port 587 is selected.</>}
-                      {testErrorCode === 'EMAIL_PROVIDER_TIMEOUT' && <><strong>Connection timed out.</strong> The SMTP server did not respond. Check host/port or try again.</>}
-                      {(testErrorCode === 'SMTP_USERNAME_INVALID' || testErrorCode === 'SMTP_USERNAME_MISSING') && <><strong>Invalid SMTP username.</strong> The username must be a full email address (e.g. contact@yourdomain.com).</>}
-                      {!knownCodes.includes(testErrorCode) && <><strong>{testErrorCode}:</strong> Verify all SMTP settings and try again.</>}
+                      {testErrorCode === 'EMAIL_API_RATE_LIMITED' && <><strong>Rate-limited.</strong> ZeptoMail is throttling requests — wait a moment and try again.</>}
+                      {testErrorCode === 'EMAIL_API_PROVIDER_ERROR' && <><strong>ZeptoMail server error.</strong> Try again shortly; check ZeptoMail's status page if it persists.</>}
+                      {testErrorCode === 'EMAIL_API_REQUEST_REJECTED' && <><strong>Request rejected.</strong> Verify the sending domain (EMAIL_FROM_EMAIL) is verified in your ZeptoMail account.</>}
+                      {testErrorCode === 'EMAIL_API_TIMEOUT' && <><strong>Request timed out.</strong> The call to ZeptoMail did not complete in time. Try again.</>}
+                      {testErrorCode === 'EMAIL_CONFIGURATION_MISSING' && <><strong>Not configured.</strong> Set ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL as environment variables on Railway.</>}
+                      {!knownCodes.includes(testErrorCode) && <><strong>{testErrorCode}:</strong> Verify ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL are set correctly in Railway.</>}
                     </span>
                   </div>
                 );
               })()}
-
-              {/* Zoho Diagnostics */}
-              <div className="pt-1">
-                <button
-                  onClick={handleDiagnose}
-                  disabled={diagnoseLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold disabled:opacity-50 transition-colors"
-                >
-                  {diagnoseLoading ? <span className="w-3.5 h-3.5 border-2 border-slate-400/30 border-t-slate-500 rounded-full animate-spin" /> : <Wifi size={13} />}
-                  Diagnose SMTP Connection
-                </button>
-                <p className="text-[10px] text-slate-400 mt-1">Tests connection + auth to your configured host (and both Zoho hosts if applicable). Password is never logged.</p>
-                {diagnoseResults && (
-                  <div className="mt-2 space-y-2">
-                    {diagnoseResults.map((r: any, i: number) => {
-                      if (r.errorCode === 'EMAIL_HOSTING_NETWORK_BLOCKED') {
-                        return (
-                          <div key={i} className="p-3 rounded-xl text-xs border bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30">
-                            <p className="font-bold text-rose-700 dark:text-rose-300">SMTP unavailable from hosting network</p>
-                            <p className="mt-1 text-slate-600 dark:text-slate-300 font-sans">{r.message}</p>
-                          </div>
-                        );
-                      }
-                      const stageBadge = (label: string, value: string | undefined) => {
-                        const v = value ?? 'NOT_TESTED';
-                        const cls = v === 'OK' ? 'bg-emerald-100 text-emerald-700'
-                          : v === 'FAILED' ? 'bg-rose-100 text-rose-700'
-                          : 'bg-slate-100 text-slate-500';
-                        return <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${cls}`}>{label}: {v}</span>;
-                      };
-                      const overallOk = r.authentication === 'OK';
-                      const overallFailed = !overallOk && (r.configuration === 'FAILED' || r.dns === 'FAILED' || r.tcp === 'FAILED' || r.tls === 'FAILED' || r.authentication === 'FAILED' || r.send === 'FAILED');
-                      return (
-                        <div key={i} className={`p-3 rounded-xl text-xs border font-mono ${overallOk ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30' : overallFailed ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30'}`}>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="font-bold text-slate-700 dark:text-slate-200">{r.host}:{r.port}</span>
-                            {r.errorCode && <span className="text-rose-600 dark:text-rose-400">{r.errorCode}</span>}
-                          </div>
-                          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                            {stageBadge('config', r.configuration)}
-                            {stageBadge('dns', r.dns)}
-                            {stageBadge('tcp', r.tcp)}
-                            {stageBadge('tls', r.tls)}
-                            {stageBadge('auth', r.authentication)}
-                            {stageBadge('send', r.send)}
-                          </div>
-                          {(r.usernameUsed || r.fromEmailUsed) && (
-                            <div className="mt-1.5 text-[10px] text-slate-400 dark:text-slate-500 space-y-0.5 font-sans">
-                              {r.usernameUsed  && <div>username: <span className="text-slate-600 dark:text-slate-300">{r.usernameUsed}</span></div>}
-                              {r.fromEmailUsed && <div>from:     <span className="text-slate-600 dark:text-slate-300">{r.fromEmailUsed}</span></div>}
-                            </div>
-                          )}
-                          {r.message && <p className="mt-1 text-slate-500 dark:text-slate-400 font-sans">{r.message}</p>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         )}

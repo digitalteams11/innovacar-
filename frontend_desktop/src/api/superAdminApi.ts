@@ -135,7 +135,6 @@ export const superAdminApi = {
   getSmtpSettings: () => api.get('/super-admin/email/settings'),
   updateSmtpSettings: (data: any) => api.put('/super-admin/email/settings', data),
   sendSmtpTestEmail: (to: string) => api.post('/super-admin/email/test', { to }),
-  diagnoseSmtp: () => api.post('/super-admin/email/diagnose-smtp', {}),
 
   // ═══════════════════════════════════════════════════════════════
   // MARKETING & ONBOARDING

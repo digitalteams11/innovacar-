@@ -1,6 +1,5 @@
 package com.carrental.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -17,20 +16,17 @@ import java.time.Duration;
 import java.util.Base64;
 
 /**
- * Sends email over HTTPS (port 443) instead of SMTP — the fallback for when
- * the hosting network blocks outbound SMTP ports entirely (see
- * EMAIL_HOSTING_NETWORK_BLOCKED in SmtpDiagnosticsService/diagnose-smtp: a
- * TCP-stage failure on every SMTP host/port candidate means no SMTP config
- * change can fix it — only a different protocol can).
+ * Sends email over HTTPS (port 443) via ZeptoMail's transactional email API
+ * (https://www.zoho.com/zeptomail/help/api/email-sending.html) — the sole
+ * email delivery mechanism. SMTP (ports 465/587) is never attempted: Railway
+ * blocks outbound SMTP ports at the network level, so no SMTP configuration
+ * can ever succeed there, only a different protocol can.
  *
- * <p>Implements ZeptoMail's transactional email API
- * (https://www.zoho.com/zeptomail/help/api/email-sending.html). The API
- * token is a static per-account credential (unlike Zoho Mail's own send API,
- * which requires a full OAuth 2.0 authorization-code flow with refresh
- * tokens) — that's what EMAIL_API_TOKEN holds. EMAIL_PROVIDER=ZOHO_API is
- * accepted as a config value but intentionally returns a clear
- * "not implemented" error rather than an OAuth integration that can't be
- * verified against real credentials in this environment.
+ * <p>The API token is a static per-account credential (unlike Zoho Mail's own
+ * send API, which requires a full OAuth 2.0 authorization-code flow with
+ * refresh tokens) — that's what {@code apiToken} holds, read from
+ * {@code ZEPTOMAIL_API_TOKEN} (falling back to the older {@code EMAIL_API_TOKEN}
+ * name if that's what's set) and never logged.
  */
 @Slf4j
 @Component
@@ -41,12 +37,11 @@ public class HttpEmailProvider implements EmailProvider {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${app.email.provider:SMTP}")
-    private String provider;
-
     @Value("${app.email.api-base-url:}")
     private String apiBaseUrl;
 
+    // Reads ZEPTOMAIL_API_TOKEN first; falls back to EMAIL_API_TOKEN (the
+    // pre-existing name) so nothing breaks if that's what's actually set.
     @Value("${app.email.api-token:}")
     private String apiToken;
 
@@ -58,29 +53,36 @@ public class HttpEmailProvider implements EmailProvider {
 
     @Override
     public boolean isConfigured() {
-        return isHttpProviderSelected()
-                && StringUtils.hasText(apiToken)
-                && StringUtils.hasText(fromEmail);
+        return StringUtils.hasText(apiToken) && StringUtils.hasText(fromEmail);
     }
 
     @Override
     public String label() {
-        return "email API (" + provider + ")";
+        return "ZeptoMail API";
+    }
+
+    /** Base URL actually in effect (default or overridden) — safe to log/expose. */
+    public String baseUrl() {
+        return StringUtils.hasText(apiBaseUrl) ? apiBaseUrl : DEFAULT_ZEPTOMAIL_BASE_URL;
+    }
+
+    public String fromEmail() {
+        return fromEmail;
+    }
+
+    public String fromName() {
+        return fromName;
+    }
+
+    /** Whether an API token is set — never the token value itself. */
+    public boolean tokenPresent() {
+        return StringUtils.hasText(apiToken);
     }
 
     @Override
     public SmtpMailService.SmtpResult send(EmailMessage message) {
-        if (!isHttpProviderSelected()) {
-            return SmtpMailService.SmtpResult.failure(label(),
-                    "EMAIL_PROVIDER is not set to an HTTP provider.", "EMAIL_PROVIDER_MISCONFIGURED");
-        }
-        if ("ZOHO_API".equalsIgnoreCase(provider)) {
-            return SmtpMailService.SmtpResult.failure(label(),
-                    "EMAIL_PROVIDER=ZOHO_API is not implemented (it requires a full OAuth 2.0 flow). "
-                            + "Use EMAIL_PROVIDER=ZEPTOMAIL instead.", "EMAIL_PROVIDER_NOT_IMPLEMENTED");
-        }
         if (!StringUtils.hasText(apiToken)) {
-            return SmtpMailService.SmtpResult.failure(label(), "EMAIL_API_TOKEN is not set.", "EMAIL_CONFIGURATION_MISSING");
+            return SmtpMailService.SmtpResult.failure(label(), "ZEPTOMAIL_API_TOKEN is not set.", "EMAIL_CONFIGURATION_MISSING");
         }
         if (!StringUtils.hasText(fromEmail)) {
             return SmtpMailService.SmtpResult.failure(label(), "EMAIL_FROM_EMAIL is not set.", "EMAIL_CONFIGURATION_MISSING");
@@ -90,14 +92,13 @@ public class HttpEmailProvider implements EmailProvider {
         }
 
         try {
-            String baseUrl = StringUtils.hasText(apiBaseUrl) ? apiBaseUrl : DEFAULT_ZEPTOMAIL_BASE_URL;
             String requestBody = buildZeptoMailRequestBody(message);
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(TIMEOUT)
                     .build();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/v1.1/email"))
+                    .uri(URI.create(baseUrl() + "/v1.1/email"))
                     // ZeptoMail's own auth scheme — the token itself is never logged.
                     .header("Authorization", "Zoho-enczapikey " + apiToken)
                     .header("Content-Type", "application/json")
@@ -126,10 +127,6 @@ public class HttpEmailProvider implements EmailProvider {
                     label(), message.to(), e.getClass().getName(), e.getMessage());
             return SmtpMailService.SmtpResult.failure(label(), e.getMessage(), "EMAIL_API_SEND_FAILED", e.getClass().getName());
         }
-    }
-
-    private boolean isHttpProviderSelected() {
-        return "ZEPTOMAIL".equalsIgnoreCase(provider) || "ZOHO_API".equalsIgnoreCase(provider);
     }
 
     private String classifyHttpError(int status) {

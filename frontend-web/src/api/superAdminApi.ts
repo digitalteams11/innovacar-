@@ -150,14 +150,9 @@ export const superAdminApi = {
   getEmailLogs: () => api.get('/super-admin/email/logs'),
   getEmailAnalytics: () => api.get('/super-admin/email/analytics'),
 
-  // SMTP Settings (Super Admin only — password never returned)
+  // Email settings (Super Admin only) — read-only status; actual config is env-var driven (ZeptoMail on Railway)
   getSmtpSettings: () => api.get('/super-admin/email/settings'),
-  updateSmtpSettings: (data: any) => api.put('/super-admin/email/settings', data),
-  // Backend caps its own probing at a 12s budget (SuperAdminController#diagnoseSmtp);
-  // these two calls get extra headroom above that so the client never times out
-  // before the backend has a chance to return its own bounded response.
   sendSmtpTestEmail: (to: string) => api.post('/super-admin/email/test', { to }, { timeout: 20000 }),
-  diagnoseSmtp: () => api.post('/super-admin/email/diagnose-smtp', {}, { timeout: 20000 }),
 
   // Support Center routing settings (Super Admin only)
   getSupportRoutingSettings: () => api.get('/super-admin/support/settings'),

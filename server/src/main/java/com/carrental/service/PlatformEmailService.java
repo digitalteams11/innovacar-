@@ -32,10 +32,10 @@ import java.util.Map;
  * {@link EmailLog} but never propagated — business operations must not roll
  * back because an email could not be delivered.
  *
- * <p>All delivery goes through {@link SmtpMailService}, which itself falls back
- * from the agency's own SMTP to the platform (Super Admin) SMTP automatically.
- * The platform SMTP must be enabled ({@code smtp_enabled = true}) in
- * {@link PlatformSettings} for any delivery to succeed.
+ * <p>All delivery goes through {@link SmtpMailService}, which sends every
+ * message via the ZeptoMail HTTPS API ({@link HttpEmailProvider}) — SMTP is
+ * never attempted. ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL must be set as
+ * environment variables for any delivery to succeed.
  */
 @Slf4j
 @Service
@@ -151,7 +151,7 @@ public class PlatformEmailService {
                     contractId, toEmail, pdfBytes != null);
             return true;
         } else {
-            String errorCode = classifyError(result.errorMessage());
+            String errorCode = classifyError(result);
             saveLog(contractId, contract.getTenant().getId(), toEmail,
                     EmailLog.TYPE_CONTRACT_SIGNED_CLIENT, subject, "FAILED",
                     errorCode, truncate(result.errorMessage(), 900));
@@ -177,14 +177,14 @@ public class PlatformEmailService {
     }
 
     /**
-     * Sends a SMTP test email through the platform provider.
+     * Sends a test email through the platform's ZeptoMail configuration.
      * Returns a user-safe result message.
      */
     public SmtpMailService.SmtpResult sendTestEmail(String toEmail) {
-        String subject = "Innovacar SMTP Test";
+        String subject = "Innovacar Email Test";
         String plainBody =
-                "This is a test email sent from the Innovacar / RentCar SaaS platform SMTP configuration.\n\n" +
-                "If you received this email, your SMTP settings are working correctly.\n\n" +
+                "This is a test email sent from the Innovacar / RentCar SaaS platform email configuration (ZeptoMail).\n\n" +
+                "If you received this email, your email settings are working correctly.\n\n" +
                 "— RentCar / Innovax Technologies";
         String htmlBody = """
             <!DOCTYPE html>
@@ -198,12 +198,12 @@ public class PlatformEmailService {
                       <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
                     </td></tr>
                     <tr><td style="padding:40px;">
-                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">SMTP Test Successful</h2>
+                      <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Email Test Successful</h2>
                       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
-                        This is a test email sent from the Innovacar / RentCar SaaS platform SMTP configuration.
+                        This is a test email sent from the Innovacar / RentCar SaaS platform email configuration (ZeptoMail).
                       </p>
                       <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">
-                        If you received this email, your SMTP settings are working correctly.
+                        If you received this email, your email settings are working correctly.
                       </p>
                     </td></tr>
                     <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
@@ -225,7 +225,7 @@ public class PlatformEmailService {
                 .subject(subject)
                 .emailType(EmailLog.TYPE_SMTP_TEST)
                 .status(result.sent() ? "SENT" : "FAILED")
-                .errorCode(result.sent() ? null : classifyError(result.errorMessage()))
+                .errorCode(result.sent() ? null : classifyError(result))
                 .errorMessage(result.sent() ? null : truncate(result.errorMessage(), 900))
                 .templateName("Platform SMTP test")
                 .build());
@@ -416,17 +416,20 @@ public class PlatformEmailService {
         return date != null ? date.format(DATE_FMT) : "N/A";
     }
 
-    private String classifyError(String errorMessage) {
+    /** Prefers the typed errorCode HttpEmailProvider already produced over re-parsing the message text. */
+    private String classifyError(SmtpMailService.SmtpResult result) {
+        if (result.errorCode() != null) return result.errorCode();
+        String errorMessage = result.errorMessage();
         if (errorMessage == null) return "EMAIL_SEND_FAILED";
         String lower = errorMessage.toLowerCase();
         if (lower.contains("authentication") || lower.contains("535") || lower.contains("credentials"))
-            return "EMAIL_AUTH_FAILED";
+            return "EMAIL_API_AUTH_FAILED";
         if (lower.contains("timeout") || lower.contains("timed out"))
-            return "EMAIL_PROVIDER_TIMEOUT";
+            return "EMAIL_API_TIMEOUT";
         if (lower.contains("unreachable") || lower.contains("connect") || lower.contains("refused"))
-            return "EMAIL_PROVIDER_UNREACHABLE";
-        if (lower.contains("no smtp") || lower.contains("not configured") || lower.contains("unconfigured"))
-            return "EMAIL_SMTP_NOT_CONFIGURED";
+            return "EMAIL_API_PROVIDER_ERROR";
+        if (lower.contains("not configured") || lower.contains("unconfigured") || lower.contains("not set"))
+            return "EMAIL_CONFIGURATION_MISSING";
         return "EMAIL_SEND_FAILED";
     }
 
@@ -472,7 +475,7 @@ public class PlatformEmailService {
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
         String status = result.sent() ? "SENT" : "FAILED";
-        String errorCode = result.sent() ? null : classifyError(result.errorMessage());
+        String errorCode = result.sent() ? null : classifyError(result);
         saveLog(null, tenantId, tenantEmail, EmailLog.TYPE_SUBSCRIPTION_CANCEL_SCHEDULED,
                 subject, status, errorCode, truncate(result.errorMessage(), 900));
         log.info("[EMAIL] {} tenantId={} to={} status={}", EmailLog.TYPE_SUBSCRIPTION_CANCEL_SCHEDULED, tenantId, tenantEmail, status);
@@ -502,7 +505,7 @@ public class PlatformEmailService {
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
         String status = result.sent() ? "SENT" : "FAILED";
-        String errorCode = result.sent() ? null : classifyError(result.errorMessage());
+        String errorCode = result.sent() ? null : classifyError(result);
         saveLog(null, tenantId, tenantEmail, EmailLog.TYPE_SUBSCRIPTION_CANCEL_UNDONE,
                 subject, status, errorCode, truncate(result.errorMessage(), 900));
         log.info("[EMAIL] {} tenantId={} to={} status={}", EmailLog.TYPE_SUBSCRIPTION_CANCEL_UNDONE, tenantId, tenantEmail, status);
@@ -534,7 +537,7 @@ public class PlatformEmailService {
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
         String status = result.sent() ? "SENT" : "FAILED";
-        String errorCode = result.sent() ? null : classifyError(result.errorMessage());
+        String errorCode = result.sent() ? null : classifyError(result);
         saveLog(null, tenantId, tenantEmail, EmailLog.TYPE_SUBSCRIPTION_CANCELLED_FINAL,
                 subject, status, errorCode, truncate(result.errorMessage(), 900));
         log.info("[EMAIL] {} tenantId={} to={} status={}", EmailLog.TYPE_SUBSCRIPTION_CANCELLED_FINAL, tenantId, tenantEmail, status);
@@ -582,7 +585,7 @@ public class PlatformEmailService {
         String status = result.sent() ? "SENT" : "FAILED";
         saveTicketLog(ticket.getId(), ticket.getTenant() != null ? ticket.getTenant().getId() : null,
                 ticket.getDestinationEmail(), EmailLog.TYPE_SUPPORT_TICKET_CREATED, subject, status,
-                result.sent() ? null : classifyError(result.errorMessage()), truncate(result.errorMessage(), 900));
+                result.sent() ? null : classifyError(result), truncate(result.errorMessage(), 900));
         markEmailStatus(ticket, status);
         log.info("[EMAIL] SUPPORT_TICKET_CREATED ticket={} to={} status={}", ticket.getTicketNumber(), ticket.getDestinationEmail(), status);
     }
@@ -616,7 +619,7 @@ public class PlatformEmailService {
         SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody);
         saveTicketLog(ticket.getId(), ticket.getTenant() != null ? ticket.getTenant().getId() : null,
                 toEmail, EmailLog.TYPE_CONTACT_FORM, subject, result.sent() ? "SENT" : "FAILED",
-                result.sent() ? null : classifyError(result.errorMessage()), truncate(result.errorMessage(), 900));
+                result.sent() ? null : classifyError(result), truncate(result.errorMessage(), 900));
         log.info("[EMAIL] SUPPORT_TICKET_CONFIRMATION ticket={} to={} status={}",
                 ticket.getTicketNumber(), toEmail, result.sent() ? "SENT" : "FAILED");
     }
@@ -645,7 +648,7 @@ public class PlatformEmailService {
         SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody);
         saveTicketLog(ticket.getId(), ticket.getTenant() != null ? ticket.getTenant().getId() : null,
                 toEmail, EmailLog.TYPE_SUPPORT_REPLY, subject, result.sent() ? "SENT" : "FAILED",
-                result.sent() ? null : classifyError(result.errorMessage()), truncate(result.errorMessage(), 900));
+                result.sent() ? null : classifyError(result), truncate(result.errorMessage(), 900));
         log.info("[EMAIL] SUPPORT_REPLY ticket={} to={} status={}", ticket.getTicketNumber(), toEmail, result.sent() ? "SENT" : "FAILED");
     }
 

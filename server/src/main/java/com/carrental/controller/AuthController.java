@@ -286,11 +286,14 @@ public class AuthController {
      */
     private static String normalizeSmtpErrorCode(String rawCode) {
         return switch (rawCode == null ? "" : rawCode) {
-            case "SMTP_NOT_CONFIGURED"                                    -> "SMTP_NOT_CONFIGURED";
-            case "SMTP_AUTH_FAILED", "EMAIL_AUTH_FAILED"                  -> "SMTP_AUTH_FAILED";
-            case "EMAIL_FROM_REJECTED", "SMTP_FROM_EMAIL_INVALID"         -> "SMTP_FROM_EMAIL_INVALID";
+            case "SMTP_NOT_CONFIGURED", "EMAIL_CONFIGURATION_MISSING"     -> "SMTP_NOT_CONFIGURED";
+            case "SMTP_AUTH_FAILED", "EMAIL_AUTH_FAILED", "EMAIL_API_AUTH_FAILED" -> "SMTP_AUTH_FAILED";
+            case "EMAIL_FROM_REJECTED", "SMTP_FROM_EMAIL_INVALID",
+                 "EMAIL_API_REQUEST_REJECTED"                             -> "SMTP_FROM_EMAIL_INVALID";
             case "EMAIL_TLS_FAILED", "EMAIL_PROVIDER_TIMEOUT",
-                 "EMAIL_PROVIDER_UNREACHABLE", "SMTP_CONNECTION_FAILED"   -> "SMTP_CONNECTION_FAILED";
+                 "EMAIL_PROVIDER_UNREACHABLE", "SMTP_CONNECTION_FAILED",
+                 "EMAIL_API_TIMEOUT", "EMAIL_API_PROVIDER_ERROR",
+                 "EMAIL_API_RATE_LIMITED"                                 -> "SMTP_CONNECTION_FAILED";
             default                                                       -> "EMAIL_SEND_FAILED";
         };
     }
