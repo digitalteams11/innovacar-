@@ -17,6 +17,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import PremiumLoader from './components/PremiumLoader';
 import SplashScreen from './components/SplashScreen';
 import ErrorBoundary from './components/ErrorBoundary';
+import { CHUNK_RELOAD_MARKER } from './lazyLoadRecovery';
 import Login from './pages/Login';
 const AccountSuspended = React.lazy(() => import('./pages/AccountSuspended'));
 const Layout = React.lazy(() => import('./components/Layout'));
@@ -314,11 +315,12 @@ function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // App rendered successfully â€” clear ErrorBoundary's one-shot auto-reload
-  // guard so a later, unrelated stale-module error still gets one reload
-  // attempt instead of being permanently disabled for the rest of the tab session.
+  // App rendered successfully â€” clear the one-shot auto-reload guards so a
+  // later, unrelated stale-module/chunk error still gets one reload attempt
+  // instead of being permanently disabled for the rest of the tab session.
   useEffect(() => {
     sessionStorage.removeItem('rentcar_error_boundary_reload_once');
+    sessionStorage.removeItem(CHUNK_RELOAD_MARKER);
   }, []);
 
   return (

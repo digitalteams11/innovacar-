@@ -1,5 +1,12 @@
 import React from 'react';
 import i18n from '../i18n';
+import { CHUNK_RELOAD_MARKER } from '../lazyLoadRecovery';
+
+// Matches the errors browsers throw for a stale/missing chunk after a new
+// deployment replaced it: "Failed to fetch dynamically imported module",
+// "Failed to load module script... MIME type text/html", "error loading
+// dynamically imported module", "Importing a module script failed".
+const CHUNK_LOAD_ERROR_PATTERN = /(fetch|load(ing)?)\s+dynamically imported module|failed to load module script|importing a module script failed/i;
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -28,6 +35,18 @@ export default class ErrorBoundary extends React.Component<React.PropsWithChildr
       const key = 'rentcar_error_boundary_reload_once';
       if (!sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+      return;
+    }
+
+    // Belt-and-suspenders for stale-chunk failures that surface as a thrown
+    // error during render (e.g. React.lazy()'s import() rejection) rather
+    // than as the `vite:preloadError` window event lazyLoadRecovery.ts
+    // already handles for most cases. Same one-shot-per-session guard.
+    if (error instanceof Error && CHUNK_LOAD_ERROR_PATTERN.test(error.message)) {
+      if (!sessionStorage.getItem(CHUNK_RELOAD_MARKER)) {
+        sessionStorage.setItem(CHUNK_RELOAD_MARKER, '1');
         window.location.reload();
       }
     }
