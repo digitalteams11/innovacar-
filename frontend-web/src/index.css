@@ -115,6 +115,21 @@
     --glass-border: rgba(255, 255, 255, calc(.08 + var(--glass-intensity) * .09));
   }
 
+  html {
+    width: 100%;
+    min-height: 100%;
+    /* Prevents a single overflowing element anywhere in the tree from
+       producing page-level horizontal scroll — the actual offending
+       element must still be fixed wherever one is found (see index.css
+       audit notes), this is a backstop, not a substitute for that. */
+    overflow-x: hidden;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100%;
+  }
+
   body {
     font-family: var(--font-ui);
     background-color: var(--bg-page);
@@ -122,6 +137,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    width: 100%;
     min-width: 320px;
     overflow-x: hidden;
     background-image:
@@ -630,6 +646,29 @@
 }
 
 @media (max-width: 639px) {
+  /* iOS Safari zooms the page in on focus whenever a form control's computed
+     font-size is under 16px. Most inputs across the app get their font-size
+     from a Tailwind utility (usually text-sm/14px) rather than an element
+     selector, which outranks a plain `input { font-size }` rule on
+     specificity — so this has to win explicitly rather than rely on cascade
+     order. This is the actual, targeted fix for the auto-zoom bug (not a
+     transform/scale hack, and it doesn't touch pinch-to-zoom). */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Comfortable tap targets for actual text-entry controls on touch devices.
+     Deliberately excludes checkbox/radio/range/color/file and buttons/links —
+     those are sized per-component already and a blanket floor here would
+     distort compact icon buttons and checkboxes rather than help them. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
   .glass-card:hover,
   .card-premium:hover {
     transform: none;

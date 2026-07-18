@@ -6,8 +6,9 @@ import { useToast } from '../context/ToastContext';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
 import { motion } from 'framer-motion';
-import { UserPlus, Mail, Lock, Car, Loader2, ArrowLeft, Eye, EyeOff, Check, X } from 'lucide-react';
+import { UserPlus, Mail, Lock, Loader2, ArrowLeft, Eye, EyeOff, Check, X } from 'lucide-react';
 import { checkPasswordStrength, isPasswordStrong } from '../lib/passwordPolicy';
+import AuthLogo from '../components/auth/AuthLogo';
 
 declare global {
   interface Window { google?: any; }
@@ -225,14 +226,8 @@ export default function Register() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="flex items-center justify-center gap-3 mb-10"
         >
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-300 to-accent-500 flex items-center justify-center shadow-lg shadow-accent-400/20">
-            <Car size={24} className="text-brand-900" strokeWidth={2.5} />
-          </div>
-          <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            Rent<span className="text-accent-500">Car</span>
-          </span>
+          <AuthLogo />
         </motion.div>
 
         {/* Glass Card */}

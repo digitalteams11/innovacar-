@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Car, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
+import AuthLogo from '../components/auth/AuthLogo';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -48,13 +49,7 @@ export default function VerifyEmail() {
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-400/5 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3"></div>
 
       <div className="w-full max-w-[400px] animate-fade relative z-10">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-lg bg-brand-500 flex items-center justify-center text-white shadow-lg">
-            <Car size={22} strokeWidth={2.5} />
-          </div>
-          <span className="text-2xl font-bold tracking-tight text-[#1e293b]">Rent<span className="text-brand-500">Car</span></span>
-        </div>
+        <AuthLogo />
 
         {/* Card */}
         <div className="bg-white rounded-2xl p-8 md:p-10 shadow-elevated border border-[#e8e6e1]/60 text-center">

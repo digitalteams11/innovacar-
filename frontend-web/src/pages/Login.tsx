@@ -5,11 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, Lock, Mail, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
-import { usePublicBranding } from '../hooks/usePublicBranding';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
-
-const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
+import AuthLogo from '../components/auth/AuthLogo';
 
 declare global {
   interface Window {
@@ -125,9 +123,6 @@ export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const googleBtnRef = useRef<HTMLDivElement>(null);
-  const publicBranding = usePublicBranding();
-  const brandedLogoUrl = publicBranding?.found && publicBranding.logoUrl ? publicBranding.logoUrl : INNOVACAR_LOGO_URL;
-  const brandedName = publicBranding?.found && publicBranding.tenantName ? publicBranding.tenantName : null;
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -339,14 +334,8 @@ export default function Login() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="flex items-center justify-center gap-3 mb-10"
         >
-          <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-accent-400/20 overflow-hidden">
-            <img src={brandedLogoUrl} alt={brandedName || 'InnovaCar'} className="h-full w-full object-contain p-1" />
-          </div>
-          <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            {brandedName ?? <>Innova<span className="text-accent-500">Car</span></>}
-          </span>
+          <AuthLogo />
         </motion.div>
 
         {/* Glass Card */}
