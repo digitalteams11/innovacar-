@@ -1,11 +1,13 @@
 package com.carrental.service;
 
+import com.carrental.entity.ContactRequest;
 import com.carrental.entity.Contract;
 import com.carrental.entity.Deposit;
 import com.carrental.entity.EmailLog;
 import com.carrental.entity.PlatformSettings;
 import com.carrental.entity.SupportMessage;
 import com.carrental.entity.SupportTicket;
+import com.carrental.repository.ContactRequestRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.DepositRepository;
 import com.carrental.repository.EmailLogRepository;
@@ -50,9 +52,13 @@ public class PlatformEmailService {
     private final PdfService                pdfService;
     private final DepositRepository         depositRepository;
     private final SupportTicketRepository   supportTicketRepository;
+    private final ContactRequestRepository  contactRequestRepository;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
+
+    @Value("${app.public-api-url:http://localhost:8082}")
+    private String publicApiUrl;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -285,7 +291,10 @@ public class PlatformEmailService {
         vars.put("startTime",      contract.getPickupTime() != null ? contract.getPickupTime().toString() : "");
         vars.put("endTime",        contract.getReturnTime() != null ? contract.getReturnTime().toString() : "");
         vars.put("agencyName",     contract.getTenant() != null ? contract.getTenant().getName() : "");
-        vars.put("contractPdfUrl", buildPdfDownloadLink(contract));
+        String pdfUrl = buildPdfDownloadUrl(contract);
+        vars.put("contractPdfUrl", isValidPublicUrl(pdfUrl) ? pdfUrl : "");
+        vars.put("contractPdfSection", buildPdfSection(contract));
+        vars.put("contractPdfPlainSection", buildPdfPlainSection(contract));
         return vars;
     }
 
@@ -399,14 +408,82 @@ public class PlatformEmailService {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
-    private String buildPdfDownloadLink(Contract contract) {
+    /**
+     * Builds the public signed-PDF download URL, or {@code null} if no secure
+     * token exists yet. NEVER returns a placeholder/fallback string here — a
+     * non-URL value returned from this method used to get written straight
+     * into an {@code <a href>}, which is exactly what produced the broken
+     * "http://(PDF link not available — contact your agency)" button (browsers
+     * silently prepend a scheme to whatever a href contains, which is also why
+     * Gmail flagged it as a suspicious redirect). Callers must render a real
+     * button only when this returns a value that also passes {@link #isValidPublicUrl}.
+     */
+    String buildPdfDownloadUrl(Contract contract) {
         if (contract.getQrToken() == null) {
-            return "(PDF link not available — contact your agency)";
+            return null;
         }
-        // Backend public PDF endpoint — no auth required
-        return frontendUrl.replaceAll("/+$", "")
-                .replace("5173", "8082")   // dev: frontend → backend port
-                + "/api/public/contracts/" + contract.getId() + "/" + contract.getQrToken() + "/pdf";
+        String base = publicApiUrl.replaceAll("/+$", "");
+        return base + "/api/public/contracts/" + contract.getId() + "/" + contract.getQrToken() + "/pdf";
+    }
+
+    /**
+     * Strict allow-list for URLs that are safe to embed in an outbound email.
+     * Accepts a real https origin (production), or http against localhost/127.0.0.1
+     * (local dev only) — everything else is rejected, including blank/null values,
+     * placeholder text, values with spaces, 192.168.x.x, and *.railway.internal.
+     */
+    boolean isValidPublicUrl(String value) {
+        if (value == null || value.isBlank()) return false;
+        String trimmed = value.trim();
+        if (trimmed.contains(" ") || trimmed.startsWith("(")) return false;
+        try {
+            java.net.URI uri = java.net.URI.create(trimmed);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme == null || host == null) return false;
+            String lowerHost = host.toLowerCase(java.util.Locale.ROOT);
+            if (lowerHost.contains("railway.internal")) return false;
+            boolean isLoopback = lowerHost.equals("localhost") || lowerHost.startsWith("127.") || lowerHost.startsWith("192.168.");
+            if ("https".equalsIgnoreCase(scheme)) return !isLoopback;
+            if ("http".equalsIgnoreCase(scheme)) return isLoopback;
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static final String PDF_LINK_UNAVAILABLE_TEXT =
+            "The signed PDF is still being generated. Please contact your rental agency.";
+
+    /**
+     * HTML fragment for the CONTRACT_SIGNED_CLIENT template's {{contractPdfSection}}
+     * placeholder — a real download button when (and only when) a valid public URL
+     * exists, otherwise a plain non-clickable message. Never a dead/placeholder link.
+     */
+    String buildPdfSection(Contract contract) {
+        String url = buildPdfDownloadUrl(contract);
+        if (!isValidPublicUrl(url)) {
+            if (url != null) {
+                log.warn("[EMAIL] Contract [id={}] PDF URL failed validation (host/scheme not allowed) — omitting download button", contract.getId());
+            }
+            return "<p style=\"margin:20px 0 0;font-size:14px;line-height:1.6;color:#64748b;\">"
+                 + PDF_LINK_UNAVAILABLE_TEXT + "</p>";
+        }
+        return "<div style=\"text-align:center;margin:28px 0;\">"
+             + "<a href=\"" + url + "\" target=\"_blank\" rel=\"noopener noreferrer\" style=\""
+             + "display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#0f766e,#10b981);"
+             + "color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;"
+             + "letter-spacing:0.02em;box-shadow:0 4px 14px rgba(15,118,110,0.35);\">"
+             + "Download Contract PDF</a></div>";
+    }
+
+    /** Plain-text equivalent of {@link #buildPdfSection} for the {{contractPdfPlainSection}} placeholder. */
+    String buildPdfPlainSection(Contract contract) {
+        String url = buildPdfDownloadUrl(contract);
+        if (!isValidPublicUrl(url)) {
+            return PDF_LINK_UNAVAILABLE_TEXT;
+        }
+        return "Download your contract PDF:\n" + url;
     }
 
     private String buildVehicleLine(Contract contract) {
@@ -641,8 +718,8 @@ public class PlatformEmailService {
         Map<String, String> vars = new java.util.HashMap<>();
         vars.put("ticketNumber", ticket.getTicketNumber());
         vars.put("channel", StringUtils.hasText(ticket.getChannel()) ? ticket.getChannel() : "");
-        vars.put("category", StringUtils.hasText(ticket.getCategory()) ? ticket.getCategory() : "");
-        vars.put("priority", StringUtils.hasText(ticket.getPriority()) ? ticket.getPriority() : "");
+        vars.put("category", ticket.getCategory() != null ? ticket.getCategory().name() : "");
+        vars.put("priority", ticket.getPriority() != null ? ticket.getPriority().name() : "");
         vars.put("agencyName", ticket.getTenant() != null && StringUtils.hasText(ticket.getTenant().getName())
                 ? ticket.getTenant().getName() : "Anonymous / Public");
         vars.put("requesterName", StringUtils.hasText(ticket.getRequesterName()) ? ticket.getRequesterName() : "Unknown");
@@ -702,6 +779,87 @@ public class PlatformEmailService {
                 result.sent() ? null : classifyError(result), truncate(result.errorMessage(), 900));
         log.info("[EMAIL] SUPPORT_TICKET_CONFIRMATION ticket={} to={} status={}",
                 ticket.getTicketNumber(), toEmail, result.sent() ? "SENT" : "FAILED");
+    }
+
+    // ── Contact Us emails (ContactRequest — separate from Support Tickets) ─────
+
+    /**
+     * Notifies the internal team (destinationEmail resolved by SupportRoutingService)
+     * that a new contact request was submitted. Runs in its own transaction so a send
+     * failure never rolls back the contact request creation that triggered it. Callers
+     * should still wrap this call in a try/catch, since an exception thrown here
+     * (as opposed to a merely-failed send) will still propagate to the caller.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendContactRequestCreatedInternal(ContactRequest request) {
+        if (!StringUtils.hasText(request.getDestinationEmail())) {
+            log.warn("[EMAIL] sendContactRequestCreatedInternal: request {} has no destinationEmail", request.getRequestNumber());
+            markContactEmailStatus(request, "FAILED");
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("ticketNumber", request.getRequestNumber());
+        vars.put("channel", SupportRoutingService.CHANNEL_CONTACT);
+        vars.put("category", StringUtils.hasText(request.getCategory()) ? request.getCategory() : "");
+        vars.put("priority", "");
+        vars.put("agencyName", "Anonymous / Public");
+        vars.put("requesterName", StringUtils.hasText(request.getRequesterName()) ? request.getRequesterName() : "Unknown");
+        vars.put("requesterEmail", StringUtils.hasText(request.getRequesterEmail()) ? request.getRequesterEmail() : "");
+        vars.put("subject", StringUtils.hasText(request.getSubject()) ? request.getSubject() : "");
+        vars.put("message", StringUtils.hasText(request.getMessage()) ? request.getMessage() : "");
+        vars.put("dashboardUrl", frontendUrl + "/super-admin/contact-requests/" + request.getId());
+
+        var rendered = emailTemplateService.render(
+                EmailTemplateService.KEY_SUPPORT_TICKET_CREATED_INTERNAL, "EN", vars);
+        String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
+                .orElse("[Contact] " + request.getRequestNumber() + " — " + request.getSubject());
+        String htmlBody = rendered.map(EmailTemplateService.RenderedEmail::htmlBody).filter(StringUtils::hasText).orElse(null);
+        String plainBody = rendered.map(EmailTemplateService.RenderedEmail::plainBody).filter(StringUtils::hasText)
+                .orElse(request.getSubject() + "\n\n" + request.getMessage());
+
+        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(
+                request.getDestinationEmail(), subject, htmlBody, plainBody);
+
+        String status = result.sent() ? "SENT" : "FAILED";
+        saveTicketLog(request.getId(), null, request.getDestinationEmail(),
+                EmailLog.TYPE_CONTACT_REQUEST_CREATED, subject, status,
+                result.sent() ? null : classifyError(result), truncate(result.errorMessage(), 900));
+        markContactEmailStatus(request, status);
+        log.info("[EMAIL] CONTACT_REQUEST_CREATED request={} to={} status={}", request.getRequestNumber(), request.getDestinationEmail(), status);
+    }
+
+    /** Sends the "we received your request" confirmation to the contact-form submitter. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendContactRequestConfirmation(ContactRequest request) {
+        String toEmail = request.getRequesterEmail();
+        if (!StringUtils.hasText(toEmail)) {
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("userName", StringUtils.hasText(request.getRequesterName()) ? request.getRequesterName() : "there");
+        vars.put("ticketNumber", request.getRequestNumber());
+        vars.put("supportUrl", frontendUrl + "/contact");
+
+        var rendered = emailTemplateService.render(EmailTemplateService.KEY_CONTACT_FORM_RECEIVED, "EN", vars);
+        String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
+                .orElse("We received your request — " + request.getRequestNumber());
+        String htmlBody = rendered.map(EmailTemplateService.RenderedEmail::htmlBody).filter(StringUtils::hasText).orElse(null);
+        String plainBody = rendered.map(EmailTemplateService.RenderedEmail::plainBody).filter(StringUtils::hasText)
+                .orElse("We received your request. Reference number: " + request.getRequestNumber());
+
+        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody);
+        saveTicketLog(request.getId(), null, toEmail,
+                EmailLog.TYPE_CONTACT_FORM, subject, result.sent() ? "SENT" : "FAILED",
+                result.sent() ? null : classifyError(result), truncate(result.errorMessage(), 900));
+        log.info("[EMAIL] CONTACT_REQUEST_CONFIRMATION request={} to={} status={}",
+                request.getRequestNumber(), toEmail, result.sent() ? "SENT" : "FAILED");
+    }
+
+    private void markContactEmailStatus(ContactRequest request, String status) {
+        request.setEmailStatus(status);
+        contactRequestRepository.save(request);
     }
 
     /** Notifies the requester that support replied to their ticket. */

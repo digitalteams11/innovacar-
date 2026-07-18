@@ -67,6 +67,7 @@ public class EmailTemplateService {
         try {
             if (templateRepository.countBySystemDefaultTrue() > 0) {
                 log.debug("[EMAIL_TEMPLATES] Default templates already seeded — skipping.");
+                repairBrokenContractPdfButton();
                 log.info("[STARTUP_STEP_OK] EmailTemplateService.seedDefaultTemplates durationMs={}",
                         (System.nanoTime() - startNanos) / 1_000_000);
                 return;
@@ -81,6 +82,38 @@ public class EmailTemplateService {
                     e.getClass().getName());
             throw e;
         }
+    }
+
+    /**
+     * One-time repair for CONTRACT_SIGNED_CLIENT rows shipped before the PDF-download-button
+     * fix: the old body_html hardcoded {@code <a href="{{contractPdfUrl}}">}, which put a plain
+     * fallback sentence straight into an href whenever no PDF token existed yet — browsers then
+     * silently prepend a scheme to that text, producing the broken
+     * "http://(PDF link not available — contact your agency)" link that Gmail flags as a
+     * suspicious redirect. Only touches system-default rows that still contain that exact
+     * broken pattern; a Super Admin's customized copy (systemDefault=false, or a row that no
+     * longer matches) is never overwritten. Idempotent — matches nothing on subsequent runs.
+     */
+    private void repairBrokenContractPdfButton() {
+        List<EmailTemplate> broken = templateRepository.findAll().stream()
+                .filter(t -> KEY_CONTRACT_SIGNED_CLIENT.equals(t.getTemplateKey()))
+                .filter(t -> Boolean.TRUE.equals(t.getSystemDefault()))
+                .filter(t -> t.getBodyHtml() != null && t.getBodyHtml().contains("href=\"{{contractPdfUrl}}\""))
+                .toList();
+        if (broken.isEmpty()) return;
+
+        List<EmailTemplate> defaults = buildAllDefaults();
+        for (EmailTemplate t : broken) {
+            defaults.stream()
+                    .filter(d -> d.getTemplateKey().equals(t.getTemplateKey()) && d.getLanguage().equals(t.getLanguage()))
+                    .findFirst()
+                    .ifPresent(d -> {
+                        t.setBodyHtml(d.getBodyHtml());
+                        t.setBodyText(d.getBodyText());
+                        templateRepository.save(t);
+                    });
+        }
+        log.info("[EMAIL_TEMPLATES] Repaired {} CONTRACT_SIGNED_CLIENT template row(s) with a broken PDF download button.", broken.size());
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -459,7 +492,7 @@ If this was not you, please secure your account: {{securityUrl}}
               "&#128197; " + bold("Period:") + " {{startDate}} &rarr; {{endDate}}",
               "&#128176; " + bold("Total:") + " {{totalAmount}}"
             )
-          + cta("Download Contract PDF", "{{contractPdfUrl}}")
+          + "{{contractPdfSection}}"
           + para("<span style=\"font-size:13px;color:#94a3b8;\">Thank you for choosing "
               + bold("{{agencyName}}") + ". Drive safely!</span>")
         );
@@ -473,8 +506,7 @@ Vehicle: {{vehicleName}} — {{plateNumber}}
 Period: {{startDate}} to {{endDate}}
 Total: {{totalAmount}}
 
-Download your contract PDF:
-{{contractPdfUrl}}
+{{contractPdfPlainSection}}
 
 Thank you for choosing {{agencyName}}.
 
@@ -846,7 +878,9 @@ View on GPS dashboard: {{dashboardUrl}}
             v("endDate",        "Rental end date",      "2026-07-05"),
             v("totalAmount",    "Total price",          "2400 MAD"),
             v("agencyName",     "Agency name",          "Innovacar Agency"),
-            v("contractPdfUrl", "PDF download link",    "https://app.innovacar.app/contracts/pdf/demo")
+            v("contractPdfUrl", "PDF download link (raw URL, blank if not ready)", "https://api.innovacar.app/api/public/contracts/1/demo-token/pdf"),
+            v("contractPdfSection", "PDF download button or fallback message (HTML)", "<a href=\"...\">Download Contract PDF</a>"),
+            v("contractPdfPlainSection", "PDF download line or fallback message (plain text)", "Download your contract PDF:\nhttps://api.innovacar.app/...")
         )),
         Map.entry(KEY_RESERVATION_CONFIRMED, List.of(
             v("clientName",       "Client full name",     "Ahmed Yacoubi"),

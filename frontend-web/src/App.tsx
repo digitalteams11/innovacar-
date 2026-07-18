@@ -60,6 +60,8 @@ const SuperAdminGps = React.lazy(() => import('./pages/superadmin/SuperAdminGps'
 const SuperAdminUsers = React.lazy(() => import('./pages/superadmin/SuperAdminUsers'));
 const SuperAdminPayments = React.lazy(() => import('./pages/superadmin/SuperAdminPayments'));
 const SuperAdminSupport = React.lazy(() => import('./pages/superadmin/SuperAdminSupport'));
+const SuperAdminContactRequests = React.lazy(() => import('./pages/superadmin/SuperAdminContactRequests'));
+const SuperAdminHelpArticles = React.lazy(() => import('./pages/superadmin/SuperAdminHelpArticles'));
 const SuperAdminTicketDetail = React.lazy(() => import('./pages/superadmin/SuperAdminTicketDetail'));
 const SuperAdminNotifications = React.lazy(() => import('./pages/superadmin/SuperAdminNotifications'));
 const SuperAdminAnalytics = React.lazy(() => import('./pages/superadmin/SuperAdminAnalytics'));
@@ -198,6 +200,8 @@ function AppRoutes() {
       <Route path="/super-admin/support" element={<SuperAdminRoute><SuperAdminSupport /></SuperAdminRoute>} />
       <Route path="/super-admin/support/:id" element={<SuperAdminRoute><SuperAdminTicketDetail /></SuperAdminRoute>} />
       <Route path="/super-admin/support/settings" element={<SuperAdminRoute><SuperAdminEmailCenter /></SuperAdminRoute>} />
+      <Route path="/super-admin/contact-requests" element={<SuperAdminRoute><SuperAdminContactRequests /></SuperAdminRoute>} />
+      <Route path="/super-admin/help/articles" element={<SuperAdminRoute><SuperAdminHelpArticles /></SuperAdminRoute>} />
       <Route path="/super-admin/notifications" element={<SuperAdminRoute><SuperAdminNotifications /></SuperAdminRoute>} />
       <Route path="/super-admin/analytics" element={<SuperAdminRoute><SuperAdminAnalytics /></SuperAdminRoute>} />
       <Route path="/super-admin/settings" element={<SuperAdminRoute><SuperAdminSettings /></SuperAdminRoute>} />

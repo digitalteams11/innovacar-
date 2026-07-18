@@ -7,4 +7,7 @@ import java.util.List;
 
 public interface KnowledgeArticleRepository extends JpaRepository<KnowledgeArticle, Long> {
     List<KnowledgeArticle> findByPublishedTrueOrderByCategoryAscTitleAsc();
+    List<KnowledgeArticle> findByPublishedTrueAndIsFaqOrderByCategoryAscTitleAsc(Boolean isFaq);
+    List<KnowledgeArticle> findByPublishedTrueAndCategoryOrderByTitleAsc(String category);
+    java.util.Optional<KnowledgeArticle> findBySlugAndPublishedTrue(String slug);
 }

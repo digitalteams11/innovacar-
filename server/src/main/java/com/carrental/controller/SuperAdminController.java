@@ -166,7 +166,7 @@ public class SuperAdminController {
         long activeGps = allGps.stream().filter(GpsSettings::getEnabled).count();
         long totalGpsDevices = allGps.stream().mapToInt(g -> g.getActiveDevices() != null ? g.getActiveDevices() : 0).sum();
 
-        long openTickets = ticketRepository.countByStatus("OPEN");
+        long openTickets = ticketRepository.countByStatus(SupportTicket.Status.OPEN);
 
         return ResponseEntity.ok(GlobalDashboardStats.builder()
                 .totalAgencies(allTenants.size())
@@ -732,7 +732,7 @@ public class SuperAdminController {
             @RequestParam(required = false) String status) {
         List<SupportTicket> tickets;
         if (status != null) {
-            tickets = ticketRepository.findByStatusOrderByCreatedAtDesc(status);
+            tickets = ticketRepository.findByStatusOrderByCreatedAtDesc(parseEnum(SupportTicket.Status.class, status, "status"));
         } else {
             tickets = ticketRepository.findAllByOrderByCreatedAtDesc();
         }
@@ -749,11 +749,11 @@ public class SuperAdminController {
     public ResponseEntity<SupportTicket> updateTicket(@PathVariable Long id, @RequestBody Map<String, String> body) {
         SupportTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
-        if (body.containsKey("status")) ticket.setStatus(body.get("status"));
-        if (body.containsKey("priority")) ticket.setPriority(body.get("priority"));
+        if (body.containsKey("status")) ticket.setStatus(parseEnum(SupportTicket.Status.class, body.get("status"), "status"));
+        if (body.containsKey("priority")) ticket.setPriority(parseEnum(SupportTicket.Priority.class, body.get("priority"), "priority"));
         if (body.containsKey("assignedTo")) ticket.setAssignedTo(body.get("assignedTo"));
         if (body.containsKey("resolution")) ticket.setResolution(body.get("resolution"));
-        if ("RESOLVED".equals(ticket.getStatus()) || "CLOSED".equals(ticket.getStatus())) {
+        if (ticket.getStatus() == SupportTicket.Status.RESOLVED || ticket.getStatus() == SupportTicket.Status.CLOSED) {
             ticket.setResolvedAt(LocalDateTime.now());
         }
         return ResponseEntity.ok(ticketRepository.save(ticket));
@@ -769,7 +769,8 @@ public class SuperAdminController {
         SupportTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
         if (ticket.getDestinationEmail() == null || ticket.getDestinationEmail().isBlank()) {
-            ticket.setDestinationEmail(supportRoutingService.resolveDestinationEmail(ticket.getChannel(), ticket.getCategory()));
+            String categoryName = ticket.getCategory() != null ? ticket.getCategory().name() : null;
+            ticket.setDestinationEmail(supportRoutingService.resolveDestinationEmail(ticket.getChannel(), categoryName));
         }
         platformEmailService.sendSupportTicketCreatedInternal(ticket);
         SupportTicket refreshed = ticketRepository.findById(id).orElse(ticket);
@@ -815,8 +816,8 @@ public class SuperAdminController {
                 .attachmentData(attachmentData)
                 .readAt(LocalDateTime.now())
                 .build());
-        if ("OPEN".equals(ticket.getStatus())) {
-            ticket.setStatus("IN_PROGRESS");
+        if (ticket.getStatus() == SupportTicket.Status.OPEN) {
+            ticket.setStatus(SupportTicket.Status.IN_PROGRESS);
             ticketRepository.save(ticket);
         }
         platformEmailService.sendSupportReplyNotification(ticket, saved);
@@ -1049,6 +1050,14 @@ public class SuperAdminController {
 
     private String toStr(Object v) {
         return v == null ? null : v.toString();
+    }
+
+    private <E extends Enum<E>> E parseEnum(Class<E> enumType, String raw, String fieldName) {
+        try {
+            return Enum.valueOf(enumType, raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            throw new IllegalArgumentException("Invalid " + fieldName + ": " + raw);
+        }
     }
 
     private String trimStr(Object v) {
@@ -2218,9 +2227,9 @@ public class SuperAdminController {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalTickets", tickets.size());
-        result.put("openTickets", tickets.stream().filter(t -> "OPEN".equals(t.getStatus())).count());
+        result.put("openTickets", tickets.stream().filter(t -> t.getStatus() == SupportTicket.Status.OPEN).count());
         result.put("resolvedTickets", tickets.stream().filter(t -> t.getResolvedAt() != null).count());
-        result.put("criticalTickets", tickets.stream().filter(t -> "CRITICAL".equals(t.getPriority())).count());
+        result.put("criticalTickets", tickets.stream().filter(t -> t.getPriority() == SupportTicket.Priority.CRITICAL).count());
         result.put("avgResolutionHours", Math.round(avgResolutionHours * 100.0) / 100.0);
         return ResponseEntity.ok(result);
     }
