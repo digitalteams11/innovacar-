@@ -59,6 +59,7 @@ public class SuperAdminController {
     private final EmailTemplateRepository emailTemplateRepository;
     private final EmailLogRepository emailLogRepository;
     private final com.carrental.service.SmtpMailService smtpMailService;
+    private final com.carrental.service.HttpEmailProvider httpEmailProvider;
     private final UserSessionRepository userSessionRepository;
     private final TenantSettingsRepository tenantSettingsRepository;
     private final ObjectMapper objectMapper;
@@ -1849,8 +1850,9 @@ public class SuperAdminController {
         logEntry.setEmailType("TEMPLATE_TEST");
         logEntry.setTemplateName(template.getName());
         logEntry.setStatus(result.sent() ? "SENT" : "FAILED");
-        logEntry.setErrorCode(result.sent() ? null : "SMTP_SEND_FAILED");
+        logEntry.setErrorCode(result.sent() ? null : (result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED"));
         logEntry.setErrorMessage(result.sent() ? null : result.errorMessage());
+        logEntry.setProvider(smtpMailService.activeProvider());
         emailLogRepository.save(logEntry);
 
         if (result.sent()) {
@@ -1858,6 +1860,7 @@ public class SuperAdminController {
                     "message", "Test email sent successfully to " + to));
         }
         return ResponseEntity.ok(Map.of("success", false,
+                "errorCode", result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED",
                 "message", "Failed to send test email: " + result.errorMessage()));
     }
 
@@ -2074,11 +2077,18 @@ public class SuperAdminController {
         log.warn("[EMAIL_DIAG_DEBUG] sendResult=FAILED errorCode={} rawError={}", errorCode, result.errorMessage());
 
         String safeMessage = switch (errorCode) {
-            case "EMAIL_API_AUTH_FAILED"      -> "ZeptoMail rejected the API token. Verify ZEPTOMAIL_API_TOKEN in Railway is correct and active.";
-            case "EMAIL_API_RATE_LIMITED"     -> "ZeptoMail rate-limited this request. Wait a moment and try again.";
-            case "EMAIL_API_PROVIDER_ERROR"   -> "ZeptoMail returned a server error. Try again shortly.";
+            case "EMAIL_API_UNAUTHORIZED", "EMAIL_API_AUTH_FAILED"
+                                               -> "ZeptoMail rejected the API token (401/403). Verify ZEPTOMAIL_API_TOKEN in Railway holds only the secret — not the full \"Zoho-enczapikey <secret>\" string."
+                                                  + (httpEmailProvider.tokenPrefixWasDuplicated() ? " A \"Zoho-enczapikey\" prefix was detected in the configured token and has been stripped automatically, but the value in Railway should be corrected." : "");
+            case "EMAIL_API_RATE_LIMITED"     -> "ZeptoMail rate-limited this request (429). Wait a moment and try again.";
+            case "EMAIL_SENDER_NOT_VERIFIED"  -> "ZeptoMail rejected the sender address (400). Verify EMAIL_FROM_EMAIL is a sender/domain verified in this same ZeptoMail Mail Agent.";
+            case "EMAIL_API_INVALID_PAYLOAD"  -> "ZeptoMail rejected the request as malformed (400). This is a backend bug — check server logs for the ZeptoMail error code/message.";
             case "EMAIL_API_REQUEST_REJECTED" -> "ZeptoMail rejected the request. Verify the sending domain (EMAIL_FROM_EMAIL) is verified in your ZeptoMail account.";
+            case "EMAIL_API_PROVIDER_UNAVAILABLE", "EMAIL_API_PROVIDER_ERROR"
+                                               -> "ZeptoMail returned a server error (5xx). Try again shortly; check ZeptoMail's status page if it persists.";
             case "EMAIL_API_TIMEOUT"          -> "The request to ZeptoMail timed out. Try again.";
+            case "EMAIL_API_ENDPOINT_INVALID" -> "The ZeptoMail endpoint returned 404. Verify EMAIL_API_BASE_URL (if set) points to https://api.zeptomail.com.";
+            case "EMAIL_API_NETWORK_ERROR"    -> "Could not reach ZeptoMail (DNS/network error). Verify outbound HTTPS is not blocked.";
             case "EMAIL_CONFIGURATION_MISSING"-> "ZeptoMail is not fully configured. Set ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL in Railway.";
             case "EMAIL_NO_RECIPIENT"         -> "The test recipient address is missing or invalid.";
             default                           -> "Test email could not be sent (" + errorCode + "). Verify ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL are set correctly in Railway.";
@@ -2096,6 +2106,23 @@ public class SuperAdminController {
         response.put("errorCode", errorCode);
         response.put("message", safeMessage);
         return ResponseEntity.ok(response);
+    }
+
+    /** Safe-to-expose ZeptoMail config snapshot — never returns the token itself. */
+    @GetMapping("/email/diagnostics")
+    public ResponseEntity<Map<String, Object>> getEmailDiagnostics() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("provider", smtpMailService.activeProvider());
+        result.put("configured", smtpMailService.isPlatformConfigured());
+        result.put("endpoint", httpEmailProvider.endpoint());
+        result.put("sender", httpEmailProvider.fromEmail());
+        result.put("tokenPresent", httpEmailProvider.tokenPresent());
+        // Always true: the token, whatever its raw form, is normalized before every send
+        // (see HttpEmailProvider#normalizedToken) — a duplicated "Zoho-enczapikey" prefix
+        // in the raw configured value can never reach the wire.
+        result.put("tokenPrefixNormalized", true);
+        result.put("tokenPrefixDuplicationDetected", httpEmailProvider.tokenPrefixWasDuplicated());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/email/logs")

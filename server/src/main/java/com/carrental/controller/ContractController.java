@@ -684,17 +684,32 @@ public class ContractController {
         if (!org.springframework.util.StringUtils.hasText(contract.getClientEmail())) {
             return ResponseEntity.ok(errorBody("Client has no email address", "EMAIL_TO_ADDRESS_MISSING", null));
         }
-        boolean sent = platformEmailService.resendContractEmail(id);
-        if (sent) {
+        com.carrental.service.SmtpMailService.SmtpResult result = platformEmailService.resendContractEmail(id);
+        if (result.sent()) {
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "message", "Contract email sent to " + contract.getClientEmail()
+                    "message", "Contract email sent successfully."
             ));
         }
+
+        String errorCode = result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED";
+        String safeMessage = switch (errorCode) {
+            case "EMAIL_API_UNAUTHORIZED"        -> "Email provider credentials are invalid.";
+            case "EMAIL_SENDER_NOT_VERIFIED"     -> "The sender address is not verified.";
+            case "EMAIL_API_INVALID_PAYLOAD"     -> "The email request is invalid.";
+            case "EMAIL_API_PROVIDER_UNAVAILABLE"-> "ZeptoMail is temporarily unavailable.";
+            case "EMAIL_API_TIMEOUT"             -> "Email delivery timed out.";
+            case "EMAIL_API_RATE_LIMITED"        -> "The email provider is rate-limiting requests. Please wait a moment and try again.";
+            case "EMAIL_API_ENDPOINT_INVALID"    -> "The email provider endpoint could not be reached.";
+            case "EMAIL_API_NETWORK_ERROR"       -> "A network error prevented the email from being sent.";
+            case "EMAIL_CONFIGURATION_MISSING"   -> "Email sending is not fully configured. Contact your platform administrator.";
+            case "EMAIL_TO_ADDRESS_MISSING"      -> "Client has no email address.";
+            default                              -> "Email could not be sent. Please try again later.";
+        };
         return ResponseEntity.ok(Map.of(
                 "success", false,
-                "message", "Email could not be sent. Check SMTP settings in Email Center.",
-                "errorCode", "EMAIL_SEND_FAILED"
+                "message", safeMessage,
+                "errorCode", errorCode
         ));
     }
 

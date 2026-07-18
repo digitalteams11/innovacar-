@@ -287,12 +287,16 @@ public class AuthController {
     private static String normalizeSmtpErrorCode(String rawCode) {
         return switch (rawCode == null ? "" : rawCode) {
             case "SMTP_NOT_CONFIGURED", "EMAIL_CONFIGURATION_MISSING"     -> "SMTP_NOT_CONFIGURED";
-            case "SMTP_AUTH_FAILED", "EMAIL_AUTH_FAILED", "EMAIL_API_AUTH_FAILED" -> "SMTP_AUTH_FAILED";
+            case "SMTP_AUTH_FAILED", "EMAIL_AUTH_FAILED", "EMAIL_API_AUTH_FAILED",
+                 "EMAIL_API_UNAUTHORIZED"                                 -> "SMTP_AUTH_FAILED";
             case "EMAIL_FROM_REJECTED", "SMTP_FROM_EMAIL_INVALID",
-                 "EMAIL_API_REQUEST_REJECTED"                             -> "SMTP_FROM_EMAIL_INVALID";
+                 "EMAIL_API_REQUEST_REJECTED", "EMAIL_SENDER_NOT_VERIFIED",
+                 "EMAIL_API_INVALID_PAYLOAD"                              -> "SMTP_FROM_EMAIL_INVALID";
             case "EMAIL_TLS_FAILED", "EMAIL_PROVIDER_TIMEOUT",
                  "EMAIL_PROVIDER_UNREACHABLE", "SMTP_CONNECTION_FAILED",
                  "EMAIL_API_TIMEOUT", "EMAIL_API_PROVIDER_ERROR",
+                 "EMAIL_API_PROVIDER_UNAVAILABLE", "EMAIL_API_ENDPOINT_INVALID",
+                 "EMAIL_API_NETWORK_ERROR",
                  "EMAIL_API_RATE_LIMITED"                                 -> "SMTP_CONNECTION_FAILED";
             default                                                       -> "EMAIL_SEND_FAILED";
         };
@@ -302,9 +306,9 @@ public class AuthController {
         String code = normalizeSmtpErrorCode(rawCode);
         String userMsg = switch (code) {
             case "SMTP_NOT_CONFIGURED"     -> "Email sending is not configured yet. Please contact the platform administrator.";
-            case "SMTP_AUTH_FAILED"        -> "SMTP authentication failed. Check the Zoho app password.";
-            case "SMTP_FROM_EMAIL_INVALID" -> "The sender email address does not match the configured SMTP account. Please check Email Center settings.";
-            case "SMTP_CONNECTION_FAILED"  -> "Could not connect to the email server. Please try again later.";
+            case "SMTP_AUTH_FAILED"        -> "Email provider credentials are invalid. Please contact the platform administrator.";
+            case "SMTP_FROM_EMAIL_INVALID" -> "The sender address is not verified with the email provider.";
+            case "SMTP_CONNECTION_FAILED"  -> "The email provider is temporarily unavailable. Please try again later.";
             default                        -> "The email could not be sent. Please try again.";
         };
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

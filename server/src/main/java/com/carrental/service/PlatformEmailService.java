@@ -91,19 +91,25 @@ public class PlatformEmailService {
 
     /**
      * Resends the contract email, bypassing the dedup check.
-     * Intended for the Agency Admin "Resend" button.
+     * Intended for the Agency Admin "Resend" button. Returns the full provider
+     * result (not just a boolean) so the caller can show the real failure
+     * reason (invalid token, unverified sender, provider outage, timeout...)
+     * instead of a generic "check your SMTP settings" message — SMTP is no
+     * longer used at all.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean resendContractEmail(Long contractId) {
+    public SmtpMailService.SmtpResult resendContractEmail(Long contractId) {
         Contract contract = contractRepository.findById(contractId).orElse(null);
-        if (contract == null) return false;
+        if (contract == null) {
+            return SmtpMailService.SmtpResult.failure(null, "Contract not found.", "CONTRACT_NOT_FOUND");
+        }
 
         String toEmail = contract.getClientEmail();
         if (!StringUtils.hasText(toEmail)) {
             saveLog(contractId, contract.getTenant().getId(), null,
                     EmailLog.TYPE_CONTRACT_SIGNED_CLIENT, null, "FAILED",
                     "EMAIL_TO_ADDRESS_MISSING", "Client email not provided");
-            return false;
+            return SmtpMailService.SmtpResult.failure(null, "Client email not provided.", "EMAIL_TO_ADDRESS_MISSING");
         }
 
         return sendContractPdfEmail(contract);
@@ -114,7 +120,7 @@ public class PlatformEmailService {
      * and dispatches it. Shared by the automatic post-signature send and the
      * manual "Send/Resend Email" button — both must attach the current PDF.
      */
-    private boolean sendContractPdfEmail(Contract contract) {
+    private SmtpMailService.SmtpResult sendContractPdfEmail(Contract contract) {
         Long contractId = contract.getId();
         String toEmail = contract.getClientEmail();
 
@@ -149,7 +155,7 @@ public class PlatformEmailService {
                     EmailLog.TYPE_CONTRACT_SIGNED_CLIENT, subject, "SENT", null, null);
             log.info("[EMAIL] CONTRACT_SIGNED_CLIENT sent [contractId={}, to={}, attached={}]",
                     contractId, toEmail, pdfBytes != null);
-            return true;
+            return result;
         } else {
             String errorCode = classifyError(result);
             saveLog(contractId, contract.getTenant().getId(), toEmail,
@@ -157,7 +163,7 @@ public class PlatformEmailService {
                     errorCode, truncate(result.errorMessage(), 900));
             log.warn("[EMAIL] CONTRACT_SIGNED_CLIENT failed [contractId={}, errorCode={}]: {}",
                     contractId, errorCode, result.errorMessage());
-            return false;
+            return result;
         }
     }
 
@@ -227,7 +233,8 @@ public class PlatformEmailService {
                 .status(result.sent() ? "SENT" : "FAILED")
                 .errorCode(result.sent() ? null : classifyError(result))
                 .errorMessage(result.sent() ? null : truncate(result.errorMessage(), 900))
-                .templateName("Platform SMTP test")
+                .templateName("Platform email test")
+                .provider(smtpMailService.activeProvider())
                 .build());
 
         // Record test result in PlatformSettings
@@ -259,6 +266,7 @@ public class PlatformEmailService {
                 .errorCode(errorCode)
                 .errorMessage(errorMessage)
                 .templateName(emailType)
+                .provider(smtpMailService.activeProvider())
                 .build());
     }
 
@@ -670,6 +678,7 @@ public class PlatformEmailService {
                 .errorCode(errorCode)
                 .errorMessage(errorMessage)
                 .templateName(emailType)
+                .provider(smtpMailService.activeProvider())
                 .build());
     }
 }

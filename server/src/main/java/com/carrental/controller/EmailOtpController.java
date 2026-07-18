@@ -121,11 +121,16 @@ public class EmailOtpController {
             case "EMAIL_OTP_RATE_LIMITED"    -> "Too many codes sent. Please wait before requesting a new code.";
             case "EMAIL_OTP_RESEND_TOO_SOON" -> "Please wait 60 seconds before requesting a new code.";
             case "EMAIL_OTP_SEND_FAILED"     -> "Failed to send the verification code. Please try again later.";
-            case "EMAIL_API_AUTH_FAILED"     -> "Email provider authentication failed. Contact your administrator.";
+            case "EMAIL_API_AUTH_FAILED", "EMAIL_API_UNAUTHORIZED"
+                                              -> "Email provider authentication failed. Contact your administrator.";
             case "EMAIL_API_RATE_LIMITED"    -> "The email provider is rate-limiting requests. Please wait a moment and try again.";
-            case "EMAIL_API_PROVIDER_ERROR", "EMAIL_API_REQUEST_REJECTED"
+            case "EMAIL_SENDER_NOT_VERIFIED" -> "The sending address is not verified with the email provider. Contact your administrator.";
+            case "EMAIL_API_INVALID_PAYLOAD" -> "The email provider rejected this request. Please try again later.";
+            case "EMAIL_API_PROVIDER_ERROR", "EMAIL_API_PROVIDER_UNAVAILABLE", "EMAIL_API_REQUEST_REJECTED"
                                               -> "The email provider could not process this request. Please try again later.";
             case "EMAIL_API_TIMEOUT"         -> "The email provider timed out. Please try again later.";
+            case "EMAIL_API_ENDPOINT_INVALID"-> "The email provider endpoint could not be reached. Contact your administrator.";
+            case "EMAIL_API_NETWORK_ERROR"   -> "A network error prevented the code from being sent. Please try again later.";
             case "EMAIL_CONFIGURATION_MISSING" -> "Email sending is not fully configured. Contact your administrator.";
             case "EMAIL_SEND_FAILED"         -> "Failed to send the verification code. Please try again later.";
             default                          -> "Failed to send the verification code. Please try again later.";

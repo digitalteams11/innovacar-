@@ -63,6 +63,14 @@ public class EmailLog {
     @Column(name = "error_message", length = 1000)
     private String errorMessage;
 
+    /** Which delivery provider attempted this send — "ZEPTOMAIL" going forward; NULL for pre-migration rows. */
+    @Column(name = "provider", length = 20)
+    private String provider;
+
+    @Column(name = "retry_count")
+    @Builder.Default
+    private Integer retryCount = 0;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

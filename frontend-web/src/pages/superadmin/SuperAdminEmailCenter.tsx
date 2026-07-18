@@ -403,12 +403,14 @@ export default function SuperAdminEmailCenter() {
                 <p className="text-xs text-slate-400">Last test: {new Date(smtp.lastTestAt).toLocaleString()} — <span className={lastTestOk ? 'text-emerald-600 font-semibold' : 'text-rose-500 font-semibold'}>{lastTestOk ? 'Passed' : 'Failed'}{smtp.lastTestErrorCode && !lastTestOk ? ` (${smtp.lastTestErrorCode})` : ''}</span></p>
               )}
               {testErrorCode && (() => {
-                const isAuthFail  = testErrorCode === 'EMAIL_API_AUTH_FAILED';
+                const isAuthFail  = testErrorCode === 'EMAIL_API_AUTH_FAILED' || testErrorCode === 'EMAIL_API_UNAUTHORIZED';
                 const isRecipient = testErrorCode === 'TEST_RECIPIENT_INVALID' || testErrorCode === 'TEST_RECIPIENT_MISSING';
                 const knownCodes  = [
-                  'EMAIL_API_AUTH_FAILED', 'EMAIL_API_RATE_LIMITED', 'EMAIL_API_PROVIDER_ERROR',
-                  'EMAIL_API_REQUEST_REJECTED', 'EMAIL_API_TIMEOUT', 'EMAIL_CONFIGURATION_MISSING',
-                  'TEST_RECIPIENT_INVALID', 'TEST_RECIPIENT_MISSING',
+                  'EMAIL_API_AUTH_FAILED', 'EMAIL_API_UNAUTHORIZED', 'EMAIL_API_RATE_LIMITED',
+                  'EMAIL_API_PROVIDER_ERROR', 'EMAIL_API_PROVIDER_UNAVAILABLE', 'EMAIL_SENDER_NOT_VERIFIED',
+                  'EMAIL_API_INVALID_PAYLOAD', 'EMAIL_API_REQUEST_REJECTED', 'EMAIL_API_TIMEOUT',
+                  'EMAIL_API_ENDPOINT_INVALID', 'EMAIL_API_NETWORK_ERROR',
+                  'EMAIL_CONFIGURATION_MISSING', 'TEST_RECIPIENT_INVALID', 'TEST_RECIPIENT_MISSING',
                 ];
                 const colorClass = isAuthFail
                   ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
@@ -417,12 +419,16 @@ export default function SuperAdminEmailCenter() {
                   <div className={`flex gap-2 p-3 rounded-xl text-xs border ${colorClass}`}>
                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                     <span>
-                      {isAuthFail && <><strong>ZeptoMail rejected the API token.</strong> Verify ZEPTOMAIL_API_TOKEN in Railway is correct and active.</>}
+                      {isAuthFail && <><strong>ZeptoMail rejected the API token (401/403).</strong> Verify ZEPTOMAIL_API_TOKEN in Railway holds only the secret, not the "Zoho-enczapikey" prefix.</>}
                       {isRecipient && <><strong>Invalid test recipient.</strong> Enter a valid email address in the "Send test to" field (e.g. you@example.com).</>}
                       {testErrorCode === 'EMAIL_API_RATE_LIMITED' && <><strong>Rate-limited.</strong> ZeptoMail is throttling requests — wait a moment and try again.</>}
-                      {testErrorCode === 'EMAIL_API_PROVIDER_ERROR' && <><strong>ZeptoMail server error.</strong> Try again shortly; check ZeptoMail's status page if it persists.</>}
+                      {(testErrorCode === 'EMAIL_API_PROVIDER_ERROR' || testErrorCode === 'EMAIL_API_PROVIDER_UNAVAILABLE') && <><strong>ZeptoMail server error (5xx).</strong> Try again shortly; check ZeptoMail's status page if it persists.</>}
+                      {testErrorCode === 'EMAIL_SENDER_NOT_VERIFIED' && <><strong>Sender not verified.</strong> Verify EMAIL_FROM_EMAIL is a sender/domain verified in this ZeptoMail Mail Agent.</>}
+                      {testErrorCode === 'EMAIL_API_INVALID_PAYLOAD' && <><strong>Malformed request (400).</strong> This is a backend bug — check server logs for the ZeptoMail error code/message.</>}
                       {testErrorCode === 'EMAIL_API_REQUEST_REJECTED' && <><strong>Request rejected.</strong> Verify the sending domain (EMAIL_FROM_EMAIL) is verified in your ZeptoMail account.</>}
                       {testErrorCode === 'EMAIL_API_TIMEOUT' && <><strong>Request timed out.</strong> The call to ZeptoMail did not complete in time. Try again.</>}
+                      {testErrorCode === 'EMAIL_API_ENDPOINT_INVALID' && <><strong>Endpoint not found (404).</strong> Verify EMAIL_API_BASE_URL (if set) points to https://api.zeptomail.com.</>}
+                      {testErrorCode === 'EMAIL_API_NETWORK_ERROR' && <><strong>Network error.</strong> Could not reach ZeptoMail (DNS/connection failure). Verify outbound HTTPS is not blocked.</>}
                       {testErrorCode === 'EMAIL_CONFIGURATION_MISSING' && <><strong>Not configured.</strong> Set ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL as environment variables on Railway.</>}
                       {!knownCodes.includes(testErrorCode) && <><strong>{testErrorCode}:</strong> Verify ZEPTOMAIL_API_TOKEN and EMAIL_FROM_EMAIL are set correctly in Railway.</>}
                     </span>

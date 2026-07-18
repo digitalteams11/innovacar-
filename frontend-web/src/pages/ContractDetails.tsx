@@ -161,17 +161,24 @@ export default function ContractDetails() {
       case 'EMAIL_TO_ADDRESS_MISSING':
       case 'CLIENT_EMAIL_MISSING':
         return 'Client email is missing';
-      case 'EMAIL_SMTP_NOT_CONFIGURED':
-      case 'SMTP_NOT_CONFIGURED':
-        return 'SMTP is not configured';
-      case 'EMAIL_AUTH_FAILED':
-        return 'SMTP authentication failed';
-      case 'EMAIL_PROVIDER_TIMEOUT':
-        return 'Email provider timed out';
-      case 'EMAIL_PROVIDER_UNREACHABLE':
-        return 'Email provider unreachable';
-      case 'EMAIL_TLS_FAILED':
-        return 'SMTP TLS/SSL handshake failed';
+      case 'EMAIL_CONFIGURATION_MISSING':
+        return 'Email provider is not configured';
+      case 'EMAIL_API_UNAUTHORIZED':
+        return 'Email provider credentials are invalid';
+      case 'EMAIL_SENDER_NOT_VERIFIED':
+        return 'The sender address is not verified';
+      case 'EMAIL_API_INVALID_PAYLOAD':
+        return 'The email request is invalid';
+      case 'EMAIL_API_PROVIDER_UNAVAILABLE':
+        return 'ZeptoMail is temporarily unavailable';
+      case 'EMAIL_API_TIMEOUT':
+        return 'Email delivery timed out';
+      case 'EMAIL_API_RATE_LIMITED':
+        return 'Email provider is rate-limiting requests';
+      case 'EMAIL_API_ENDPOINT_INVALID':
+        return 'Email provider endpoint could not be reached';
+      case 'EMAIL_API_NETWORK_ERROR':
+        return 'Network error while sending email';
       default:
         return code || 'Send failed';
     }

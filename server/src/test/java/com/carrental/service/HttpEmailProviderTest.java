@@ -93,4 +93,16 @@ class HttpEmailProviderTest {
         configure("", "noreply@innovacar.app");
         assertFalse(provider.tokenPresent());
     }
+
+    @Test
+    void detectsDuplicatedZohoPrefixInConfiguredToken() {
+        configure("Zoho-enczapikey abc123", "noreply@innovacar.app");
+        assertTrue(provider.tokenPrefixWasDuplicated());
+    }
+
+    @Test
+    void doesNotFlagBareSecretAsDuplicatedPrefix() {
+        configure("abc123", "noreply@innovacar.app");
+        assertFalse(provider.tokenPrefixWasDuplicated());
+    }
 }
