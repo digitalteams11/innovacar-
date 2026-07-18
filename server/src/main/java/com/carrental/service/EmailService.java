@@ -89,18 +89,32 @@ public class EmailService {
      */
     public void sendVerificationEmail(String toEmail, String verificationToken, String frontendUrl) {
         String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
-        String subject = "Verify Your Email Address";
-        String body = buildVerificationEmail(verifyLink);
-        deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
+        String subject = "Verify your email address - Innovacar";
+        String htmlBody = buildVerificationEmail(verifyLink);
+        String plainBody = buildVerificationEmailPlainText(verifyLink);
+        deliver(smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody), toEmail, subject);
+    }
+
+    /**
+     * Sends a 6-digit email verification code (code-based flow for authenticated users),
+     * valid for the default 10-minute window.
+     */
+    public SmtpMailService.SmtpResult sendEmailVerificationCodeEmail(String toEmail, String userName, String code) {
+        return sendEmailVerificationCodeEmail(toEmail, userName, code, 10);
     }
 
     /**
      * Sends a 6-digit email verification code (code-based flow for authenticated users).
+     * Rendered as a branded HTML email (via {@link BrandedEmailLayout}) with a real
+     * plain-text fallback — both parts are sent explicitly so the HTML part is never
+     * a raw plain-text string mislabeled as HTML.
      */
-    public SmtpMailService.SmtpResult sendEmailVerificationCodeEmail(String toEmail, String userName, String code) {
-        String subject = "Your Email Verification Code";
-        String body = buildEmailVerificationCodeEmail(userName, code);
-        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, body);
+    public SmtpMailService.SmtpResult sendEmailVerificationCodeEmail(String toEmail, String userName, String code,
+                                                                       int expirationMinutes) {
+        String subject = "Verify your email address - Innovacar";
+        String htmlBody = buildEmailVerificationCodeEmail(userName, code, expirationMinutes);
+        String plainBody = buildEmailVerificationCodePlainText(userName, code, expirationMinutes);
+        SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody);
         deliver(result, toEmail, subject);
         return result;
     }
@@ -311,41 +325,85 @@ public class EmailService {
             """, resetLink);
     }
 
-    private String buildEmailVerificationCodeEmail(String userName, String code) {
+    private String buildEmailVerificationCodeEmail(String userName, String code, int expirationMinutes) {
+        String name = (userName != null && !userName.isBlank()) ? userName : "there";
+        String formattedCode = formatCodeForDisplay(code);
+        String body =
+              "<h2 style=\"margin:0 0 16px;color:#0f172a;font-size:20px;\">Verify Your Email Address</h2>"
+            + "<p style=\"margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;\">Hi " + escape(name) + ",</p>"
+            + "<p style=\"margin:0 0 4px;color:#374151;font-size:15px;line-height:1.6;\">"
+            + "Use the code below to verify your email address and finish setting up your Innovacar account.</p>"
+            + BrandedEmailLayout.codeBox("Your verification code", formattedCode)
+            + "<p style=\"margin:0 0 8px;color:#6b7280;font-size:14px;line-height:1.6;\">"
+            + "This code is valid for <strong>" + expirationMinutes + " minutes</strong>. Enter it in the app to verify your email address.</p>"
+            + BrandedEmailLayout.alertBox(
+                "<strong>Security note:</strong> if you did not request this, you can safely ignore this email — no changes will be made to your account.")
+            ;
+        return BrandedEmailLayout.document("Verify Your Email Address",
+                "Confirm it's really you so we can activate your account.", body);
+    }
+
+    private String buildEmailVerificationCodePlainText(String userName, String code, int expirationMinutes) {
         String name = (userName != null && !userName.isBlank()) ? userName : "there";
         return """
-            Verify Your Email Address
-            =========================
+            Verify your email address - Innovacar
 
             Hi %s,
 
-            Your email verification code is:
+            Use the code below to verify your email address and finish setting up your Innovacar account:
 
                 %s
 
-            This code is valid for 10 minutes.
-            Enter it in the app to verify your email address.
+            This code is valid for %d minutes. Enter it in the app to verify your email address.
 
-            If you did not request this, please ignore this email.
+            Security note: if you did not request this, you can safely ignore this email.
 
-            — RentCar Security Team
-            """.formatted(name, code);
+            Need help? Contact support@innovacar.app
+            — Innovacar by Innovax Technologies
+            """.formatted(name, code, expirationMinutes);
     }
 
     private String buildVerificationEmail(String verifyLink) {
-        return String.format("""
-            Verify Your Email Address
-            =========================
+        String body =
+              "<h2 style=\"margin:0 0 16px;color:#0f172a;font-size:20px;\">Verify Your Email Address</h2>"
+            + "<p style=\"margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;\">"
+            + "Welcome to Innovacar! Please confirm your email address to activate your account.</p>"
+            + BrandedEmailLayout.cta("Verify Email Address", verifyLink)
+            + "<p style=\"margin:0 0 20px;color:#6b7280;font-size:13px;line-height:1.6;word-break:break-all;\">"
+            + "Or copy this link into your browser: <a href=\"" + verifyLink + "\" style=\"color:#0f766e;\">" + verifyLink + "</a></p>"
+            + "<p style=\"margin:0 0 8px;color:#6b7280;font-size:14px;line-height:1.6;\">This link will expire in 24 hours.</p>"
+            + BrandedEmailLayout.alertBox(
+                "<strong>Security note:</strong> if you did not create an account, you can safely ignore this email.")
+            ;
+        return BrandedEmailLayout.document("Verify Your Email Address",
+                "Confirm it's really you so we can activate your account.", body);
+    }
 
-            Welcome to RentCar SaaS! Please verify your email address by clicking the link below:
+    private String buildVerificationEmailPlainText(String verifyLink) {
+        return """
+            Verify your email address - Innovacar
+
+            Welcome to Innovacar! Please verify your email address by opening the link below:
 
             %s
 
             This link will expire in 24 hours.
             If you did not create an account, please ignore this email.
 
-            — RentCar Team
-            """, verifyLink);
+            Need help? Contact support@innovacar.app
+            — Innovacar by Innovax Technologies
+            """.formatted(verifyLink);
+    }
+
+    /** Splits a numeric code into "271 888"-style groups of 3 for readability; falls back to the raw code otherwise. */
+    private String formatCodeForDisplay(String code) {
+        if (code == null || !code.matches("\\d{6}")) return code;
+        return code.substring(0, 3) + " " + code.substring(3);
+    }
+
+    private static String escape(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private String buildWelcomeEmail(String firstName) {

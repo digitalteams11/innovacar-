@@ -36,6 +36,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthService {
 
+    /** How long a 6-digit email verification code stays valid — kept in sync with the email copy that quotes it. */
+    private static final int EMAIL_VERIFICATION_CODE_EXPIRY_MINUTES = 10;
+
     private final TenantRepository         tenantRepository;
     private final UserRepository           userRepository;
     private final RefreshTokenRepository   refreshTokenRepository;
@@ -645,14 +648,14 @@ public class AuthService {
         }
 
         token.setVerificationCodeHash(codeHash);
-        token.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(10));
+        token.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(EMAIL_VERIFICATION_CODE_EXPIRY_MINUTES));
         token.setVerificationCodeAttempts(0);
         emailVerificationTokenRepository.save(token);
 
         String displayName = (user.getFirstName() != null && !user.getFirstName().isBlank())
                 ? user.getFirstName() : user.getEmail();
-        SmtpMailService.SmtpResult result =
-                emailService.sendEmailVerificationCodeEmail(user.getEmail(), displayName, rawCode);
+        SmtpMailService.SmtpResult result = emailService.sendEmailVerificationCodeEmail(
+                user.getEmail(), displayName, rawCode, EMAIL_VERIFICATION_CODE_EXPIRY_MINUTES);
         if (!result.sent()) {
             // Never claim the code was sent when it wasn't.
             log.error("[EMAIL_VERIFY_CODE] Failed to deliver code to user [id={}]: errorCode={} detail={}",

@@ -262,60 +262,23 @@ public class EmailTemplateService {
 
     // ── Shared HTML shell ─────────────────────────────────────────────────────
 
+    // Delegates to the shared BrandedEmailLayout so every platform email (this
+    // template system, plus verification/OTP emails in EmailService) renders
+    // through one visual identity instead of duplicating the shell per class.
     private static String shell(String title, String subtitle, String bodyContent) {
-        return "<div style=\"margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a;\">"
-             + "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding:32px 16px;background:#f4f7fb;\">"
-             + "<tr><td align=\"center\">"
-             + "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:640px;background:#ffffff;"
-             + "border-radius:22px;overflow:hidden;box-shadow:0 20px 45px rgba(15,23,42,0.10);\">"
-             // header
-             + "<tr><td style=\"padding:28px 32px;background:linear-gradient(135deg,#071827 0%,#0f766e 100%);"
-             + "color:#ffffff;\">"
-             + "<div style=\"font-size:12px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.80;\">"
-             + "Innovax Technologies</div>"
-             + "<h1 style=\"margin:10px 0 0;font-size:26px;line-height:1.25;font-weight:800;\">" + title + "</h1>"
-             + "<p style=\"margin:10px 0 0;font-size:14px;line-height:1.7;color:#d7fffb;\">" + subtitle + "</p>"
-             + "</td></tr>"
-             // body
-             + "<tr><td style=\"padding:32px;\">" + bodyContent + "</td></tr>"
-             // footer
-             + "<tr><td style=\"padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;\">"
-             + "<p style=\"margin:0;font-size:12px;color:#94a3b8;\">"
-             + "Sent by RentCar &middot; Innovax Technologies &middot; {{currentYear}}<br>"
-             + "<span style=\"font-size:11px;\">If you did not expect this email, please contact "
-             + "<a href=\"mailto:support@innovacar.app\" style=\"color:#0f766e;text-decoration:none;\">support@innovacar.app</a></span>"
-             + "</p></td></tr>"
-             + "</table></td></tr></table></div>";
+        return BrandedEmailLayout.shell(title, subtitle, bodyContent);
     }
 
     private static String cta(String label, String url) {
-        return "<div style=\"text-align:center;margin:28px 0;\">"
-             + "<a href=\"" + url + "\" style=\"display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#0f766e,#10b981);"
-             + "color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;"
-             + "letter-spacing:0.02em;box-shadow:0 4px 14px rgba(15,118,110,0.35);\">"
-             + label + "</a></div>";
+        return BrandedEmailLayout.cta(label, url);
     }
 
     private static String infoBox(String... rows) {
-        StringBuilder sb = new StringBuilder(
-            "<div style=\"background:#f0fdf9;border-left:4px solid #10b981;border-radius:10px;padding:18px 20px;margin:20px 0;\">"
-        );
-        for (String row : rows) {
-            sb.append("<p style=\"margin:6px 0;font-size:14px;color:#0f172a;\">").append(row).append("</p>");
-        }
-        sb.append("</div>");
-        return sb.toString();
+        return BrandedEmailLayout.infoBox(rows);
     }
 
     private static String alertBox(String... rows) {
-        StringBuilder sb = new StringBuilder(
-            "<div style=\"background:#fff7ed;border-left:4px solid #f97316;border-radius:10px;padding:18px 20px;margin:20px 0;\">"
-        );
-        for (String row : rows) {
-            sb.append("<p style=\"margin:6px 0;font-size:14px;color:#0f172a;\">").append(row).append("</p>");
-        }
-        sb.append("</div>");
-        return sb.toString();
+        return BrandedEmailLayout.alertBox(rows);
     }
 
     private static String dangerBox(String... rows) {
