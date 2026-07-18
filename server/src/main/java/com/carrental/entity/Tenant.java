@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Represents a tenant (company / business) in the SaaS platform.
@@ -18,6 +19,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Tenant {
+
+    /** Every new agency gets exactly one calendar month of free trial — not 60 days, not 2 months. */
+    public static final int TRIAL_PERIOD_MONTHS = 1;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -121,13 +125,29 @@ public class Tenant {
     @Column(name = "storage_limit_mb")
     private Integer storageLimitMb;
 
-    /** Trial start date */
+    /** Trial start date — the agency/account creation date. */
     @Column(name = "trial_start_date")
     private LocalDate trialStartDate;
 
-    /** Trial end date (default 2 months) */
+    /** Trial end date — always exactly {@link #TRIAL_PERIOD_MONTHS} calendar month(s) after trialStartDate. */
     @Column(name = "trial_end_date")
     private LocalDate trialEndDate;
+
+    /** Dedup marker: trial-ends-in-7-days reminder already sent (null = not yet sent). */
+    @Column(name = "trial_reminder_7_sent_at")
+    private LocalDateTime trialReminder7SentAt;
+
+    /** Dedup marker: trial-ends-in-3-days reminder already sent (null = not yet sent). */
+    @Column(name = "trial_reminder_3_sent_at")
+    private LocalDateTime trialReminder3SentAt;
+
+    /** Dedup marker: trial-ends-in-1-day reminder already sent (null = not yet sent). */
+    @Column(name = "trial_reminder_1_sent_at")
+    private LocalDateTime trialReminder1SentAt;
+
+    /** Dedup marker: trial-expired notification already sent (null = not yet sent). */
+    @Column(name = "trial_expired_notified_at")
+    private LocalDateTime trialExpiredNotifiedAt;
 
     /** Current account balance/credit, in the platform's billing currency. Never mutated directly — only via AgencyBalanceTransaction. */
     @Column(name = "balance", precision = 12, scale = 2)
@@ -223,6 +243,17 @@ public class Tenant {
     public boolean isInTrial() {
         if (trialEndDate == null) return false;
         return LocalDate.now().isBefore(trialEndDate) || LocalDate.now().isEqual(trialEndDate);
+    }
+
+    /** Whole calendar days left in the trial, floored at 0 — never negative, never null-unsafe. */
+    public long trialDaysRemaining() {
+        if (trialEndDate == null) return 0;
+        return Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), trialEndDate));
+    }
+
+    /** True once trialEndDate has passed (day-granularity: the end date itself still counts as active). */
+    public boolean isTrialExpired() {
+        return trialEndDate != null && LocalDate.now().isAfter(trialEndDate);
     }
 
     /**

@@ -26,8 +26,10 @@ public class AgencyDetailDto {
     private String planName;
     private boolean subscriptionActive;
     private LocalDate subscriptionEndDate;
+    private LocalDate trialStartDate;
     private LocalDate trialEndDate;
     private boolean inTrial;
+    private long trialDaysRemaining;
 
     private Integer maxVehicles;
     private Integer maxEmployees;

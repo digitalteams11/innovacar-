@@ -12,12 +12,9 @@ export default function TrialBanner() {
 
   if (!subscription || dismissed) return null;
 
-  const showTrialBanner = subscription.planCode === 'TRIAL'
-    && subscription.status === 'TRIAL'
-    && subscription.isTrial === true;
-  if (!showTrialBanner) return null;
+  if (!subscription.isTrial) return null;
 
-  const daysRemaining = subscription.remainingTrialDays;
+  const daysRemaining = subscription.trialDaysRemaining;
   const isUrgent = daysRemaining <= 7;
 
   const urgentStyle = {

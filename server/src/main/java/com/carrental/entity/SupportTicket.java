@@ -32,17 +32,20 @@ public class SupportTicket {
     @Column(length = 2000)
     private String description;
 
-    /** Ticket status: OPEN, IN_PROGRESS, WAITING, RESOLVED, CLOSED */
-    @Column(nullable = false)
-    private String status;
+    /** Ticket status */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Status status;
 
-    /** Priority: LOW, MEDIUM, HIGH, CRITICAL */
-    @Column(nullable = false)
-    private String priority;
+    /** Priority */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Priority priority;
 
-    /** Category: BILLING, TECHNICAL, GPS, ACCOUNT, FEATURE_REQUEST, OTHER */
-    @Column
-    private String category;
+    /** Category */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Category category;
 
     /** The tenant that opened the ticket */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -111,8 +114,8 @@ public class SupportTicket {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) status = "OPEN";
-        if (priority == null) priority = "MEDIUM";
+        if (status == null) status = Status.OPEN;
+        if (priority == null) priority = Priority.MEDIUM;
         if (emailStatus == null) emailStatus = "PENDING";
         if (ticketNumber == null) {
             ticketNumber = "RC-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -123,4 +126,15 @@ public class SupportTicket {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    /**
+     * UNKNOWN is an explicit, self-documenting landing spot for legacy values
+     * that don't map cleanly during the raw-String -> enum migration (V64) —
+     * never silently coerced into a "normal" value.
+     */
+    public enum Status { OPEN, IN_PROGRESS, WAITING, RESOLVED, CLOSED, UNKNOWN }
+
+    public enum Priority { LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN }
+
+    public enum Category { BILLING, TECHNICAL, GPS, ACCOUNT, FEATURE_REQUEST, OTHER, UNKNOWN }
 }

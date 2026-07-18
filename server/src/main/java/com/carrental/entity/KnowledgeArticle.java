@@ -38,10 +38,15 @@ public class KnowledgeArticle {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    /** When true, this article is surfaced in the Help Center's FAQ section (title=question, content=answer). */
+    @Column(name = "is_faq", nullable = false)
+    private Boolean isFaq;
+
     @PrePersist
     @PreUpdate
     void onSave() {
         if (published == null) published = true;
+        if (isFaq == null) isFaq = false;
         updatedAt = LocalDateTime.now();
     }
 }

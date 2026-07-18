@@ -9,8 +9,9 @@ import java.util.List;
 @Repository
 public interface SupportTicketRepository extends JpaRepository<SupportTicket, Long> {
     List<SupportTicket> findAllByOrderByCreatedAtDesc();
-    List<SupportTicket> findByStatusOrderByCreatedAtDesc(String status);
-    List<SupportTicket> findByPriorityOrderByCreatedAtDesc(String priority);
+    List<SupportTicket> findByStatusOrderByCreatedAtDesc(SupportTicket.Status status);
+    List<SupportTicket> findByPriorityOrderByCreatedAtDesc(SupportTicket.Priority priority);
     List<SupportTicket> findByTenantIdOrderByCreatedAtDesc(Long tenantId);
-    long countByStatus(String status);
+    List<SupportTicket> findByTenantIdAndStatusOrderByCreatedAtDesc(Long tenantId, SupportTicket.Status status);
+    long countByStatus(SupportTicket.Status status);
 }

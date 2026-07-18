@@ -166,7 +166,7 @@ public class SuperAdminController {
         long activeGps = allGps.stream().filter(GpsSettings::getEnabled).count();
         long totalGpsDevices = allGps.stream().mapToInt(g -> g.getActiveDevices() != null ? g.getActiveDevices() : 0).sum();
 
-        long openTickets = ticketRepository.countByStatus("OPEN");
+        long openTickets = ticketRepository.countByStatus(SupportTicket.Status.OPEN);
 
         return ResponseEntity.ok(GlobalDashboardStats.builder()
                 .totalAgencies(allTenants.size())
@@ -291,8 +291,10 @@ public class SuperAdminController {
                 .planName(t.getPlanName())
                 .subscriptionActive(t.isSubscriptionValid())
                 .subscriptionEndDate(t.getSubscriptionEndDate())
+                .trialStartDate(t.getTrialStartDate())
                 .trialEndDate(t.getTrialEndDate())
                 .inTrial(t.isInTrial())
+                .trialDaysRemaining(t.trialDaysRemaining())
                 .maxVehicles(planRepository.findByName(t.getPlanName()).map(SubscriptionPlan::getMaxVehicles).orElse(t.getMaxVehicles()))
                 .maxEmployees(planRepository.findByName(t.getPlanName()).map(SubscriptionPlan::getMaxEmployees).orElse(t.getMaxEmployees()))
                 .maxGpsDevices(planRepository.findByName(t.getPlanName()).map(SubscriptionPlan::getMaxGpsDevices).orElse(t.getMaxGpsDevices()))
@@ -464,14 +466,19 @@ public class SuperAdminController {
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency subscribed to " + plan.getName()));
     }
 
+    /** Manual trial extension — an explicit Super Admin override, always audited (never triggered by normal signup). */
     @PostMapping("/agencies/{id}/extend-trial")
     public ResponseEntity<Map<String, Object>> extendTrial(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
         Tenant t = tenantRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agency not found"));
         int days = body.getOrDefault("days", 30);
+        LocalDate previousEndDate = t.getTrialEndDate();
         t.setTrialEndDate(LocalDate.now().plusDays(days));
         t.setStatus("TRIAL");
         tenantRepository.save(t);
+        logAgencyAction(t, "TRIAL_MANUALLY_EXTENDED",
+                "Trial extended by " + days + " day(s) by " + currentSuperAdminEmail()
+                        + ". Previous end date: " + previousEndDate + " -> New end date: " + t.getTrialEndDate());
         return ResponseEntity.ok(Map.of("success", true, "message", "Trial extended by " + days + " days"));
     }
 
@@ -725,7 +732,7 @@ public class SuperAdminController {
             @RequestParam(required = false) String status) {
         List<SupportTicket> tickets;
         if (status != null) {
-            tickets = ticketRepository.findByStatusOrderByCreatedAtDesc(status);
+            tickets = ticketRepository.findByStatusOrderByCreatedAtDesc(parseEnum(SupportTicket.Status.class, status, "status"));
         } else {
             tickets = ticketRepository.findAllByOrderByCreatedAtDesc();
         }
@@ -742,11 +749,11 @@ public class SuperAdminController {
     public ResponseEntity<SupportTicket> updateTicket(@PathVariable Long id, @RequestBody Map<String, String> body) {
         SupportTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
-        if (body.containsKey("status")) ticket.setStatus(body.get("status"));
-        if (body.containsKey("priority")) ticket.setPriority(body.get("priority"));
+        if (body.containsKey("status")) ticket.setStatus(parseEnum(SupportTicket.Status.class, body.get("status"), "status"));
+        if (body.containsKey("priority")) ticket.setPriority(parseEnum(SupportTicket.Priority.class, body.get("priority"), "priority"));
         if (body.containsKey("assignedTo")) ticket.setAssignedTo(body.get("assignedTo"));
         if (body.containsKey("resolution")) ticket.setResolution(body.get("resolution"));
-        if ("RESOLVED".equals(ticket.getStatus()) || "CLOSED".equals(ticket.getStatus())) {
+        if (ticket.getStatus() == SupportTicket.Status.RESOLVED || ticket.getStatus() == SupportTicket.Status.CLOSED) {
             ticket.setResolvedAt(LocalDateTime.now());
         }
         return ResponseEntity.ok(ticketRepository.save(ticket));
@@ -762,7 +769,8 @@ public class SuperAdminController {
         SupportTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
         if (ticket.getDestinationEmail() == null || ticket.getDestinationEmail().isBlank()) {
-            ticket.setDestinationEmail(supportRoutingService.resolveDestinationEmail(ticket.getChannel(), ticket.getCategory()));
+            String categoryName = ticket.getCategory() != null ? ticket.getCategory().name() : null;
+            ticket.setDestinationEmail(supportRoutingService.resolveDestinationEmail(ticket.getChannel(), categoryName));
         }
         platformEmailService.sendSupportTicketCreatedInternal(ticket);
         SupportTicket refreshed = ticketRepository.findById(id).orElse(ticket);
@@ -808,8 +816,8 @@ public class SuperAdminController {
                 .attachmentData(attachmentData)
                 .readAt(LocalDateTime.now())
                 .build());
-        if ("OPEN".equals(ticket.getStatus())) {
-            ticket.setStatus("IN_PROGRESS");
+        if (ticket.getStatus() == SupportTicket.Status.OPEN) {
+            ticket.setStatus(SupportTicket.Status.IN_PROGRESS);
             ticketRepository.save(ticket);
         }
         platformEmailService.sendSupportReplyNotification(ticket, saved);
@@ -1044,6 +1052,14 @@ public class SuperAdminController {
         return v == null ? null : v.toString();
     }
 
+    private <E extends Enum<E>> E parseEnum(Class<E> enumType, String raw, String fieldName) {
+        try {
+            return Enum.valueOf(enumType, raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            throw new IllegalArgumentException("Invalid " + fieldName + ": " + raw);
+        }
+    }
+
     private String trimStr(Object v) {
         String s = toStr(v);
         return s != null ? s.strip() : null;
@@ -1130,7 +1146,8 @@ public class SuperAdminController {
                 .taxId((String) body.get("taxId"))
                 .status("TRIAL")
                 .subscriptionActive(false)
-                .trialEndDate(LocalDate.now().plusDays(60))
+                .trialStartDate(LocalDate.now())
+                .trialEndDate(LocalDate.now().plusMonths(Tenant.TRIAL_PERIOD_MONTHS))
                 .planName("Trial")
                 .build();
         tenantRepository.save(t);
@@ -1260,7 +1277,26 @@ public class SuperAdminController {
     @PatchMapping("/agencies/{id}/unblock")
     public ResponseEntity<Map<String, Object>> unblockAgency(@PathVariable Long id) {
         Tenant t = tenantRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Agency not found"));
-        t.setStatus("ACTIVE");
+        // Restore the agency's ACTUAL prior state instead of hardcoding ACTIVE — a
+        // blocked agency that was still on its free trial must come back as TRIAL
+        // (or EXPIRED if the trial lapsed while blocked), never ACTIVE. Forcing
+        // ACTIVE here left status=ACTIVE + planName="Trial" + a stale trial-derived
+        // subscriptionEndDate on the tenant, which is exactly what produced the
+        // "Trial / Active / Renews on <2-months-out date>" billing card bug.
+        boolean stillOnTrial = "TRIAL".equalsIgnoreCase(t.getPlanName())
+                && t.getTrialEndDate() != null
+                && !LocalDate.now().isAfter(t.getTrialEndDate());
+        boolean trialLapsedWhileBlocked = "TRIAL".equalsIgnoreCase(t.getPlanName())
+                && t.getTrialEndDate() != null
+                && LocalDate.now().isAfter(t.getTrialEndDate());
+        if (stillOnTrial) {
+            t.setStatus("TRIAL");
+        } else if (trialLapsedWhileBlocked) {
+            t.setStatus("EXPIRED");
+            t.setSubscriptionActive(false);
+        } else {
+            t.setStatus("ACTIVE");
+        }
         tenantRepository.save(t);
         logAgencyAction(t, "AGENCY_UNBLOCKED", null);
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency unblocked"));
@@ -2191,9 +2227,9 @@ public class SuperAdminController {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalTickets", tickets.size());
-        result.put("openTickets", tickets.stream().filter(t -> "OPEN".equals(t.getStatus())).count());
+        result.put("openTickets", tickets.stream().filter(t -> t.getStatus() == SupportTicket.Status.OPEN).count());
         result.put("resolvedTickets", tickets.stream().filter(t -> t.getResolvedAt() != null).count());
-        result.put("criticalTickets", tickets.stream().filter(t -> "CRITICAL".equals(t.getPriority())).count());
+        result.put("criticalTickets", tickets.stream().filter(t -> t.getPriority() == SupportTicket.Priority.CRITICAL).count());
         result.put("avgResolutionHours", Math.round(avgResolutionHours * 100.0) / 100.0);
         return ResponseEntity.ok(result);
     }

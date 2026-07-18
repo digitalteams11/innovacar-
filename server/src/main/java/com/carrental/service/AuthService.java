@@ -937,14 +937,18 @@ public class AuthService {
         String baseName = buildAgencyName(request);
         String tenantName = uniqueTenantName(baseName);
         String tenantEmail = uniqueTenantEmail(email);
+        // Every new agency gets exactly one calendar month of free trial, starting
+        // from account creation. subscriptionEndDate is deliberately left null here —
+        // it means "paid-plan renewal date" and populating it with the trial end date
+        // caused the billing UI to show a stale "Renews on ..." line once the tenant's
+        // status ever drifted away from "TRIAL" (e.g. after a block/unblock cycle).
         LocalDate today = LocalDate.now();
         Tenant tenant = tenantRepository.save(Tenant.builder()
                 .name(tenantName)
                 .email(tenantEmail)
                 .subscriptionActive(true)
-                .subscriptionEndDate(today.plusMonths(2))
                 .trialStartDate(today)
-                .trialEndDate(today.plusMonths(2))
+                .trialEndDate(today.plusMonths(Tenant.TRIAL_PERIOD_MONTHS))
                 .planName("Trial")
                 .status("TRIAL")
                 .verificationStatus("PENDING_VERIFICATION")

@@ -1903,14 +1903,13 @@ public class ContractService {
             log.warn("Public contract signature saved but SSE contract_event failed [contractId={}]", saved.getId(), e);
         }
 
-        // ── Send confirmation email to client ──────────────────────────────────
-        try {
-            platformEmailService.sendContractSignedEmail(saved.getId());
-        } catch (Exception e) {
-            log.warn("Public contract signature saved but email dispatch failed [contractId={}]", saved.getId(), e);
-        }
-
-        // ── Auto-regenerate and save PDF ───────────────────────────────────────
+        // ── Auto-regenerate and save the final signed PDF BEFORE emailing the
+        // client — the "Contract Signed" email attaches this PDF and links to
+        // it, so the email must not go out ahead of PDF generation actually
+        // succeeding. Failure here must never block the signature itself or
+        // crash the request; it's recorded and the agency is notified so they
+        // can retry (the download link still regenerates the PDF on demand,
+        // so a transient failure here doesn't leave the link permanently dead).
         try {
             com.carrental.entity.Deposit deposit = depositRepository.findByContractId(saved.getId()).orElse(null);
             byte[] pdf = pdfService.generateContractPdf(saved, saved.getTenant(), deposit);
@@ -1920,7 +1919,24 @@ public class ContractService {
             log.info("PDF regenerated and saved for fully signed contract [id={}]", saved.getId());
             logAudit(saved, "PDF_GENERATED", "PDF auto-regenerated and saved after client signature", null, null);
         } catch (Exception e) {
-            log.error("Failed to regenerate PDF for contract [id={}]", saved.getId(), e);
+            log.error("[CONTRACT_PDF_GENERATION_FAILED] Failed to regenerate PDF for contract [id={}]", saved.getId(), e);
+            logAudit(saved, "PDF_GENERATION_FAILED", "Automatic PDF generation failed after client signature: " + e.getMessage(), null, null);
+            try {
+                notificationService.createNotification(
+                        "Contract PDF generation failed",
+                        "The signed PDF for contract " + saved.getContractNumber() + " could not be generated automatically. Use Resend Email to retry once resolved.",
+                        Notification.NotificationType.WARNING,
+                        saved.getId(), tenantId);
+            } catch (Exception notifyEx) {
+                log.warn("Failed to notify admin about PDF generation failure [contractId={}]", saved.getId(), notifyEx);
+            }
+        }
+
+        // ── Send confirmation email to client ──────────────────────────────────
+        try {
+            platformEmailService.sendContractSignedEmail(saved.getId());
+        } catch (Exception e) {
+            log.warn("Public contract signature saved but email dispatch failed [contractId={}]", saved.getId(), e);
         }
 
         return getPublicContract(qrToken);

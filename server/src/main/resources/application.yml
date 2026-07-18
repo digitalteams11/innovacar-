@@ -127,6 +127,14 @@ app:
   # source of truth; client requests can no longer override it.
   frontend-url: "${FRONTEND_URL:${PUBLIC_WEB_URL:http://localhost:5173}}"
 
+  # ── Public backend origin used to build links that must resolve directly
+  # against the API (e.g. the signed-contract-PDF download link embedded in
+  # emails) rather than through the frontend. Must be a bare https origin in
+  # production — e.g. https://api.innovacar.app. Never localhost/192.168.x.x/
+  # a Railway internal domain in production; PlatformEmailService validates
+  # this before ever putting a URL built from it into an email.
+  public-api-url: "${PUBLIC_API_URL:http://localhost:8082}"
+
   # ── Custom domain / white-label subdomain resolution ─────────────────────────
   domain:
     base-domain: "${APP_BASE_DOMAIN:innovacar.app}"

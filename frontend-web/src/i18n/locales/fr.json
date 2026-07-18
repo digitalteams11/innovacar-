@@ -2281,6 +2281,17 @@
       "FAILED": "Échec",
       "UNPAID": "Non paye",
       "PARTIALLY_PAID": "Partiellement paye"
+    },
+    "trialCard": {
+      "title": "Essai gratuit",
+      "active": "Actif",
+      "daysRemaining_one": "{{count}} jour restant",
+      "daysRemaining_other": "{{count}} jours restants",
+      "daysLabel": "jours restants",
+      "endsToday": "Se termine aujourd'hui",
+      "expired": "Essai expiré",
+      "endsOn": "Se termine le {{date}}",
+      "upgradePlan": "Mettre à niveau"
     }
   },
   "userMenu": {

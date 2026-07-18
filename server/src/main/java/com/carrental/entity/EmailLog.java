@@ -95,4 +95,7 @@ public class EmailLog {
     public static final String TYPE_SUPPORT_TICKET_CREATED        = "SUPPORT_TICKET_CREATED";
     public static final String TYPE_SUPPORT_REPLY                 = "SUPPORT_REPLY";
     public static final String TYPE_CONTACT_FORM                  = "CONTACT_FORM";
+    public static final String TYPE_CONTACT_REQUEST_CREATED       = "CONTACT_REQUEST_CREATED";
+    public static final String TYPE_TRIAL_REMINDER                = "TRIAL_REMINDER";
+    public static final String TYPE_TRIAL_EXPIRED                 = "TRIAL_EXPIRED";
 }

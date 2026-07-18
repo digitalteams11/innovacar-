@@ -66,22 +66,32 @@ public class OperationsCenterController {
         String subject = required(request, "subject");
         String description = required(request, "description");
         String kind = text(request.get("kind"), "SUPPORT").toUpperCase(Locale.ROOT);
-        String category = text(request.get("category"), "OTHER").toUpperCase(Locale.ROOT);
-        String priority = text(request.get("priority"), "MEDIUM").toUpperCase(Locale.ROOT);
+        String categoryRaw = text(request.get("category"), "OTHER").toUpperCase(Locale.ROOT);
+        String priorityRaw = text(request.get("priority"), "MEDIUM").toUpperCase(Locale.ROOT);
         String channel = text(request.get("channel"), null);
+        boolean isComplaintKind = "COMPLAINT".equals(kind);
 
-        String destinationEmail = supportRoutingService.resolveDestinationEmail(channel, category);
+        SupportTicket.Category category = parseEnumOrUnknown(SupportTicket.Category.class, categoryRaw);
+        SupportTicket.Priority priority = parseEnumOrUnknown(SupportTicket.Priority.class, priorityRaw);
+
+        String destinationEmail = supportRoutingService.resolveDestinationEmail(channel, category.name());
+
+        // Complaints are routed via the channel field (not a category-name prefix hack) so
+        // that category can stay a clean enum.
+        String resolvedChannel = isComplaintKind
+                ? "COMPLAINT"
+                : channel != null ? channel.toUpperCase(Locale.ROOT) : SupportRoutingService.CHANNEL_SUPPORT;
 
         SupportTicket ticket = ticketRepository.save(SupportTicket.builder()
                 .subject(subject)
                 .description(description)
-                .category("COMPLAINT".equals(kind) ? "COMPLAINT_" + category : category)
+                .category(category)
                 .priority(priority)
-                .status("OPEN")
+                .status(SupportTicket.Status.OPEN)
                 .tenant(tenantRepository.getReferenceById(tenantId))
                 .createdBy(displayName(user))
                 .contactEmail(user.getEmail())
-                .channel(channel != null ? channel.toUpperCase(Locale.ROOT) : SupportRoutingService.CHANNEL_SUPPORT)
+                .channel(resolvedChannel)
                 .destinationEmail(destinationEmail)
                 .requesterName(displayName(user))
                 .requesterEmail(user.getEmail())
@@ -144,7 +154,7 @@ public class OperationsCenterController {
                 .attachmentData(attachmentData.isBlank() ? null : attachmentData)
                 .readAt(LocalDateTime.now())
                 .build());
-        ticket.setStatus("OPEN");
+        ticket.setStatus(SupportTicket.Status.OPEN);
         ticketRepository.save(ticket);
         return ResponseEntity.ok(Map.of("success", true, "message", "Message sent successfully", "item", messageMap(saved)));
     }
@@ -276,9 +286,9 @@ public class OperationsCenterController {
         value.put("ticketNumber", ticket.getTicketNumber() == null ? "LEGACY-" + ticket.getId() : ticket.getTicketNumber());
         value.put("subject", ticket.getSubject());
         value.put("description", ticket.getDescription());
-        value.put("status", ticket.getStatus());
-        value.put("priority", ticket.getPriority());
-        value.put("category", ticket.getCategory());
+        value.put("status", ticket.getStatus() != null ? ticket.getStatus().name() : null);
+        value.put("priority", ticket.getPriority() != null ? ticket.getPriority().name() : null);
+        value.put("category", ticket.getCategory() != null ? ticket.getCategory().name() : null);
         value.put("channel", ticket.getChannel());
         value.put("emailStatus", ticket.getEmailStatus());
         value.put("createdAt", ticket.getCreatedAt());
@@ -339,11 +349,23 @@ public class OperationsCenterController {
     }
 
     private boolean isComplaint(SupportTicket ticket) {
-        return ticket.getCategory() != null && ticket.getCategory().startsWith("COMPLAINT_");
+        return "COMPLAINT".equals(ticket.getChannel());
     }
 
     private boolean isSupport(SupportTicket ticket) {
         return !isComplaint(ticket);
+    }
+
+    private <E extends Enum<E>> E parseEnumOrUnknown(Class<E> enumType, String raw) {
+        try {
+            return Enum.valueOf(enumType, raw);
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            try {
+                return Enum.valueOf(enumType, "UNKNOWN");
+            } catch (IllegalArgumentException unknownMissing) {
+                throw ex;
+            }
+        }
     }
 
     private User currentUser() {

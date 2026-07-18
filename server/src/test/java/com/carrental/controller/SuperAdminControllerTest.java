@@ -435,8 +435,8 @@ class SuperAdminControllerTest {
     private SupportTicket ticket(String status, String priority, LocalDateTime createdAt, LocalDateTime resolvedAt) {
         return SupportTicket.builder()
                 .subject("Support request")
-                .status(status)
-                .priority(priority)
+                .status(SupportTicket.Status.valueOf(status))
+                .priority(SupportTicket.Priority.valueOf(priority))
                 .createdAt(createdAt)
                 .resolvedAt(resolvedAt)
                 .build();

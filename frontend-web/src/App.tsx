@@ -28,6 +28,7 @@ const Reservations = React.lazy(() => import('./pages/Reservations'));
 const Clients = React.lazy(() => import('./pages/Clients'));
 const Payments = React.lazy(() => import('./pages/Payments'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const CheckoutTrial = React.lazy(() => import('./pages/CheckoutTrial'));
 const Contracts = React.lazy(() => import('./pages/Contracts'));
 const ContractDetails = React.lazy(() => import('./pages/ContractDetails'));
 const PublicContract = React.lazy(() => import('./pages/PublicContract'));
@@ -59,6 +60,8 @@ const SuperAdminGps = React.lazy(() => import('./pages/superadmin/SuperAdminGps'
 const SuperAdminUsers = React.lazy(() => import('./pages/superadmin/SuperAdminUsers'));
 const SuperAdminPayments = React.lazy(() => import('./pages/superadmin/SuperAdminPayments'));
 const SuperAdminSupport = React.lazy(() => import('./pages/superadmin/SuperAdminSupport'));
+const SuperAdminContactRequests = React.lazy(() => import('./pages/superadmin/SuperAdminContactRequests'));
+const SuperAdminHelpArticles = React.lazy(() => import('./pages/superadmin/SuperAdminHelpArticles'));
 const SuperAdminTicketDetail = React.lazy(() => import('./pages/superadmin/SuperAdminTicketDetail'));
 const SuperAdminNotifications = React.lazy(() => import('./pages/superadmin/SuperAdminNotifications'));
 const SuperAdminAnalytics = React.lazy(() => import('./pages/superadmin/SuperAdminAnalytics'));
@@ -107,6 +110,8 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Pages a blocked/suspended agency must still be able to reach: billing
 // (to fix the subscription), settings (profile), and the lock screen itself.
+// /checkout doesn't need to be listed here — it uses AuthOnlyRoute (below),
+// not ProtectedRoute, so this blocked-agency gate never applies to it at all.
 const ALWAYS_ALLOWED_PATHS_WHEN_BLOCKED = ['/subscription', '/settings', '/account-suspended'];
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -195,6 +200,8 @@ function AppRoutes() {
       <Route path="/super-admin/support" element={<SuperAdminRoute><SuperAdminSupport /></SuperAdminRoute>} />
       <Route path="/super-admin/support/:id" element={<SuperAdminRoute><SuperAdminTicketDetail /></SuperAdminRoute>} />
       <Route path="/super-admin/support/settings" element={<SuperAdminRoute><SuperAdminEmailCenter /></SuperAdminRoute>} />
+      <Route path="/super-admin/contact-requests" element={<SuperAdminRoute><SuperAdminContactRequests /></SuperAdminRoute>} />
+      <Route path="/super-admin/help/articles" element={<SuperAdminRoute><SuperAdminHelpArticles /></SuperAdminRoute>} />
       <Route path="/super-admin/notifications" element={<SuperAdminRoute><SuperAdminNotifications /></SuperAdminRoute>} />
       <Route path="/super-admin/analytics" element={<SuperAdminRoute><SuperAdminAnalytics /></SuperAdminRoute>} />
       <Route path="/super-admin/settings" element={<SuperAdminRoute><SuperAdminSettings /></SuperAdminRoute>} />
@@ -236,6 +243,9 @@ function AppRoutes() {
       <Route path="/gps-tracking" element={<ProtectedRoute><PermissionGate permission="GPS_ACCESS"><FeatureGate feature="GPS_TRACKING"><GpsDashboard /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/gps-alerts" element={<ProtectedRoute><PermissionGate permission="GPS_ACCESS"><FeatureGate feature="GPS_TRACKING"><GpsAlerts /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/subscription" element={<Navigate to="/settings?tab=billing" replace />} />
+      {/* Full-bleed like the account-lock screen — a premium checkout page
+          shouldn't be wrapped in the regular dashboard sidebar/topbar. */}
+      <Route path="/checkout" element={<AuthOnlyRoute><CheckoutTrial /></AuthOnlyRoute>} />
       <Route path="/white-label" element={<ProtectedRoute><FeatureGate feature="WHITE_LABEL"><WhiteLabel /></FeatureGate></ProtectedRoute>} />
       <Route path="/maintenance" element={<ProtectedRoute><PermissionGate permission="VIEW_MAINTENANCE"><FeatureGate feature="VEHICLE_MANAGEMENT"><Maintenance /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/role-permissions" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><RolePermissions /></PermissionGate></ProtectedRoute>} />

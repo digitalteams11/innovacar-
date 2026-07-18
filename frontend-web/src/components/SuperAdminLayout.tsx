@@ -21,7 +21,7 @@ import {
   Users, Receipt, LifeBuoy, Bell, BarChart3, Settings,
   Shield, LogOut, Search, Menu, X, ChevronLeft, ChevronRight,
   Globe, Mail, Megaphone, FileText, ClipboardList, KeyRound, DatabaseBackup,
-  UserCog, ShieldCheck, XCircle, Sparkles, Database
+  UserCog, ShieldCheck, XCircle, Sparkles, Database, MessageSquare, BookOpen
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -155,6 +155,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       items: [
         { to: '/super-admin/gps', icon: Satellite, label: t('superAdmin.nav.gps') },
         { to: '/super-admin/support', icon: LifeBuoy, label: t('superAdmin.nav.support') },
+        { to: '/super-admin/contact-requests', icon: MessageSquare, label: t('superAdmin.nav.contactRequests', 'Contact Requests') },
+        { to: '/super-admin/help/articles', icon: BookOpen, label: t('superAdmin.nav.helpArticles', 'Help Center') },
         { to: '/super-admin/announcements', icon: Megaphone, label: t('superAdmin.nav.announcements') },
         { to: '/super-admin/emails', icon: Mail, label: t('superAdmin.nav.emails') },
         { to: '/super-admin/notifications', icon: Bell, label: t('superAdmin.nav.notifications') },

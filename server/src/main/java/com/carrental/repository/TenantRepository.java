@@ -21,6 +21,10 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
     List<Tenant> findAllByStatusIgnoreCaseAndCancelEffectiveAtBefore(String status, LocalDateTime threshold);
 
+    List<Tenant> findAllByStatusIgnoreCase(String status);
+
+    long countByStatusIgnoreCase(String status);
+
     @Modifying
     @Transactional
     @Query("""

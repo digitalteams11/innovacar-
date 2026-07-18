@@ -655,11 +655,17 @@ public class ContractController {
                 return ResponseEntity.status(404).body(errorBody("Contract not found", "CONTRACT_NOT_FOUND", null));
             }
             byte[] pdf = contractService.generateContractPdf(contractId);
+            String safeFileName = "contract-"
+                    + (contract.getContractNumber() != null
+                        ? contract.getContractNumber().replaceAll("[^A-Za-z0-9_-]", "_")
+                        : contractId)
+                    + ".pdf";
             return ResponseEntity.ok()
                     .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "inline; filename=\"contract-" + contract.getContractNumber() + ".pdf\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + safeFileName + "\"")
                     .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .header("X-Content-Type-Options", "nosniff")
                     .body(pdf);
         } catch (com.carrental.exception.ResourceNotFoundException ex) {
             return ResponseEntity.status(404).body(errorBody("Contract not found", "CONTRACT_NOT_FOUND", null));
@@ -684,10 +690,21 @@ public class ContractController {
         if (!org.springframework.util.StringUtils.hasText(contract.getClientEmail())) {
             return ResponseEntity.ok(errorBody("Client has no email address", "EMAIL_TO_ADDRESS_MISSING", null));
         }
+        boolean fullySigned = org.springframework.util.StringUtils.hasText(contract.getOwnerSignature())
+                && org.springframework.util.StringUtils.hasText(contract.getClientSignature());
+        if (!fullySigned) {
+            return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "code", "CONTRACT_PDF_NOT_READY",
+                    "message", "The signed contract PDF is not ready yet."
+            ));
+        }
         com.carrental.service.SmtpMailService.SmtpResult result = platformEmailService.resendContractEmail(id);
         if (result.sent()) {
             return ResponseEntity.ok(Map.of(
                     "success", true,
+                    "code", "CONTRACT_EMAIL_SENT",
+                    "pdfAvailable", true,
                     "message", "Contract email sent successfully."
             ));
         }
@@ -707,6 +724,7 @@ public class ContractController {
             default                              -> "Email could not be sent. Please try again later.";
         };
         return ResponseEntity.ok(Map.of(
+                "code", "EMAIL_PROVIDER_ERROR",
                 "success", false,
                 "message", safeMessage,
                 "errorCode", errorCode

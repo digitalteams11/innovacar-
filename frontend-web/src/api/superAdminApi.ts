@@ -115,6 +115,23 @@ export const superAdminApi = {
   getSupportAnalytics: () => api.get('/super-admin/support/analytics'),
 
   // ═══════════════════════════════════════════════════════════════
+  // CONTACT REQUESTS (separate from Support Tickets)
+  // ═══════════════════════════════════════════════════════════════
+  getContactRequests: (status?: string) =>
+    api.get('/super-admin/contact-requests', { params: status ? { status } : undefined }),
+  getContactRequest: (id: number) => api.get(`/super-admin/contact-requests/${id}`),
+  updateContactRequest: (id: number, data: any) => api.patch(`/super-admin/contact-requests/${id}`, data),
+  convertContactRequestToTicket: (id: number) => api.post(`/super-admin/contact-requests/${id}/convert-to-ticket`),
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELP CENTER (KnowledgeArticle-backed)
+  // ═══════════════════════════════════════════════════════════════
+  getHelpArticles: () => api.get('/super-admin/help/articles'),
+  createHelpArticle: (data: any) => api.post('/super-admin/help/articles', data),
+  updateHelpArticle: (id: number, data: any) => api.put(`/super-admin/help/articles/${id}`, data),
+  deleteHelpArticle: (id: number) => api.delete(`/super-admin/help/articles/${id}`),
+
+  // ═══════════════════════════════════════════════════════════════
   // NOTIFICATIONS CENTER
   // ═══════════════════════════════════════════════════════════════
   getNotifications: () => api.get('/super-admin/notifications'),
