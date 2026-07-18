@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
 import UsageBar from '../UsageBar';
 import { usePlanAccess } from '../../hooks/usePlanAccess';
+import { trialBadgeClass, trialCountdownText } from '../../lib/trialDisplay';
 import {
   CreditCard, Crown, Car, Users, MapPin, Calendar, Loader2, ArrowRight,
   Receipt, ShieldAlert, Download, ChevronDown, Tag, CheckCircle, XCircle,
@@ -317,17 +318,31 @@ export default function BillingTab() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-[#1e293b]">{formatPlanName(status?.planName, status?.planCode)}</h3>
-                <span className="px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-semibold border border-slate-200">
-                  {formatStatus(status?.status)}
-                </span>
+                <h3 className="text-base font-bold text-[#1e293b]">
+                  {status?.isTrial ? t('subscription.trialCard.title') : formatPlanName(status?.planName, status?.planCode)}
+                </h3>
+                {status?.isTrial ? (
+                  <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${trialBadgeClass(status?.trialDaysRemaining ?? 0)}`}>
+                    {t('subscription.trialCard.active')}
+                  </span>
+                ) : status?.status === 'EXPIRED' ? (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200">
+                    {t('subscription.trialCard.expired')}
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-semibold border border-slate-200">
+                    {formatStatus(status?.status)}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-slate-500 mt-0.5">
                 {status?.isTrial
-                  ? t('settings.billingTab.trialEndsOn', { date: formatDate(status?.trialEndsAt), days: status?.remainingTrialDays ?? 0 })
-                  : status?.subscriptionActive
-                    ? t('settings.billingTab.renewsOn', { date: formatDate(status?.currentPeriodEnd) })
-                    : t('settings.billingTab.subscriptionInactive')}
+                  ? trialCountdownText(status?.trialDaysRemaining ?? 0, status?.trialEndsAt, t, formatDate)
+                  : status?.status === 'EXPIRED'
+                    ? t('subscription.trialCard.expired')
+                    : status?.subscriptionActive
+                      ? t('settings.billingTab.renewsOn', { date: formatDate(status?.currentPeriodEnd) })
+                      : t('settings.billingTab.subscriptionInactive')}
               </p>
             </div>
           </div>
@@ -338,7 +353,7 @@ export default function BillingTab() {
             }}
             className="bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
           >
-            {status?.isTrial ? t('settings.billingTab.upgradePlan') : t('settings.billingTab.changePlan')} <ArrowRight size={16} />
+            {status?.isTrial || status?.status === 'EXPIRED' ? t('subscription.trialCard.upgradePlan') : t('settings.billingTab.changePlan')} <ArrowRight size={16} />
           </button>
         </div>
 

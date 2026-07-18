@@ -66,13 +66,15 @@ public class SubscriptionController {
         String planCode = plan != null && plan.getCode() != null
                 ? plan.getCode().toUpperCase(Locale.ROOT)
                 : tenant.getPlanName().toUpperCase(Locale.ROOT);
-        boolean inTrial = "TRIAL".equals(planCode)
-                && "TRIAL".equalsIgnoreCase(tenant.getStatus())
+        // Gated on tenant.status alone (the authoritative lifecycle field) — it used to
+        // also require planCode to independently say "TRIAL", which meant a tenant with
+        // status="TRIAL" but a plan-lookup mismatch (e.g. after a block/unblock cycle,
+        // or a plan record edited in Super Admin) would silently fall through to the
+        // "renews on <stale date>" branch on the frontend instead of the trial countdown.
+        boolean inTrial = "TRIAL".equalsIgnoreCase(tenant.getStatus())
                 && tenant.getTrialEndDate() != null
-                && !LocalDate.now().isAfter(tenant.getTrialEndDate());
-        long remainingTrialDays = inTrial
-                ? Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), tenant.getTrialEndDate()))
-                : 0;
+                && !tenant.isTrialExpired();
+        long remainingTrialDays = inTrial ? tenant.trialDaysRemaining() : 0;
         long daysRemaining = inTrial ? remainingTrialDays : tenant.getSubscriptionEndDate() == null
                 ? 0
                 : Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), tenant.getSubscriptionEndDate()));
@@ -81,9 +83,13 @@ public class SubscriptionController {
         result.put("planCode", planCode);
         result.put("planName", tenant.getPlanName());
         result.put("status", tenant.getStatus());
+        result.put("subscriptionStatus", tenant.getStatus());
         result.put("isTrial", inTrial);
         result.put("trialEndsAt", inTrial ? tenant.getTrialEndDate() : null);
         result.put("remainingTrialDays", remainingTrialDays);
+        result.put("trialDaysRemaining", remainingTrialDays);
+        result.put("trialStartDate", tenant.getTrialStartDate());
+        result.put("trialExpired", tenant.isTrialExpired() && !"ACTIVE".equalsIgnoreCase(tenant.getStatus()));
         result.put("currentPeriodEnd", tenant.getSubscriptionEndDate());
         result.put("subscriptionActive", tenant.isSubscriptionValid());
         result.put("subscriptionEndDate", tenant.getSubscriptionEndDate());
@@ -125,19 +131,25 @@ public class SubscriptionController {
     // ── GET /api/subscriptions/plans ─────────────────────────────────────────
     private Map<String, Object> defaultSubscriptionStatus() {
         Map<String, Object> result = new LinkedHashMap<>();
+        LocalDate defaultTrialEnd = LocalDate.now().plusMonths(Tenant.TRIAL_PERIOD_MONTHS);
+        long defaultDaysRemaining = ChronoUnit.DAYS.between(LocalDate.now(), defaultTrialEnd);
         result.put("planCode", "TRIAL");
         result.put("planName", "TRIAL");
         result.put("status", "TRIAL");
+        result.put("subscriptionStatus", "TRIAL");
         result.put("isTrial", true);
-        result.put("trialEndsAt", LocalDate.now().plusDays(60));
-        result.put("remainingTrialDays", 60);
+        result.put("trialEndsAt", defaultTrialEnd);
+        result.put("remainingTrialDays", defaultDaysRemaining);
+        result.put("trialDaysRemaining", defaultDaysRemaining);
+        result.put("trialStartDate", LocalDate.now());
+        result.put("trialExpired", false);
         result.put("currentPeriodEnd", null);
         result.put("subscriptionActive", false);
         result.put("subscriptionEndDate", null);
-        result.put("trialEndDate", LocalDate.now().plusDays(60));
+        result.put("trialEndDate", defaultTrialEnd);
         result.put("inTrial", true);
-        result.put("daysRemaining", 60);
-        result.put("remainingDays", 60);
+        result.put("daysRemaining", defaultDaysRemaining);
+        result.put("remainingDays", defaultDaysRemaining);
         result.put("maxVehicles", 4);
         result.put("maxEmployees", 5);
         result.put("maxGpsDevices", 5);
@@ -166,11 +178,18 @@ public class SubscriptionController {
             changed = true;
         }
         if (trialPlan && tenant.getTrialStartDate() == null) {
-            tenant.setTrialStartDate(LocalDate.now());
+            // The trial start is the account's actual creation date, not "now" — using
+            // "now" here would silently grant a fresh month to a tenant that's merely
+            // missing this field (e.g. created before it existed), instead of the
+            // month it was actually always entitled to.
+            LocalDate start = tenant.getCreatedAt() != null
+                    ? tenant.getCreatedAt().toLocalDate()
+                    : LocalDate.now();
+            tenant.setTrialStartDate(start);
             changed = true;
         }
         if (trialPlan && tenant.getTrialEndDate() == null) {
-            tenant.setTrialEndDate(LocalDate.now().plusDays(60));
+            tenant.setTrialEndDate(tenant.getTrialStartDate().plusMonths(Tenant.TRIAL_PERIOD_MONTHS));
             changed = true;
         }
         if (tenant.getMaxVehicles() == null || tenant.getMaxVehicles() <= 0) {

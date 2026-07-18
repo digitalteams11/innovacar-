@@ -28,6 +28,7 @@ const Reservations = React.lazy(() => import('./pages/Reservations'));
 const Clients = React.lazy(() => import('./pages/Clients'));
 const Payments = React.lazy(() => import('./pages/Payments'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const CheckoutTrial = React.lazy(() => import('./pages/CheckoutTrial'));
 const Contracts = React.lazy(() => import('./pages/Contracts'));
 const ContractDetails = React.lazy(() => import('./pages/ContractDetails'));
 const PublicContract = React.lazy(() => import('./pages/PublicContract'));
@@ -107,6 +108,8 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Pages a blocked/suspended agency must still be able to reach: billing
 // (to fix the subscription), settings (profile), and the lock screen itself.
+// /checkout doesn't need to be listed here — it uses AuthOnlyRoute (below),
+// not ProtectedRoute, so this blocked-agency gate never applies to it at all.
 const ALWAYS_ALLOWED_PATHS_WHEN_BLOCKED = ['/subscription', '/settings', '/account-suspended'];
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -236,6 +239,9 @@ function AppRoutes() {
       <Route path="/gps-tracking" element={<ProtectedRoute><PermissionGate permission="GPS_ACCESS"><FeatureGate feature="GPS_TRACKING"><GpsDashboard /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/gps-alerts" element={<ProtectedRoute><PermissionGate permission="GPS_ACCESS"><FeatureGate feature="GPS_TRACKING"><GpsAlerts /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/subscription" element={<Navigate to="/settings?tab=billing" replace />} />
+      {/* Full-bleed like the account-lock screen — a premium checkout page
+          shouldn't be wrapped in the regular dashboard sidebar/topbar. */}
+      <Route path="/checkout" element={<AuthOnlyRoute><CheckoutTrial /></AuthOnlyRoute>} />
       <Route path="/white-label" element={<ProtectedRoute><FeatureGate feature="WHITE_LABEL"><WhiteLabel /></FeatureGate></ProtectedRoute>} />
       <Route path="/maintenance" element={<ProtectedRoute><PermissionGate permission="VIEW_MAINTENANCE"><FeatureGate feature="VEHICLE_MANAGEMENT"><Maintenance /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/role-permissions" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><RolePermissions /></PermissionGate></ProtectedRoute>} />

@@ -337,9 +337,11 @@ export default function SuperAdminAgencyDetail() {
                 <div className="space-y-3">
                   {[
                     { label: 'Plan', value: agency.planName || 'Trial' },
-                    { label: 'Status', value: agency.subscriptionActive ? 'Active' : 'Inactive' },
+                    { label: 'Status', value: agency.status },
                     { label: 'End Date', value: agency.subscriptionEndDate ? new Date(agency.subscriptionEndDate).toLocaleDateString() : '-' },
+                    { label: 'Trial Start', value: agency.trialStartDate ? new Date(agency.trialStartDate).toLocaleDateString() : '-' },
                     { label: 'Trial End', value: agency.trialEndDate ? new Date(agency.trialEndDate).toLocaleDateString() : '-' },
+                    { label: 'Trial Days Remaining', value: agency.inTrial ? agency.trialDaysRemaining : '-' },
                     { label: 'Total Revenue', value: `${agency.totalRevenue?.toLocaleString() || 0} MAD` },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between py-2 border-b border-[#e8e6e1]/40 dark:border-white/5 last:border-0">

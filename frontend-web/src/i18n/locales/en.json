@@ -2281,6 +2281,17 @@
       "FAILED": "Failed",
       "UNPAID": "Unpaid",
       "PARTIALLY_PAID": "Partially paid"
+    },
+    "trialCard": {
+      "title": "Free Trial",
+      "active": "Active",
+      "daysRemaining_one": "{{count}} day remaining",
+      "daysRemaining_other": "{{count}} days remaining",
+      "daysLabel": "days left",
+      "endsToday": "Ends today",
+      "expired": "Trial expired",
+      "endsOn": "Ends on {{date}}",
+      "upgradePlan": "Upgrade plan"
     }
   },
   "userMenu": {

@@ -291,8 +291,10 @@ public class SuperAdminController {
                 .planName(t.getPlanName())
                 .subscriptionActive(t.isSubscriptionValid())
                 .subscriptionEndDate(t.getSubscriptionEndDate())
+                .trialStartDate(t.getTrialStartDate())
                 .trialEndDate(t.getTrialEndDate())
                 .inTrial(t.isInTrial())
+                .trialDaysRemaining(t.trialDaysRemaining())
                 .maxVehicles(planRepository.findByName(t.getPlanName()).map(SubscriptionPlan::getMaxVehicles).orElse(t.getMaxVehicles()))
                 .maxEmployees(planRepository.findByName(t.getPlanName()).map(SubscriptionPlan::getMaxEmployees).orElse(t.getMaxEmployees()))
                 .maxGpsDevices(planRepository.findByName(t.getPlanName()).map(SubscriptionPlan::getMaxGpsDevices).orElse(t.getMaxGpsDevices()))
@@ -464,14 +466,19 @@ public class SuperAdminController {
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency subscribed to " + plan.getName()));
     }
 
+    /** Manual trial extension — an explicit Super Admin override, always audited (never triggered by normal signup). */
     @PostMapping("/agencies/{id}/extend-trial")
     public ResponseEntity<Map<String, Object>> extendTrial(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
         Tenant t = tenantRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agency not found"));
         int days = body.getOrDefault("days", 30);
+        LocalDate previousEndDate = t.getTrialEndDate();
         t.setTrialEndDate(LocalDate.now().plusDays(days));
         t.setStatus("TRIAL");
         tenantRepository.save(t);
+        logAgencyAction(t, "TRIAL_MANUALLY_EXTENDED",
+                "Trial extended by " + days + " day(s) by " + currentSuperAdminEmail()
+                        + ". Previous end date: " + previousEndDate + " -> New end date: " + t.getTrialEndDate());
         return ResponseEntity.ok(Map.of("success", true, "message", "Trial extended by " + days + " days"));
     }
 
@@ -1130,7 +1137,8 @@ public class SuperAdminController {
                 .taxId((String) body.get("taxId"))
                 .status("TRIAL")
                 .subscriptionActive(false)
-                .trialEndDate(LocalDate.now().plusDays(60))
+                .trialStartDate(LocalDate.now())
+                .trialEndDate(LocalDate.now().plusMonths(Tenant.TRIAL_PERIOD_MONTHS))
                 .planName("Trial")
                 .build();
         tenantRepository.save(t);
@@ -1260,7 +1268,26 @@ public class SuperAdminController {
     @PatchMapping("/agencies/{id}/unblock")
     public ResponseEntity<Map<String, Object>> unblockAgency(@PathVariable Long id) {
         Tenant t = tenantRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Agency not found"));
-        t.setStatus("ACTIVE");
+        // Restore the agency's ACTUAL prior state instead of hardcoding ACTIVE — a
+        // blocked agency that was still on its free trial must come back as TRIAL
+        // (or EXPIRED if the trial lapsed while blocked), never ACTIVE. Forcing
+        // ACTIVE here left status=ACTIVE + planName="Trial" + a stale trial-derived
+        // subscriptionEndDate on the tenant, which is exactly what produced the
+        // "Trial / Active / Renews on <2-months-out date>" billing card bug.
+        boolean stillOnTrial = "TRIAL".equalsIgnoreCase(t.getPlanName())
+                && t.getTrialEndDate() != null
+                && !LocalDate.now().isAfter(t.getTrialEndDate());
+        boolean trialLapsedWhileBlocked = "TRIAL".equalsIgnoreCase(t.getPlanName())
+                && t.getTrialEndDate() != null
+                && LocalDate.now().isAfter(t.getTrialEndDate());
+        if (stillOnTrial) {
+            t.setStatus("TRIAL");
+        } else if (trialLapsedWhileBlocked) {
+            t.setStatus("EXPIRED");
+            t.setSubscriptionActive(false);
+        } else {
+            t.setStatus("ACTIVE");
+        }
         tenantRepository.save(t);
         logAgencyAction(t, "AGENCY_UNBLOCKED", null);
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency unblocked"));

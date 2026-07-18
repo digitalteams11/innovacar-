@@ -46,6 +46,46 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void repairSubscriptionState_expiresTrialPastEndDateAndNeverGoesBack() {
+        Tenant tenant = Tenant.builder()
+                .id(2L)
+                .name("Agency")
+                .email("agency@test.com")
+                .planName("Trial")
+                .status("TRIAL")
+                .subscriptionActive(true)
+                .trialStartDate(LocalDate.now().minusMonths(2))
+                .trialEndDate(LocalDate.now().minusDays(1))
+                .build();
+        when(tenantRepository.save(tenant)).thenReturn(tenant);
+
+        Tenant result = subscriptionService.repairSubscriptionState(tenant, null);
+
+        assertThat(result.getStatus()).isEqualTo("EXPIRED");
+        assertThat(result.isSubscriptionActive()).isFalse();
+    }
+
+    @Test
+    void repairSubscriptionState_leavesActivePaidSubscriberUntouched() {
+        Tenant tenant = Tenant.builder()
+                .id(3L)
+                .name("Agency")
+                .email("agency@test.com")
+                .planName("Standard")
+                .status("ACTIVE")
+                .subscriptionActive(true)
+                .subscriptionEndDate(LocalDate.now().plusMonths(1))
+                .build();
+        SubscriptionPlan standard = SubscriptionPlan.builder().id(9L).name("Standard").code("standard").build();
+
+        Tenant result = subscriptionService.repairSubscriptionState(tenant, standard);
+
+        assertThat(result.getStatus()).isEqualTo("ACTIVE");
+        assertThat(result.isSubscriptionActive()).isTrue();
+        verify(tenantRepository, never()).save(any());
+    }
+
+    @Test
     void activatePaidPlan_clearsTrialAndCreatesAuditAndNotification() {
         Tenant tenant = paidTenantMarkedAsTrial();
         tenant.setPlanName("Trial");

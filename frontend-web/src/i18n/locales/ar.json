@@ -2274,6 +2274,17 @@
       "FAILED": "فشل",
       "UNPAID": "غير مدفوع",
       "PARTIALLY_PAID": "مدفوع جزئيا"
+    },
+    "trialCard": {
+      "title": "تجربة مجانية",
+      "active": "نشطة",
+      "daysRemaining_one": "متبقي يوم واحد",
+      "daysRemaining_other": "متبقي {{count}} يوماً",
+      "daysLabel": "يوماً متبقياً",
+      "endsToday": "تنتهي اليوم",
+      "expired": "انتهت الفترة التجريبية",
+      "endsOn": "تنتهي في {{date}}",
+      "upgradePlan": "ترقية الباقة"
     }
   },
   "userMenu": {

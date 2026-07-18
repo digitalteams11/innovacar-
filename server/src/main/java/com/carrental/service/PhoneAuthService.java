@@ -127,11 +127,18 @@ public class PhoneAuthService {
     @Transactional
     protected User createUserFromPhone(String phoneNumber) {
         String tenantName = "Agency " + phoneNumber;
+        LocalDate today = LocalDate.now();
+        // Same one-calendar-month trial as the email signup flow (AuthService) — trial
+        // fields/status must be set explicitly here too, otherwise this tenant never
+        // registers as "in trial" even though @PrePersist defaults status to TRIAL.
         Tenant tenant = tenantRepository.save(Tenant.builder()
                 .name(tenantName)
                 .email("phone-" + phoneNumber + "@placeholder.com")
                 .subscriptionActive(true)
-                .subscriptionEndDate(LocalDate.now().plusMonths(1)) // 1 month trial for phone users
+                .trialStartDate(today)
+                .trialEndDate(today.plusMonths(Tenant.TRIAL_PERIOD_MONTHS))
+                .planName("Trial")
+                .status("TRIAL")
                 .build());
 
         User user = userRepository.save(User.builder()

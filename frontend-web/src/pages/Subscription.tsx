@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import api from '../api/axios';
 import UsageBar from '../components/UsageBar';
@@ -10,6 +11,7 @@ import {
   Clock, Receipt, RotateCcw, ChevronDown,
 } from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
+import { trialBadgeClass, trialCountdownText } from '../lib/trialDisplay';
 
 const planIcons: Record<string, any> = {
   Trial: Zap,
@@ -43,6 +45,7 @@ const CANCEL_REASONS = [
 ];
 
 export default function Subscription() {
+  const { t, i18n } = useTranslation();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
@@ -277,10 +280,17 @@ export default function Subscription() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-[#1e293b]">{status.planName || 'Trial'}</h2>
+                  <h2 className="text-lg font-bold text-[#1e293b]">
+                    {status.isTrial ? t('subscription.trialCard.title') : (status.planName || 'Trial')}
+                  </h2>
                   {status.isTrial && (
-                    <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200">
-                      Trial
+                    <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${trialBadgeClass(status.trialDaysRemaining ?? status.remainingTrialDays ?? 0)}`}>
+                      {t('subscription.trialCard.active')}
+                    </span>
+                  )}
+                  {!status.isTrial && status.status === 'EXPIRED' && (
+                    <span className="px-2.5 py-0.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200">
+                      {t('subscription.trialCard.expired')}
                     </span>
                   )}
                   {isCancelScheduled && (
@@ -296,7 +306,14 @@ export default function Subscription() {
                 </div>
                 <p className="text-sm text-slate-500 mt-0.5">
                   {status.isTrial
-                    ? `Trial ends on ${status.trialEndsAt ? new Date(status.trialEndsAt).toLocaleDateString() : 'N/A'}`
+                    ? trialCountdownText(
+                        status.trialDaysRemaining ?? status.remainingTrialDays ?? 0,
+                        status.trialEndsAt,
+                        t,
+                        (value) => value ? new Date(value).toLocaleDateString(i18n.resolvedLanguage || i18n.language) : 'N/A',
+                      )
+                    : status.status === 'EXPIRED'
+                    ? t('subscription.trialCard.expired')
                     : isCancelScheduled
                     ? `Access until ${cancelEffectiveDateStr() || 'end of period'} · Cancellation scheduled`
                     : status.subscriptionActive
@@ -308,9 +325,9 @@ export default function Subscription() {
 
             <div className="flex items-center gap-4">
               {status.isTrial && (
-                <div className="text-center px-4 py-2 bg-blue-50 rounded-xl border border-blue-200">
-                  <p className="text-2xl font-bold text-blue-700">{status.remainingTrialDays}</p>
-                  <p className="text-xs text-blue-500 font-medium">days left</p>
+                <div className={`text-center px-4 py-2 rounded-xl border ${trialBadgeClass(status.trialDaysRemaining ?? status.remainingTrialDays ?? 0)}`}>
+                  <p className="text-2xl font-bold">{status.trialDaysRemaining ?? status.remainingTrialDays ?? 0}</p>
+                  <p className="text-xs font-medium">{t('subscription.trialCard.daysLabel')}</p>
                 </div>
               )}
               <button

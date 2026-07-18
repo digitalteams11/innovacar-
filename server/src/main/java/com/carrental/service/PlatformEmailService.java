@@ -551,6 +551,78 @@ public class PlatformEmailService {
         log.info("[EMAIL] {} tenantId={} to={} status={}", EmailLog.TYPE_SUBSCRIPTION_CANCELLED_FINAL, tenantId, tenantEmail, status);
     }
 
+    /**
+     * Trial-expiry-approaching reminder (7/3/1 day(s) before end). Dedup is the
+     * caller's responsibility (see TrialExpiryJob, which stamps a per-milestone
+     * "already sent" timestamp on the tenant before/after calling this) — this
+     * method always sends unconditionally when invoked.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendTrialReminder(Long tenantId, String tenantEmail, String tenantName, long daysRemaining) {
+        if (!StringUtils.hasText(tenantEmail)) {
+            log.warn("[EMAIL] sendTrialReminder: tenantId={} has no email", tenantId);
+            return;
+        }
+        String dayWord = daysRemaining == 1 ? "day" : "days";
+        String subject = "Your Innovacar trial ends in " + daysRemaining + " " + dayWord;
+        String body = String.format("""
+                Hello %s,
+
+                Your Innovacar free trial ends in %d %s.
+
+                ─────────────────────────────
+                To keep full access to your agency's reservations, contracts, vehicles,
+                and reports without interruption, choose a plan before your trial ends.
+                ─────────────────────────────
+
+                Visit Subscription & Billing in your dashboard to upgrade anytime.
+
+                ─────────────────────────────
+                This email was sent automatically by Innovacar / Innovax Technologies.
+                """, tenantName, daysRemaining, dayWord);
+
+        SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
+        String status = result.sent() ? "SENT" : "FAILED";
+        String errorCode = result.sent() ? null : classifyError(result);
+        saveLog(null, tenantId, tenantEmail, EmailLog.TYPE_TRIAL_REMINDER,
+                subject, status, errorCode, truncate(result.errorMessage(), 900));
+        log.info("[EMAIL] {} tenantId={} to={} daysRemaining={} status={}",
+                EmailLog.TYPE_TRIAL_REMINDER, tenantId, tenantEmail, daysRemaining, status);
+    }
+
+    /**
+     * Sent once, the day the trial actually expires with no paid subscription active.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendTrialExpired(Long tenantId, String tenantEmail, String tenantName) {
+        if (!StringUtils.hasText(tenantEmail)) {
+            log.warn("[EMAIL] sendTrialExpired: tenantId={} has no email", tenantId);
+            return;
+        }
+        String subject = "Your Innovacar free trial has ended — " + tenantName;
+        String body = String.format("""
+                Hello %s,
+
+                Your Innovacar free trial has ended.
+
+                Your account data is preserved and you can still log in, but premium
+                business operations (reservations, contracts, invoices, GPS) are now
+                paused until you choose a plan.
+
+                Visit Subscription & Billing in your dashboard to reactivate your account.
+
+                ─────────────────────────────
+                This email was sent automatically by Innovacar / Innovax Technologies.
+                """, tenantName);
+
+        SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
+        String status = result.sent() ? "SENT" : "FAILED";
+        String errorCode = result.sent() ? null : classifyError(result);
+        saveLog(null, tenantId, tenantEmail, EmailLog.TYPE_TRIAL_EXPIRED,
+                subject, status, errorCode, truncate(result.errorMessage(), 900));
+        log.info("[EMAIL] {} tenantId={} to={} status={}", EmailLog.TYPE_TRIAL_EXPIRED, tenantId, tenantEmail, status);
+    }
+
     // ── Support Center emails ─────────────────────────────────────────────────
 
     /**
