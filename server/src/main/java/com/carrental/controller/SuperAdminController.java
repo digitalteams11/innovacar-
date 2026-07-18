@@ -2182,33 +2182,35 @@ public class SuperAdminController {
                 ps.getSmtpProvider(), configuredHost, configuredPort, username, fromEmail,
                 ps.getSmtpReplyTo(), ps.getSmtpUseTls(), sslEnabled, ps.getSmtpEnabled());
 
-        List<Map<String, Object>> results = new ArrayList<>();
-
-        // Always probe the configured host/port/mode first — this is the host
-        // Super Admin actually saved, and normal sending never uses anything else.
-        results.add(toDiagnosticMap(smtpDiagnosticsService.probe(configuredHost, configuredPort, username, fromEmail, password, sslEnabled)));
-
-        // For Zoho: also probe every remaining known candidate — the alternate
-        // hostname on the same mode, plus both hosts on the *other* mode (587
-        // STARTTLS vs 465 implicit SSL) — purely as information. Saving/sending
-        // never auto-switches to any of these; this is diagnostic-only.
+        // Candidates are probed concurrently with a hard overall time budget (see
+        // SmtpDiagnosticsService#probeAllWithBudget) — probing them one at a time
+        // could take 45-100+s total (5 candidates x up to ~24s worst case each),
+        // long past the frontend's request timeout, so a perfectly healthy backend
+        // would still be reported as "API server unavailable" by the browser.
+        List<com.carrental.service.SmtpDiagnosticsService.ProbeCandidate> candidates = new ArrayList<>();
+        candidates.add(new com.carrental.service.SmtpDiagnosticsService.ProbeCandidate(configuredHost, configuredPort, sslEnabled));
         if (isZoho) {
-            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
-                    "smtp.zoho.com", 587, false);
-            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
-                    "smtppro.zoho.com", 587, false);
-            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
-                    "smtp.zoho.com", 465, true);
-            probeIfDifferent(results, configuredHost, configuredPort, sslEnabled, username, fromEmail, password,
-                    "smtppro.zoho.com", 465, true);
+            addCandidateIfDifferent(candidates, "smtp.zoho.com", 587, false);
+            addCandidateIfDifferent(candidates, "smtppro.zoho.com", 587, false);
+            addCandidateIfDifferent(candidates, "smtp.zoho.com", 465, true);
+            addCandidateIfDifferent(candidates, "smtppro.zoho.com", 465, true);
         }
+
+        long budgetMs = 12_000L;
+        List<Map<String, Object>> results = smtpDiagnosticsService
+                .probeAllWithBudget(candidates, username, fromEmail, password, budgetMs)
+                .stream()
+                .map(this::toDiagnosticMap)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
         // Every single candidate failed to even establish a TCP connection — this is a
         // hosting/network-level block (Railway or similar blocking outbound SMTP ports),
         // not a credentials or TLS problem, and must be classified as such rather than
         // left as a pile of individually-confusing SMTP_CONNECTION_TIMEOUT rows.
+        // Timed-out candidates (tcp still NOT_TESTED) don't count as a confirmed pass,
+        // so "did anything actually get through" is simply "was any tcp stage OK".
         boolean allTcpFailed = !results.isEmpty() && results.stream()
-                .allMatch(r -> "FAILED".equals(r.get("tcp")));
+                .noneMatch(r -> "OK".equals(r.get("tcp")));
         if (allTcpFailed) {
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("errorCode", "EMAIL_HOSTING_NETWORK_BLOCKED");
@@ -2222,15 +2224,12 @@ public class SuperAdminController {
         return ResponseEntity.ok(results);
     }
 
-    private void probeIfDifferent(List<Map<String, Object>> results,
-                                   String alreadyProbedHost, int alreadyProbedPort, boolean alreadyProbedSsl,
-                                   String username, String fromEmail, String password,
-                                   String candidateHost, int candidatePort, boolean candidateSsl) {
-        if (candidateHost.equalsIgnoreCase(alreadyProbedHost) && candidatePort == alreadyProbedPort
-                && candidateSsl == alreadyProbedSsl) {
-            return;
-        }
-        results.add(toDiagnosticMap(smtpDiagnosticsService.probe(candidateHost, candidatePort, username, fromEmail, password, candidateSsl)));
+    private void addCandidateIfDifferent(List<com.carrental.service.SmtpDiagnosticsService.ProbeCandidate> candidates,
+                                          String candidateHost, int candidatePort, boolean candidateSsl) {
+        boolean alreadyPresent = candidates.stream().anyMatch(c ->
+                c.host().equalsIgnoreCase(candidateHost) && c.port() == candidatePort && c.ssl() == candidateSsl);
+        if (alreadyPresent) return;
+        candidates.add(new com.carrental.service.SmtpDiagnosticsService.ProbeCandidate(candidateHost, candidatePort, candidateSsl));
     }
 
     private Map<String, Object> toDiagnosticMap(com.carrental.service.SmtpDiagnosticsService.SmtpProbeResult probe) {

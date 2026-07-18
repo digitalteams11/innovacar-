@@ -36,6 +36,54 @@ const defaultSmtp: SmtpSettings = {
   lastTestStatus: null, lastTestAt: null, lastTestErrorCode: null,
 };
 
+// Distinguishes *why* an Email Center request failed instead of collapsing
+// every failure into a generic "API server unavailable" — a slow/blocked SMTP
+// probe, an expired session, and a missing permission all need different
+// user-facing text and different next steps.
+type EmailCenterErrorCode =
+  | 'API_SERVER_UNREACHABLE'
+  | 'SESSION_EXPIRED'
+  | 'SUPER_ADMIN_PERMISSION_REQUIRED'
+  | 'EMAIL_ENDPOINT_NOT_FOUND'
+  | 'INVALID_SMTP_CONFIGURATION'
+  | 'EMAIL_DIAGNOSTIC_INTERNAL_ERROR'
+  | 'EMAIL_PROVIDER_UNAVAILABLE'
+  | 'SMTP_CONNECTION_TIMEOUT';
+
+function classifyEmailCenterError(err: any): { code: EmailCenterErrorCode; message: string } {
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+  const backendMessage = typeof data?.message === 'string' ? data.message : undefined;
+
+  // No HTTP response reached us at all — real connectivity/CORS/timeout
+  // failure, not a backend-produced error. This is the only case that should
+  // ever show "API server unavailable".
+  if (!err?.response) {
+    return {
+      code: 'API_SERVER_UNREACHABLE',
+      message: backendMessage || 'Could not reach the API server. Please check your connection and try again.',
+    };
+  }
+  if (data?.errorCode === 'SMTP_CONNECTION_TIMEOUT') {
+    return { code: 'SMTP_CONNECTION_TIMEOUT', message: backendMessage || 'The SMTP connection timed out.' };
+  }
+  switch (status) {
+    case 401:
+      return { code: 'SESSION_EXPIRED', message: backendMessage || 'Your session has expired. Please sign in again.' };
+    case 403:
+      return { code: 'SUPER_ADMIN_PERMISSION_REQUIRED', message: backendMessage || 'Super Admin permission is required for this action.' };
+    case 404:
+      return { code: 'EMAIL_ENDPOINT_NOT_FOUND', message: backendMessage || 'This email endpoint could not be found. The app may be misconfigured.' };
+    case 400:
+      return { code: 'INVALID_SMTP_CONFIGURATION', message: backendMessage || 'The SMTP configuration is invalid.' };
+    case 502:
+    case 503:
+      return { code: 'EMAIL_PROVIDER_UNAVAILABLE', message: backendMessage || 'The email provider is currently unavailable.' };
+    default:
+      return { code: 'EMAIL_DIAGNOSTIC_INTERNAL_ERROR', message: backendMessage || 'An internal error occurred while processing the email request.' };
+  }
+}
+
 const PROVIDER_PRESETS: Record<string, { host: string; port: number; tls: boolean }> = {
   ZOHO:   { host: 'smtp.zoho.com',    port: 587, tls: true  },
   GMAIL:  { host: 'smtp.gmail.com',   port: 587, tls: true  },
@@ -134,7 +182,11 @@ export default function SuperAdminEmailCenter() {
     setLoading(true);
     try {
       const [smtpRes, tmplRes, logsRes, analyticsRes, typesRes, routingRes] = await Promise.all([
-        superAdminApi.getSmtpSettings().catch(() => ({ data: {} })),
+        superAdminApi.getSmtpSettings().catch((err: any) => {
+          const { message } = classifyEmailCenterError(err);
+          showToast(message, 'error');
+          return { data: {} };
+        }),
         superAdminApi.getEmailTemplates().catch(() => ({ data: [] })),
         superAdminApi.getEmailLogs().catch(() => ({ data: [] })),
         superAdminApi.getEmailAnalytics().catch(() => ({ data: null })),
@@ -203,7 +255,8 @@ export default function SuperAdminEmailCenter() {
       }));
       showToast('SMTP settings saved successfully', 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Unable to save SMTP settings', 'error');
+      const { message } = classifyEmailCenterError(err);
+      showToast(message, 'error');
     } finally { setSmtpLoading(false); }
   };
 
@@ -216,9 +269,9 @@ export default function SuperAdminEmailCenter() {
       else { setTestErrorCode(res.data?.errorCode ?? null); showToast(res.data?.message || 'Test failed', 'error'); }
       await fetchAll();
     } catch (err: any) {
-      const data = err?.response?.data;
-      setTestErrorCode(data?.errorCode ?? null);
-      showToast(data?.message || 'Test email failed — check SMTP settings', 'error');
+      const { code, message } = classifyEmailCenterError(err);
+      setTestErrorCode(err?.response?.data?.errorCode ?? code);
+      showToast(message, 'error');
     } finally { setTestLoading(false); }
   };
 
@@ -228,7 +281,8 @@ export default function SuperAdminEmailCenter() {
       const res = await superAdminApi.diagnoseSmtp();
       setDiagnoseResults(Array.isArray(res.data) ? res.data : [res.data]);
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Diagnostics failed', 'error');
+      const { message } = classifyEmailCenterError(err);
+      showToast(message, 'error');
     } finally { setDiagnoseLoading(false); }
   };
 

@@ -13,8 +13,11 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -49,9 +52,13 @@ public class SmtpDiagnosticsService {
     private static final String STAGE_FAILED = "FAILED";
     private static final String STAGE_NOT_TESTED = "NOT_TESTED";
 
-    private static final int DNS_TIMEOUT_SECONDS = 5;
-    private static final int TCP_CONNECT_TIMEOUT_MS = 9000;
-    private static final int SMTP_TIMEOUT_MS = 10000;
+    // Each candidate is probed concurrently (see probeAllWithBudget), so these
+    // bound a single probe's own worst case, not the endpoint's total runtime.
+    // Kept low enough that DNS+TCP+SMTP together stay well under the 10-15s
+    // response budget diagnoseSmtp() enforces across all candidates at once.
+    private static final int DNS_TIMEOUT_SECONDS = 3;
+    private static final int TCP_CONNECT_TIMEOUT_MS = 5000;
+    private static final int SMTP_TIMEOUT_MS = 6000;
 
     public record SmtpProbeResult(
             boolean success,
@@ -73,6 +80,63 @@ public class SmtpDiagnosticsService {
                     STAGE_FAILED, STAGE_NOT_TESTED, STAGE_NOT_TESTED, STAGE_NOT_TESTED, STAGE_NOT_TESTED, STAGE_NOT_TESTED,
                     "SMTP_CONFIGURATION_MISSING", message);
         }
+    }
+
+    public record ProbeCandidate(String host, int port, boolean ssl) {}
+
+    // Separate from dnsExecutor: this pool runs whole probe() calls (DNS+TCP+SMTP),
+    // dnsExecutor is only ever used internally by resolveDns(). Bounded and daemon
+    // for the same reason as dnsExecutor — a stuck probe leaks at most one thread
+    // from a fixed-size pool, never grows unbounded across repeated Diagnose clicks.
+    private static final int PROBE_EXECUTOR_POOL_SIZE = 6;
+    private final ExecutorService probeExecutor = Executors.newFixedThreadPool(PROBE_EXECUTOR_POOL_SIZE, runnable -> {
+        Thread thread = new Thread(runnable, "smtp-probe");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    /**
+     * Probes every candidate concurrently and waits at most {@code budgetMs} in
+     * total — the previous sequential loop (5 candidates × up to ~24s worst
+     * case each) could take 45-100+s, far past the frontend's request timeout,
+     * so a fully healthy backend still reported as "API server unavailable".
+     * Any candidate not finished when the budget expires is reported as a
+     * timed-out result instead of blocking the response further; the probe's
+     * own thread is left to finish against its internal per-stage timeouts
+     * (see class-level note on dnsExecutor for why it can't be killed outright).
+     */
+    public List<SmtpProbeResult> probeAllWithBudget(List<ProbeCandidate> candidates,
+                                                      String username, String fromEmail, String password,
+                                                      long budgetMs) {
+        List<CompletableFuture<SmtpProbeResult>> futures = new ArrayList<>(candidates.size());
+        for (ProbeCandidate candidate : candidates) {
+            futures.add(CompletableFuture.supplyAsync(
+                    () -> probe(candidate.host(), candidate.port(), username, fromEmail, password, candidate.ssl()),
+                    probeExecutor));
+        }
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(budgetMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException | InterruptedException | java.util.concurrent.ExecutionException e) {
+            // At least one candidate didn't finish in time — fall through and
+            // report whatever's done; unfinished ones become timeout results below.
+        }
+
+        List<SmtpProbeResult> results = new ArrayList<>(candidates.size());
+        for (int i = 0; i < candidates.size(); i++) {
+            ProbeCandidate candidate = candidates.get(i);
+            CompletableFuture<SmtpProbeResult> future = futures.get(i);
+            if (future.isDone() && !future.isCompletedExceptionally()) {
+                results.add(future.join());
+            } else {
+                future.cancel(true);
+                results.add(new SmtpProbeResult(false, candidate.host(), candidate.port(), username, fromEmail,
+                        STAGE_OK, STAGE_NOT_TESTED, STAGE_NOT_TESTED, STAGE_NOT_TESTED, STAGE_NOT_TESTED, STAGE_NOT_TESTED,
+                        "SMTP_DIAGNOSTIC_TIMEOUT",
+                        "Diagnostics exceeded the " + (budgetMs / 1000) + "s time budget for " + candidate.host()
+                                + ":" + candidate.port() + "."));
+            }
+        }
+        return results;
     }
 
     /**
