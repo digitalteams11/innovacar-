@@ -41,6 +41,13 @@ public class FeatureAccessService {
         response.put("planId", plan != null ? plan.getId() : null);
         response.put("planCode", plan != null ? plan.getCode() : null);
         response.put("planName", tenant.getPlanName());
+        // Diagnostic fields — safe to expose to the tenant's own admin (their own
+        // subscription/trial state), useful for support/debugging a denied feature
+        // without needing direct database access.
+        response.put("subscriptionStatus", tenant.getStatus());
+        response.put("trialActive", tenant.isInTrial());
+        response.put("trialEndDate", tenant.getTrialEndDate());
+        response.put("planResolved", plan != null);
         response.put("features", buildAccessRows(tenantId, plan));
         return response;
     }

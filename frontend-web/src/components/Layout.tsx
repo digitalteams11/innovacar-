@@ -49,6 +49,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { hasPermission } = usePermissions();
   const { appearance, updateAppearance, branding } = useTheme();
   const logoSrc = branding?.logoUrl || INNOVACAR_LOGO_URL;
+  // A custom logo URL that's unreachable/deleted must never render as a broken
+  // image — fall back to the default Innovacar logo instead.
+  const onLogoError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    if (e.currentTarget.src !== INNOVACAR_LOGO_URL) e.currentTarget.src = INNOVACAR_LOGO_URL;
+  };
 
   useEffect(() => {
     localStorage.setItem('rentcar_sidebar_collapsed', String(sidebarCollapsed));
@@ -152,7 +157,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className={cn('h-[68px] px-4 flex items-center', appearance.sidebarStyle === 'compact' || sidebarCollapsed ? 'justify-center' : 'justify-between')}>
           <Link to="/" className="flex items-center gap-3 min-w-0">
             <span className="w-10 h-10 rounded-xl border border-[color-mix(in_srgb,var(--text-sidebar)_12%,transparent)] bg-white/95 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-              <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
+              <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" onError={onLogoError} />
             </span>
             {appearance.sidebarStyle !== 'compact' && !sidebarCollapsed && (
               <span className="min-w-0">
@@ -229,7 +234,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="app-topbar sticky top-2 lg:top-4 z-40 h-[58px] lg:h-[64px] mx-2 lg:mx-4 px-3 sm:px-4 lg:px-5 flex items-center gap-3 rounded-lg">
           <Link to="/" className="lg:hidden flex items-center gap-2 shrink-0">
             <span className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
-              <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" />
+              <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" onError={onLogoError} />
             </span>
             <strong className="hidden min-[375px]:block text-sm">InnovaCar</strong>
           </Link>

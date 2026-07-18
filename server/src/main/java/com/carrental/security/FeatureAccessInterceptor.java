@@ -97,12 +97,18 @@ public class FeatureAccessInterceptor implements HandlerInterceptor {
         data.put("feature",       featureCode);
         data.put("featureName",   featureInfo.get("name"));
         data.put("requiredPlans", requiredPlans);
+        // Singular convenience field alongside the list — most callers only need
+        // "the cheapest plan that would unlock this" for an upgrade prompt.
+        data.put("requiredPlan",  requiredPlans.stream().findFirst().orElse(null));
 
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getWriter(), Map.of(
                 "success",   false,
-                "errorCode", "FEATURE_NOT_INCLUDED_IN_PLAN",
+                // Single stable code — do not reintroduce the old FEATURE_NOT_INCLUDED_IN_PLAN /
+                // FEATURE_NOT_AVAILABLE_IN_PLAN variants; every frontend consumer checks this exact string.
+                "errorCode", "FEATURE_NOT_INCLUDED",
+                "feature",   featureCode,
                 "message",   "This feature is not included in your current plan.",
                 "data",      data
         ));

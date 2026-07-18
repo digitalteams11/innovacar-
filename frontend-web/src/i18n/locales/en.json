@@ -2608,6 +2608,7 @@
     "ENDPOINT_NOT_FOUND": "This feature could not be reached. The app may be misconfigured — please contact support.",
     "ACCOUNT_SUSPENDED": "Your agency account is suspended. Please contact Innovax Technologies or update your subscription.",
     "FEATURE_NOT_AVAILABLE": "This feature is not included in your subscription plan.",
+    "FEATURE_NOT_INCLUDED": "This feature is not included in your current plan.",
     "SERVER_ERROR": "Server error. Please check backend logs.",
     "REQUEST_FAILED": "We could not complete this request. Please try again."
   },

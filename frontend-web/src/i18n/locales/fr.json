@@ -2608,6 +2608,7 @@
     "ENDPOINT_NOT_FOUND": "Cette fonctionnalité est inaccessible. L'application est peut-être mal configurée — veuillez contacter le support.",
     "ACCOUNT_SUSPENDED": "Le compte de votre agence est suspendu. Veuillez contacter Innovax Technologies ou mettre à jour votre abonnement.",
     "FEATURE_NOT_AVAILABLE": "Cette fonctionnalité n'est pas incluse dans votre offre d'abonnement.",
+    "FEATURE_NOT_INCLUDED": "Cette fonctionnalité n'est pas incluse dans votre offre actuelle.",
     "SERVER_ERROR": "Erreur serveur. Veuillez vérifier les journaux du serveur.",
     "REQUEST_FAILED": "Nous n'avons pas pu traiter cette demande. Veuillez réessayer."
   },

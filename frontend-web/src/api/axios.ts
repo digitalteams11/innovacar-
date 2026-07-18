@@ -316,7 +316,11 @@ api.interceptors.response.use(
     }
 
     const responseDataObj = (responseData && typeof responseData === 'object') ? responseData as Record<string, any> : {};
-    const featureLocked = status === 403 && responseDataObj.error === 'FEATURE_NOT_AVAILABLE';
+    // FeatureAccessInterceptor (server) sends errorCode="FEATURE_NOT_INCLUDED" for a plan-gated
+    // endpoint the tenant's current subscription doesn't include — this used to check a
+    // nonexistent `error` field and could never actually match, so every plan-lock 403 (e.g.
+    // Payments on a Basic/Trial plan) silently fell through to the generic 403 branch below.
+    const featureLocked = status === 403 && responseDataObj.errorCode === 'FEATURE_NOT_INCLUDED';
     error.requestId = responseDataObj.requestId;
     error.severity = responseDataObj.severity === 'warning' ? 'warning' : 'error';
     error.errorCode = responseDataObj.errorCode;
@@ -350,8 +354,8 @@ api.interceptors.response.use(
       error.userMessage = codeTranslation || te('errors.UNAUTHORIZED', 'Your session has expired. Please sign in again.');
     } else if (featureLocked) {
       error.userMessage = codeTranslation
-        || (isSafeBusinessMessage(responseDataObj.message) ? responseDataObj.message : te('errors.FEATURE_NOT_AVAILABLE', 'This feature is not included in your subscription plan.'));
-      error.feature = responseDataObj.feature;
+        || (isSafeBusinessMessage(responseDataObj.message) ? responseDataObj.message : te('errors.FEATURE_NOT_INCLUDED', 'This feature is not included in your current plan.'));
+      error.feature = responseDataObj.feature || responseDataObj.data?.feature;
       error.severity = 'warning';
     } else if (status === 403) {
       error.userMessage = codeTranslation

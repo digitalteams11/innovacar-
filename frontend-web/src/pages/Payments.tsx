@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { usePermissions } from '../context/PermissionContext';
 import { useFeatureAccess } from '../context/FeatureAccessContext';
@@ -59,41 +60,75 @@ export default function Payments() {
   const [monthlyRevenue, setMonthlyRevenue] = useState<MonthlyRevenue[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [statsUnavailable, setStatsUnavailable] = useState(false);
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { hasPermission, loading: permLoading, isAgencyAdmin } = usePermissions();
-  const { hasFeature, loading: featureLoading } = useFeatureAccess();
+  const { hasFeature, getFeature, planName, loading: featureLoading } = useFeatureAccess();
 
+  // Role/permission: an agency owner/admin always has full access to their own
+  // agency's data — this is a role bypass, not a plan bypass.
   const canViewPayments = isAgencyAdmin || hasPermission('PAYMENT_VIEW');
   const canViewStats = isAgencyAdmin || hasPermission('PAYMENT_STATS_VIEW');
-  const hasPlanPayments = isAgencyAdmin || hasFeature('PAYMENTS');
-  const hasPlanStats = isAgencyAdmin || hasFeature('PAYMENT_STATS');
+  // Plan/feature: whether the subscription includes Payments at all. This must
+  // NOT bypass for the owner — the backend's FeatureAccessInterceptor enforces
+  // the real plan restriction for every role including the owner, so bypassing
+  // it here only meant the owner always attempted (and always got a 403 from)
+  // a call the server was always going to reject. The backend gates the whole
+  // /api/payments/** prefix on a single "PAYMENTS" feature — stats and
+  // monthly-revenue share it, there's no separate plan tier for stats alone.
+  const hasPlanPayments = hasFeature('PAYMENTS');
+  const paymentsFeature = getFeature('PAYMENTS');
+  const requiredPlan = paymentsFeature?.requiredPlan || paymentsFeature?.requiredPlans?.[0];
 
-  const fetchPayments = async () => {
-    try {
-      setLoading(true);
-      setLoadError('');
-      const requests: Promise<any>[] = [api.get('/payments')];
-      if (canViewStats && hasPlanStats) {
-        requests.push(api.get('/payments/stats'), api.get('/payments/monthly-revenue'));
-      }
-      const [paymentsRes, statsRes, revenueRes] = await Promise.all(requests);
-      setPayments(paymentsRes.data || []);
-      if (statsRes) setStats(statsRes.data || {});
-      if (revenueRes) setMonthlyRevenue(revenueRes.data || []);
-    } catch (err: any) {
+  const fetchPayments = async (signal?: AbortSignal) => {
+    setLoading(true);
+    setLoadError('');
+    setStatsUnavailable(false);
+
+    const wantsStats = canViewStats && hasPlanPayments;
+    const [paymentsResult, statsResult, revenueResult] = await Promise.allSettled([
+      api.get('/payments', { signal }),
+      wantsStats ? api.get('/payments/stats', { signal }) : Promise.resolve(null),
+      wantsStats ? api.get('/payments/monthly-revenue', { signal }) : Promise.resolve(null),
+    ]);
+    if (signal?.aborted) return;
+
+    if (paymentsResult.status === 'fulfilled') {
+      setPayments(paymentsResult.value?.data || []);
+    } else {
+      const err = paymentsResult.reason;
       const errorCode = err?.errorCode || err?.response?.data?.errorCode;
       const msg = err?.userMessage || err?.response?.data?.message;
       if (errorCode === 'PERMISSION_DENIED' || errorCode === 'ACCESS_DENIED') {
         setLoadError('You do not have permission to view payments.');
-      } else if (errorCode === 'FEATURE_NOT_AVAILABLE_IN_PLAN') {
-        setLoadError('Payments are not available in your current plan. Please upgrade.');
+      } else if (errorCode === 'FEATURE_NOT_INCLUDED') {
+        // The client-side plan gate below should already have caught this
+        // before ever calling the API — reaching here means the cached
+        // feature list was stale. Refresh so the gate screen takes over
+        // instead of showing a raw error.
+        setLoadError('Payments are not included in your current plan. Please upgrade.');
       } else {
         setLoadError(msg || 'Unable to load payment information. Please try again later.');
       }
-    } finally {
       setLoading(false);
+      return;
     }
+
+    // Stats/monthly-revenue are supplementary — a failure there degrades the
+    // page (metrics show as 0/empty, a small notice appears) but never hides
+    // the payment list that already loaded successfully.
+    if (statsResult.status === 'fulfilled' && statsResult.value) {
+      setStats(statsResult.value.data || {});
+    } else if (wantsStats) {
+      setStatsUnavailable(true);
+    }
+    if (revenueResult.status === 'fulfilled' && revenueResult.value) {
+      setMonthlyRevenue(revenueResult.value.data || []);
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -108,7 +143,13 @@ export default function Payments() {
       setLoading(false);
       return;
     }
-    fetchPayments();
+    // Cancel any in-flight request from a prior mount/dependency change, and
+    // abort on unmount — prevents a slow response from setting state on an
+    // unmounted component and prevents two overlapping fetches from ever
+    // racing (the "duplicate simultaneous requests" this page used to send).
+    const controller = new AbortController();
+    fetchPayments(controller.signal);
+    return () => controller.abort();
   }, [canViewPayments, hasPlanPayments, permLoading, featureLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredPayments = payments.filter((p) => {
@@ -175,7 +216,10 @@ export default function Payments() {
     );
   }
 
-  // Plan gate — PAYMENTS feature not included in current plan
+  // Plan gate — PAYMENTS feature not included in current plan. This checks the
+  // same feature list the backend enforces (FeatureAccessInterceptor), so it
+  // shows once and never attempts the API call the server would reject anyway
+  // — no wasted request, no generic error screen, no retry button to loop on.
   if (!permLoading && !featureLoading && canViewPayments && !hasPlanPayments) {
     return (
       <div className="m-6 p-8 border border-amber-100 bg-amber-50 rounded-lg text-center dark:border-amber-500/20 dark:bg-amber-500/10">
@@ -184,12 +228,29 @@ export default function Payments() {
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           {t('payments.upgradeRequiredDesc')}
         </p>
+        {(planName || requiredPlan) && (
+          <p className="mt-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {planName && <>{t('payments.currentPlan', 'Current plan')}: <span className="text-slate-700 dark:text-slate-200">{planName}</span></>}
+            {planName && requiredPlan && <span className="mx-2 text-slate-300">·</span>}
+            {requiredPlan && <>{t('payments.requiredPlan', 'Required plan')}: <span className="text-slate-700 dark:text-slate-200">{requiredPlan}</span></>}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => navigate('/settings?tab=billing')}
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 px-5 py-2.5 text-sm font-bold text-white transition-colors"
+        >
+          <ArrowUpRight size={15} /> {t('payments.viewPlans', 'View plans / Upgrade')}
+        </button>
       </div>
     );
   }
 
   if (loadError) {
-    return <div className="p-3 sm:p-4 lg:p-6"><ApiErrorState message={loadError} onRetry={fetchPayments} /></div>;
+    // ApiErrorState's button calls onRetry directly as an onClick handler, which
+    // would otherwise pass the click MouseEvent through as fetchPayments' signal
+    // argument — wrap it so a manual retry always starts a fresh, real request.
+    return <div className="p-3 sm:p-4 lg:p-6"><ApiErrorState message={loadError} onRetry={() => fetchPayments()} /></div>;
   }
 
   return (
@@ -205,6 +266,12 @@ export default function Payments() {
           </button>
         )}
       />
+
+      {statsUnavailable && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          {t('payments.statsUnavailable', 'Payment statistics are temporarily unavailable — the list below is up to date.')}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-4">
         {[
