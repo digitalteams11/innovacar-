@@ -260,16 +260,19 @@ public class AuthController {
         String ip = resolveClientIp(httpRequest);
         String ua = httpRequest.getHeader("User-Agent");
         try {
+            // Actual email delivery now happens on a bounded background executor
+            // (see AuthService.dispatchResetCodeEmail) — by the time this call
+            // returns, the OTP is already persisted and delivery has been handed
+            // off. A delivery failure (provider down, misconfigured, etc.) is
+            // logged there and never propagates here, so it can no longer turn
+            // into a request-blocking or account-existence-revealing response.
             authService.requestPasswordReset(request, ip, ua);
-        } catch (IllegalStateException e) {
-            // Email genuinely could not be delivered (SMTP down/misconfigured) for
-            // a real account — surface a clean errorCode instead of faking success.
-            return emailFailureResponse(e.getMessage());
         } catch (Exception e) {
-            // Whatever this is (DB/schema issue, unexpected NPE, etc.), it must never
-            // reach the client as an opaque "service unavailable" 500. Log the real
-            // cause server-side (class + message only — no OTP/SMTP secrets ever
-            // appear in these fields) and return a clean, machine-readable errorCode.
+            // Only genuine infrastructure failures during OTP validation/persistence
+            // (DB down, unexpected NPE, etc.) reach here — never an email-delivery
+            // outcome. Log the real cause server-side (class + message only — no
+            // OTP/SMTP secrets ever appear in these fields) and return a clean,
+            // machine-readable errorCode.
             log.error("[FORGOT_PASSWORD_DEBUG] Unexpected failure — exceptionClass={} exceptionMessage={}",
                     e.getClass().getName(), e.getMessage(), e);
             return emailFailureResponse("EMAIL_SEND_FAILED");

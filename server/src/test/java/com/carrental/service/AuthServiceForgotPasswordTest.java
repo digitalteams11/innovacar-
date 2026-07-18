@@ -57,7 +57,10 @@ class AuthServiceForgotPasswordTest {
                 emailVerificationTokenRepository, passwordEncoder, jwtTokenProvider, authenticationManager,
                 rateLimitService, refreshTokenService, emailService, smtpMailService, sessionService,
                 passwordPolicyService, deviceSecurityService, twoFactorService, emailOtpService,
-                employeeRepository, rolePermissionService);
+                employeeRepository, rolePermissionService,
+                // Synchronous "executor" so the async email dispatch runs inline and
+                // stays deterministically verifiable within the test method.
+                Runnable::run);
 
         user = User.builder().id(1L).email("user@example.com").firstName("Jane").build();
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
@@ -123,6 +126,65 @@ class AuthServiceForgotPasswordTest {
         authService.requestPasswordReset(req, "127.0.0.1", "test-agent");
 
         verifyNoInteractions(passwordResetTokenRepository);
+        verifyNoInteractions(emailService);
+    }
+
+    /**
+     * Regression test for the production incident where a slow/failed ZeptoMail send
+     * inside this transactional method held a Hikari connection for up to 10s per
+     * request, exhausting the pool and 503-ing unrelated endpoints (login, branding).
+     * The method must never throw because the email failed to send — the OTP is
+     * already durably persisted regardless of delivery outcome.
+     */
+    @Test
+    void emailProviderFailure_doesNotThrow_otpStillPersisted() {
+        when(passwordResetTokenRepository.findFirstByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
+        when(passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(0L);
+        when(emailService.sendPasswordResetCodeEmail(anyString(), anyString(), anyString(), eq(10), any()))
+                .thenReturn(new SmtpMailService.SmtpResult(false, "smtp", "timed out", "SMTP_CONNECTION_FAILED", null));
+
+        authService.requestPasswordReset(request(), "127.0.0.1", "test-agent");
+
+        verify(passwordResetTokenRepository).save(argThat(saved ->
+                "PENDING".equals(saved.getStatus()) && saved.getUserId().equals(1L)));
+    }
+
+    /** A send that throws (unexpected exception, not just a failed SmtpResult) must also never propagate. */
+    @Test
+    void emailProviderThrows_doesNotPropagate() {
+        when(passwordResetTokenRepository.findFirstByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
+        when(passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(0L);
+        when(emailService.sendPasswordResetCodeEmail(anyString(), anyString(), anyString(), eq(10), any()))
+                .thenThrow(new RuntimeException("boom"));
+
+        authService.requestPasswordReset(request(), "127.0.0.1", "test-agent");
+
+        verify(passwordResetTokenRepository).save(any());
+    }
+
+    /**
+     * The email send must be submitted to the injected executor rather than run inline
+     * on the calling thread — this is what releases the transaction's DB connection
+     * before the (potentially 10s-long) ZeptoMail call ever starts.
+     */
+    @Test
+    void emailDispatch_goesThroughInjectedExecutor_notCallingThread() {
+        java.util.concurrent.Executor trackingExecutor = mock(java.util.concurrent.Executor.class);
+        AuthService serviceWithTrackedExecutor = new AuthService(
+                tenantRepository, userRepository, refreshTokenRepository, passwordResetTokenRepository,
+                emailVerificationTokenRepository, passwordEncoder, jwtTokenProvider, authenticationManager,
+                rateLimitService, refreshTokenService, emailService, smtpMailService, sessionService,
+                passwordPolicyService, deviceSecurityService, twoFactorService, emailOtpService,
+                employeeRepository, rolePermissionService, trackingExecutor);
+
+        when(passwordResetTokenRepository.findFirstByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
+        when(passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(0L);
+
+        serviceWithTrackedExecutor.requestPasswordReset(request(), "127.0.0.1", "test-agent");
+
+        verify(trackingExecutor).execute(any(Runnable.class));
+        // Because the tracking executor never actually runs the task, the email call
+        // itself must not have happened synchronously on this thread.
         verifyNoInteractions(emailService);
     }
 }

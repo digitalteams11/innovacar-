@@ -59,6 +59,9 @@ public class AuthService {
     private final EmployeeRepository       employeeRepository;
     private final RolePermissionService    rolePermissionService;
 
+    @org.springframework.beans.factory.annotation.Qualifier("emailDispatchExecutor")
+    private final java.util.concurrent.Executor emailDispatchExecutor;
+
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
 
@@ -418,41 +421,67 @@ public class AuthService {
                 .build());
 
         String userName = user.getFirstName() != null ? user.getFirstName() : user.getEmail();
+        Long userId = user.getId();
+        String userEmail = user.getEmail();
+        String userLanguage = user.getLanguage();
 
-        // Safe, non-secret snapshot of which SMTP config will actually be used —
-        // logged before the send attempt so a misconfiguration is diagnosable
-        // without ever touching the password or the generated code.
-        SmtpMailService.PlatformSmtpDiagnostics diag = smtpMailService.describePlatformConfig();
-        log.debug("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} userExists=true smtpSettingsSource={} "
-                        + "smtpHost={} smtpPort={} smtpUsernamePresent={} fromEmail={} fromName={} "
-                        + "startTls={} passwordPresent={} sendAttempted=true",
-                maskEmail(user.getEmail()), diag.source(), diag.host(), diag.port(), diag.usernamePresent(),
-                diag.fromEmail(), diag.fromName(), diag.startTls(), diag.passwordPresent());
+        // The OTP row is already committed by the time this method returns — the
+        // actual ZeptoMail call must never run on this thread. HttpEmailProvider
+        // has its own 10-second HTTP timeout, and this method runs inside a DB
+        // transaction: holding that transaction's checked-out Hikari connection
+        // for up to 10 seconds per request is what previously let a handful of
+        // slow/degraded email sends exhaust the whole pool (5 connections by
+        // default) and take down completely unrelated endpoints (login, public
+        // branding) with a connection-acquisition timeout. Dispatching to a small
+        // bounded executor means this method returns — and releases its
+        // connection — as soon as the OTP is persisted, regardless of how long
+        // ZeptoMail takes to answer.
+        dispatchResetCodeEmail(userId, userEmail, userName, userLanguage, rawCode);
+        log.info("[PWD_RESET] 6-digit code queued for delivery to user [id={}]", userId);
+    }
 
-        SmtpMailService.SmtpResult result;
+    /**
+     * Sends the reset-code email on the bounded {@code emailDispatchExecutor}, never on
+     * the calling (request/transactional) thread. Any failure — provider timeout,
+     * misconfiguration, unexpected exception — is logged here and only here: by design,
+     * nothing about email delivery outcome can reach back to the HTTP response, because
+     * by the time this runs the response has already committed to the generic
+     * "if an account exists..." message. A full queue (executor saturated) is treated the
+     * same as a failed send: logged and dropped, never blocking the caller.
+     */
+    private void dispatchResetCodeEmail(Long userId, String userEmail, String userName,
+                                         String userLanguage, String rawCode) {
         try {
-            result = emailService.sendPasswordResetCodeEmail(user.getEmail(), userName, rawCode, 10, user.getLanguage());
-        } catch (Exception ex) {
-            // Never let an unexpected exception here (template formatting, NPE, etc.)
-            // masquerade as a generic SMTP failure — log the real cause and re-throw
-            // as a clean errorCode the controller can map to a specific message.
-            log.error("[FORGOT_PASSWORD_EMAIL_DEBUG] sendResult=false errorCode=EMAIL_SEND_FAILED "
-                            + "exceptionClass={} exceptionMessage={}",
-                    ex.getClass().getName(), ex.getMessage(), ex);
-            throw new IllegalStateException("EMAIL_SEND_FAILED");
+            emailDispatchExecutor.execute(() -> {
+                SmtpMailService.PlatformSmtpDiagnostics diag = smtpMailService.describePlatformConfig();
+                log.debug("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} userExists=true smtpSettingsSource={} "
+                                + "smtpHost={} smtpPort={} smtpUsernamePresent={} fromEmail={} fromName={} "
+                                + "startTls={} passwordPresent={} sendAttempted=true",
+                        maskEmail(userEmail), diag.source(), diag.host(), diag.port(), diag.usernamePresent(),
+                        diag.fromEmail(), diag.fromName(), diag.startTls(), diag.passwordPresent());
+                try {
+                    SmtpMailService.SmtpResult result =
+                            emailService.sendPasswordResetCodeEmail(userEmail, userName, rawCode, 10, userLanguage);
+                    log.debug("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} sendResult={} errorCode={}",
+                            maskEmail(userEmail), result.sent(), result.errorCode());
+                    if (!result.sent()) {
+                        log.warn("[PWD_RESET] Failed to deliver code to user [id={}]: errorCode={} detail={}",
+                                userId, result.errorCode(), result.errorMessage());
+                    } else {
+                        log.info("[PWD_RESET] 6-digit code delivered to user [id={}]", userId);
+                    }
+                } catch (Exception ex) {
+                    log.error("[FORGOT_PASSWORD_EMAIL_DEBUG] sendResult=false errorCode=EMAIL_SEND_FAILED "
+                                    + "exceptionClass={} exceptionMessage={}",
+                            ex.getClass().getName(), ex.getMessage(), ex);
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException rex) {
+            // Executor saturated — never block or fail the request over this; log
+            // and move on. The user still gets the generic success response, and
+            // the OTP row already exists for verify-reset-code to check against.
+            log.warn("[PWD_RESET] Email dispatch queue full — code for user [id={}] was not sent", userId);
         }
-
-        // Never log the OTP code or SMTP password — only the outcome.
-        log.debug("[FORGOT_PASSWORD_EMAIL_DEBUG] targetEmail={} sendResult={} errorCode={}",
-                maskEmail(user.getEmail()), result.sent(), result.errorCode());
-        if (!result.sent()) {
-            // Never claim the code was sent when it wasn't — surface a clean,
-            // machine-readable error instead of a fake success response.
-            log.error("[PWD_RESET] Failed to deliver code to user [id={}]: errorCode={} detail={}",
-                    user.getId(), result.errorCode(), result.errorMessage());
-            throw new IllegalStateException(result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED");
-        }
-        log.info("[PWD_RESET] 6-digit code sent to user [id={}]", user.getId());
     }
 
     private static String maskEmail(String email) {
