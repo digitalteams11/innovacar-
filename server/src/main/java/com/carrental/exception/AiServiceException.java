@@ -51,6 +51,13 @@ public class AiServiceException extends RuntimeException {
                 "AI_CHAT_DISABLED");
     }
 
+    /** Platform AI is on, but the Support Assistant feature toggle is off. */
+    public static AiServiceException supportAssistantDisabled() {
+        return new AiServiceException(
+                "AI Support Assistant feature is disabled. Super Admin can enable it in AI & Automation settings.",
+                "AI_SUPPORT_ASSISTANT_DISABLED");
+    }
+
     /**
      * The encrypted key in DB cannot be decrypted — secret may have changed,
      * or the stored value was written by a different encryption implementation.

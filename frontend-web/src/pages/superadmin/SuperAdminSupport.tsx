@@ -6,10 +6,13 @@ import { Eye, Plus } from 'lucide-react';
 import { PageHeader, FilterSelect, DataTable, Badge, Modal, FormField, TextInput, TextArea } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
 
+// Must match SupportTicket.Status / .Priority / .Category on the backend exactly —
+// any value here that isn't a real enum constant makes the request 400 the moment
+// it's sent (parseEnum rejects unknown values rather than silently coercing them).
 const statusOptions = [
   { value: 'OPEN', label: 'Open' },
-  { value: 'PENDING', label: 'Pending' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'WAITING', label: 'Waiting' },
   { value: 'RESOLVED', label: 'Resolved' },
   { value: 'CLOSED', label: 'Closed' },
 ];
@@ -26,7 +29,7 @@ const priorityColors: Record<string, any> = {
   LOW: 'default',
   MEDIUM: 'info',
   HIGH: 'warning',
-  URGENT: 'danger',
+  CRITICAL: 'danger',
 };
 
 export default function SuperAdminSupport() {
@@ -38,7 +41,7 @@ export default function SuperAdminSupport() {
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ subject: '', description: '', category: 'GENERAL', priority: 'MEDIUM' });
+  const [createForm, setCreateForm] = useState({ subject: '', description: '', category: 'OTHER', priority: 'MEDIUM' });
 
   useEffect(() => {
     fetchTickets();
@@ -195,10 +198,13 @@ export default function SuperAdminSupport() {
               onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl border border-[#e8e6e1] dark:border-white/5 bg-white dark:bg-[#1e293b] text-sm text-[#1e293b] dark:text-white outline-none"
             >
-              <option value="GENERAL">General</option>
+              <option value="ACCOUNT">Account</option>
               <option value="BILLING">Billing</option>
               <option value="TECHNICAL">Technical</option>
+              <option value="GPS">GPS</option>
+              <option value="SECURITY">Security</option>
               <option value="FEATURE_REQUEST">Feature Request</option>
+              <option value="OTHER">Other</option>
             </select>
           </FormField>
           <FormField label="Priority">
@@ -210,7 +216,7 @@ export default function SuperAdminSupport() {
               <option value="LOW">Low</option>
               <option value="MEDIUM">Medium</option>
               <option value="HIGH">High</option>
-              <option value="URGENT">Urgent</option>
+              <option value="CRITICAL">Critical</option>
             </select>
           </FormField>
           <FormField label="Description">

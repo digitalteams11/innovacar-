@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { superAdminApi } from '../../api/superAdminApi';
-import { ArrowLeft, Clock, User, Tag, Send, CheckCircle, Mail, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Clock, User, Tag, Send, CheckCircle, Mail, RefreshCw, Sparkles } from 'lucide-react';
 import { PageHeader, Badge, TextArea, TabGroup } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
 
@@ -19,6 +19,7 @@ export default function SuperAdminTicketDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
   const [resending, setResending] = useState(false);
+  const [draftingReply, setDraftingReply] = useState(false);
 
   useEffect(() => {
     if (id) fetchTicket();
@@ -52,6 +53,20 @@ export default function SuperAdminTicketDetail() {
     } catch (err) {
       console.error(err);
       showToast('Unable to send this reply.', 'error');
+    }
+  };
+
+  const handleGenerateAiDraft = async () => {
+    setDraftingReply(true);
+    try {
+      const res = await superAdminApi.generateTicketAiDraftReply(Number(id));
+      setReply(res.data?.data?.draft ?? '');
+      showToast('AI draft generated. Review before sending.', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err?.response?.data?.message ?? 'Unable to generate an AI draft right now.', 'error');
+    } finally {
+      setDraftingReply(false);
     }
   };
 
@@ -261,6 +276,14 @@ export default function SuperAdminTicketDetail() {
             </div>
             <div className="flex items-end gap-3">
               <div className="flex-1"><TextArea value={reply} onChange={setReply} placeholder="Reply to the agency..." rows={3} /></div>
+              <button
+                onClick={handleGenerateAiDraft}
+                disabled={draftingReply}
+                title="Generate AI draft reply"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#b69152]/40 text-[#b69152] disabled:opacity-40"
+              >
+                <Sparkles size={16} className={draftingReply ? 'animate-pulse' : ''} />
+              </button>
               <button onClick={handleReply} disabled={!reply.trim()} className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#b69152] text-[#171817] disabled:opacity-40"><Send size={16} /></button>
             </div>
           </div>

@@ -112,6 +112,7 @@ export const superAdminApi = {
   addTicketNote: (id: number, data: any) => api.post(`/super-admin/tickets/${id}/notes`, data),
   getTicketMessages: (id: number) => api.get(`/super-admin/tickets/${id}/messages`),
   sendTicketMessage: (id: number, data: any) => api.post(`/super-admin/tickets/${id}/messages`, data),
+  generateTicketAiDraftReply: (id: number) => api.post(`/super-admin/tickets/${id}/ai-draft-reply`),
   getSupportAnalytics: () => api.get('/super-admin/support/analytics'),
 
   // ═══════════════════════════════════════════════════════════════

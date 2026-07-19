@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -74,6 +75,7 @@ public class SuperAdminController {
     private final CancellationRequestRepository cancellationRequestRepository;
     private final com.carrental.util.EncryptionUtil encryptionUtil;
     private final com.carrental.service.PlatformEmailService platformEmailService;
+    private final com.carrental.service.SupportAiAssistantService supportAiAssistantService;
     private final com.carrental.service.EmailTemplateService emailTemplateService;
     private final com.carrental.service.SupportRoutingService supportRoutingService;
 
@@ -728,7 +730,8 @@ public class SuperAdminController {
     // ═══════════════════════════════════════════════════════════════════════════
 
     @GetMapping("/tickets")
-    public ResponseEntity<List<SupportTicket>> getAllTickets(
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getAllTickets(
             @RequestParam(required = false) String status) {
         List<SupportTicket> tickets;
         if (status != null) {
@@ -736,17 +739,20 @@ public class SuperAdminController {
         } else {
             tickets = ticketRepository.findAllByOrderByCreatedAtDesc();
         }
-        return ResponseEntity.ok(tickets);
+        return ResponseEntity.ok(tickets.stream().map(this::superAdminTicketMap).toList());
     }
 
     @GetMapping("/tickets/{id}")
-    public ResponseEntity<SupportTicket> getTicket(@PathVariable Long id) {
-        return ResponseEntity.ok(ticketRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ticket not found")));
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getTicket(@PathVariable Long id) {
+        SupportTicket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+        return ResponseEntity.ok(superAdminTicketMap(ticket));
     }
 
     @PatchMapping("/tickets/{id}")
-    public ResponseEntity<SupportTicket> updateTicket(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateTicket(@PathVariable Long id, @RequestBody Map<String, String> body) {
         SupportTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
         if (body.containsKey("status")) ticket.setStatus(parseEnum(SupportTicket.Status.class, body.get("status"), "status"));
@@ -756,12 +762,23 @@ public class SuperAdminController {
         if (ticket.getStatus() == SupportTicket.Status.RESOLVED || ticket.getStatus() == SupportTicket.Status.CLOSED) {
             ticket.setResolvedAt(LocalDateTime.now());
         }
-        return ResponseEntity.ok(ticketRepository.save(ticket));
+        SupportTicket saved = ticketRepository.save(ticket);
+        return ResponseEntity.ok(superAdminTicketMap(saved));
     }
 
     @PostMapping("/tickets")
-    public ResponseEntity<SupportTicket> createTicket(@RequestBody SupportTicket ticket) {
-        return ResponseEntity.ok(ticketRepository.save(ticket));
+    @Transactional
+    public ResponseEntity<Map<String, Object>> createTicket(@RequestBody Map<String, String> body) {
+        SupportTicket ticket = SupportTicket.builder()
+                .subject(body.get("subject"))
+                .description(body.get("description"))
+                .category(parseEnum(SupportTicket.Category.class, body.getOrDefault("category", "GENERAL"), "category"))
+                .priority(parseEnum(SupportTicket.Priority.class, body.getOrDefault("priority", "MEDIUM"), "priority"))
+                .channel("SUPPORT")
+                .createdBy("Super Admin")
+                .build();
+        SupportTicket saved = ticketRepository.save(ticket);
+        return ResponseEntity.ok(superAdminTicketMap(saved));
     }
 
     @PostMapping("/tickets/{id}/resend-email")
@@ -826,6 +843,53 @@ public class SuperAdminController {
                 "message", "Reply sent successfully",
                 "item", supportMessageMap(saved)
         ));
+    }
+
+    @PostMapping("/tickets/{id}/ai-draft-reply")
+    public ResponseEntity<Map<String, Object>> generateTicketAiDraftReply(@PathVariable Long id) {
+        SupportTicket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+        com.carrental.service.SupportAiAssistantService.DraftResult draft = supportAiAssistantService.draftReply(ticket);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Draft generated. Review and edit before sending.",
+                "data", Map.of("draft", draft.draft(), "requestId", draft.requestId())
+        ));
+    }
+
+    /**
+     * Maps {@link SupportTicket} to a plain response DTO instead of returning the
+     * entity directly. {@code tenant} is a lazy {@code @ManyToOne} and this app runs
+     * with {@code spring.jpa.open-in-view: false}, so returning the raw entity from a
+     * non-transactional method throws a {@code LazyInitializationException} the
+     * moment Jackson tries to serialize it — that 500 is what previously made the
+     * Super Admin Support page show both an empty list and a load-failure toast at
+     * once. Must only be called from within an active transaction (see the
+     * {@code @Transactional} methods below) so the lazy {@code tenant} access here
+     * is safe.
+     */
+    private Map<String, Object> superAdminTicketMap(SupportTicket ticket) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("id", ticket.getId());
+        value.put("ticketNumber", ticket.getTicketNumber());
+        value.put("subject", ticket.getSubject());
+        value.put("description", ticket.getDescription());
+        value.put("status", ticket.getStatus() != null ? ticket.getStatus().name() : null);
+        value.put("priority", ticket.getPriority() != null ? ticket.getPriority().name() : null);
+        value.put("category", ticket.getCategory() != null ? ticket.getCategory().name() : null);
+        value.put("channel", ticket.getChannel());
+        value.put("agencyName", ticket.getTenant() != null ? ticket.getTenant().getName() : null);
+        value.put("createdBy", ticket.getCreatedBy());
+        value.put("contactEmail", ticket.getContactEmail());
+        value.put("requesterName", ticket.getRequesterName());
+        value.put("requesterEmail", ticket.getRequesterEmail());
+        value.put("requesterPhone", ticket.getRequesterPhone());
+        value.put("assignedTo", ticket.getAssignedTo());
+        value.put("resolution", ticket.getResolution());
+        value.put("createdAt", ticket.getCreatedAt());
+        value.put("updatedAt", ticket.getUpdatedAt());
+        value.put("resolvedAt", ticket.getResolvedAt());
+        return value;
     }
 
     private Map<String, Object> supportMessageMap(SupportMessage message) {
