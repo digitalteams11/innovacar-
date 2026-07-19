@@ -56,7 +56,10 @@ spring:
     # "canceling statement due to lock timeout" (or statement timeout) error
     # inside the [FLYWAY_MIGRATION_FAILED] log line — well before Hikari's own
     # 20s leak-detection threshold would otherwise fire and obscure the real cause.
-    init-sql: "SET lock_timeout = '10s'; SET statement_timeout = '90s'; SET idle_in_transaction_session_timeout = '90s';"
+    init-sqls:
+      - "SET lock_timeout = '10s';"
+      - "SET statement_timeout = '90s';"
+      - "SET idle_in_transaction_session_timeout = '90s';"
   servlet:
     multipart:
       enabled: true
