@@ -46,6 +46,17 @@ spring:
     baseline-version: "${SPRING_FLYWAY_BASELINE_VERSION:57}"
     validate-on-migrate: true
     out-of-order: false
+    # Run on every connection Flyway itself opens (not application traffic).
+    # Without this, a migration blocked on a lock held by some other session
+    # (a stuck "idle in transaction" connection, a concurrent deploy, etc.)
+    # waits indefinitely — Spring Boot never finishes starting, Tomcat never
+    # binds the port, and Railway's healthcheck fails only after its own
+    # multi-minute timeout with no diagnosis in the logs. With these set, a
+    # blocked migration instead fails fast with an explicit PostgreSQL
+    # "canceling statement due to lock timeout" (or statement timeout) error
+    # inside the [FLYWAY_MIGRATION_FAILED] log line — well before Hikari's own
+    # 20s leak-detection threshold would otherwise fire and obscure the real cause.
+    init-sql: "SET lock_timeout = '10s'; SET statement_timeout = '90s'; SET idle_in_transaction_session_timeout = '90s';"
   servlet:
     multipart:
       enabled: true
