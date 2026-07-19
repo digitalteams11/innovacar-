@@ -136,5 +136,5 @@ public class SupportTicket {
 
     public enum Priority { LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN }
 
-    public enum Category { BILLING, TECHNICAL, GPS, ACCOUNT, FEATURE_REQUEST, OTHER, UNKNOWN }
+    public enum Category { BILLING, TECHNICAL, GPS, ACCOUNT, FEATURE_REQUEST, SECURITY, OTHER, UNKNOWN }
 }

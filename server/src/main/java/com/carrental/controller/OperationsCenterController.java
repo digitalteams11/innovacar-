@@ -8,6 +8,8 @@ import com.carrental.service.PlatformEmailService;
 import com.carrental.service.SupportRoutingService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/operations-center")
 @RequiredArgsConstructor
@@ -35,6 +40,9 @@ public class OperationsCenterController {
     private final LoginAttemptRepository loginAttemptRepository;
     private final SupportRoutingService supportRoutingService;
     private final PlatformEmailService platformEmailService;
+
+    @Qualifier("emailDispatchExecutor")
+    private final Executor emailDispatchExecutor;
 
     @GetMapping
     @Transactional(readOnly = true)
@@ -105,14 +113,62 @@ public class OperationsCenterController {
                 tenantId
         );
 
-        platformEmailService.sendSupportTicketCreatedInternal(ticket);
-        platformEmailService.sendSupportTicketConfirmation(ticket);
+        // Force-initialize the lazy tenant proxy now, while this method's own
+        // persistence context/session is still open — sendSupportTicketCreatedInternal
+        // reads ticket.getTenant().getName(), and once the ticket is handed to the
+        // dispatch executor below it runs on a different thread with no session at
+        // all, so a still-unloaded lazy proxy would throw LazyInitializationException.
+        if (ticket.getTenant() != null) {
+            ticket.getTenant().getName();
+        }
+
+        // Both ZeptoMail sends previously ran synchronously here, inside this
+        // request's @Transactional method — HttpEmailProvider has its own 10s HTTP
+        // timeout each, so a slow/degraded provider could hold this method's Hikari
+        // connection (and the request thread) for up to ~20s combined, colliding
+        // with the frontend's 20s axios timeout and surfacing as "API server
+        // unavailable" even though the ticket had already been persisted. Dispatching
+        // to the bounded emailDispatchExecutor means this method returns — and
+        // releases its connection — as soon as the ticket is committed, regardless
+        // of ZeptoMail's latency. Each send still runs in its own REQUIRES_NEW
+        // transaction (see PlatformEmailService) purely for its own email-log/status
+        // bookkeeping, and any failure there is logged, never able to roll back or
+        // delay the ticket creation that already succeeded.
+        dispatchTicketEmails(ticket);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "COMPLAINT".equals(kind) ? "Complaint submitted successfully" : "Support request submitted successfully",
                 "ticket", ticketMap(ticket)
         ));
+    }
+
+    /**
+     * Submits both post-creation ticket emails to the bounded dispatch executor
+     * instead of sending them on the calling (request/transactional) thread. A full
+     * queue (executor saturated) is treated the same as a delivery failure — logged
+     * and dropped, never blocking the ticket-creation response that already succeeded.
+     */
+    private void dispatchTicketEmails(SupportTicket ticket) {
+        try {
+            emailDispatchExecutor.execute(() -> {
+                try {
+                    platformEmailService.sendSupportTicketCreatedInternal(ticket);
+                } catch (Exception e) {
+                    log.error("[SUPPORT_TICKET_EMAIL] Internal notification failed for ticket [{}]: {}",
+                            ticket.getTicketNumber(), e.getMessage(), e);
+                }
+                try {
+                    platformEmailService.sendSupportTicketConfirmation(ticket);
+                } catch (Exception e) {
+                    log.error("[SUPPORT_TICKET_EMAIL] Requester confirmation failed for ticket [{}]: {}",
+                            ticket.getTicketNumber(), e.getMessage(), e);
+                }
+            });
+        } catch (RejectedExecutionException rex) {
+            log.warn("[SUPPORT_TICKET_EMAIL] Dispatch queue full — notifications for ticket [{}] were not sent",
+                    ticket.getTicketNumber());
+        }
     }
 
     @GetMapping("/tickets/{ticketId}/messages")

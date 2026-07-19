@@ -29,7 +29,14 @@ type Channel = {
   label: string;
   description: string;
   icon: typeof HelpCircle;
-  categories: { value: string; label: string }[];
+  // `value` is shown to the user; `beValue` is what's actually persisted —
+  // it must be one of SupportTicket.Category's real enum constants
+  // (BILLING, TECHNICAL, GPS, ACCOUNT, FEATURE_REQUEST, SECURITY, OTHER,
+  // UNKNOWN). Sending anything else used to be silently coerced to UNKNOWN
+  // by the backend (parseEnumOrUnknown), so every ticket lost its real
+  // category — this mapping keeps the user-facing label specific while the
+  // stored value stays a value the backend (and Super Admin) can act on.
+  categories: { value: string; label: string; beValue: string }[];
 };
 
 const CHANNELS: Channel[] = [
@@ -39,10 +46,10 @@ const CHANNELS: Channel[] = [
     description: 'General questions, pricing, demo requests, partnerships.',
     icon: Mail,
     categories: [
-      { value: 'GENERAL', label: 'General question' },
-      { value: 'SALES', label: 'Sales' },
-      { value: 'SUBSCRIPTION', label: 'Pricing / Demo' },
-      { value: 'OTHER', label: 'Other' },
+      { value: 'GENERAL', label: 'General question', beValue: 'OTHER' },
+      { value: 'SALES', label: 'Sales', beValue: 'OTHER' },
+      { value: 'SUBSCRIPTION', label: 'Pricing / Demo', beValue: 'BILLING' },
+      { value: 'OTHER', label: 'Other', beValue: 'OTHER' },
     ],
   },
   {
@@ -51,11 +58,11 @@ const CHANNELS: Channel[] = [
     description: 'Account, login, contracts, reservations, vehicles.',
     icon: HelpCircle,
     categories: [
-      { value: 'ACCOUNT', label: 'Account problem' },
-      { value: 'LOGIN', label: 'Login problem' },
-      { value: 'CONTRACT', label: 'Contract problem' },
-      { value: 'RESERVATION', label: 'Reservation problem' },
-      { value: 'VEHICLE', label: 'Vehicle problem' },
+      { value: 'ACCOUNT', label: 'Account problem', beValue: 'ACCOUNT' },
+      { value: 'LOGIN', label: 'Login problem', beValue: 'ACCOUNT' },
+      { value: 'CONTRACT', label: 'Contract problem', beValue: 'OTHER' },
+      { value: 'RESERVATION', label: 'Reservation problem', beValue: 'OTHER' },
+      { value: 'VEHICLE', label: 'Vehicle problem', beValue: 'OTHER' },
     ],
   },
   {
@@ -64,11 +71,11 @@ const CHANNELS: Channel[] = [
     description: 'GPS, SMTP/email, PDF generation, bugs, system errors.',
     icon: Wrench,
     categories: [
-      { value: 'GPS', label: 'GPS integration' },
-      { value: 'EMAIL_SMTP', label: 'SMTP / email problem' },
-      { value: 'PDF', label: 'PDF generation' },
-      { value: 'BUG', label: 'Bug report' },
-      { value: 'DATA_RESET', label: 'Data problem' },
+      { value: 'GPS', label: 'GPS integration', beValue: 'GPS' },
+      { value: 'EMAIL_SMTP', label: 'SMTP / email problem', beValue: 'TECHNICAL' },
+      { value: 'PDF', label: 'PDF generation', beValue: 'TECHNICAL' },
+      { value: 'BUG', label: 'Bug report', beValue: 'TECHNICAL' },
+      { value: 'DATA_RESET', label: 'Data problem', beValue: 'TECHNICAL' },
     ],
   },
   {
@@ -77,8 +84,8 @@ const CHANNELS: Channel[] = [
     description: 'Payment failures, invoices, subscription changes.',
     icon: BadgeDollarSign,
     categories: [
-      { value: 'BILLING', label: 'Billing' },
-      { value: 'SUBSCRIPTION', label: 'Subscription' },
+      { value: 'BILLING', label: 'Billing', beValue: 'BILLING' },
+      { value: 'SUBSCRIPTION', label: 'Subscription', beValue: 'BILLING' },
     ],
   },
   {
@@ -87,9 +94,19 @@ const CHANNELS: Channel[] = [
     description: 'Suspicious activity, unauthorized access, data concerns.',
     icon: ShieldAlert,
     categories: [
-      { value: 'SECURITY', label: 'Security concern' },
+      { value: 'SECURITY', label: 'Security concern', beValue: 'SECURITY' },
     ],
   },
+];
+
+// Displayed labels stay Low/Normal/High/Urgent (matches the rest of the product's
+// vocabulary), but the value sent is one of SupportTicket.Priority's real enum
+// constants (LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN) — same reasoning as beValue above.
+const PRIORITIES: { value: string; label: string }[] = [
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Normal' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'CRITICAL', label: 'Urgent' },
 ];
 
 const quickHelp = [
@@ -120,8 +137,15 @@ export default function HelpCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeChannel, setActiveChannel] = useState<Channel | null>(null);
-  const [form, setForm] = useState({ subject: '', description: '', category: '', priority: 'NORMAL' });
+  const [form, setForm] = useState({ subject: '', description: '', category: '', priority: 'MEDIUM' });
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState(false);
+
+  const subjectValid = form.subject.trim().length >= 5 && form.subject.trim().length <= 150;
+  const descriptionValid = form.description.trim().length >= 10 && form.description.trim().length <= 5000;
+  const categoryValid = form.category.trim().length > 0;
+  const priorityValid = form.priority.trim().length > 0;
+  const formValid = subjectValid && descriptionValid && categoryValid && priorityValid;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -152,19 +176,25 @@ export default function HelpCenter() {
 
   const openChannel = (channel: Channel) => {
     setActiveChannel(channel);
-    setForm({ subject: '', description: '', category: channel.categories[0]?.value ?? 'OTHER', priority: 'NORMAL' });
+    setTouched(false);
+    setForm({ subject: '', description: '', category: channel.categories[0]?.value ?? 'OTHER', priority: 'MEDIUM' });
   };
 
   const submitTicket = async () => {
-    if (!activeChannel) return;
-    if (!form.subject.trim() || !form.description.trim()) {
-      showToast('Subject and message are required.', 'warning');
+    if (!activeChannel || submitting) return;
+    setTouched(true);
+    if (!formValid) {
+      showToast('Please fix the highlighted fields before submitting.', 'warning');
       return;
     }
+    const selectedCategory = activeChannel.categories.find((cat) => cat.value === form.category);
     setSubmitting(true);
     try {
       const response = await api.post('/operations-center/tickets', {
-        ...form,
+        subject: form.subject.trim(),
+        description: form.description.trim(),
+        category: selectedCategory?.beValue ?? 'OTHER',
+        priority: form.priority,
         channel: activeChannel.id,
         kind: 'SUPPORT',
       });
@@ -175,9 +205,18 @@ export default function HelpCenter() {
       );
       setActiveChannel(null);
       await load();
-    } catch (requestError) {
+    } catch (requestError: any) {
       console.error(requestError);
-      showToast('Unable to submit your request. Please try again later.', 'error');
+      const status = requestError?.response?.status;
+      const serverMessage = requestError?.response?.data?.message;
+      const message = status === 400 && serverMessage
+        ? serverMessage
+        : status === 401
+        ? 'Your session has expired. Please sign in again.'
+        : status === 403
+        ? 'You do not have permission to submit a request.'
+        : 'Unable to submit your request. Please try again later.';
+      showToast(message, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -255,7 +294,7 @@ export default function HelpCenter() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs text-[var(--brand-primary)]">{ticket.ticketNumber}</span>
                       {ticket.channel && <span className="rounded-md bg-[var(--bg-hover)] px-2 py-1 text-[10px] font-bold text-[var(--text-secondary)]">{ticket.channel}</span>}
-                      <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${priorityClass[ticket.priority] ?? priorityClass.NORMAL}`}>{ticket.priority}</span>
+                      <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${priorityClass[ticket.priority] ?? priorityClass.MEDIUM}`}>{ticket.priority}</span>
                       <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{ticket.status}</span>
                     </div>
                     <h3 className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{ticket.subject}</h3>
@@ -269,69 +308,125 @@ export default function HelpCenter() {
       </section>
 
       {activeChannel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--bg-surface)] p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--text-primary)]">{activeChannel.label}</h3>
-              <button onClick={() => setActiveChannel(null)} className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"><X size={18} /></button>
-            </div>
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Category</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
+        <div className="fixed inset-0 z-[100]">
+          {/* Backdrop — opacity/blur belongs here only, never on the dialog surface itself. */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !submitting && setActiveChannel(null)} />
+          <div className="relative flex min-h-full items-center justify-center p-0 sm:p-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="support-modal-title"
+              className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl dark:bg-[#0f172a] sm:h-auto sm:max-h-[90vh] sm:w-[calc(100%-16px)] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-[#e8e6e1] sm:dark:border-white/10"
+            >
+              {/* Sticky header */}
+              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e8e6e1] px-5 py-4 dark:border-white/10 sm:px-6">
+                <div>
+                  <h3 id="support-modal-title" className="text-lg font-bold text-[#1e293b] dark:text-white">
+                    {activeChannel.label}
+                  </h3>
+                  <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                    Tell us what happened and our support team will respond.
+                  </p>
+                </div>
+                <button
+                  onClick={() => !submitting && setActiveChannel(null)}
+                  aria-label="Close"
+                  className="shrink-0 rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:hover:bg-white/5 dark:hover:text-slate-200"
                 >
-                  {activeChannel.categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>{cat.label}</option>
-                  ))}
-                </select>
+                  <X size={18} />
+                </button>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Priority</label>
-                <select
-                  value={form.priority}
-                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
+
+              {/* Scrollable body — independent from header/footer */}
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#1e293b] dark:text-slate-200">
+                      Category <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={form.category}
+                      onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      className="h-11 w-full rounded-lg border border-[#e8e6e1] bg-white px-3 text-[16px] text-[#1e293b] outline-none transition-colors focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 dark:border-white/10 dark:bg-[#1e293b] dark:text-white sm:text-sm"
+                    >
+                      {activeChannel.categories.map((cat) => (
+                        <option key={cat.value} value={cat.value}>{cat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#1e293b] dark:text-slate-200">
+                      Priority <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={form.priority}
+                      onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                      className="h-11 w-full rounded-lg border border-[#e8e6e1] bg-white px-3 text-[16px] text-[#1e293b] outline-none transition-colors focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 dark:border-white/10 dark:bg-[#1e293b] dark:text-white sm:text-sm"
+                    >
+                      {PRIORITIES.map((p) => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1.5 block text-sm font-medium text-[#1e293b] dark:text-slate-200">
+                      Subject <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      value={form.subject}
+                      onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                      maxLength={150}
+                      placeholder="Short summary of your request"
+                      className={`h-11 w-full rounded-lg border bg-white px-3 text-[16px] text-[#1e293b] outline-none transition-colors placeholder:text-slate-400 focus:ring-2 dark:bg-[#1e293b] dark:text-white dark:placeholder:text-slate-500 sm:text-sm ${
+                        touched && !subjectValid
+                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/30'
+                          : 'border-[#e8e6e1] focus:border-emerald-500 focus:ring-emerald-500/30 dark:border-white/10'
+                      }`}
+                    />
+                    <p className={`mt-1 text-xs ${touched && !subjectValid ? 'text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>
+                      {touched && !subjectValid ? 'Subject must be between 5 and 150 characters.' : `${form.subject.trim().length}/150`}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1.5 block text-sm font-medium text-[#1e293b] dark:text-slate-200">
+                      Message <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      maxLength={5000}
+                      rows={6}
+                      placeholder="Describe your question or issue in detail"
+                      className={`min-h-[150px] w-full rounded-lg border bg-white px-3 py-2.5 text-[16px] text-[#1e293b] outline-none transition-colors placeholder:text-slate-400 focus:ring-2 dark:bg-[#1e293b] dark:text-white dark:placeholder:text-slate-500 sm:text-sm ${
+                        touched && !descriptionValid
+                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/30'
+                          : 'border-[#e8e6e1] focus:border-emerald-500 focus:ring-emerald-500/30 dark:border-white/10'
+                      }`}
+                    />
+                    <p className={`mt-1 text-xs ${touched && !descriptionValid ? 'text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>
+                      {touched && !descriptionValid ? 'Message must be between 10 and 5000 characters.' : `${form.description.trim().length}/5000`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sticky footer */}
+              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[#e8e6e1] px-5 py-4 dark:border-white/10 sm:px-6">
+                <button
+                  onClick={() => setActiveChannel(null)}
+                  disabled={submitting}
+                  className="min-h-[44px] rounded-lg border border-[#e8e6e1] px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
                 >
-                  <option value="LOW">Low</option>
-                  <option value="NORMAL">Normal</option>
-                  <option value="HIGH">High</option>
-                  <option value="URGENT">Urgent</option>
-                </select>
+                  Cancel
+                </button>
+                <button
+                  onClick={submitTicket}
+                  disabled={submitting}
+                  className="min-h-[44px] rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submitting ? 'Submitting…' : 'Submit Request'}
+                </button>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Subject</label>
-                <input
-                  value={form.subject}
-                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                  maxLength={150}
-                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
-                  placeholder="Short summary of your request"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Message</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  maxLength={5000}
-                  rows={5}
-                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
-                  placeholder="Describe your question or issue in detail"
-                />
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setActiveChannel(null)} className="rounded-lg border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)]">Cancel</button>
-              <button
-                onClick={submitTicket}
-                disabled={submitting}
-                className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-[#171817] disabled:opacity-60"
-              >
-                {submitting ? 'Submitting...' : 'Submit Request'}
-              </button>
             </div>
           </div>
         </div>
