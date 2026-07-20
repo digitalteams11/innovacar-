@@ -27,6 +27,11 @@ public class BackupController {
         return backupService.configuration();
     }
 
+    @GetMapping("/health")
+    public Map<String, Object> health() {
+        return backupService.health();
+    }
+
     @PostMapping
     public ResponseEntity<Map<String, Object>> create() {
         return ResponseEntity.status(HttpStatus.CREATED).body(backupService.createManual());

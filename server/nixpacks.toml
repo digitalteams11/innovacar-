@@ -1,0 +1,8 @@
+# Adds the PostgreSQL client tools (pg_dump, pg_restore, psql) to the build image.
+# Railway builds this service with Nixpacks (see railway.json), whose auto-detected
+# Java/Maven plan has never included them — that's the root cause of the production
+# "Cannot run program 'pg_dump': error=2, No such file or directory" backup failures.
+# This only adds a package to the existing auto-detected build; it does not replace
+# the Java/Maven setup, install, build, or start phases.
+[phases.setup]
+nixPkgs = ["...", "postgresql"]

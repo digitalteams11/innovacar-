@@ -46,6 +46,11 @@ class BackupServiceTest {
         ReflectionTestUtils.setField(service, "backupPath", backupDirectory.toString());
         ReflectionTestUtils.setField(service, "pgDumpExecutable", "pg_dump");
         ReflectionTestUtils.setField(service, "pgRestoreExecutable", "pg_restore");
+        // @PostConstruct (checkCapability) never runs on a manually-`new`'d service —
+        // simulate a successful startup probe so these tests exercise the actual
+        // backup/restore logic rather than the "tool not installed" guard.
+        ReflectionTestUtils.setField(service, "pgDumpAvailable", true);
+        ReflectionTestUtils.setField(service, "pgRestoreAvailable", true);
         ReflectionTestUtils.setField(service, "restoreEnabled", false);
         ReflectionTestUtils.setField(service, "dailyRetentionDays", 14);
         ReflectionTestUtils.setField(service, "weeklyRetentionDays", 90);
@@ -104,5 +109,62 @@ class BackupServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("disabled");
         verifyNoInteractions(commandRunner);
+    }
+
+    @Test
+    void missingPgDump_failsFastWithReadableMessage_neverAttemptsProcessBuilder() throws Exception {
+        ReflectionTestUtils.setField(service, "pgDumpAvailable", false);
+        when(backupRepository.save(any(BackupRecord.class))).thenAnswer(invocation -> {
+            BackupRecord record = invocation.getArgument(0);
+            if (record.getId() == null) record.setId(43L);
+            return record;
+        });
+
+        assertThatThrownBy(() -> service.createManual())
+                .isInstanceOf(IllegalStateException.class);
+
+        verifyNoInteractions(commandRunner);
+        var captor = org.mockito.ArgumentCaptor.forClass(BackupRecord.class);
+        verify(backupRepository, atLeastOnce()).save(captor.capture());
+        BackupRecord failed = captor.getAllValues().stream()
+                .filter(r -> r.getStatus() == BackupRecord.Status.FAILED).findFirst().orElseThrow();
+        assertThat(failed.getErrorMessage()).isEqualTo("PostgreSQL backup tool is not installed on the server.");
+    }
+
+    @Test
+    void checkCapability_probesVersionAndMarksAvailable_neverThrows() throws Exception {
+        BackupCommandRunner runner = mock(BackupCommandRunner.class);
+        when(runner.run(eq(List.of("pg_dump", "--version")), anyMap(), any()))
+                .thenReturn(new BackupCommandRunner.Result(0, "pg_dump (PostgreSQL) 16.4\n"));
+        when(runner.run(eq(List.of("pg_restore", "--version")), anyMap(), any()))
+                .thenReturn(new BackupCommandRunner.Result(1, ""));
+
+        BackupService probed = new BackupService(backupRepository, runner, new DataSourceProperties());
+        ReflectionTestUtils.setField(probed, "pgDumpExecutable", "pg_dump");
+        ReflectionTestUtils.setField(probed, "pgRestoreExecutable", "pg_restore");
+
+        probed.checkCapability();
+
+        Map<String, Object> health = probed.health();
+        assertThat(health).containsEntry("pgDumpAvailable", true);
+        assertThat(health).containsEntry("pgDumpVersion", "pg_dump (PostgreSQL) 16.4");
+        assertThat(health).containsEntry("pgRestoreAvailable", false);
+        assertThat(health).containsEntry("backupReady", true);
+    }
+
+    @Test
+    void checkCapability_executableNotFound_neverThrows_marksUnavailable() throws Exception {
+        BackupCommandRunner runner = mock(BackupCommandRunner.class);
+        when(runner.run(anyList(), anyMap(), any())).thenThrow(new java.io.IOException("Cannot run program \"pg_dump\": error=2, No such file or directory"));
+
+        BackupService probed = new BackupService(backupRepository, runner, new DataSourceProperties());
+        ReflectionTestUtils.setField(probed, "pgDumpExecutable", "pg_dump");
+        ReflectionTestUtils.setField(probed, "pgRestoreExecutable", "pg_restore");
+
+        probed.checkCapability();
+
+        Map<String, Object> health = probed.health();
+        assertThat(health).containsEntry("pgDumpAvailable", false);
+        assertThat(health).containsEntry("backupReady", false);
     }
 }

@@ -28,6 +28,8 @@ type BackupRecord = {
 
 type BackupConfiguration = {
   restoreEnabled: boolean;
+  pgDumpAvailable: boolean;
+  pgRestoreAvailable: boolean;
   daily: { cron: string; retentionDays: number };
   weekly: { cron: string; retentionDays: number };
   monthly: { cron: string; retentionDays: number };
@@ -158,6 +160,9 @@ export default function SuperAdminBackups() {
   }
 
   const restoreEnabled = configuration?.restoreEnabled === true;
+  // configuration is null while still loading — don't disable the button (and imply
+  // the tool is missing) before we actually know one way or the other.
+  const pgDumpAvailable = configuration ? configuration.pgDumpAvailable === true : true;
 
   return (
     <div className="space-y-6">
@@ -175,7 +180,12 @@ export default function SuperAdminBackups() {
           <button onClick={load} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-[#e8e6e1] bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
-          <button onClick={create} disabled={creating} className="inline-flex items-center gap-2 rounded-xl bg-[#0a0f2c] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 dark:bg-accent-400 dark:text-[#0a0f2c]">
+          <button
+            onClick={create}
+            disabled={creating || !pgDumpAvailable}
+            title={pgDumpAvailable ? undefined : 'PostgreSQL backup tool is not installed on the server.'}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#0a0f2c] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 dark:bg-accent-400 dark:text-[#0a0f2c]"
+          >
             <DatabaseBackup size={16} /> {creating ? 'Creating backup...' : 'Create backup'}
           </button>
         </div>
@@ -208,6 +218,16 @@ export default function SuperAdminBackups() {
           </article>
         ))}
       </section>
+
+      {configuration && !pgDumpAvailable && (
+        <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200">
+          <XCircle size={19} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">Backup capability unavailable</p>
+            <p className="mt-1 text-xs leading-5">PostgreSQL backup tool is not installed on the server. New backups cannot be created until this is fixed on the runtime.</p>
+          </div>
+        </div>
+      )}
 
       {!restoreEnabled && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">

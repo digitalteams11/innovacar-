@@ -4,6 +4,7 @@ import com.carrental.entity.BackupRecord;
 import com.carrental.entity.User;
 import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.BackupRecordRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,16 +61,75 @@ public class BackupService {
     @Value("${app.backup.retention.monthly-days:730}")
     private int monthlyRetentionDays;
 
+    private volatile boolean pgDumpAvailable = false;
+    private volatile String pgDumpVersion = null;
+    private volatile boolean pgRestoreAvailable = false;
+    private volatile String pgRestoreVersion = null;
+
+    /**
+     * Checks once at startup whether pg_dump/pg_restore actually exist on this
+     * runtime's $PATH — root cause of the "Cannot run program 'pg_dump'" production
+     * failure was that Railway's Nixpacks build never installed them at all (see
+     * server/nixpacks.toml). Must never throw: a missing backup tool is a real but
+     * non-fatal condition — the rest of the application (and every other endpoint)
+     * has to keep working regardless, so failures here are caught and logged, not
+     * propagated.
+     */
+    @PostConstruct
+    void checkCapability() {
+        pgDumpVersion = probeVersion(pgDumpExecutable);
+        pgDumpAvailable = pgDumpVersion != null;
+        pgRestoreVersion = probeVersion(pgRestoreExecutable);
+        pgRestoreAvailable = pgRestoreVersion != null;
+
+        if (pgDumpAvailable && pgRestoreAvailable) {
+            log.info("[BACKUP_CAPABILITY] pg_dump available: {} | pg_restore available: {}", pgDumpVersion, pgRestoreVersion);
+        } else {
+            log.warn("[BACKUP_CAPABILITY] pgDumpAvailable={} pgRestoreAvailable={} — database backups will fail until "
+                    + "the PostgreSQL client tools are installed on this runtime.", pgDumpAvailable, pgRestoreAvailable);
+        }
+    }
+
+    /** Returns the trimmed "--version" output, or null if the executable can't be run at all. */
+    private String probeVersion(String executable) {
+        try {
+            BackupCommandRunner.Result result = commandRunner.run(
+                    List.of(executable, "--version"), Map.of(), Duration.ofSeconds(10));
+            if (result.exitCode() != 0) return null;
+            String output = result.output() == null ? "" : result.output().trim();
+            return output.isEmpty() ? null : output.lines().findFirst().orElse(output);
+        } catch (Exception ex) {
+            log.debug("[BACKUP_CAPABILITY] {} --version failed: {}", executable, ex.getMessage());
+            return null;
+        }
+    }
+
+    /** Backs GET /api/super-admin/backups/health — never touches storage credentials or DB credentials. */
+    public Map<String, Object> health() {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("pgDumpAvailable", pgDumpAvailable);
+        value.put("pgDumpVersion", pgDumpVersion);
+        value.put("pgRestoreAvailable", pgRestoreAvailable);
+        value.put("pgRestoreVersion", pgRestoreVersion);
+        value.put("storageProvider", "LOCAL");
+        value.put("restoreEnabled", restoreEnabled);
+        value.put("backupReady", pgDumpAvailable);
+        return value;
+    }
+
     public List<Map<String, Object>> list() {
         return backupRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toMap).toList();
     }
 
     public Map<String, Object> configuration() {
-        return Map.of(
-                "restoreEnabled", restoreEnabled,
-                "daily", policy(dailySchedule, dailyRetentionDays),
-                "weekly", policy(weeklySchedule, weeklyRetentionDays),
-                "monthly", policy(monthlySchedule, monthlyRetentionDays));
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("restoreEnabled", restoreEnabled);
+        value.put("pgDumpAvailable", pgDumpAvailable);
+        value.put("pgRestoreAvailable", pgRestoreAvailable);
+        value.put("daily", policy(dailySchedule, dailyRetentionDays));
+        value.put("weekly", policy(weeklySchedule, weeklyRetentionDays));
+        value.put("monthly", policy(monthlySchedule, monthlyRetentionDays));
+        return value;
     }
 
     public Map<String, Object> createManual() {
@@ -105,6 +165,9 @@ public class BackupService {
         record.setStatus(BackupRecord.Status.RESTORING);
         backupRepository.save(record);
         try {
+            if (!pgRestoreAvailable) {
+                throw new IOException("PostgreSQL backup tool is not installed on the server.");
+            }
             DatabaseTarget target = databaseTarget();
             List<String> command = new ArrayList<>(List.of(
                     pgRestoreExecutable,
@@ -187,6 +250,9 @@ public class BackupService {
                 .build());
         Path temporary = null;
         try {
+            if (!pgDumpAvailable) {
+                throw new IOException("PostgreSQL backup tool is not installed on the server.");
+            }
             Path directory = backupDirectory();
             String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(LocalDateTime.now());
             String fileName = "rentcar-" + type.name().toLowerCase(Locale.ROOT) + "-" + timestamp + "-" + record.getId() + ".dump";
