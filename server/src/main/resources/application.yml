@@ -136,18 +136,30 @@ app:
   # password reset / verification emails, and the public web app URL exposed
   # via PUBLIC_WEB_URL. Must be a bare origin (no trailing slash, no /# hash
   # prefix) — the backend appends the HashRouter "/#/contract-sign/..." path
-  # itself. In production, set FRONTEND_URL (or PUBLIC_WEB_URL as an alias) to
-  # the real public domain, e.g. https://innovacar.app — this is the single
-  # source of truth; client requests can no longer override it.
-  frontend-url: "${FRONTEND_URL:${PUBLIC_WEB_URL:http://localhost:5173}}"
+  # itself.
+  #
+  # The base default here is the real production domain, NOT localhost —
+  # this file has no profile guard, so whatever default lives here is what a
+  # deployed environment gets if APP_FRONTEND_URL/FRONTEND_URL/PUBLIC_WEB_URL
+  # is ever missing on Railway. A missing env var must degrade to "still the
+  # correct production URL", never to a broken localhost link embedded in a
+  # real email — that exact failure mode (PUBLIC_API_URL unset on Railway →
+  # silently fell back to localhost → PublicUrlSafetyInitializer correctly
+  # refused to start, taking production down) is the incident this fixes.
+  # Local dev overrides this back to localhost in application-dev.yml, which
+  # only loads when SPRING_PROFILES_ACTIVE=dev.
+  frontend-url: "${APP_FRONTEND_URL:${FRONTEND_URL:${PUBLIC_WEB_URL:https://www.innovacar.app}}}"
 
   # ── Public backend origin used to build links that must resolve directly
   # against the API (e.g. the signed-contract-PDF download link embedded in
-  # emails) rather than through the frontend. Must be a bare https origin in
-  # production — e.g. https://api.innovacar.app. Never localhost/192.168.x.x/
-  # a Railway internal domain in production; PlatformEmailService validates
-  # this before ever putting a URL built from it into an email.
-  public-api-url: "${PUBLIC_API_URL:http://localhost:8082}"
+  # emails) rather than through the frontend. Same reasoning as frontend-url
+  # above: the base default must be the real production API domain, not
+  # localhost — PublicUrlSafetyInitializer still refuses to start if this
+  # (or frontend-url) ever resolves to localhost/127.*/192.168.*/
+  # railway.internal/http while deployed, but that check exists to catch a
+  # genuinely wrong override, not to be the thing standing between "env var
+  # missing" and "production is down".
+  public-api-url: "${PUBLIC_API_URL:https://api.innovacar.app}"
 
   # ── Custom domain / white-label subdomain resolution ─────────────────────────
   domain:

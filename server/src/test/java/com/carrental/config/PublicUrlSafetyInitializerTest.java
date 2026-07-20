@@ -104,4 +104,43 @@ class PublicUrlSafetyInitializerTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("REFUSING_LOCALHOST_PUBLIC_URL");
     }
+
+    @Test
+    void prodProfile_privateClassAIpHost_failsFast() {
+        ConfigurableApplicationContext context = contextWith(
+                new String[]{"prod"}, "https://innovacar.app", "http://10.0.0.1");
+
+        assertThatThrownBy(() -> initializer.initialize(context))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("REFUSING_LOCALHOST_PUBLIC_URL");
+    }
+
+    @Test
+    void prodProfile_dockerInternalHost_failsFast() {
+        ConfigurableApplicationContext context = contextWith(
+                new String[]{"prod"}, "https://innovacar.app", "https://host.docker.internal");
+
+        assertThatThrownBy(() -> initializer.initialize(context))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("REFUSING_LOCALHOST_PUBLIC_URL");
+    }
+
+    @Test
+    void prodProfile_wwwFrontendHost_isAccepted() {
+        ConfigurableApplicationContext context = contextWith(
+                new String[]{"prod"}, "https://www.innovacar.app", "https://api.innovacar.app");
+
+        assertThatNoException().isThrownBy(() -> initializer.initialize(context));
+    }
+
+    @Test
+    void prodProfile_unexpectedHost_failsFast() {
+        ConfigurableApplicationContext context = contextWith(
+                new String[]{"prod"}, "https://innovacar.app", "https://some-other-domain.example");
+
+        assertThatThrownBy(() -> initializer.initialize(context))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("UNEXPECTED_PUBLIC_URL_HOST");
+    }
+
 }
