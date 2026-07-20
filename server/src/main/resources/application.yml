@@ -178,10 +178,14 @@ app:
     allowed-origins: "${CORS_ALLOWED_ORIGINS:https://innovacar.app,https://www.innovacar.app}"
 
   # ── Google OAuth ─────────────────────────────────────────────────────────────
+  # Must match the frontend's VITE_GOOGLE_CLIENT_ID exactly (same OAuth client),
+  # and is what GoogleOAuthService validates every ID token's "aud" claim
+  # against. Get one at https://console.cloud.google.com/apis/credentials —
+  # set GOOGLE_CLIENT_ID in Railway Variables. Previously this was a hardcoded
+  # "" with no env var placeholder at all, so setting GOOGLE_CLIENT_ID on
+  # Railway had zero effect and audience validation silently never ran.
   google:
-    client-id: ""
-    # Configure your Google OAuth 2.0 client ID above for production use.
-    # Get one at: https://console.cloud.google.com/apis/credentials
+    client-id: "${GOOGLE_CLIENT_ID:}"
 
   security:
     password:

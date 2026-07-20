@@ -191,10 +191,32 @@ public class GlobalExceptionHandler {
         return bodyWithCode(HttpStatus.BAD_REQUEST, ex.getMessage(), "warning", ex.getErrorCode());
     }
 
+    @ExceptionHandler(GoogleAuthException.class)
+    public ResponseEntity<Map<String, Object>> handleGoogleAuth(GoogleAuthException ex) {
+        HttpStatus status = switch (ex.getErrorCode()) {
+            case "GOOGLE_AUTH_NOT_CONFIGURED" -> HttpStatus.SERVICE_UNAVAILABLE;
+            case "GOOGLE_TOKEN_INVALID", "GOOGLE_EMAIL_NOT_VERIFIED" -> HttpStatus.UNAUTHORIZED;
+            case "ACCOUNT_SUSPENDED", "ACCOUNT_BLOCKED" -> HttpStatus.FORBIDDEN;
+            case "TENANT_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            default -> HttpStatus.BAD_REQUEST; // AUTHENTICATION_FAILED and any other code
+        };
+        return bodyWithCode(status, ex.getMessage(), "warning", ex.getErrorCode());
+    }
+
     /**
      * Normalized AI provider error — the raw provider exception/response never
      * reaches the client (see {@code com.carrental.service.provider.*ProviderClient}).
      */
+    @ExceptionHandler(PremiumFeatureRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handlePremiumFeatureRequired(PremiumFeatureRequiredException ex) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("success", false);
+        body.put("code", "PREMIUM_FEATURE_REQUIRED");
+        body.put("feature", ex.getFeature());
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
     @ExceptionHandler(AiServiceException.class)
     public ResponseEntity<Map<String, Object>> handleAiService(AiServiceException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {

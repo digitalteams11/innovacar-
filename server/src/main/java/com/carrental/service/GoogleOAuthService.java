@@ -5,6 +5,7 @@ import com.carrental.entity.Role;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
 import com.carrental.entity.UserSession;
+import com.carrental.exception.GoogleAuthException;
 import com.carrental.repository.TenantRepository;
 import com.carrental.repository.UserRepository;
 import com.carrental.security.JwtTokenProvider;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
@@ -50,48 +52,79 @@ public class GoogleOAuthService {
      * If the user doesn't exist, creates a new tenant + admin account.
      */
     public AuthResponse authenticate(String idToken) {
-        // Verify the token with Google
-        GoogleUserInfo userInfo = verifyGoogleToken(idToken);
-
-        if (userInfo == null || userInfo.email == null) {
-            throw new IllegalArgumentException("Invalid Google ID token");
+        if (!StringUtils.hasText(googleClientId)) {
+            // Fail closed, not open — verifyGoogleToken() below only enforces the
+            // audience check when googleClientId is non-blank, which previously
+            // meant an unconfigured client-id silently accepted a valid ID token
+            // issued to ANY Google OAuth client, not just this app's.
+            throw new GoogleAuthException("Google sign-in is not configured on this server.", "GOOGLE_AUTH_NOT_CONFIGURED");
         }
+
+        GoogleUserInfo userInfo = verifyGoogleToken(idToken);
+        if (userInfo == null || userInfo.email == null) {
+            throw new GoogleAuthException("Your Google sign-in could not be verified. Please try again.", "GOOGLE_TOKEN_INVALID");
+        }
+        if (!userInfo.emailVerified) {
+            throw new GoogleAuthException("Your Google account's email address is not verified.", "GOOGLE_EMAIL_NOT_VERIFIED");
+        }
+
+        String normalizedEmail = userInfo.email.trim().toLowerCase(java.util.Locale.ROOT);
 
         // Check if user already exists by Google ID
         Optional<User> existingByGoogle = userRepository.findByGoogleId(userInfo.sub);
         if (existingByGoogle.isPresent()) {
-            User user = existingByGoogle.get();
-            return buildAuthResponseOrChallenge(user);
+            return authenticateExistingUser(existingByGoogle.get());
         }
 
-        // Check if user exists by email (link Google account)
-        Optional<User> existingByEmail = userRepository.findByEmail(userInfo.email);
+        // Check if user exists by email (link Google account) — never creates a
+        // duplicate account for an email that already has one.
+        Optional<User> existingByEmail = userRepository.findByEmail(normalizedEmail);
         if (existingByEmail.isPresent()) {
             User user = existingByEmail.get();
             user.setGoogleId(userInfo.sub);
-            if (Boolean.TRUE.equals(userInfo.emailVerified)) user.setEmailVerified(true);
+            user.setEmailVerified(true);
             userRepository.save(user);
             log.info("Linked Google account to existing user: {}", user.getEmail());
-            return buildAuthResponseOrChallenge(user);
+            return authenticateExistingUser(user);
         }
 
         // Create new tenant + admin user for Google signup
-        return createUserFromGoogle(userInfo);
+        return createUserFromGoogle(userInfo, normalizedEmail);
     }
 
-    private AuthResponse createUserFromGoogle(GoogleUserInfo info) {
+    /** Rejects blocked/suspended/locked accounts before ever issuing a token — the
+     *  password-login path enforces these through Spring Security's AuthenticationManager;
+     *  Google OAuth bypasses that manager entirely, so it must check explicitly instead. */
+    private AuthResponse authenticateExistingUser(User user) {
+        if (!user.isEnabled()) {
+            throw new GoogleAuthException("Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
+        }
+        if (user.isLocked()) {
+            throw new GoogleAuthException("Your account is temporarily locked. Please try again later.", "ACCOUNT_BLOCKED");
+        }
+        Tenant tenant = user.getTenant();
+        if (tenant == null) {
+            throw new GoogleAuthException("No agency is linked to this account.", "TENANT_NOT_FOUND");
+        }
+        if (tenant.isAccountBlocked()) {
+            throw new GoogleAuthException("Your agency account is suspended. Please contact support.", "ACCOUNT_SUSPENDED");
+        }
+        return buildAuthResponseOrChallenge(user);
+    }
+
+    private AuthResponse createUserFromGoogle(GoogleUserInfo info, String normalizedEmail) {
         // Create tenant
         String tenantName = info.name != null ? info.name + "'s Agency" : "New Agency";
         Tenant tenant = tenantRepository.save(Tenant.builder()
                 .name(tenantName)
-                .email(info.email)
+                .email(normalizedEmail)
                 .subscriptionActive(true)
                 .subscriptionEndDate(LocalDate.now().plusYears(1))
                 .build());
 
         // Create user
         User user = userRepository.save(User.builder()
-                .email(info.email)
+                .email(normalizedEmail)
                 .password("GOOGLE_OAUTH_" + System.currentTimeMillis()) // Random placeholder — not used
                 .role(Role.ADMIN)
                 .tenant(tenant)
@@ -163,9 +196,11 @@ public class GoogleOAuthService {
 
             if (response == null) return null;
 
-            // Validate audience
+            // Validate audience — authenticate() already guarantees googleClientId
+            // is non-blank before this method is ever called, so this always
+            // actually enforces (never silently skipped).
             String aud = (String) response.get("aud");
-            if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(aud)) {
+            if (!googleClientId.equals(aud)) {
                 log.warn("Google token audience mismatch: expected {}, got {}", googleClientId, aud);
                 return null;
             }

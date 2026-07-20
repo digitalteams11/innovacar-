@@ -53,7 +53,8 @@
     "more": "Plus",
     "menu": "Menu",
     "gpsAlerts": "Alertes GPS",
-    "help": "Aide & Support"
+    "help": "Aide & Support",
+    "automationCenter": "IA & Automatisation"
   },
   "assistant": {
     "openMenu": "Ouvrir le menu assistant",
@@ -2629,6 +2630,12 @@
     "NETWORK_ERROR": "Serveur API indisponible. Veuillez vérifier votre connexion et réessayer.",
     "ENDPOINT_NOT_FOUND": "Cette fonctionnalité est inaccessible. L'application est peut-être mal configurée — veuillez contacter le support.",
     "ACCOUNT_SUSPENDED": "Le compte de votre agence est suspendu. Veuillez contacter Innovax Technologies ou mettre à jour votre abonnement.",
+    "ACCOUNT_BLOCKED": "Votre compte a été bloqué. Veuillez contacter le support.",
+    "GOOGLE_AUTH_NOT_CONFIGURED": "La connexion Google n'est pas disponible pour le moment. Veuillez vous connecter avec votre email et mot de passe.",
+    "GOOGLE_TOKEN_INVALID": "Votre connexion Google n'a pas pu être vérifiée. Veuillez réessayer.",
+    "GOOGLE_EMAIL_NOT_VERIFIED": "L'adresse email de votre compte Google n'est pas vérifiée. Veuillez la vérifier auprès de Google d'abord.",
+    "TENANT_NOT_FOUND": "Aucune agence n'est liée à ce compte. Veuillez contacter le support.",
+    "AUTHENTICATION_FAILED": "Nous n'avons pas pu vous connecter. Veuillez réessayer.",
     "FEATURE_NOT_AVAILABLE": "Cette fonctionnalité n'est pas incluse dans votre offre d'abonnement.",
     "FEATURE_NOT_INCLUDED": "Cette fonctionnalité n'est pas incluse dans votre offre actuelle.",
     "SERVER_ERROR": "Erreur serveur. Veuillez vérifier les journaux du serveur.",

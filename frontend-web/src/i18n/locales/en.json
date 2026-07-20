@@ -53,7 +53,8 @@
     "more": "More",
     "menu": "Menu",
     "gpsAlerts": "GPS Alerts",
-    "help": "Help & Support"
+    "help": "Help & Support",
+    "automationCenter": "AI & Automation"
   },
   "assistant": {
     "openMenu": "Open assistant menu",
@@ -2629,6 +2630,12 @@
     "NETWORK_ERROR": "API server unavailable. Please check your connection and try again.",
     "ENDPOINT_NOT_FOUND": "This feature could not be reached. The app may be misconfigured — please contact support.",
     "ACCOUNT_SUSPENDED": "Your agency account is suspended. Please contact Innovax Technologies or update your subscription.",
+    "ACCOUNT_BLOCKED": "Your account has been blocked. Please contact support.",
+    "GOOGLE_AUTH_NOT_CONFIGURED": "Google sign-in is not available right now. Please sign in with your email and password.",
+    "GOOGLE_TOKEN_INVALID": "Your Google sign-in could not be verified. Please try again.",
+    "GOOGLE_EMAIL_NOT_VERIFIED": "Your Google account's email address is not verified. Please verify it with Google first.",
+    "TENANT_NOT_FOUND": "No agency is linked to this account. Please contact support.",
+    "AUTHENTICATION_FAILED": "We couldn't sign you in. Please try again.",
     "FEATURE_NOT_AVAILABLE": "This feature is not included in your subscription plan.",
     "FEATURE_NOT_INCLUDED": "This feature is not included in your current plan.",
     "SERVER_ERROR": "Server error. Please check backend logs.",

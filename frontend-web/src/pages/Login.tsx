@@ -4,10 +4,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, Lock, Mail, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
-import api from '../api/axios';
+import api, { translateApiError } from '../api/axios';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
 import AuthLogo from '../components/auth/AuthLogo';
+import { useTheme } from '../context/ThemeContext';
 
 declare global {
   interface Window {
@@ -121,15 +122,39 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login, verify2FA, verifyEmailOtp2FA, googleLogin } = useAuth();
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const googleSubmittingRef = useRef(false);
 
+  const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+  const googleConfigured = Boolean(googleClientId);
+
+  // Both the "or" divider and the Google button render together, or not at
+  // all — never a divider with nothing underneath it (the reported bug),
+  // and never a button with no divider separating it from the form above.
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-    if (!clientId) return;
+    if (!googleConfigured) return;
     let attempts = 0;
     const maxAttempts = 50;
+    let cancelled = false;
+    let resizeTimer: number | undefined;
+
+    const renderButton = () => {
+      if (!googleBtnRef.current || !window.google) return;
+      googleBtnRef.current.innerHTML = '';
+      const width = Math.round(googleBtnRef.current.getBoundingClientRect().width) || 320;
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: resolvedTheme === 'dark' ? 'filled_black' : 'outline',
+        size: 'large',
+        width,
+        text: 'continue_with',
+        shape: 'rectangular',
+      });
+    };
+
     const initGoogle = () => {
+      if (cancelled) return;
       if (!window.google) {
         attempts++;
         if (attempts < maxAttempts) setTimeout(initGoogle, 100);
@@ -137,24 +162,33 @@ export default function Login() {
       }
       try {
         window.google.accounts.id.initialize({
-          client_id: clientId,
+          client_id: googleClientId,
           callback: handleGoogleCredentialResponse,
           auto_select: false,
         });
-        if (googleBtnRef.current) {
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: 'outline', size: 'large', width: '100%',
-            text: 'signin_with', shape: 'rectangular',
-          });
-        }
+        renderButton();
       } catch (e) {
         console.warn('Google Sign-In initialization failed:', e);
       }
     };
     initGoogle();
-  }, []);
+
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(renderButton, 150);
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('resize', onResize);
+      window.clearTimeout(resizeTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConfigured, googleClientId, resolvedTheme]);
 
   const handleGoogleCredentialResponse = async (response: any) => {
+    if (googleSubmittingRef.current) return;
+    googleSubmittingRef.current = true;
     setGoogleLoading(true);
     setError('');
     try {
@@ -181,9 +215,10 @@ export default function Login() {
       }
       navigateByRole(userData.role);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Google login failed. Please try again.');
+      setError(translateApiError(err, t));
     } finally {
       setGoogleLoading(false);
+      googleSubmittingRef.current = false;
     }
   };
 
@@ -604,30 +639,30 @@ export default function Login() {
                 </motion.form>
             </AnimatePresence>
 
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center"><div className="w-full" style={{ borderTop: '1px solid var(--border-subtle)' }} /></div>
-              <div className="relative flex justify-center text-xs"><span className="px-3 font-medium" style={{ backgroundColor: 'var(--glass-bg)', color: 'var(--text-muted)' }}>{t('login.or')}</span></div>
-            </div>
+            {/* Divider + Google Sign-In: both render together, or neither does —
+                a divider with nothing underneath it is exactly the bug being fixed. */}
+            {googleConfigured && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full" style={{ borderTop: '1px solid var(--border-subtle)' }} /></div>
+                  <div className="relative flex justify-center text-xs"><span className="px-3 font-medium" style={{ backgroundColor: 'var(--glass-bg)', color: 'var(--text-muted)' }}>{t('login.or')}</span></div>
+                </div>
 
-            {/* Google Sign-In */}
-            {googleLoading ? (
-              <div className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-sm" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                <Loader2 size={18} className="animate-spin" />
-                <span className="font-medium">{t('login.signingInWithGoogle')}</span>
-              </div>
-            ) : (
-              <div ref={googleBtnRef} className="w-full flex justify-center" />
-            )}
-            {!window.google && (
-              <button
-                onClick={() => setError(t('login.googleNotConfigured'))}
-                className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all hover:bg-[var(--bg-hover)]"
-                style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                {t('login.signInWithGoogle')}
-              </button>
+                {googleLoading ? (
+                  <div className="w-full min-h-[48px] py-3 rounded-xl flex items-center justify-center gap-2 text-sm" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span className="font-medium">{t('login.signingInWithGoogle')}</span>
+                  </div>
+                ) : (
+                  // Google's own rendered button (real GSI flow, not a fake
+                  // control) — sized to match this container's full width via
+                  // renderButton's `width` option, themed to follow the app's
+                  // light/dark mode, and localized ("Continue with Google" /
+                  // "Continuer avec Google" / etc. — handled by Google itself
+                  // based on the page's language).
+                  <div ref={googleBtnRef} className="w-full min-h-[48px] flex justify-center" />
+                )}
+              </>
             )}
 
             {/* Register link */}
