@@ -1,5 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import api from '../api/axios';
 
 const languages = [
   { code: 'en', label: 'English', flag: 'US' },
@@ -9,9 +12,22 @@ const languages = [
 
 export default function LanguageSwitcher() {
   const { i18n } = useTranslation();
+  const { updateCurrentUser } = useAuth();
+  const { showToast } = useToast();
 
+  // Mirrors UserMenu.tsx's selectLanguage — the two language pickers must persist
+  // the same way, or a change made here silently doesn't survive refresh/other devices.
   const changeLanguage = (lng: string) => {
+    if (i18n.language === lng) return;
     i18n.changeLanguage(lng);
+    api.put('/users/me/preferences', { language: lng })
+      .then(({ data }) => {
+        const saved = data?.data;
+        if (saved?.language) updateCurrentUser({ language: saved.language });
+      })
+      .catch((err: any) => {
+        showToast(err?.userMessage || 'Unable to save language preference.', 'error');
+      });
   };
 
   return (

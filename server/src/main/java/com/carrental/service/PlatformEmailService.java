@@ -7,6 +7,7 @@ import com.carrental.entity.EmailLog;
 import com.carrental.entity.PlatformSettings;
 import com.carrental.entity.SupportMessage;
 import com.carrental.entity.SupportTicket;
+import com.carrental.entity.Tenant;
 import com.carrental.repository.ContactRequestRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.DepositRepository;
@@ -53,6 +54,7 @@ public class PlatformEmailService {
     private final DepositRepository         depositRepository;
     private final SupportTicketRepository   supportTicketRepository;
     private final ContactRequestRepository  contactRequestRepository;
+    private final com.carrental.repository.TenantSettingsRepository tenantSettingsRepository;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -133,7 +135,7 @@ public class PlatformEmailService {
         Map<String, String> vars = buildContractVars(contract);
         // Try the managed template first; fall back to the inline builder if missing
         var rendered = emailTemplateService.render(
-                EmailTemplateService.KEY_CONTRACT_SIGNED_CLIENT, "EN", vars);
+                EmailTemplateService.KEY_CONTRACT_SIGNED_CLIENT, resolveTenantEmailLanguage(contract.getTenant()), vars);
 
         String subject   = rendered.map(EmailTemplateService.RenderedEmail::subject)
                                    .orElseGet(() -> buildSubject(contract));
@@ -523,6 +525,26 @@ public class PlatformEmailService {
         return s.length() <= max ? s : s.substring(0, max);
     }
 
+    /**
+     * Resolves the language to render a client/requester-facing email in: the agency's
+     * default language (Settings → Operations → Language), falling back to EN. There is
+     * no per-client or per-anonymous-requester language stored anywhere in this schema —
+     * {@code Client} and {@code ContactRequest} have no language field — so the tenant
+     * default is the best signal actually available, matching the documented resolution
+     * order (recipient → tenant → platform default) for the "recipient" step we can't
+     * populate today. {@code EmailTemplateService} stores/expects uppercase language
+     * codes ("EN"/"FR"/"AR"); {@code TenantSettings.language} stores lowercase, hence the
+     * uppercase conversion here.
+     */
+    private String resolveTenantEmailLanguage(Tenant tenant) {
+        if (tenant == null) return "EN";
+        return tenantSettingsRepository.findByTenantId(tenant.getId())
+                .map(com.carrental.entity.TenantSettings::getLanguage)
+                .filter(StringUtils::hasText)
+                .map(lang -> lang.toUpperCase(java.util.Locale.ROOT))
+                .orElse("EN");
+    }
+
     // ── Subscription lifecycle emails ─────────────────────────────────────────
 
     /**
@@ -728,6 +750,9 @@ public class PlatformEmailService {
         vars.put("message", StringUtils.hasText(ticket.getDescription()) ? ticket.getDescription() : "");
         vars.put("dashboardUrl", frontendUrl + "/super-admin/support/" + ticket.getId());
 
+        // Internal notification to the platform support team (destinationEmail), not the
+        // ticket requester — platform staff language isn't tracked anywhere, so EN is the
+        // correct, deliberate choice here, not a hardcoded oversight.
         var rendered = emailTemplateService.render(
                 EmailTemplateService.KEY_SUPPORT_TICKET_CREATED_INTERNAL, "EN", vars);
         String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
@@ -766,7 +791,7 @@ public class PlatformEmailService {
         String templateKey = SupportRoutingService.CHANNEL_CONTACT.equals(ticket.getChannel())
                 ? EmailTemplateService.KEY_CONTACT_FORM_RECEIVED
                 : EmailTemplateService.KEY_SUPPORT_TICKET_CREATED;
-        var rendered = emailTemplateService.render(templateKey, "EN", vars);
+        var rendered = emailTemplateService.render(templateKey, resolveTenantEmailLanguage(ticket.getTenant()), vars);
         String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
                 .orElse("We received your request — " + ticket.getTicketNumber());
         String htmlBody = rendered.map(EmailTemplateService.RenderedEmail::htmlBody).filter(StringUtils::hasText).orElse(null);
@@ -810,6 +835,8 @@ public class PlatformEmailService {
         vars.put("message", StringUtils.hasText(request.getMessage()) ? request.getMessage() : "");
         vars.put("dashboardUrl", frontendUrl + "/super-admin/contact-requests/" + request.getId());
 
+        // Internal notification to the platform support team, not the contact-form
+        // submitter — same reasoning as sendSupportTicketCreatedInternal above.
         var rendered = emailTemplateService.render(
                 EmailTemplateService.KEY_SUPPORT_TICKET_CREATED_INTERNAL, "EN", vars);
         String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
@@ -842,6 +869,9 @@ public class PlatformEmailService {
         vars.put("ticketNumber", request.getRequestNumber());
         vars.put("supportUrl", frontendUrl + "/contact");
 
+        // ContactRequest is always anonymous/public (no tenant column at all, by design —
+        // see ContactRequest's own class javadoc), so there is no language signal available
+        // for this recipient; EN is the genuine platform default, not an oversight.
         var rendered = emailTemplateService.render(EmailTemplateService.KEY_CONTACT_FORM_RECEIVED, "EN", vars);
         String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
                 .orElse("We received your request — " + request.getRequestNumber());
@@ -876,7 +906,7 @@ public class PlatformEmailService {
         vars.put("replyMessage", StringUtils.hasText(message.getMessage()) ? message.getMessage() : "");
         vars.put("supportUrl", frontendUrl + "/tickets/" + ticket.getId());
 
-        var rendered = emailTemplateService.render(EmailTemplateService.KEY_SUPPORT_REPLY, "EN", vars);
+        var rendered = emailTemplateService.render(EmailTemplateService.KEY_SUPPORT_REPLY, resolveTenantEmailLanguage(ticket.getTenant()), vars);
         String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
                 .orElse("New reply from RentCar Support — " + ticket.getTicketNumber());
         String htmlBody = rendered.map(EmailTemplateService.RenderedEmail::htmlBody).filter(StringUtils::hasText).orElse(null);

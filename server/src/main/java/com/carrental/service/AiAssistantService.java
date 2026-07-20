@@ -69,7 +69,7 @@ public class AiAssistantService {
 
         String role = user.getRole() != null ? user.getRole().name() : "UNKNOWN";
         String agencyName = user.getTenant() != null ? user.getTenant().getName() : "N/A";
-        String systemInstruction = aiKnowledgeService.buildSystemInstruction(role, agencyName, module, route);
+        String systemInstruction = aiKnowledgeService.buildSystemInstruction(role, agencyName, module, route, user.getLanguage());
 
         String sanitizedMessage = aiPromptSanitizer.sanitize(message);
 

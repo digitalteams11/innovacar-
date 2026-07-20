@@ -34,6 +34,7 @@ class PlatformEmailServiceTest {
     @Mock private DepositRepository depositRepository;
     @Mock private SupportTicketRepository supportTicketRepository;
     @Mock private com.carrental.repository.ContactRequestRepository contactRequestRepository;
+    @Mock private com.carrental.repository.TenantSettingsRepository tenantSettingsRepository;
 
     @InjectMocks
     private PlatformEmailService platformEmailService;
@@ -125,5 +126,32 @@ class PlatformEmailServiceTest {
                 .contains("https://api.innovacar.app/api/public/contracts/42/secure-token-abc/pdf");
         assertThat(platformEmailService.buildPdfPlainSection(contractWithToken(null)))
                 .isEqualTo("The signed PDF is still being generated. Please contact your rental agency.");
+    }
+
+    @Test
+    void resolveTenantEmailLanguage_nullTenant_defaultsToEn() {
+        String lang = ReflectionTestUtils.invokeMethod(platformEmailService, "resolveTenantEmailLanguage", (Object) null);
+        assertThat(lang).isEqualTo("EN");
+    }
+
+    @Test
+    void resolveTenantEmailLanguage_noTenantSettingsRow_defaultsToEn() {
+        Tenant tenant = Tenant.builder().id(5L).name("Agency").email("agency@test.com").build();
+        org.mockito.Mockito.when(tenantSettingsRepository.findByTenantId(5L)).thenReturn(java.util.Optional.empty());
+
+        String lang = ReflectionTestUtils.invokeMethod(platformEmailService, "resolveTenantEmailLanguage", tenant);
+
+        assertThat(lang).isEqualTo("EN");
+    }
+
+    @Test
+    void resolveTenantEmailLanguage_usesTenantDefaultLanguage_uppercased() {
+        Tenant tenant = Tenant.builder().id(6L).name("Agency FR").email("agency-fr@test.com").build();
+        var settings = com.carrental.entity.TenantSettings.builder().language("fr").build();
+        org.mockito.Mockito.when(tenantSettingsRepository.findByTenantId(6L)).thenReturn(java.util.Optional.of(settings));
+
+        String lang = ReflectionTestUtils.invokeMethod(platformEmailService, "resolveTenantEmailLanguage", tenant);
+
+        assertThat(lang).isEqualTo("FR");
     }
 }

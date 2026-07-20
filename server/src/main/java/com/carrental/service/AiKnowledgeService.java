@@ -209,6 +209,17 @@ public class AiKnowledgeService {
      * The returned string is safe — no tenant data, no secrets, no real records.
      */
     public String buildSystemInstruction(String role, String agencyName, String currentModule, String route) {
+        return buildSystemInstruction(role, agencyName, currentModule, route, null);
+    }
+
+    /**
+     * Same as {@link #buildSystemInstruction(String, String, String, String)}, plus the
+     * user's platform language preference (the same {@code en}/{@code fr}/{@code ar} value
+     * stored on {@code User.language} and used everywhere else — settings, emails, legal
+     * acceptance). Without this the assistant has no signal at all about which language to
+     * answer in and defaults to whatever the model guesses from the message text alone.
+     */
+    public String buildSystemInstruction(String role, String agencyName, String currentModule, String route, String language) {
         StringBuilder sb = new StringBuilder(SAFETY_RULES);
         sb.append('\n').append(PLATFORM_KNOWLEDGE);
         sb.append("\n=== CURRENT SESSION CONTEXT (safe, non-sensitive) ===\n");
@@ -219,7 +230,25 @@ public class AiKnowledgeService {
             sb.append("Current page route: ").append(route).append('\n');
         }
         sb.append("Use the current module and route above to make your answer more relevant to what the user is looking at.\n");
+        sb.append("\n=== RESPONSE LANGUAGE ===\n");
+        sb.append("User preferred language: ").append(languageName(language)).append(".\n");
+        sb.append("Respond in that language unless the user's message is written in a different ")
+          .append("language, in which case answer in the language of their message for this turn only ")
+          .append("— never assume the stored preference itself has changed.\n");
+        if ("ar".equalsIgnoreCase(language)) {
+            sb.append("If the user writes in Moroccan Darija, respond naturally in Darija rather than ")
+              .append("formal Modern Standard Arabic; otherwise use clear Modern Standard Arabic.\n");
+        }
         return sb.toString();
+    }
+
+    private static String languageName(String language) {
+        if (language == null) return "English";
+        return switch (language.toLowerCase(java.util.Locale.ROOT)) {
+            case "fr" -> "French";
+            case "ar" -> "Arabic";
+            default -> "English";
+        };
     }
 
     /**

@@ -60,7 +60,7 @@ class AiAssistantServiceTest {
         when(aiSettingsRepository.findAll()).thenReturn(List.of(
                 AiSettings.builder().globalEnabled(true).enableChat(true).dailyRequestLimit(200).build()));
         when(aiPromptSanitizer.sanitize(anyString())).thenReturn("sanitized message");
-        when(aiKnowledgeService.buildSystemInstruction(any(), any(), any(), any())).thenReturn("system prompt");
+        when(aiKnowledgeService.buildSystemInstruction(any(), any(), any(), any(), any())).thenReturn("system prompt");
         when(aiUsageLogService.countSince(any(), any())).thenReturn(0L);
         when(aiUsageLogService.countForAgencySince(any(), any())).thenReturn(0L);
         when(aiGatewayService.execute(AiAssistantService.AUTOMATION_CODE, "system prompt", "sanitized message"))
@@ -84,13 +84,33 @@ class AiAssistantServiceTest {
     }
 
     @Test
+    void chat_passesUserLanguageToSystemInstruction() {
+        user.setLanguage("fr");
+        when(aiSettingsRepository.findAll()).thenReturn(List.of(
+                AiSettings.builder().globalEnabled(true).enableChat(true).dailyRequestLimit(200).build()));
+        when(aiPromptSanitizer.sanitize(anyString())).thenReturn("sanitized message");
+        when(aiKnowledgeService.buildSystemInstruction(any(), any(), any(), any(), any())).thenReturn("system prompt");
+        when(aiUsageLogService.countSince(any(), any())).thenReturn(0L);
+        when(aiUsageLogService.countForAgencySince(any(), any())).thenReturn(0L);
+        when(aiGatewayService.execute(any(), any(), any()))
+                .thenReturn(AiExecuteResponse.builder().success(true).content("Bonjour").build());
+        when(aiKnowledgeService.suggestedActions(any(), any())).thenReturn(List.of());
+        when(aiKnowledgeService.sources(any())).thenReturn(List.of());
+
+        aiAssistantService.chat(user, "dashboard", "hello", "/dashboard", null);
+
+        org.mockito.Mockito.verify(aiKnowledgeService)
+                .buildSystemInstruction(any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq("fr"));
+    }
+
+    @Test
     void chat_agencyIdAlwaysDerivedFromTenantContext_notFromCaller() {
         // Cross-agency isolation: the rate-limit check always uses TenantContext,
         // never a caller-supplied agency id, since chat() takes no agencyId parameter.
         when(aiSettingsRepository.findAll()).thenReturn(List.of(
                 AiSettings.builder().globalEnabled(true).enableChat(true).dailyRequestLimit(200).build()));
         when(aiPromptSanitizer.sanitize(anyString())).thenReturn("sanitized message");
-        when(aiKnowledgeService.buildSystemInstruction(any(), any(), any(), any())).thenReturn("system prompt");
+        when(aiKnowledgeService.buildSystemInstruction(any(), any(), any(), any(), any())).thenReturn("system prompt");
         when(aiUsageLogService.countForAgencySince(org.mockito.ArgumentMatchers.eq(42L), any())).thenReturn(0L);
         when(aiUsageLogService.countSince(any(), any())).thenReturn(0L);
         when(aiGatewayService.execute(any(), any(), any()))
