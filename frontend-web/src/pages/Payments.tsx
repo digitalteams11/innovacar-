@@ -9,6 +9,7 @@ import { CreditCard, Download, CheckCircle2, Clock, Loader2, RefreshCcw, XCircle
 import ApiErrorState from '../components/ApiErrorState';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
+import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 
 interface Payment {
   id: number;
@@ -273,7 +274,10 @@ export default function Payments() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-4">
+      {/* grid-cols-2 from the base (not sm:) — these must read as compact 2-up
+          cards on a phone, not full-width stacked cards each taking a whole
+          screen's worth of vertical space. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {[
           [t('payments.totalRevenueMetric'), money(stats.totalRevenue)],
           [t('payments.monthlyRevenueMetric'), money(stats.monthlyRevenue)],
@@ -282,7 +286,7 @@ export default function Payments() {
           [t('payments.overdueInvoices'), stats.overdueInvoices || 0],
           [t('payments.refunds'), money(stats.refundAmount), `${stats.refundCount || 0} ${t('payments.transactions')}`],
         ].map(([label, value, caption]) => (
-          <div key={label} className="metric-surface">
+          <div key={label} className="metric-surface min-h-[112px] sm:min-h-0">
             <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold mb-2 tracking-[0.12em]">{label}</p>
             <h3 className="text-xl font-semibold text-[var(--text-primary)]">{value}</h3>
             {caption && <p className="text-[10px] font-bold text-slate-400 mt-1">{caption}</p>}
@@ -309,6 +313,53 @@ export default function Payments() {
           <h3 className="text-sm sm:text-base font-bold text-[#1e293b]">{t('payments.paymentHistory')}</h3>
           <SearchInput className="w-full sm:w-72" placeholder={t('payments.searchPlaceholder')} value={searchQuery} onChange={setSearchQuery} />
         </div>
+        {loading ? (
+          <div className="px-5 py-8 text-center"><Loader2 size={24} className="animate-spin text-brand-500 mx-auto" /></div>
+        ) : (
+        <ResponsiveDataView
+          mobile={
+            filteredPayments.length === 0 ? (
+              <div className="px-5 py-8 text-center text-slate-400 text-sm">{t('payments.noPaymentsFound')}</div>
+            ) : (
+              <div className="divide-y divide-[#e8e6e1]/50 dark:divide-white/5">
+                {filteredPayments.map((payment) => (
+                  <div key={payment.id} className="p-4 space-y-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="font-mono text-xs font-bold text-slate-400">{payment.paymentNumber || `PAY-${payment.id}`}</span>
+                        <h3 className="mt-0.5 truncate text-sm font-semibold text-[#1e293b] dark:text-white">{payment.clientName || 'N/A'}</h3>
+                        <p className="mt-0.5 truncate text-xs text-slate-400">{payment.vehicleLabel || 'N/A'}</p>
+                      </div>
+                      <span className="shrink-0 text-sm font-bold text-[#1e293b] dark:text-white">{money(payment.amount)}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${statusClass(payment.status)}`}>
+                        {payment.status === 'PAID' ? <CheckCircle2 size={12} /> : ['FAILED', 'CANCELLED', 'EXPIRED'].includes(payment.status) ? <XCircle size={12} /> : <Clock size={12} />}
+                        {payment.status.replace('_', ' ')}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{payment.paymentMethod || 'N/A'}</span>
+                      <span className="text-[10px] text-slate-400">
+                        {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      {payment.reservationLabel || (payment.reservationId ? `RES-${payment.reservationId}` : null)}
+                      {payment.contractNumber && ` · ${payment.contractNumber}`}
+                    </p>
+                    {payment.reservationId && payment.status !== 'PAID' && (
+                      <button
+                        onClick={() => markAsPaid(payment.reservationId)}
+                        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-50 text-xs font-bold uppercase tracking-wider text-brand-500 hover:bg-brand-500 hover:text-white transition-all"
+                      >
+                        <RefreshCcw size={13} /> {t('payments.markPaid')}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          desktop={
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left min-w-[980px]">
             <thead>
@@ -319,9 +370,7 @@ export default function Payments() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e8e6e1]/50">
-              {loading ? (
-                <tr><td colSpan={10} className="px-5 py-8 text-center"><Loader2 size={24} className="animate-spin text-brand-500 mx-auto" /></td></tr>
-              ) : filteredPayments.length > 0 ? filteredPayments.map((payment) => (
+              {filteredPayments.length > 0 ? filteredPayments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-[#f5f5f0]/40 transition-colors group">
                   <td className="px-3 sm:px-5 py-3 sm:py-4 font-mono text-xs font-bold text-slate-400 group-hover:text-brand-500">{payment.paymentNumber || `PAY-${payment.id}`}</td>
                   <td className="px-3 sm:px-5 py-3 sm:py-4 text-sm font-medium text-[#1e293b]">{payment.clientName || 'N/A'}</td>
@@ -351,6 +400,9 @@ export default function Payments() {
             </tbody>
           </table>
         </div>
+          }
+        />
+        )}
       </div>
     </div>
   );

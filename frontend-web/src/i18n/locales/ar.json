@@ -32,6 +32,17 @@
     "gpsAlerts": "تنبيهات GPS",
     "help": "المساعدة والدعم"
   },
+  "assistant": {
+    "openMenu": "فتح قائمة المساعد",
+    "ariaExpanded": "قائمة المساعد",
+    "aiAssistant": "المساعد الذكي",
+    "aiAssistantDesc": "اسأل عن العقود، الدفعات، نظام تحديد المواقع أو الحجوزات",
+    "helpCenter": "مركز المساعدة",
+    "helpCenterDesc": "أدلة وأسئلة شائعة",
+    "contactSupport": "تواصل مع الدعم",
+    "contactSupportDesc": "أنشئ أو تابع طلب دعم",
+    "firstUseLabel": "اسأل Innovacar AI"
+  },
   "agencyBranding": {
     "title": "هوية الوكالة",
     "subtitle": "خصص هوية وكالتك وألوانها ونطاقها.",

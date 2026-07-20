@@ -96,9 +96,16 @@ interface Props {
   module?: string;
   onClose: () => void;
   onThinkingChange?: (thinking: boolean) => void;
+  /**
+   * 'floating' (default): self-positioned card used on desktop (fixed, own
+   * width/border/shadow). 'sheet': fills its parent instead — used when
+   * embedded inside MobileBottomSheet on mobile, which already provides the
+   * sheet's own frame/backdrop/positioning.
+   */
+  variant?: 'floating' | 'sheet';
 }
 
-export default function AiChatPanel({ module, onClose, onThinkingChange }: Props) {
+export default function AiChatPanel({ module, onClose, onThinkingChange, variant = 'floating' }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -157,8 +164,12 @@ export default function AiChatPanel({ module, onClose, onThinkingChange }: Props
 
   return (
     <div
-      className="fixed bottom-[4.5rem] right-4 sm:right-6 z-50 w-[min(380px,calc(100vw-2rem))] rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1a2e] shadow-2xl flex flex-col"
-      style={{ maxHeight: 'min(520px, calc(100dvh - 5rem))' }}
+      className={
+        variant === 'sheet'
+          ? 'flex h-full flex-col'
+          : 'fixed bottom-[4.5rem] right-4 sm:right-6 z-50 w-[min(380px,calc(100vw-2rem))] rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1a2e] shadow-2xl flex flex-col'
+      }
+      style={variant === 'floating' ? { maxHeight: 'min(520px, calc(100dvh - 5rem))' } : undefined}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-white/10 shrink-0">

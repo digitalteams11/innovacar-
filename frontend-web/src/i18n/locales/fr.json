@@ -55,6 +55,17 @@
     "gpsAlerts": "Alertes GPS",
     "help": "Aide & Support"
   },
+  "assistant": {
+    "openMenu": "Ouvrir le menu assistant",
+    "ariaExpanded": "Menu assistant",
+    "aiAssistant": "Assistant IA",
+    "aiAssistantDesc": "Posez des questions sur les contrats, paiements, GPS ou réservations",
+    "helpCenter": "Centre d'aide",
+    "helpCenterDesc": "Guides et questions fréquentes",
+    "contactSupport": "Contacter le support",
+    "contactSupportDesc": "Créer ou suivre une demande de support",
+    "firstUseLabel": "Demandez à Innovacar AI"
+  },
   "agencyBranding": {
     "title": "Image de marque de l'agence",
     "subtitle": "Personnalisez l'identité, les couleurs et le domaine de votre agence.",

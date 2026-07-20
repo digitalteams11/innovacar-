@@ -13,6 +13,8 @@ import ApiErrorState from '../components/ApiErrorState';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
 import { FilterChips } from '../components/FilterChips';
+import ResponsiveDataView from '../components/shared/ResponsiveDataView';
+import ActionMenu from '../components/shared/ActionMenu';
 import {
   Plus, Download, FileText, Trash2, CheckCircle2,
   Loader2, QrCode, Eye, User, Car, Shield, Fuel, Gauge,
@@ -1105,12 +1107,14 @@ export default function Contracts() {
         subtitle={t('contracts.subtitle')}
         icon={FileText}
         actions={<>
-          <button onClick={exportCSV} className="surface-control flex items-center gap-2 h-10 px-4 font-medium text-xs sm:text-sm active:scale-95">
+          <button onClick={exportCSV} aria-label={t('contracts.export')} className="surface-control flex h-11 min-w-11 items-center justify-center gap-2 px-3 font-medium text-xs sm:h-10 sm:px-4 sm:text-sm active:scale-95">
             <Download size={16} className="sm:hidden" />
             <Download size={18} className="hidden sm:block" />
             <span className="hidden sm:inline">{t('contracts.export')}</span>
           </button>
-          <button onClick={openCreate} className="premium-action flex items-center gap-2 h-10 px-4 font-medium text-xs sm:text-sm active:scale-95">
+          {/* Primary action — text stays visible at every width, per the mobile UX
+              requirement that the primary action must never be icon-only. */}
+          <button onClick={openCreate} className="premium-action flex h-11 items-center gap-2 px-4 font-medium text-xs sm:h-10 sm:text-sm active:scale-95">
             <Plus size={16} className="sm:hidden" />
             <Plus size={18} className="hidden sm:block" />
             {t('contracts.newContract')}
@@ -1131,6 +1135,62 @@ export default function Contracts() {
         ) : trashLoading ? (
           <div className="flex items-center justify-center py-12"><Loader2 size={32} className="animate-spin text-brand-500" /></div>
         ) : (
+        <ResponsiveDataView
+          mobile={
+            trashData.length === 0 ? (
+              <div className="data-surface flex flex-col items-center gap-2 py-10 text-center text-sm text-slate-400">
+                <Trash2 size={20} className="text-slate-300" />
+                {t('contracts.trashEmpty')}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {trashData.map((contract) => (
+                  <div key={contract.id} className="data-surface p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="font-mono text-xs font-bold text-slate-400">{contract.contractNumber}</span>
+                        <h3 className="mt-1 truncate text-sm font-semibold text-[#1e293b] dark:text-white">{contract.clientFullName || 'N/A'}</h3>
+                        <p className="mt-0.5 truncate text-xs text-slate-400">
+                          {[contract.vehicleBrand, contract.vehicleModel].filter(Boolean).join(' ') || 'N/A'}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                        contract.daysRemaining <= 3 ? 'bg-danger-50 text-danger-500' : 'bg-warning-50 text-warning-500'
+                      }`}>
+                        {t('contracts.daysLeftCount', { count: contract.daysRemaining })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      {t('contracts.deletedAt')}: {contract.deletedAt ? new Date(contract.deletedAt).toLocaleString() : 'N/A'}
+                    </p>
+                    <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] pt-3">
+                      <button
+                        onClick={() => restoreContract(contract.id)}
+                        disabled={restoringId === contract.id}
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-success-50 text-sm font-semibold text-success-600 disabled:opacity-50"
+                      >
+                        {restoringId === contract.id ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
+                        {t('contracts.restore')}
+                      </button>
+                      <button
+                        onClick={() => purgeContractPermanently(contract.id, contract.contractNumber)}
+                        disabled={purgingId === contract.id}
+                        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-danger-50 text-danger-600 disabled:opacity-50"
+                        aria-label={t('contracts.deletePermanently')}
+                      >
+                        {purgingId === contract.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 px-1 text-[11px] text-slate-400">
+                  <AlertTriangle size={12} />
+                  {t('contracts.autoDeleteNotice')}
+                </div>
+              </div>
+            )
+          }
+          desktop={
           <div className="data-surface">
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left min-w-[700px]">
@@ -1217,10 +1277,69 @@ export default function Contracts() {
               </div>
             )}
           </div>
+          }
+        />
         )
       ) : loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 size={32} className="animate-spin text-brand-500" /></div>
       ) : (
+        <ResponsiveDataView
+          mobile={
+            filteredData.length === 0 ? (
+              <div className="data-surface py-10 text-center text-sm text-slate-400">{t('common.noResults')}</div>
+            ) : (
+              <div className="space-y-3">
+                {filteredData.map((contract) => (
+                  <div key={contract.id} className="data-surface p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <button onClick={() => navigate(`/contracts/${contract.id}`)} className="min-w-0 flex-1 text-left">
+                        <span className="font-mono text-xs font-bold text-slate-400">{contract.contractNumber}</span>
+                        <h3 className="mt-1 truncate text-sm font-semibold text-[#1e293b] dark:text-white">
+                          {contract.clientFullName || 'N/A'}
+                        </h3>
+                        {contract.vehicleMissing && (
+                          <span className="mt-1 inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                            {t('contracts.card.vehicleRemoved')}
+                          </span>
+                        )}
+                      </button>
+                      {getStatusBadge(contract.status)}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar size={12} />
+                        {new Date(contract.startDate).toLocaleDateString()} - {new Date(contract.endDate).toLocaleDateString()}
+                      </span>
+                      <span className="text-sm font-bold text-[#1e293b] dark:text-white">{contract.totalPrice || 0} MAD</span>
+                    </div>
+                    <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] pt-3">
+                      <button
+                        onClick={() => navigate(`/contracts/${contract.id}`)}
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-50 text-sm font-semibold text-brand-600"
+                      >
+                        <Eye size={15} />
+                        {t('contracts.view')}
+                      </button>
+                      <ActionMenu
+                        ariaLabel={t('contracts.actions')}
+                        items={[
+                          { label: 'QR', icon: <QrCode size={15} />, onClick: () => handleGenerateQR(contract) },
+                          ...(contract.status !== 'CANCELLED' && contract.status !== 'COMPLETED' ? [{
+                            label: t('contracts.form.cancelContract'),
+                            icon: <XCircle size={15} />,
+                            onClick: () => cancelContract(contract.id),
+                            disabled: cancellingId === contract.id,
+                          }] : []),
+                          { label: t('contracts.moveToTrash'), icon: <Trash2 size={15} />, onClick: () => deleteContract(contract.id), danger: true },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          desktop={
         <div className="data-surface">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left min-w-[600px]">
@@ -1293,6 +1412,8 @@ export default function Contracts() {
             </table>
           </div>
         </div>
+          }
+        />
       )}
 
       {/* Create Modal */}

@@ -202,9 +202,12 @@ export default function GuidanceSystem() {
 
   return (
     <>
+      {/* Desktop only — mobile reaches Help Center through the unified
+          MobileAssistantFab menu instead, to avoid stacking this on top of
+          the AI assistant button and the bottom navigation bar. */}
       <button
         onClick={() => setHelpOpen(true)}
-        className="fixed bottom-20 end-4 sm:end-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#0b1437] text-white shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-20 end-4 sm:end-6 z-40 hidden h-11 w-11 items-center justify-center rounded-full bg-[#0b1437] text-white shadow-lg transition-transform hover:scale-105 lg:flex"
         aria-label={t('guidance.help')}
         title={t('guidance.help')}
       >

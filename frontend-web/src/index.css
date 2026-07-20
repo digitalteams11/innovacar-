@@ -9,6 +9,12 @@
    ============================================ */
 @layer base {
   :root {
+    /* Mobile app shell — single source of truth for the bottom nav's height,
+       so BottomNavigation.tsx and Layout.tsx's main-content bottom padding
+       can never drift out of sync (they previously used two independent
+       hardcoded numbers: min-h-[66px] on the nav vs. pb-24 on <main>). */
+    --mobile-nav-height: 66px;
+
     /* Backgrounds */
     --bg-page: #f4f8fb;
     --bg-page-raised: #ffffff;

@@ -5,7 +5,7 @@ import {
   BarChart3, Bell, Calendar, Car, ChevronDown, CreditCard, FileText, HelpCircle,
   Info, LayoutDashboard, LockKeyhole, MapPin, MoreHorizontal,
   Palette, PanelLeftClose, PanelLeftOpen, Settings, ShieldCheck,
-  Users, Wrench, X,
+  Users, Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +20,9 @@ import GuidanceSystem from './GuidanceSystem';
 import UserMenu from './UserMenu';
 import SubscriptionBadge from './shared/SubscriptionBadge';
 import { GlobalSearchBar } from './search/GlobalSearchBar';
+import BottomNavigation from './BottomNavigation';
+import MobileMoreMenu from './MobileMoreMenu';
+import MobileAssistantFab from './shared/MobileAssistantFab';
 import { cn } from '../lib/utils';
 
 const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
@@ -266,53 +269,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="page-canvas flex-1 w-full p-3 sm:p-4 lg:p-6 pb-24 lg:pb-6">
+        <main className="page-canvas flex-1 w-full p-3 sm:p-4 lg:p-6 pb-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+24px)] lg:pb-6">
           <AnnouncementBanner />
           <div key={location.pathname} className="animate-fade">{children}</div>
         </main>
       </div>
 
-      <nav className="fixed lg:hidden z-50 bottom-0 inset-x-0 min-h-[66px] pb-[env(safe-area-inset-bottom)] px-1 flex items-center justify-around bg-[var(--glass-bg)] backdrop-blur-2xl border-t border-[var(--glass-border)]" aria-label={t('layout.mobileNavigation', 'Mobile navigation')}>
-        {mobilePrimary.map((item) => (
-          <Link key={item.to} to={item.to} className={cn(
-            'relative min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px]',
-            isActive(item.to) ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)]',
-          )}>
-            {isActive(item.to) && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-[var(--brand-primary)]" />}
-            <item.icon size={20} />
-            <span className="max-w-[68px] truncate">{item.label}</span>
-          </Link>
-        ))}
-        <button onClick={() => setMoreOpen(true)} className="min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px] text-[var(--text-muted)]">
-          <MoreHorizontal size={20} />
-          {t('nav.more')}
-        </button>
-      </nav>
+      <BottomNavigation
+        items={mobilePrimary}
+        isActive={isActive}
+        moreLabel={t('nav.more')}
+        onMoreClick={() => setMoreOpen(true)}
+      />
 
-      {moreOpen && (
-        <>
-          <button className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-sm lg:hidden" onClick={() => setMoreOpen(false)} aria-label={t('layout.closeMenu')} />
-          <section className="fixed z-[70] bottom-[76px] left-2 right-2 max-h-[62vh] overflow-hidden lg:hidden glass-card">
-            <header className="h-12 px-4 flex items-center justify-between border-b border-[var(--border-subtle)]">
-              <strong className="text-sm">{t('nav.menu')}</strong>
-              <button onClick={() => setMoreOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-hover)]"><X size={17} /></button>
-            </header>
-            <div className="p-2 grid grid-cols-3 gap-1 overflow-y-auto max-h-[calc(62vh-48px)]">
-              {mobileMore.map((item) => (
-                <Link key={item.to} to={item.to} onClick={() => setMoreOpen(false)} className={cn(
-                  'relative min-h-[76px] p-2 rounded-lg flex flex-col items-center justify-center gap-2 text-center text-[10px]',
-                  isActive(item.to) ? 'bg-[var(--bg-active)] text-[var(--brand-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]',
-                )}>
-                  <item.icon size={19} />
-                  <span>{item.label}</span>
-                  {isLocked(item) && <LockKeyhole size={10} className="absolute top-2 end-2" />}
-                </Link>
-              ))}
-            </div>
-          </section>
-        </>
-      )}
+      <MobileMoreMenu
+        isOpen={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title={t('nav.menu')}
+        items={mobileMore}
+        isActive={isActive}
+        isLocked={isLocked}
+      />
+
       <GuidanceSystem />
+      <MobileAssistantFab />
     </div>
   );
 }

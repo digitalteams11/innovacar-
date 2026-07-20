@@ -55,6 +55,17 @@
     "gpsAlerts": "GPS Alerts",
     "help": "Help & Support"
   },
+  "assistant": {
+    "openMenu": "Open assistant menu",
+    "ariaExpanded": "Assistant menu",
+    "aiAssistant": "AI Assistant",
+    "aiAssistantDesc": "Ask about contracts, payments, GPS or reservations",
+    "helpCenter": "Help Center",
+    "helpCenterDesc": "Guides and common questions",
+    "contactSupport": "Contact Support",
+    "contactSupportDesc": "Create or track a support request",
+    "firstUseLabel": "Ask Innovacar AI"
+  },
   "agencyBranding": {
     "title": "Agency Branding",
     "subtitle": "Customize your agency identity, colors and domain.",
