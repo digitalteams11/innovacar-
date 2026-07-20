@@ -30,27 +30,40 @@ public class TrialExpiryJob {
     private final TenantRepository tenantRepository;
     private final PlatformEmailService platformEmailService;
     private final NotificationService notificationService;
+    private final AutomationRunRecorder automationRunRecorder;
 
     @Scheduled(cron = "${app.subscription.trial-expiry.cron:0 0 * * * *}")
     public void processTrials() {
+        LocalDateTime startedAt = automationRunRecorder.start();
         List<Tenant> trialTenants = tenantRepository.findAllByStatusIgnoreCase("TRIAL");
         if (trialTenants.isEmpty()) {
+            automationRunRecorder.recordSuccess(null, AutomationAgentKeys.SUBSCRIPTION_TRIAL, startedAt, "No tenants currently in trial.");
             return;
         }
 
         long paidCount = tenantRepository.countByStatusIgnoreCase("ACTIVE");
         int expiredCount = 0;
+        int failedCount = 0;
 
         for (Tenant tenant : trialTenants) {
             try {
                 expiredCount += processOne(tenant) ? 1 : 0;
             } catch (Exception e) {
+                failedCount++;
                 log.error("[TRIAL_EXPIRY] Failed to process tenant [{}]: {}", tenant.getId(), e.getMessage(), e);
             }
         }
 
         log.info("[TRIAL_EXPIRY] checked={} expired={} skippedPaid={}",
                 trialTenants.size(), expiredCount, paidCount);
+
+        String summary = "Checked " + trialTenants.size() + " trial tenant(s), expired " + expiredCount + ".";
+        if (failedCount == 0) {
+            automationRunRecorder.recordSuccess(null, AutomationAgentKeys.SUBSCRIPTION_TRIAL, startedAt, summary);
+        } else {
+            automationRunRecorder.recordFailure(null, AutomationAgentKeys.SUBSCRIPTION_TRIAL, startedAt,
+                    "PARTIAL_FAILURE", failedCount + " of " + trialTenants.size() + " tenant(s) failed to process.");
+        }
     }
 
     /** @return true if this tenant's trial was newly expired during this pass. */

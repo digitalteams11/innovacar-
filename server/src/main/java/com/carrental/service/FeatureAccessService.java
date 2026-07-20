@@ -54,11 +54,22 @@ public class FeatureAccessService {
 
     @Transactional(readOnly = true)
     public boolean isEnabledForCurrentTenant(String featureCode) {
-        Long tenantId = TenantContext.getCurrentTenantId();
-        Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
-        SubscriptionPlan plan = resolveTenantPlan(tenant);
-        return isEnabled(tenantId, plan, featureCode);
+        return isEnabledForTenant(TenantContext.getCurrentTenantId(), featureCode);
+    }
+
+    /**
+     * Same check as {@link #isEnabledForCurrentTenant(String)}, but for background
+     * jobs iterating multiple tenants — there is no request-scoped {@link TenantContext}
+     * to read from outside an HTTP request, so the tenant must be passed explicitly.
+     * Returns false (never throws) for a tenant that can't be resolved, since a
+     * scheduled job iterating tenants must never abort the whole batch over one
+     * bad id.
+     */
+    @Transactional(readOnly = true)
+    public boolean isEnabledForTenant(Long tenantId, String featureCode) {
+        return tenantRepository.findById(tenantId)
+                .map(tenant -> isEnabled(tenantId, resolveTenantPlan(tenant), featureCode))
+                .orElse(false);
     }
 
     @Transactional(readOnly = true)

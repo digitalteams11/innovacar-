@@ -5,7 +5,7 @@ import {
   BarChart3, Bell, Calendar, Car, ChevronDown, CreditCard, FileText, HelpCircle,
   Info, LayoutDashboard, LockKeyhole, MapPin, MoreHorizontal,
   Palette, PanelLeftClose, PanelLeftOpen, Settings, ShieldCheck,
-  Users, Wrench,
+  Sparkles, Users, Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -98,6 +98,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/agency', icon: Info, label: t('nav.agency') },
     { to: '/role-permissions', icon: ShieldCheck, label: t('nav.roleAccess'), permission: 'MANAGE_EMPLOYEES' },
     { to: '/white-label', icon: Palette, label: t('nav.whiteLabel'), feature: 'WHITE_LABEL' },
+    { to: '/automation-center', icon: Sparkles, label: t('nav.automationCenter', 'AI & Automation'), feature: 'AUTOMATION_CENTER' },
     { to: '/operations-center', icon: HelpCircle, label: t('nav.operationsCenter') },
     { to: '/help', icon: HelpCircle, label: t('nav.help', 'Help & Support') },
   ], [t]);

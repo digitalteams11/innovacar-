@@ -13,4 +13,7 @@ public interface BackupRecordRepository extends JpaRepository<BackupRecord, Long
             BackupRecord.Type type, LocalDateTime since);
     List<BackupRecord> findAllByStatusAndCreatedAtBefore(
             BackupRecord.Status status, LocalDateTime before);
+
+    /** Used by BackupVerificationAutomationAgent to check when the platform was last successfully backed up. */
+    Optional<BackupRecord> findFirstByStatusOrderByCreatedAtDesc(BackupRecord.Status status);
 }

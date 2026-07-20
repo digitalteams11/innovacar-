@@ -41,6 +41,7 @@ const GpsSettingsPage = React.lazy(() => import('./pages/GpsSettings'));
 const GpsDashboard = React.lazy(() => import('./pages/GpsDashboard'));
 const GpsAlerts = React.lazy(() => import('./pages/GpsAlerts'));
 const WhiteLabel = React.lazy(() => import('./pages/WhiteLabel'));
+const AutomationCenter = React.lazy(() => import('./pages/AutomationCenter'));
 const Maintenance = React.lazy(() => import('./pages/Maintenance'));
 const RolePermissions = React.lazy(() => import('./pages/RolePermissions'));
 const OperationsCenter = React.lazy(() => import('./pages/OperationsCenter'));
@@ -247,6 +248,7 @@ function AppRoutes() {
           shouldn't be wrapped in the regular dashboard sidebar/topbar. */}
       <Route path="/checkout" element={<AuthOnlyRoute><CheckoutTrial /></AuthOnlyRoute>} />
       <Route path="/white-label" element={<ProtectedRoute><FeatureGate feature="WHITE_LABEL"><WhiteLabel /></FeatureGate></ProtectedRoute>} />
+      <Route path="/automation-center" element={<ProtectedRoute><FeatureGate feature="AUTOMATION_CENTER"><AutomationCenter /></FeatureGate></ProtectedRoute>} />
       <Route path="/maintenance" element={<ProtectedRoute><PermissionGate permission="VIEW_MAINTENANCE"><FeatureGate feature="VEHICLE_MANAGEMENT"><Maintenance /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/role-permissions" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><RolePermissions /></PermissionGate></ProtectedRoute>} />
       <Route path="/operations-center" element={<ProtectedRoute><OperationsCenter /></ProtectedRoute>} />

@@ -23,6 +23,7 @@ class TrialExpiryJobTest {
     @Mock private TenantRepository tenantRepository;
     @Mock private PlatformEmailService platformEmailService;
     @Mock private NotificationService notificationService;
+    @Mock private AutomationRunRecorder automationRunRecorder;
 
     @InjectMocks
     private TrialExpiryJob trialExpiryJob;
