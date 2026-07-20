@@ -17,6 +17,7 @@ import com.carrental.repository.SupportTicketRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +56,7 @@ public class PlatformEmailService {
     private final SupportTicketRepository   supportTicketRepository;
     private final ContactRequestRepository  contactRequestRepository;
     private final com.carrental.repository.TenantSettingsRepository tenantSettingsRepository;
+    private final Environment environment;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -431,8 +433,17 @@ public class PlatformEmailService {
     /**
      * Strict allow-list for URLs that are safe to embed in an outbound email.
      * Accepts a real https origin (production), or http against localhost/127.0.0.1
-     * (local dev only) — everything else is rejected, including blank/null values,
-     * placeholder text, values with spaces, 192.168.x.x, and *.railway.internal.
+     * (local dev only, and only when this isn't actually a deployed environment)
+     * — everything else is rejected, including blank/null values, placeholder text,
+     * values with spaces, 192.168.x.x, and *.railway.internal.
+     *
+     * <p>Previously the http+loopback allowance was unconditional — if
+     * {@code app.public-api-url} silently fell back to its localhost default
+     * (e.g. {@code PUBLIC_API_URL} not set on Railway), this method still called
+     * it "valid" and rendered a real, clickable button pointing at localhost in
+     * a production email. {@link #isDeployedEnvironment()} closes that loophole:
+     * the same http+loopback value is now rejected outside local dev, which
+     * degrades to the "PDF link not available" text instead of a broken link.
      */
     boolean isValidPublicUrl(String value) {
         if (value == null || value.isBlank()) return false;
@@ -447,11 +458,23 @@ public class PlatformEmailService {
             if (lowerHost.contains("railway.internal")) return false;
             boolean isLoopback = lowerHost.equals("localhost") || lowerHost.startsWith("127.") || lowerHost.startsWith("192.168.");
             if ("https".equalsIgnoreCase(scheme)) return !isLoopback;
-            if ("http".equalsIgnoreCase(scheme)) return isLoopback;
+            if ("http".equalsIgnoreCase(scheme)) return isLoopback && !isDeployedEnvironment();
             return false;
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** True when running on Railway or with a "prod"-like Spring profile active. */
+    private boolean isDeployedEnvironment() {
+        boolean onRailway = System.getenv("RAILWAY_ENVIRONMENT_NAME") != null
+                || System.getenv("RAILWAY_PROJECT_ID") != null
+                || System.getenv("RAILWAY_SERVICE_ID") != null;
+        if (onRailway) return true;
+        for (String profile : environment.getActiveProfiles()) {
+            if (profile.toLowerCase(java.util.Locale.ROOT).contains("prod")) return true;
+        }
+        return false;
     }
 
     private static final String PDF_LINK_UNAVAILABLE_TEXT =

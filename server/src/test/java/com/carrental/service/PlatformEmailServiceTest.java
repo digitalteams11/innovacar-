@@ -7,14 +7,18 @@ import com.carrental.repository.DepositRepository;
 import com.carrental.repository.EmailLogRepository;
 import com.carrental.repository.PlatformSettingsRepository;
 import com.carrental.repository.SupportTicketRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 /**
  * Verifies the signed-contract-PDF email link: a real HTTPS button when a
@@ -35,9 +39,18 @@ class PlatformEmailServiceTest {
     @Mock private SupportTicketRepository supportTicketRepository;
     @Mock private com.carrental.repository.ContactRequestRepository contactRequestRepository;
     @Mock private com.carrental.repository.TenantSettingsRepository tenantSettingsRepository;
+    @Mock private Environment environment;
 
     @InjectMocks
     private PlatformEmailService platformEmailService;
+
+    @BeforeEach
+    void stubLocalDevEnvironment() {
+        // Every isValidPublicUrl call checks isDeployedEnvironment(), which reads this —
+        // default to "not deployed" (no active profile) so http+localhost is allowed,
+        // matching how these tests actually run (no RAILWAY_* env vars, no prod profile).
+        lenient().when(environment.getActiveProfiles()).thenReturn(new String[0]);
+    }
 
     private Contract contractWithToken(String qrToken) {
         Tenant tenant = Tenant.builder().id(1L).name("Agency").email("agency@test.com").build();
@@ -79,6 +92,29 @@ class PlatformEmailServiceTest {
     void isValidPublicUrl_acceptsHttpOnlyForLocalDev() {
         assertThat(platformEmailService.isValidPublicUrl("http://localhost:8082/api/public/contracts/1/tok/pdf")).isTrue();
         assertThat(platformEmailService.isValidPublicUrl("http://api.innovacar.app/api/public/contracts/1/tok/pdf")).isFalse();
+    }
+
+    /**
+     * Regression test for the actual production incident: PUBLIC_API_URL was
+     * never set on Railway, app.public-api-url silently fell back to
+     * http://localhost:8082, and isValidPublicUrl called that "valid" —
+     * rendering a real, clickable localhost button in a production email.
+     */
+    @Test
+    void isValidPublicUrl_rejectsHttpLocalhost_whenDeployedToProd() {
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
+        assertThat(platformEmailService.isValidPublicUrl("http://localhost:8082/api/public/contracts/1/tok/pdf")).isFalse();
+    }
+
+    @Test
+    void buildPdfSection_omitsButtonWhenLocalhostLeaksThroughInProd() {
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"prod"});
+        ReflectionTestUtils.setField(platformEmailService, "publicApiUrl", "http://localhost:8082");
+
+        String html = platformEmailService.buildPdfSection(contractWithToken("secure-token-abc"));
+
+        assertThat(html).doesNotContain("localhost");
+        assertThat(html).doesNotContain("href=");
     }
 
     @Test
