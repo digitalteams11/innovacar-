@@ -2756,6 +2756,46 @@
     "created": "Created",
     "updated": "Updated"
   },
+  "contractEmail": {
+    "title": "Contract Email",
+    "missing": {
+      "title": "Client email missing",
+      "description": "Add the client's email address to send the contract, signature link and PDF."
+    },
+    "clientEmailLabel": "Client Email",
+    "add": "Add client email",
+    "edit": "Edit email",
+    "save": "Save email",
+    "saveAndSend": "Save and send contract",
+    "send": "Send Email",
+    "resend": "Resend Email",
+    "sendingEmail": "Saving email...",
+    "sendingContract": "Sending contract...",
+    "shareWhatsapp": "Share via WhatsApp",
+    "copyLink": "Copy signature link",
+    "showQr": "Show QR code",
+    "saved": "Email saved",
+    "savedAndSent": "Email saved and contract sent",
+    "savedSendFailed": "Email saved, but the contract could not be sent.",
+    "retrySend": "Retry sending",
+    "invalid": "Please enter a valid email address",
+    "clientNotFound": "Client not found",
+    "permissionDenied": "You do not have permission to do this",
+    "serviceUnavailable": "Service temporarily unavailable. Please try again.",
+    "modal": {
+      "titleAdd": "Add client email",
+      "titleEdit": "Edit client email",
+      "clientName": "Client name",
+      "phone": "Phone number",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "client@example.com",
+      "sendImmediately": "Send the contract immediately after saving",
+      "cancel": "Cancel"
+    },
+    "noEmailSentYet": "No email sent yet",
+    "emailSent": "Email sent",
+    "lastSentOn": "Last sent"
+  },
   "roleAccess": {
     "title": "Role Access",
     "subtitle": "Control every role from stored tenant permissions.",

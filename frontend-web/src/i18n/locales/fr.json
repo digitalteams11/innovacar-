@@ -2756,6 +2756,46 @@
     "created": "Cree",
     "updated": "Mis a jour"
   },
+  "contractEmail": {
+    "title": "E-mail du contrat",
+    "missing": {
+      "title": "E-mail du client manquant",
+      "description": "Ajoutez l'adresse e-mail du client pour envoyer le contrat, le lien de signature et le PDF."
+    },
+    "clientEmailLabel": "E-mail du client",
+    "add": "Ajouter l'e-mail du client",
+    "edit": "Modifier l'e-mail",
+    "save": "Enregistrer l'e-mail",
+    "saveAndSend": "Enregistrer et envoyer le contrat",
+    "send": "Envoyer l'e-mail",
+    "resend": "Renvoyer l'e-mail",
+    "sendingEmail": "Enregistrement de l'e-mail...",
+    "sendingContract": "Envoi du contrat...",
+    "shareWhatsapp": "Partager via WhatsApp",
+    "copyLink": "Copier le lien de signature",
+    "showQr": "Afficher le QR code",
+    "saved": "E-mail enregistré",
+    "savedAndSent": "E-mail enregistré et contrat envoyé",
+    "savedSendFailed": "E-mail enregistré, mais le contrat n'a pas pu être envoyé.",
+    "retrySend": "Réessayer l'envoi",
+    "invalid": "Veuillez saisir une adresse e-mail valide",
+    "clientNotFound": "Client introuvable",
+    "permissionDenied": "Vous n'avez pas la permission de faire cela",
+    "serviceUnavailable": "Service temporairement indisponible. Veuillez réessayer.",
+    "modal": {
+      "titleAdd": "Ajouter l'e-mail du client",
+      "titleEdit": "Modifier l'e-mail du client",
+      "clientName": "Nom du client",
+      "phone": "Numéro de téléphone",
+      "emailLabel": "Adresse e-mail",
+      "emailPlaceholder": "client@exemple.com",
+      "sendImmediately": "Envoyer le contrat immédiatement après l'enregistrement",
+      "cancel": "Annuler"
+    },
+    "noEmailSentYet": "Aucun e-mail envoyé pour le moment",
+    "emailSent": "E-mail envoyé",
+    "lastSentOn": "Dernier envoi"
+  },
   "roleAccess": {
     "title": "Accès par rôle",
     "subtitle": "Contrôlez les autorisations de chaque rôle à partir des permissions enregistrées du locataire.",

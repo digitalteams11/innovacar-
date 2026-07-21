@@ -255,6 +255,31 @@ public class ClientService {
         return ClientResponse.from(saved);
     }
 
+    /**
+     * Dedicated "add/fix missing client email" action — backs the recovery
+     * flow surfaced from Contract Details when a client has no email on
+     * file. Deliberately does not enforce tenant-wide email uniqueness:
+     * unlike {@link #createClient}'s duplicate-customer guard (which exists
+     * to stop the same person being registered as two client records), this
+     * only corrects a contact detail on an already-identified client, and
+     * there is no DB-level uniqueness constraint on {@code clients.email} —
+     * two clients (e.g. a shared family/company inbox) may legitimately use
+     * the same address.
+     *
+     * @throws ResourceNotFoundException if the client is not found in this tenant
+     */
+    @Transactional
+    public ClientResponse updateClientEmail(Long id, String rawEmail) {
+        Client client = fetchClientInTenant(id);
+        String normalized = rawEmail.trim().toLowerCase(java.util.Locale.ROOT);
+        client.setEmail(normalized);
+        Client saved = clientRepository.save(client);
+        // Never log the raw email — this is intentionally logged as a bare
+        // fact ("this client's email was changed"), not what it changed to.
+        log.info("Updated client [id={}] email in tenant [{}]", id, TenantContext.getCurrentTenantId());
+        return ClientResponse.from(saved);
+    }
+
     // ── DELETE ────────────────────────────────────────────────────────────────
 
     /**

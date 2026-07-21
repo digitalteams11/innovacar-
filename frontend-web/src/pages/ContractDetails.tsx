@@ -12,12 +12,15 @@ import VehicleInspection from '../components/shared/VehicleInspection';
 import ReturnInspectionModal from '../components/shared/ReturnInspectionModal';
 import InspectionGallery from '../components/InspectionGallery';
 import Modal from '../components/Modal';
+import AddClientEmailModal from '../components/shared/AddClientEmailModal';
+import { normalizePhoneForWhatsApp } from '../lib/phone';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft, FileText, Calendar, User, Car, CheckCircle2, Clock,
   Printer, Download, QrCode, Shield,
   AlertCircle, Loader2, CreditCard,
-  ClipboardCheck, Users, History, RefreshCw
+  ClipboardCheck, Users, History, RefreshCw,
+  MailPlus, Send, MessageCircle, Copy, Pencil
 } from 'lucide-react';
 
 interface ContractDetail {
@@ -155,6 +158,9 @@ export default function ContractDetails() {
   const [inspectionQr, setInspectionQr] = useState<any>(null);
   const [emailStatus, setEmailStatus] = useState<any>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [showAddEmailModal, setShowAddEmailModal] = useState(false);
+  const [savingClientEmail, setSavingClientEmail] = useState(false);
+  const [generatingShareLink, setGeneratingShareLink] = useState(false);
 
   const emailErrorLabel = (code?: string | null): string => {
     switch (code) {
@@ -472,6 +478,122 @@ export default function ContractDetails() {
     }
   };
 
+  // ── Secure signature link: shared by WhatsApp share / copy link / QR ──────
+  // All three delivery actions must work even when the client has no email —
+  // they only depend on the agency having signed (which mints the token), not
+  // on the client's contact email.
+  const ensureSigningUrl = async (): Promise<string | null> => {
+    if (!contract) return null;
+    if (contract.qrToken && contract.publicSigningUrl) return contract.publicSigningUrl;
+    if (!contract.ownerSigned) {
+      showToast('Agency must sign the contract before sharing the signing link', 'warning');
+      return null;
+    }
+    setGeneratingShareLink(true);
+    try {
+      const { data } = await api.get(`/contracts/${contract.id}/qr`);
+      if (data?.success === false) {
+        showToast(data.message || 'Unable to generate signing link. Please try again later.', 'error');
+        return null;
+      }
+      const qrData = data?.data || data;
+      const publicSigningUrl = qrData?.signingUrl || qrData?.publicSigningUrl || contract.publicSigningUrl;
+      applyContractEnvelope(data, { qrToken: qrData?.qrToken || contract.qrToken, publicSigningUrl });
+      return publicSigningUrl || null;
+    } catch (err: any) {
+      if (err?.response?.status === 409 && contract.qrToken && contract.publicSigningUrl) {
+        return contract.publicSigningUrl;
+      }
+      showToast((err as any).userMessage || 'Unable to generate signing link. Please try again later.', 'error');
+      return null;
+    } finally {
+      setGeneratingShareLink(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!contract) return;
+    const url = await ensureSigningUrl();
+    if (!url) return;
+    const vehicle = `${contract.vehicleBrand || ''} ${contract.vehicleModel || ''}`.trim();
+    const message = `Bonjour ${contract.clientFullName || ''},\n\n`
+      + `Votre contrat de location ${contract.contractNumber} est pret.\n\n`
+      + `Vehicule : ${vehicle}\n`
+      + `Periode : ${new Date(contract.startDate).toLocaleDateString()} au ${new Date(contract.endDate).toLocaleDateString()}\n\n`
+      + `Consultez et signez votre contrat ici :\n${url}\n\n`
+      + `${tenant?.name || ''}`;
+    const digits = normalizePhoneForWhatsApp(contract.clientPhone);
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const handleCopySigningLink = async () => {
+    const url = await ensureSigningUrl();
+    if (!url) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      showToast(t('contracts.linkCopied') || 'Link copied to clipboard', 'success');
+    } catch {
+      showToast(t('contracts.copyFailed') || 'Unable to copy link. Please try again later.', 'error');
+    }
+  };
+
+  const handleShowQrShare = async () => {
+    const url = await ensureSigningUrl();
+    if (url) setShowQRModal(true);
+  };
+
+  // ── Add/edit the client's email directly from Contract Details ────────────
+  const handleSaveClientEmail = async (email: string, sendAfterSave: boolean) => {
+    if (!contract) return;
+    setSavingClientEmail(true);
+    try {
+      await api.patch(`/clients/${contract.clientId}/email`, { email });
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || t('contractEmail.invalid') || 'Unable to save email', 'error');
+      setSavingClientEmail(false);
+      throw err;
+    }
+
+    // Update contract view + email status immediately — no page refresh.
+    setContract(current => current ? { ...current, clientEmail: email } : current);
+    setEmailStatus((current: any) => ({ ...(current || {}), clientEmail: email, hasClientEmail: true }));
+    setShowAddEmailModal(false);
+    setSavingClientEmail(false);
+
+    if (!sendAfterSave) {
+      showToast(t('contractEmail.saved') || 'Email saved', 'success');
+      fetchEmailStatus(contract.id);
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const { data } = await api.post(`/contracts/${contract.id}/send-email`);
+      if (data?.success) {
+        showToast(t('contractEmail.savedAndSent') || 'Email saved and contract sent', 'success');
+      } else {
+        showToast(t('contractEmail.savedSendFailed') || 'Email saved, but the contract could not be sent.', 'error');
+      }
+    } catch {
+      showToast(t('contractEmail.savedSendFailed') || 'Email saved, but the contract could not be sent.', 'error');
+    } finally {
+      setSendingEmail(false);
+      fetchEmailStatus(contract.id);
+    }
+  };
+
   const handleFinalize = async () => {
     if (!contract) return;
     setIsSubmitting(true);
@@ -765,62 +887,106 @@ export default function ContractDetails() {
               {/* Client Email Status */}
               <div className="card-premium space-y-3 p-3 sm:p-5">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                  <AlertCircle size={14} /> Contract Email
+                  <AlertCircle size={14} /> {t('contractEmail.title')}
                 </h3>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="text-xs text-slate-500">Client Email</p>
-                    {emailStatus?.hasClientEmail ? (
-                      <p className="text-sm font-semibold text-[#1e293b]">{emailStatus.clientEmail}</p>
-                    ) : (
-                      <p className="text-sm text-slate-400 italic">Client email is missing. Add an email to send the contract.</p>
-                    )}
-                    {emailStatus?.lastStatus && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {emailStatus.lastStatus === 'SENT' ? (
-                          <CheckCircle2 size={13} className="text-success-500" />
-                        ) : (
-                          <AlertCircle size={13} className="text-amber-500" />
+
+                {emailStatus?.hasClientEmail ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500">{t('contractEmail.clientEmailLabel')}</p>
+                        <p className="text-sm font-semibold text-[#1e293b] dark:text-white">{emailStatus.clientEmail}</p>
+                        {emailStatus?.lastStatus && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {emailStatus.lastStatus === 'SENT' ? (
+                              <CheckCircle2 size={13} className="text-success-500" />
+                            ) : (
+                              <AlertCircle size={13} className="text-amber-500" />
+                            )}
+                            <span className={`text-xs font-semibold ${emailStatus.lastStatus === 'SENT' ? 'text-success-600' : 'text-amber-600'}`}>
+                              {emailStatus.lastStatus === 'SENT' ? t('contractEmail.emailSent') : emailErrorLabel(emailStatus.lastErrorCode)}
+                            </span>
+                            {emailStatus.lastSentAt && (
+                              <span className="text-xs text-slate-400">
+                                · {new Date(emailStatus.lastSentAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
                         )}
-                        <span className={`text-xs font-semibold ${emailStatus.lastStatus === 'SENT' ? 'text-success-600' : 'text-amber-600'}`}>
-                          {emailStatus.lastStatus === 'SENT' ? 'Email sent' : emailErrorLabel(emailStatus.lastErrorCode)}
-                        </span>
-                        {emailStatus.lastSentAt && (
-                          <span className="text-xs text-slate-400">
-                            · {new Date(emailStatus.lastSentAt).toLocaleDateString()}
-                          </span>
+                        {!emailStatus?.lastStatus && (
+                          <p className="text-xs text-slate-400">{t('contractEmail.noEmailSentYet')}</p>
                         )}
                       </div>
-                    )}
-                    {!emailStatus?.lastStatus && emailStatus?.hasClientEmail && (
-                      <p className="text-xs text-slate-400">No email sent yet</p>
-                    )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setShowAddEmailModal(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white rounded-xl text-xs font-semibold hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
+                        >
+                          <Pencil size={13} /> {t('contractEmail.edit')}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setSendingEmail(true);
+                            try {
+                              const { data } = await api.post(`/contracts/${contract.id}/send-email`);
+                              showToast(data?.message || t('contractEmail.emailSent'), data?.success ? 'success' : 'error');
+                              fetchEmailStatus(contract.id);
+                            } catch (err: any) {
+                              showToast(err?.response?.data?.message || 'Unable to send email', 'error');
+                            } finally {
+                              setSendingEmail(false);
+                            }
+                          }}
+                          disabled={sendingEmail}
+                          className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl text-xs font-semibold hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-all disabled:opacity-50"
+                        >
+                          {sendingEmail
+                            ? <Loader2 size={13} className="animate-spin" />
+                            : <Send size={13} />}
+                          {emailStatus?.lastStatus === 'SENT' ? t('contractEmail.resend') : t('contractEmail.send')}
+                        </button>
+                      </div>
+                    </div>
+                    <ContractShareActions
+                      onWhatsApp={handleShareWhatsApp}
+                      onCopyLink={handleCopySigningLink}
+                      onShowQr={handleShowQrShare}
+                      busy={generatingShareLink}
+                      t={t}
+                    />
                   </div>
-                  {emailStatus?.hasClientEmail && (
+                ) : (
+                  <div className="space-y-3 rounded-2xl border border-amber-200 dark:border-amber-500/20 bg-amber-50/70 dark:bg-amber-500/10 p-3 sm:p-4">
+                    <div>
+                      <p className="text-sm font-bold text-amber-800 dark:text-amber-300">{t('contractEmail.missing.title')}</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400/90 mt-1">{t('contractEmail.missing.description')}</p>
+                    </div>
                     <button
-                      onClick={async () => {
-                        setSendingEmail(true);
-                        try {
-                          const { data } = await api.post(`/contracts/${contract.id}/send-email`);
-                          showToast(data?.message || 'Email sent', data?.success ? 'success' : 'error');
-                          fetchEmailStatus(contract.id);
-                        } catch (err: any) {
-                          showToast(err?.response?.data?.message || 'Unable to send email', 'error');
-                        } finally {
-                          setSendingEmail(false);
-                        }
-                      }}
-                      disabled={sendingEmail}
-                      className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-600 rounded-xl text-xs font-semibold hover:bg-brand-100 transition-all disabled:opacity-50"
+                      onClick={() => setShowAddEmailModal(true)}
+                      className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-brand-600 text-white rounded-xl text-sm font-semibold hover:bg-brand-700 transition-all"
                     >
-                      {sendingEmail
-                        ? <Loader2 size={13} className="animate-spin" />
-                        : <Download size={13} />}
-                      {emailStatus?.lastStatus === 'SENT' ? 'Resend Email' : 'Send Email'}
+                      <MailPlus size={15} /> {t('contractEmail.add')}
                     </button>
-                  )}
-                </div>
+                    <ContractShareActions
+                      onWhatsApp={handleShareWhatsApp}
+                      onCopyLink={handleCopySigningLink}
+                      onShowQr={handleShowQrShare}
+                      busy={generatingShareLink}
+                      t={t}
+                    />
+                  </div>
+                )}
               </div>
+
+              <AddClientEmailModal
+                isOpen={showAddEmailModal}
+                onClose={() => setShowAddEmailModal(false)}
+                clientName={contract.clientFullName || ''}
+                clientPhone={contract.clientPhone || ''}
+                currentEmail={emailStatus?.hasClientEmail ? emailStatus.clientEmail : ''}
+                saving={savingClientEmail}
+                onSave={handleSaveClientEmail}
+              />
 
               {/* Security Deposit */}
               {contract.deposit && (
@@ -1328,6 +1494,42 @@ function InspectionStatusCard({ title, inspection }: { title: string; inspection
       </p>
       {inspection && <p className="mt-1 text-xs text-slate-500">{photoCount}/{requiredPhotoCount} photos uploaded</p>}
       {inspection?.mediaExpiresAt && <p className="mt-1 text-xs text-slate-500">Media expires {new Date(inspection.mediaExpiresAt).toLocaleDateString()}</p>}
+    </div>
+  );
+}
+
+/**
+ * WhatsApp / copy-link / QR delivery actions, shown regardless of whether
+ * the client has an email — email is one delivery channel among several,
+ * never a gate on the others.
+ */
+function ContractShareActions({ onWhatsApp, onCopyLink, onShowQr, busy, t }: {
+  onWhatsApp: () => void; onCopyLink: () => void; onShowQr: () => void; busy: boolean;
+  t: (key: string) => string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        onClick={onWhatsApp}
+        disabled={busy}
+        className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+      >
+        <MessageCircle size={14} /> {t('contractEmail.shareWhatsapp')}
+      </button>
+      <button
+        onClick={onCopyLink}
+        disabled={busy}
+        className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white rounded-xl text-xs font-semibold hover:bg-slate-200 dark:hover:bg-white/10 transition-all disabled:opacity-50"
+      >
+        <Copy size={14} /> {t('contractEmail.copyLink')}
+      </button>
+      <button
+        onClick={onShowQr}
+        disabled={busy}
+        className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white rounded-xl text-xs font-semibold hover:bg-slate-200 dark:hover:bg-white/10 transition-all disabled:opacity-50"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <QrCode size={14} />} {t('contractEmail.showQr')}
+      </button>
     </div>
   );
 }

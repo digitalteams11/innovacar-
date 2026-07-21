@@ -2,6 +2,7 @@ package com.carrental.controller;
 
 import com.carrental.dto.client.CreateClientRequest;
 import com.carrental.dto.client.UpdateClientRequest;
+import com.carrental.dto.client.UpdateClientEmailRequest;
 import com.carrental.dto.client.ClientResponse;
 import com.carrental.dto.ApiResponse;
 import com.carrental.service.ClientService;
@@ -23,6 +24,7 @@ import java.util.List;
  * GET    /api/clients/{id}         – get client by id            [authenticated]
  * POST   /api/clients              – create client               [ADMIN]
  * PUT    /api/clients/{id}         – partial update              [ADMIN]
+ * PATCH  /api/clients/{id}/email   – add/fix client email         [ADMIN]
  * DELETE /api/clients/{id}         – delete client               [ADMIN]
  * </pre>
  *
@@ -97,6 +99,24 @@ public class ClientController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateClientRequest request) {
         return ResponseEntity.ok(clientService.updateClient(id, request));
+    }
+
+    // ── PATCH /api/clients/{id}/email ────────────────────────────────────────
+
+    /**
+     * Adds or fixes a client's email address — the dedicated action behind
+     * the "Add client email" recovery flow on Contract Details when a
+     * client has none on file. Same authorization as the general update
+     * (EDIT_CLIENT), but with a required, always-set email field instead of
+     * the general endpoint's "null means leave alone, empty string means
+     * clear" partial-update semantics.
+     */
+    @PatchMapping("/{id}/email")
+    @PreAuthorize("@rolePermissionService.has('EDIT_CLIENT')")
+    public ResponseEntity<ClientResponse> updateClientEmail(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateClientEmailRequest request) {
+        return ResponseEntity.ok(clientService.updateClientEmail(id, request.getEmail()));
     }
 
     // ── DELETE /api/clients/{id} ─────────────────────────────────────────────

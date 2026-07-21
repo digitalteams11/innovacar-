@@ -46,6 +46,7 @@ public class ContractController {
     private final PlanLimitService     planLimitService;
     private final com.carrental.service.PlatformEmailService platformEmailService;
     private final com.carrental.repository.EmailLogRepository emailLogRepository;
+    private final com.carrental.repository.ClientRepository clientRepository;
 
     // ── CRUD ─────────────────────────────────────────────────────────────────
 
@@ -687,7 +688,7 @@ public class ContractController {
         if (!contract.getTenant().getId().equals(tenantId)) {
             return ResponseEntity.status(403).body(errorBody("Access denied", "ACCESS_DENIED", null));
         }
-        if (!org.springframework.util.StringUtils.hasText(contract.getClientEmail())) {
+        if (!org.springframework.util.StringUtils.hasText(resolveEffectiveClientEmail(contract))) {
             return ResponseEntity.ok(errorBody("Client has no email address", "EMAIL_TO_ADDRESS_MISSING", null));
         }
         boolean fullySigned = org.springframework.util.StringUtils.hasText(contract.getOwnerSignature())
@@ -743,15 +744,38 @@ public class ContractController {
         java.util.List<com.carrental.entity.EmailLog> logs =
                 emailLogRepository.findAllByContractIdOrderByCreatedAtDesc(id);
         com.carrental.entity.EmailLog last = logs.isEmpty() ? null : logs.get(0);
+        String effectiveEmail = resolveEffectiveClientEmail(contract);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("contractId", id);
-        result.put("clientEmail", contract.getClientEmail());
-        result.put("hasClientEmail", org.springframework.util.StringUtils.hasText(contract.getClientEmail()));
+        result.put("clientId", contract.getClient() != null ? contract.getClient().getId() : null);
+        result.put("clientEmail", effectiveEmail);
+        result.put("hasClientEmail", org.springframework.util.StringUtils.hasText(effectiveEmail));
         result.put("lastStatus",    last != null ? last.getStatus()    : null);
         result.put("lastErrorCode", last != null ? last.getErrorCode() : null);
         result.put("lastSentAt",    last != null ? last.getCreatedAt() : null);
         result.put("totalAttempts", logs.size());
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Resolves the email a contract's delivery actions (send-email, status
+     * check) should use: the contract's own snapshot ({@code clientEmail},
+     * captured at contract-creation time) when present, otherwise the
+     * client's current live email. This intentionally never writes back to
+     * the contract snapshot — the snapshot is part of the signed-contract
+     * record and must not be silently mutated, but email *delivery* is
+     * contact metadata, not legal document content, so it's safe (and
+     * expected — see the "add missing client email" recovery flow) to fall
+     * through to whatever email the client profile holds right now.
+     */
+    private String resolveEffectiveClientEmail(Contract contract) {
+        if (org.springframework.util.StringUtils.hasText(contract.getClientEmail())) {
+            return contract.getClientEmail();
+        }
+        if (contract.getClient() == null) return null;
+        return clientRepository.findById(contract.getClient().getId())
+                .map(com.carrental.entity.Client::getEmail)
+                .orElse(null);
     }
 }
 

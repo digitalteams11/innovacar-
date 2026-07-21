@@ -8,6 +8,7 @@ import com.carrental.entity.PlatformSettings;
 import com.carrental.entity.SupportMessage;
 import com.carrental.entity.SupportTicket;
 import com.carrental.entity.Tenant;
+import com.carrental.repository.ClientRepository;
 import com.carrental.repository.ContactRequestRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.DepositRepository;
@@ -48,6 +49,7 @@ public class PlatformEmailService {
 
     private final SmtpMailService           smtpMailService;
     private final ContractRepository        contractRepository;
+    private final ClientRepository          clientRepository;
     private final EmailLogRepository        emailLogRepository;
     private final PlatformSettingsRepository platformSettingsRepository;
     private final EmailTemplateService      emailTemplateService;
@@ -82,7 +84,7 @@ public class PlatformEmailService {
             return;
         }
 
-        String toEmail = contract.getClientEmail();
+        String toEmail = resolveEffectiveClientEmail(contract);
         if (!StringUtils.hasText(toEmail)) {
             log.info("[EMAIL] Skipped CONTRACT_SIGNED_CLIENT — no client email [contractId={}]", contractId);
             saveLog(contractId, contract.getTenant().getId(), toEmail,
@@ -96,7 +98,7 @@ public class PlatformEmailService {
             return;
         }
 
-        sendContractPdfEmail(contract);
+        sendContractPdfEmail(contract, toEmail);
     }
 
     /**
@@ -114,7 +116,7 @@ public class PlatformEmailService {
             return SmtpMailService.SmtpResult.failure(null, "Contract not found.", "CONTRACT_NOT_FOUND");
         }
 
-        String toEmail = contract.getClientEmail();
+        String toEmail = resolveEffectiveClientEmail(contract);
         if (!StringUtils.hasText(toEmail)) {
             saveLog(contractId, contract.getTenant().getId(), null,
                     EmailLog.TYPE_CONTRACT_SIGNED_CLIENT, null, "FAILED",
@@ -122,7 +124,24 @@ public class PlatformEmailService {
             return SmtpMailService.SmtpResult.failure(null, "Client email not provided.", "EMAIL_TO_ADDRESS_MISSING");
         }
 
-        return sendContractPdfEmail(contract);
+        return sendContractPdfEmail(contract, toEmail);
+    }
+
+    /**
+     * Resolves the email a contract send should target: the contract's own
+     * snapshot (captured at creation time) when present, otherwise the
+     * client's current live email. Never writes back to the snapshot — see
+     * the matching helper/comment in ContractController for why that's safe
+     * (email is delivery metadata, not signed legal content).
+     */
+    private String resolveEffectiveClientEmail(Contract contract) {
+        if (StringUtils.hasText(contract.getClientEmail())) {
+            return contract.getClientEmail();
+        }
+        if (contract.getClient() == null) return null;
+        return clientRepository.findById(contract.getClient().getId())
+                .map(com.carrental.entity.Client::getEmail)
+                .orElse(null);
     }
 
     /**
@@ -130,9 +149,8 @@ public class PlatformEmailService {
      * and dispatches it. Shared by the automatic post-signature send and the
      * manual "Send/Resend Email" button — both must attach the current PDF.
      */
-    private SmtpMailService.SmtpResult sendContractPdfEmail(Contract contract) {
+    private SmtpMailService.SmtpResult sendContractPdfEmail(Contract contract, String toEmail) {
         Long contractId = contract.getId();
-        String toEmail = contract.getClientEmail();
 
         Map<String, String> vars = buildContractVars(contract);
         // Try the managed template first; fall back to the inline builder if missing

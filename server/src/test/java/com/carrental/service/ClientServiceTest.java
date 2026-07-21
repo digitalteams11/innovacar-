@@ -6,6 +6,7 @@ import com.carrental.entity.Client;
 import com.carrental.entity.Tenant;
 import com.carrental.exception.ClientDuplicateException;
 import com.carrental.exception.ClientValidationException;
+import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.ClientRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.InvoiceRepository;
@@ -110,6 +111,47 @@ class ClientServiceTest {
         assertThatThrownBy(() -> clientService.createClient(validRequest()))
                 .isInstanceOf(ClientValidationException.class)
                 .hasMessage("Current user is not linked to an agency.");
+    }
+
+    @Test
+    void updateClientEmail_authorizedTenantClient_persistsNormalizedEmail() {
+        Client client = Client.builder().id(5L).name("Jane Doe").email(null).build();
+        when(clientRepository.findByIdAndTenantId(5L, TENANT_ID)).thenReturn(Optional.of(client));
+        when(clientRepository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ClientResponse response = clientService.updateClientEmail(5L, "  Jane.Doe@Example.COM  ");
+
+        assertThat(response.getEmail()).isEqualTo("jane.doe@example.com");
+        verify(clientRepository).save(argThat(c -> "jane.doe@example.com".equals(c.getEmail())));
+    }
+
+    @Test
+    void updateClientEmail_crossTenantClient_throwsNotFound() {
+        when(clientRepository.findByIdAndTenantId(5L, TENANT_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> clientService.updateClientEmail(5L, "jane@example.com"))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(clientRepository, never()).save(any());
+    }
+
+    @Test
+    void updateClientEmail_missingClient_throwsNotFound() {
+        when(clientRepository.findByIdAndTenantId(999L, TENANT_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> clientService.updateClientEmail(999L, "jane@example.com"))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void updateClientEmail_updatesExistingRecord_doesNotCreateDuplicate() {
+        Client client = Client.builder().id(5L).name("Jane Doe").email("old@example.com").build();
+        when(clientRepository.findByIdAndTenantId(5L, TENANT_ID)).thenReturn(Optional.of(client));
+        when(clientRepository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        clientService.updateClientEmail(5L, "new@example.com");
+
+        verify(clientRepository, never()).save(argThat(c -> !c.getId().equals(5L)));
+        verify(clientRepository, times(1)).save(any(Client.class));
     }
 
     private CreateClientRequest validRequest() {

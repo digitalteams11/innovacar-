@@ -39,6 +39,7 @@ class PlatformEmailServiceTest {
     @Mock private SupportTicketRepository supportTicketRepository;
     @Mock private com.carrental.repository.ContactRequestRepository contactRequestRepository;
     @Mock private com.carrental.repository.TenantSettingsRepository tenantSettingsRepository;
+    @Mock private com.carrental.repository.ClientRepository clientRepository;
     @Mock private Environment environment;
 
     @InjectMocks
@@ -189,5 +190,76 @@ class PlatformEmailServiceTest {
         String lang = ReflectionTestUtils.invokeMethod(platformEmailService, "resolveTenantEmailLanguage", tenant);
 
         assertThat(lang).isEqualTo("FR");
+    }
+
+    // ── "Add missing client email" recovery flow: send must use the client's
+    // ── current live email when the contract's own snapshot is blank, and
+    // ── must never touch the snapshot itself (see resolveEffectiveClientEmail). ──
+
+    @Test
+    void resendContractEmail_fallsBackToLiveClientEmail_whenSnapshotBlank() {
+        Tenant tenant = Tenant.builder().id(1L).name("Agency").email("agency@test.com").build();
+        com.carrental.entity.Client client = com.carrental.entity.Client.builder().id(9L).email("live@example.com").build();
+        Contract contract = Contract.builder()
+                .id(42L).contractNumber("CTR-2026-00001").tenant(tenant).client(client)
+                .clientEmail(null)
+                .build();
+        org.mockito.Mockito.when(contractRepository.findById(42L)).thenReturn(java.util.Optional.of(contract));
+        org.mockito.Mockito.when(clientRepository.findById(9L)).thenReturn(java.util.Optional.of(client));
+        org.mockito.Mockito.when(smtpMailService.sendForTenant(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(SmtpMailService.SmtpResult.success("ZEPTOMAIL"));
+
+        SmtpMailService.SmtpResult result = platformEmailService.resendContractEmail(42L);
+
+        assertThat(result.sent()).isTrue();
+        org.mockito.Mockito.verify(smtpMailService).sendForTenant(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq("live@example.com"),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
+        // Never writes back to the contract's own snapshot field.
+        assertThat(contract.getClientEmail()).isNull();
+    }
+
+    @Test
+    void resendContractEmail_usesSnapshotEmail_whenPresent_neverQueriesLiveClient() {
+        Tenant tenant = Tenant.builder().id(1L).name("Agency").email("agency@test.com").build();
+        com.carrental.entity.Client client = com.carrental.entity.Client.builder().id(9L).email("live@example.com").build();
+        Contract contract = Contract.builder()
+                .id(43L).contractNumber("CTR-2026-00002").tenant(tenant).client(client)
+                .clientEmail("snapshot@example.com")
+                .build();
+        org.mockito.Mockito.when(contractRepository.findById(43L)).thenReturn(java.util.Optional.of(contract));
+        org.mockito.Mockito.when(smtpMailService.sendForTenant(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(SmtpMailService.SmtpResult.success("ZEPTOMAIL"));
+
+        platformEmailService.resendContractEmail(43L);
+
+        org.mockito.Mockito.verify(smtpMailService).sendForTenant(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq("snapshot@example.com"),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.verify(clientRepository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void resendContractEmail_noEmailAnywhere_failsWithoutQueryingClientRepository() {
+        Tenant tenant = Tenant.builder().id(1L).name("Agency").email("agency@test.com").build();
+        Contract contract = Contract.builder()
+                .id(44L).contractNumber("CTR-2026-00003").tenant(tenant).client(null)
+                .clientEmail(null)
+                .build();
+        org.mockito.Mockito.when(contractRepository.findById(44L)).thenReturn(java.util.Optional.of(contract));
+
+        SmtpMailService.SmtpResult result = platformEmailService.resendContractEmail(44L);
+
+        assertThat(result.sent()).isFalse();
+        assertThat(result.errorCode()).isEqualTo("EMAIL_TO_ADDRESS_MISSING");
+        org.mockito.Mockito.verifyNoInteractions(clientRepository);
     }
 }

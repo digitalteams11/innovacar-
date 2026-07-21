@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { resolveMediaUrl } from '../../lib/utils';
+import { normalizePhoneForWhatsApp } from '../../lib/phone';
 import api from '../../api/axios';
 
 interface QRCodeModalProps {
@@ -177,7 +178,7 @@ export default function QRCodeModal({
     const text = encodeURIComponent(
       `Please sign your rental contract (${contractNumber}) for ${clientName}: ${fullUrl}`
     );
-    const digits = clientPhone ? clientPhone.replace(/[^\d]/g, '') : '';
+    const digits = normalizePhoneForWhatsApp(clientPhone);
     window.open(`https://wa.me/${digits}?text=${text}`, '_blank');
   };
 
