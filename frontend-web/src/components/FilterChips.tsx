@@ -33,9 +33,16 @@ export function FilterChips({ options, activeId, onChange, className }: FilterCh
                 ? 'shadow-sm'
                 : 'hover:bg-[var(--bg-hover)]'
             )}
+            aria-pressed={isActive}
             style={{
               backgroundColor: isActive ? 'var(--brand-primary)' : 'var(--bg-card)',
-              color: isActive ? '#171817' : 'var(--text-secondary)',
+              // Never hardcode this: --brand-primary is a per-tenant white-label/preset
+              // color and can be dark (or even near-black) — the foreground must be the
+              // computed contrast-safe token ThemeContext derives for it, or the label
+              // becomes unreadable (dark text on a dark selected background — this was
+              // the "Archived filter" production bug). Falls back to the same #171817
+              // default the CSS variable itself defaults to when unset (pre-JS paint).
+              color: isActive ? 'var(--brand-primary-foreground, #171817)' : 'var(--text-secondary)',
               border: isActive ? 'none' : '1px solid var(--border-subtle)',
             }}
           >

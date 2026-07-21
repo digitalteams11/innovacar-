@@ -186,7 +186,7 @@ export default function TicketDetail() {
           <button
             onClick={sendMessage}
             disabled={submitting}
-            className="rounded-lg bg-[var(--brand-primary)] p-2.5 text-[#171817] disabled:opacity-60"
+            className="rounded-lg bg-[var(--brand-primary)] p-2.5 text-[var(--brand-primary-foreground,#171817)] disabled:opacity-60"
           >
             <Send size={16} />
           </button>

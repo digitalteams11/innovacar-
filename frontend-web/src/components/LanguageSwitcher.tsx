@@ -41,9 +41,10 @@ export default function LanguageSwitcher() {
           key={lang.code}
           onClick={() => changeLanguage(lang.code)}
           className="px-2 py-1 rounded-lg text-[10px] font-bold transition-all"
+          aria-pressed={i18n.language === lang.code}
           style={
             i18n.language === lang.code
-              ? { background: 'var(--brand-primary)', color: '#fff' }
+              ? { background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #fff)' }
               : { color: 'var(--text-muted)' }
           }
         >

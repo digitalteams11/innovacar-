@@ -50,12 +50,18 @@ export function GlassTabs({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              aria-selected={isActive}
               className={cn(
                 'relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap',
-                isActive ? 'text-white' : 'hover:text-[var(--text-primary)]'
+                !isActive && 'hover:text-[var(--text-primary)]'
               )}
               style={{
-                color: isActive ? 'white' : 'var(--text-muted)',
+                // Never hardcode "white" here: the active background is a gradient
+                // anchored on --brand-primary, a per-tenant color that can be light
+                // (a light/white-label preset) as well as dark — a fixed white
+                // foreground goes unreadable exactly like the FilterChips "Archived"
+                // bug did in the opposite direction (dark text on dark background).
+                color: isActive ? 'var(--brand-primary-foreground, #fff)' : 'var(--text-muted)',
               }}
             >
               {isActive && (
@@ -75,8 +81,10 @@ export function GlassTabs({
                   <span
                     className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
                     style={{
-                      backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : 'var(--bg-hover)',
-                      color: isActive ? 'white' : 'var(--text-secondary)',
+                      backgroundColor: isActive
+                        ? 'color-mix(in srgb, var(--brand-primary-foreground, #fff) 20%, transparent)'
+                        : 'var(--bg-hover)',
+                      color: isActive ? 'var(--brand-primary-foreground, #fff)' : 'var(--text-secondary)',
                     }}
                   >
                     {tab.badge}

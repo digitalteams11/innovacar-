@@ -326,7 +326,7 @@ export default function Register() {
                 className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-3 disabled:opacity-70 mt-2"
                 style={{
                   background: 'linear-gradient(135deg, var(--brand-primary), #2a4a73)',
-                  color: 'white',
+                  color: 'var(--brand-primary-foreground, #fff)',
                   boxShadow: '0 4px 16px -4px rgba(30, 58, 95, 0.3)',
                 }}
               >

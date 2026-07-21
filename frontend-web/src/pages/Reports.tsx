@@ -88,7 +88,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard title="Total Fleet" value={totalVehicles} numericValue={totalVehicles} icon={Car} iconBg="bg-stone-700" />
         <StatCard title="Active Rentals" value={rentedVehicles} numericValue={rentedVehicles} icon={TrendingUp} iconBg="bg-emerald-600" />
-        <StatCard title="Total Revenue" value={`${totalRevenue} DH`} numericValue={totalRevenue} icon={CreditCard} iconBg="bg-[var(--brand-primary)]" iconColor="text-[#171817]" />
+        <StatCard title="Total Revenue" value={`${totalRevenue} DH`} numericValue={totalRevenue} icon={CreditCard} iconBg="bg-[var(--brand-primary)]" iconColor="text-[var(--brand-primary-foreground,#171817)]" />
         <StatCard title="Available" value={availableVehicles} numericValue={availableVehicles} icon={Users} iconBg="bg-[#477d91]" />
       </div>
 

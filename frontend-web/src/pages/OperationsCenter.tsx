@@ -336,7 +336,7 @@ export default function OperationsCenter() {
     ['support', 'complaints'].includes(activeTab) ? (
       <button
         onClick={() => setCreating(true)}
-        className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-[#171817]"
+        className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--brand-primary-foreground,#171817)]"
       >
         <Plus size={16} />
         {activeTab === 'complaints' ? 'New complaint' : 'New request'}
@@ -433,7 +433,7 @@ export default function OperationsCenter() {
                   {document.accepted ? (
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 size={14} /> Accepted</span>
                   ) : (
-                    <button onClick={() => acceptDocument(document.id)} className="rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-xs font-semibold text-[#171817]">Accept document</button>
+                    <button onClick={() => acceptDocument(document.id)} className="rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-xs font-semibold text-[var(--brand-primary-foreground,#171817)]">Accept document</button>
                   )}
                   <button onClick={() => setExpandedLegal(expandedLegal === document.id ? null : document.id)} className="rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">Review</button>
                 </div>
@@ -572,7 +572,7 @@ export default function OperationsCenter() {
                 </select>
               </div>
               <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={6} placeholder="Describe what happened and the result you need." className="w-full resize-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none" />
-              <button disabled={submitting} onClick={submitTicket} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-3 text-sm font-semibold text-[#171817] disabled:opacity-50">
+              <button disabled={submitting} onClick={submitTicket} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-3 text-sm font-semibold text-[var(--brand-primary-foreground,#171817)] disabled:opacity-50">
                 <Send size={16} /> {submitting ? 'Submitting...' : 'Submit request'}
               </button>
             </div>
@@ -594,7 +594,7 @@ export default function OperationsCenter() {
               {messages.length === 0 && <p className="py-12 text-center text-sm text-[var(--text-muted)]">No messages yet. Start the conversation below.</p>}
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.senderType === 'AGENCY' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[86%] rounded-lg px-4 py-3 ${message.senderType === 'AGENCY' ? 'bg-[var(--brand-primary)] text-[#171817]' : 'border border-[var(--border-subtle)] bg-[var(--bg-hover)] text-[var(--text-primary)]'}`}>
+                  <div className={`max-w-[86%] rounded-lg px-4 py-3 ${message.senderType === 'AGENCY' ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground,#171817)]' : 'border border-[var(--border-subtle)] bg-[var(--bg-hover)] text-[var(--text-primary)]'}`}>
                     <p className="text-[11px] font-bold opacity-65">{message.senderName}</p>
                     {message.message && <p className="mt-1 whitespace-pre-wrap text-sm">{message.message}</p>}
                     {message.attachmentData && (
@@ -620,7 +620,7 @@ export default function OperationsCenter() {
                   <input type="file" accept="image/*,application/pdf,audio/*" className="hidden" onChange={(event) => chooseAttachment(event.target.files?.[0])} />
                 </label>
                 <textarea value={messageText} onChange={(event) => setMessageText(event.target.value)} rows={2} placeholder="Write a message..." className="min-h-11 flex-1 resize-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none" />
-                <button disabled={submitting || (!messageText.trim() && !attachment)} onClick={sendMessage} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-primary)] text-[#171817] disabled:opacity-40"><Send size={17} /></button>
+                <button disabled={submitting || (!messageText.trim() && !attachment)} onClick={sendMessage} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-primary)] text-[var(--brand-primary-foreground,#171817)] disabled:opacity-40"><Send size={17} /></button>
               </div>
             </footer>
           </section>

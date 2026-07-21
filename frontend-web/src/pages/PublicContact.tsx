@@ -146,7 +146,7 @@ export default function PublicContact() {
         <button
           onClick={submit}
           disabled={submitting}
-          className="mt-6 w-full rounded-lg bg-[var(--brand-primary)] px-4 py-3 text-sm font-semibold text-[#171817] disabled:opacity-60"
+          className="mt-6 w-full rounded-lg bg-[var(--brand-primary)] px-4 py-3 text-sm font-semibold text-[var(--brand-primary-foreground,#171817)] disabled:opacity-60"
         >
           {submitting ? 'Sending...' : 'Send Message'}
         </button>

@@ -532,8 +532,8 @@ export default function Login() {
                                   type="button"
                                   onClick={verifyEmailOtpLogin}
                                   disabled={emailOtpLoginBusy || emailOtpLoginCode.length < 6}
-                                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center gap-2"
-                                  style={{ background: 'linear-gradient(135deg, var(--brand-primary), #2a4a73)' }}
+                                  className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center gap-2"
+                                  style={{ background: 'linear-gradient(135deg, var(--brand-primary), #2a4a73)', color: 'var(--brand-primary-foreground, #fff)' }}
                                 >
                                   {emailOtpLoginBusy ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
                                   {emailOtpLoginBusy ? t('login.verifying') : t('login.verify')}
@@ -574,7 +574,7 @@ export default function Login() {
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.98 }}
                           className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-3 disabled:opacity-70"
-                          style={{ background: 'linear-gradient(135deg, var(--brand-primary), #2a4a73)', color: 'white', boxShadow: '0 4px 16px -4px rgba(30,58,95,0.3)' }}
+                          style={{ background: 'linear-gradient(135deg, var(--brand-primary), #2a4a73)', color: 'var(--brand-primary-foreground, #fff)', boxShadow: '0 4px 16px -4px rgba(30,58,95,0.3)' }}
                         >
                           {loading ? <Loader2 size={20} className="animate-spin" /> : <><ShieldCheck size={16} /><span>{t('login.verify')}</span></>}
                         </motion.button>
@@ -630,7 +630,7 @@ export default function Login() {
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-3 disabled:opacity-70 mt-2"
-                        style={{ background: 'linear-gradient(135deg, var(--brand-primary), #2a4a73)', color: 'white', boxShadow: '0 4px 16px -4px rgba(30,58,95,0.3)' }}
+                        style={{ background: 'linear-gradient(135deg, var(--brand-primary), #2a4a73)', color: 'var(--brand-primary-foreground, #fff)', boxShadow: '0 4px 16px -4px rgba(30,58,95,0.3)' }}
                       >
                         {loading ? <Loader2 size={20} className="animate-spin" /> : <><span>{t('login.signIn')}</span><LogIn size={16} strokeWidth={2.5} /></>}
                       </motion.button>
