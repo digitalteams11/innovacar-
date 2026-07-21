@@ -15,10 +15,43 @@ const flatten = (value, prefix = '', result = new Set()) => {
   return result;
 };
 
-const localeKeys = Object.fromEntries(languages.map(language => {
+const localeJson = Object.fromEntries(languages.map(language => {
   const json = JSON.parse(fs.readFileSync(path.join(localeRoot, `${language}.json`), 'utf8'));
-  return [language, flatten(json)];
+  return [language, json];
 }));
+const localeKeys = Object.fromEntries(languages.map(language => [language, flatten(localeJson[language])]));
+
+// A key that exists but was never actually filled in (empty/whitespace-only string)
+// slips past the missing-key check above, since the key itself is present.
+const findEmptyValues = (value, prefix = '', result = []) => {
+  for (const [key, item] of Object.entries(value)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (item && typeof item === 'object' && !Array.isArray(item)) findEmptyValues(item, fullKey, result);
+    else if (typeof item === 'string' && item.trim() === '') result.push(fullKey);
+  }
+  return result;
+};
+const emptyValues = Object.fromEntries(languages.map(language => [language, findEmptyValues(localeJson[language])]));
+
+// Structural key-set parity: EN is the reference locale (assumed complete). FR and AR
+// must define a translation for every EN key — and must not carry keys EN doesn't have
+// (usually a sign a key was renamed in one file and not the others). i18next plural
+// suffixes (_one/_other, plus Arabic's _zero/_two/_few/_many) are stripped to their base
+// key before comparing, since a language legitimately defining more/fewer plural forms
+// than another is correct i18n behavior, not a structural mismatch.
+const PLURAL_SUFFIX_RE = /_(zero|one|two|few|many|other)$/;
+const baseKeysOf = keySet => new Set([...keySet].map(key => key.replace(PLURAL_SUFFIX_RE, '')));
+
+const baseEn = baseKeysOf(localeKeys.en);
+const structuralMismatch = {};
+for (const language of languages) {
+  if (language === 'en') continue;
+  const baseLang = baseKeysOf(localeKeys[language]);
+  structuralMismatch[language] = {
+    missing: [...baseEn].filter(key => !baseLang.has(key)).sort(),
+    extra: [...baseLang].filter(key => !baseEn.has(key)).sort(),
+  };
+}
 
 const files = [];
 const walk = directory => {
@@ -125,9 +158,21 @@ const dedupedHardcoded = hardcoded.filter(item => {
   return true;
 });
 
+// i18next resolves a countable key like `foo.bar` (called as `t('foo.bar', { count })`)
+// against suffixed variants (`foo.bar_one`, `foo.bar_other`, and Arabic's extra
+// `_zero`/`_two`/`_few`/`_many` forms) — it never needs the bare key to exist in the
+// locale file itself. Without this, every pluralized key falsely reports as "missing"
+// in every language, which defeats the whole point of the audit (a real gap gets lost
+// in the noise of dozens of false ones).
+const PLURAL_SUFFIXES = ['_zero', '_one', '_two', '_few', '_many', '_other'];
+function keyExists(keySet, key) {
+  if (keySet.has(key)) return true;
+  return PLURAL_SUFFIXES.some(suffix => keySet.has(`${key}${suffix}`));
+}
+
 const missing = {};
 for (const language of languages) {
-  missing[language] = [...usedKeys].filter(key => !localeKeys[language].has(key)).sort();
+  missing[language] = [...usedKeys].filter(key => !keyExists(localeKeys[language], key)).sort();
 }
 
 const byFile = new Map();
@@ -152,6 +197,26 @@ const report = [
     ...(missing[language].length ? missing[language].map(key => `- \`${key}\``) : ['None.']),
     '',
   ]),
+  '## Empty Translation Values',
+  '',
+  ...languages.flatMap(language => [
+    `### ${language.toUpperCase()} (${emptyValues[language].length})`,
+    '',
+    ...(emptyValues[language].length ? emptyValues[language].map(key => `- \`${key}\``) : ['None.']),
+    '',
+  ]),
+  '## Structural Key-Set Parity (EN is the reference locale)',
+  '',
+  ...languages.filter(l => l !== 'en').flatMap(language => [
+    `### ${language.toUpperCase()}: missing (${structuralMismatch[language].missing.length})`,
+    '',
+    ...(structuralMismatch[language].missing.length ? structuralMismatch[language].missing.map(key => `- \`${key}\``) : ['None.']),
+    '',
+    `### ${language.toUpperCase()}: extra / unexpected (${structuralMismatch[language].extra.length})`,
+    '',
+    ...(structuralMismatch[language].extra.length ? structuralMismatch[language].extra.map(key => `- \`${key}\``) : ['None.']),
+    '',
+  ]),
   `## Possible Visible Hardcoded Text (${dedupedHardcoded.length})`,
   '',
   '### By file',
@@ -172,8 +237,20 @@ fs.writeFileSync(reportPath, report);
 console.log(`Scanned ${files.length} files.`);
 console.log(`Hardcoded candidates: ${dedupedHardcoded.length}`);
 console.log(`Missing FR keys: ${missing.fr.length}, Missing AR keys: ${missing.ar.length}`);
+console.log(
+  `Structural parity — FR missing/extra: ${structuralMismatch.fr.missing.length}/${structuralMismatch.fr.extra.length}, `
+  + `AR missing/extra: ${structuralMismatch.ar.missing.length}/${structuralMismatch.ar.extra.length}`
+);
+console.log(
+  `Empty values — EN: ${emptyValues.en.length}, FR: ${emptyValues.fr.length}, AR: ${emptyValues.ar.length}`
+);
 console.log(`Full report written to ${reportPath}`);
 
-if (dedupedHardcoded.length > 0 || missing.fr.length > 0 || missing.ar.length > 0) {
+const structuralFailure = languages
+  .filter(l => l !== 'en')
+  .some(l => structuralMismatch[l].missing.length > 0 || structuralMismatch[l].extra.length > 0);
+const emptyValueFailure = languages.some(l => emptyValues[l].length > 0);
+
+if (dedupedHardcoded.length > 0 || missing.fr.length > 0 || missing.ar.length > 0 || structuralFailure || emptyValueFailure) {
   process.exitCode = 1;
 }

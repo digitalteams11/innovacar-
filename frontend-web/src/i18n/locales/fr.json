@@ -684,7 +684,11 @@
     "reservation": "Réservation",
     "contract": "Contrat",
     "actions": "Actions",
-    "markPaid": "Marquer comme payé"
+    "markPaid": "Marquer comme payé",
+    "currentPlan": "Forfait actuel",
+    "requiredPlan": "Forfait requis",
+    "statsUnavailable": "Les statistiques de paiement sont temporairement indisponibles — la liste ci-dessous est à jour.",
+    "viewPlans": "Voir les forfaits / Mettre à niveau"
   },
   "contracts": {
     "prefillReviewMessage": "La création automatique a échoué. Vérifiez le contrat prérempli puis enregistrez-le.",
@@ -1486,7 +1490,9 @@
       "roles": "Rôles et permissions",
       "cancellationRequests": "Demandes d'annulation",
       "aiSettings": "IA et automatisation",
-      "dataReset": "Centre de réinitialisation des données"
+      "dataReset": "Centre de réinitialisation des données",
+      "contactRequests": "Demandes de contact",
+      "helpArticles": "Centre d'aide"
     },
     "ai": {
       "pageTitle": "IA et automatisation",
@@ -2795,6 +2801,124 @@
     "noEmailSentYet": "Aucun e-mail envoyé pour le moment",
     "emailSent": "E-mail envoyé",
     "lastSentOn": "Dernier envoi"
+  },
+  "operations": {
+    "title": "Centre des opérations",
+    "subtitle": "Assistance, conseils, documents juridiques, sécurité du compte et état du service dans un seul espace.",
+    "refresh": "Actualiser",
+    "tabs": {
+      "support": "Assistance",
+      "complaints": "Réclamations",
+      "knowledge": "Centre de connaissances",
+      "legal": "Juridique",
+      "security": "Sécurité",
+      "systemHealth": "État du système"
+    },
+    "newComplaint": "Nouvelle réclamation",
+    "newRequest": "Nouvelle demande",
+    "noComplaints": "Aucune réclamation soumise",
+    "noComplaintsDesc": "L'historique de suivi de vos réclamations apparaîtra ici.",
+    "noSupportRequests": "Aucune demande d'assistance",
+    "noSupportRequestsDesc": "Créez une demande lorsque votre équipe a besoin d'aide d'Innovax Technologies.",
+    "conversation": "Conversation",
+    "readGuide": "Lire le guide",
+    "closeGuide": "Fermer le guide",
+    "version": "Version",
+    "published": "Publié",
+    "accept": "Accepter le document",
+    "accepted": "Accepté",
+    "review": "Consulter",
+    "knownDevices": "Appareils connus",
+    "knownDevicesDesc": "Faites confiance aux appareils que vous reconnaissez et bloquez les accès inconnus.",
+    "passwordExpires": "Le mot de passe expire {{date}}",
+    "noKnownDevices": "Aucun appareil connu enregistré pour le moment.",
+    "browserDevice": "Appareil du navigateur",
+    "lastSeen": "Vu pour la dernière fois {{date}}",
+    "untrust": "Retirer la confiance",
+    "trust": "Faire confiance",
+    "unblock": "Débloquer",
+    "block": "Bloquer",
+    "removeDevice": "Supprimer l'appareil",
+    "activeSessions": "Sessions actives",
+    "noActiveSessions": "Aucune session active trouvée.",
+    "currentDevice": "Appareil actuel",
+    "deviceInfoUnavailable": "Informations sur l'appareil indisponibles",
+    "started": "Démarré {{date}}",
+    "revoke": "Révoquer",
+    "loginHistory": "Historique de connexion",
+    "noLoginHistory": "Aucun historique de connexion enregistré pour le moment.",
+    "successfulSignIn": "Connexion réussie",
+    "failedSignIn": "Échec de connexion",
+    "unknownIp": "IP inconnue",
+    "suspicious": "Suspect",
+    "submitComplaint": "Soumettre une réclamation",
+    "createSupportRequest": "Créer une demande d'assistance",
+    "requestTrackingHint": "Votre demande reçoit un numéro de suivi permanent.",
+    "subjectPlaceholder": "Sujet",
+    "descriptionPlaceholder": "Décrivez ce qui s'est passé et le résultat dont vous avez besoin.",
+    "submitting": "Envoi en cours...",
+    "submitRequest": "Soumettre la demande",
+    "noMessagesYet": "Aucun message pour le moment. Démarrez la conversation ci-dessous.",
+    "writeMessage": "Écrire un message...",
+    "attachFile": "Joindre un fichier",
+    "read": "Lu",
+    "sent": "Envoyé",
+    "notAvailable": "Non disponible",
+    "category": {
+      "TECHNICAL": "Technique",
+      "BILLING": "Facturation",
+      "SUBSCRIPTION": "Abonnement",
+      "GPS": "GPS",
+      "SECURITY": "Sécurité",
+      "SERVICE": "Service"
+    },
+    "toasts": {
+      "subjectRequired": "Le sujet et la description sont requis.",
+      "complaintSubmitted": "Réclamation soumise avec succès",
+      "requestSubmitted": "Demande d'assistance soumise avec succès",
+      "submitFailed": "Impossible de soumettre votre demande. Veuillez réessayer plus tard.",
+      "acceptanceRecorded": "Acceptation enregistrée avec succès",
+      "acceptanceFailed": "Impossible d'enregistrer l'acceptation. Veuillez réessayer plus tard.",
+      "sessionRevoked": "Session révoquée avec succès",
+      "sessionRevokeFailed": "Impossible de révoquer cette session.",
+      "deviceTrustRemoved": "Confiance de l'appareil retirée",
+      "deviceTrusted": "Appareil approuvé avec succès",
+      "deviceUnblocked": "Appareil débloqué",
+      "deviceBlocked": "Appareil bloqué",
+      "deviceUpdateFailed": "Impossible de mettre à jour cet appareil.",
+      "deviceRemoved": "Appareil supprimé avec succès",
+      "deviceRemoveFailed": "Impossible de supprimer cet appareil.",
+      "attachmentTooLarge": "Les pièces jointes ne doivent pas dépasser 5 Mo.",
+      "messageSendFailed": "Impossible d'envoyer ce message. Veuillez réessayer.",
+      "loadFailed": "Impossible de charger le centre des opérations. Veuillez réessayer plus tard."
+    }
+  },
+  "status": {
+    "ticket": {
+      "OPEN": "Ouvert",
+      "IN_PROGRESS": "En cours",
+      "WAITING": "En attente",
+      "RESOLVED": "Résolu",
+      "CLOSED": "Fermé",
+      "UNKNOWN": "Inconnu"
+    },
+    "priority": {
+      "LOW": "Faible",
+      "MEDIUM": "Moyenne",
+      "HIGH": "Élevée",
+      "CRITICAL": "Critique",
+      "UNKNOWN": "Inconnue"
+    },
+    "device": {
+      "BLOCKED": "Bloqué",
+      "TRUSTED": "Approuvé",
+      "REVIEW": "À vérifier"
+    },
+    "health": {
+      "OPERATIONAL": "Opérationnel",
+      "NOT_CONFIGURED": "Non configuré",
+      "DEGRADED": "Dégradé"
+    }
   },
   "roleAccess": {
     "title": "Accès par rôle",

@@ -684,7 +684,11 @@
     "reservation": "Reservation",
     "contract": "Contract",
     "actions": "Actions",
-    "markPaid": "Mark Paid"
+    "markPaid": "Mark Paid",
+    "currentPlan": "Current plan",
+    "requiredPlan": "Required plan",
+    "statsUnavailable": "Payment statistics are temporarily unavailable — the list below is up to date.",
+    "viewPlans": "View plans / Upgrade"
   },
   "contracts": {
     "prefillReviewMessage": "Direct creation failed. Please review the prefilled contract and save.",
@@ -1486,7 +1490,9 @@
       "roles": "Roles & Permissions",
       "cancellationRequests": "Cancellation Requests",
       "aiSettings": "AI & Automation",
-      "dataReset": "Data Reset Center"
+      "dataReset": "Data Reset Center",
+      "contactRequests": "Contact Requests",
+      "helpArticles": "Help Center"
     },
     "ai": {
       "pageTitle": "AI & Automation",
@@ -2795,6 +2801,124 @@
     "noEmailSentYet": "No email sent yet",
     "emailSent": "Email sent",
     "lastSentOn": "Last sent"
+  },
+  "operations": {
+    "title": "Operations Center",
+    "subtitle": "Support, guidance, legal records, account security and service health in one workspace.",
+    "refresh": "Refresh",
+    "tabs": {
+      "support": "Support",
+      "complaints": "Complaints",
+      "knowledge": "Knowledge",
+      "legal": "Legal",
+      "security": "Security",
+      "systemHealth": "System health"
+    },
+    "newComplaint": "New complaint",
+    "newRequest": "New request",
+    "noComplaints": "No complaints submitted",
+    "noComplaintsDesc": "Your complaint tracking history will appear here.",
+    "noSupportRequests": "No support requests",
+    "noSupportRequestsDesc": "Create a request when your team needs help from Innovax Technologies.",
+    "conversation": "Conversation",
+    "readGuide": "Read guide",
+    "closeGuide": "Close guide",
+    "version": "Version",
+    "published": "Published",
+    "accept": "Accept document",
+    "accepted": "Accepted",
+    "review": "Review",
+    "knownDevices": "Known devices",
+    "knownDevicesDesc": "Trust devices you recognize and block access you do not.",
+    "passwordExpires": "Password expires {{date}}",
+    "noKnownDevices": "No known devices recorded yet.",
+    "browserDevice": "Browser device",
+    "lastSeen": "Last seen {{date}}",
+    "untrust": "Untrust",
+    "trust": "Trust",
+    "unblock": "Unblock",
+    "block": "Block",
+    "removeDevice": "Remove device",
+    "activeSessions": "Active sessions",
+    "noActiveSessions": "No active sessions found.",
+    "currentDevice": "Current device",
+    "deviceInfoUnavailable": "Device information unavailable",
+    "started": "Started {{date}}",
+    "revoke": "Revoke",
+    "loginHistory": "Login history",
+    "noLoginHistory": "No login history recorded yet.",
+    "successfulSignIn": "Successful sign in",
+    "failedSignIn": "Failed sign in",
+    "unknownIp": "Unknown IP",
+    "suspicious": "Suspicious",
+    "submitComplaint": "Submit complaint",
+    "createSupportRequest": "Create support request",
+    "requestTrackingHint": "Your request receives a permanent tracking number.",
+    "subjectPlaceholder": "Subject",
+    "descriptionPlaceholder": "Describe what happened and the result you need.",
+    "submitting": "Submitting...",
+    "submitRequest": "Submit request",
+    "noMessagesYet": "No messages yet. Start the conversation below.",
+    "writeMessage": "Write a message...",
+    "attachFile": "Attach file",
+    "read": "Read",
+    "sent": "Sent",
+    "notAvailable": "Not available",
+    "category": {
+      "TECHNICAL": "Technical",
+      "BILLING": "Billing",
+      "SUBSCRIPTION": "Subscription",
+      "GPS": "GPS",
+      "SECURITY": "Security",
+      "SERVICE": "Service"
+    },
+    "toasts": {
+      "subjectRequired": "Subject and description are required.",
+      "complaintSubmitted": "Complaint submitted successfully",
+      "requestSubmitted": "Support request submitted successfully",
+      "submitFailed": "Unable to submit your request. Please try again later.",
+      "acceptanceRecorded": "Acceptance recorded successfully",
+      "acceptanceFailed": "Unable to record acceptance. Please try again later.",
+      "sessionRevoked": "Session revoked successfully",
+      "sessionRevokeFailed": "Unable to revoke this session.",
+      "deviceTrustRemoved": "Device trust removed",
+      "deviceTrusted": "Device trusted successfully",
+      "deviceUnblocked": "Device unblocked",
+      "deviceBlocked": "Device blocked",
+      "deviceUpdateFailed": "Unable to update this device.",
+      "deviceRemoved": "Device removed successfully",
+      "deviceRemoveFailed": "Unable to remove this device.",
+      "attachmentTooLarge": "Attachments must not exceed 5 MB.",
+      "messageSendFailed": "Unable to send this message. Please try again.",
+      "loadFailed": "Unable to load the operations center. Please try again later."
+    }
+  },
+  "status": {
+    "ticket": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In progress",
+      "WAITING": "Waiting",
+      "RESOLVED": "Resolved",
+      "CLOSED": "Closed",
+      "UNKNOWN": "Unknown"
+    },
+    "priority": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "CRITICAL": "Critical",
+      "UNKNOWN": "Unknown"
+    },
+    "device": {
+      "BLOCKED": "Blocked",
+      "TRUSTED": "Trusted",
+      "REVIEW": "Review"
+    },
+    "health": {
+      "OPERATIONAL": "Operational",
+      "NOT_CONFIGURED": "Not configured",
+      "DEGRADED": "Degraded"
+    }
   },
   "roleAccess": {
     "title": "Role Access",

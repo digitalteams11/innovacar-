@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle, BookOpen, CheckCircle2, Headphones,
   Laptop, LockKeyhole, MessageCircle, Paperclip, Plus, RefreshCw, Scale, Send, ShieldCheck,
@@ -149,15 +150,6 @@ function unwrapOperations(payload: unknown): OperationsData {
   };
 }
 
-const tabs = [
-  { id: 'support', label: 'Support' },
-  { id: 'complaints', label: 'Complaints' },
-  { id: 'knowledge', label: 'Knowledge' },
-  { id: 'legal', label: 'Legal' },
-  { id: 'security', label: 'Security' },
-  { id: 'health', label: 'System health' },
-];
-
 const priorityClass: Record<string, string> = {
   LOW: 'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300',
   MEDIUM: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
@@ -165,14 +157,24 @@ const priorityClass: Record<string, string> = {
   CRITICAL: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
 };
 
-function formatDate(value?: string) {
-  if (!value || value.startsWith('-999')) return 'Not available';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-}
-
 export default function OperationsCenter() {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('support');
+
+  const formatDate = (value?: string) => {
+    if (!value || value.startsWith('-999')) return t('operations.notAvailable');
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  };
+
+  const tabs = [
+    { id: 'support', label: t('operations.tabs.support') },
+    { id: 'complaints', label: t('operations.tabs.complaints') },
+    { id: 'knowledge', label: t('operations.tabs.knowledge') },
+    { id: 'legal', label: t('operations.tabs.legal') },
+    { id: 'security', label: t('operations.tabs.security') },
+    { id: 'health', label: t('operations.tabs.systemHealth') },
+  ];
   const [data, setData] = useState<OperationsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -207,7 +209,7 @@ export default function OperationsCenter() {
 
   const submitTicket = async () => {
     if (!form.subject.trim() || !form.description.trim()) {
-      showToast('Subject and description are required.', 'warning');
+      showToast(t('operations.toasts.subjectRequired'), 'warning');
       return;
     }
     setSubmitting(true);
@@ -216,13 +218,13 @@ export default function OperationsCenter() {
         ...form,
         kind: activeTab === 'complaints' ? 'COMPLAINT' : 'SUPPORT',
       });
-      showToast(activeTab === 'complaints' ? 'Complaint submitted successfully' : 'Support request submitted successfully', 'success');
+      showToast(activeTab === 'complaints' ? t('operations.toasts.complaintSubmitted') : t('operations.toasts.requestSubmitted'), 'success');
       setCreating(false);
       setForm({ subject: '', description: '', category: 'TECHNICAL', priority: 'MEDIUM' });
       await load();
     } catch (requestError) {
       console.error(requestError);
-      showToast('Unable to submit your request. Please try again later.', 'error');
+      showToast(t('operations.toasts.submitFailed'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -231,22 +233,22 @@ export default function OperationsCenter() {
   const acceptDocument = async (documentId: number) => {
     try {
       await api.post(`/operations-center/legal/${documentId}/accept`);
-      showToast('Acceptance recorded successfully', 'success');
+      showToast(t('operations.toasts.acceptanceRecorded'), 'success');
       await load();
     } catch (requestError) {
       console.error(requestError);
-      showToast('Unable to record acceptance. Please try again later.', 'error');
+      showToast(t('operations.toasts.acceptanceFailed'), 'error');
     }
   };
 
   const revokeSession = async (sessionId: number) => {
     try {
       await api.delete(`/operations-center/security/sessions/${sessionId}`);
-      showToast('Session revoked successfully', 'success');
+      showToast(t('operations.toasts.sessionRevoked'), 'success');
       await load();
     } catch (requestError) {
       console.error(requestError);
-      showToast('Unable to revoke this session.', 'error');
+      showToast(t('operations.toasts.sessionRevokeFailed'), 'error');
     }
   };
 
@@ -257,23 +259,23 @@ export default function OperationsCenter() {
           action === 'trust' ? !device.trusted : !device.blocked,
       });
       showToast(action === 'trust'
-        ? (device.trusted ? 'Device trust removed' : 'Device trusted successfully')
-        : (device.blocked ? 'Device unblocked' : 'Device blocked'), 'success');
+        ? (device.trusted ? t('operations.toasts.deviceTrustRemoved') : t('operations.toasts.deviceTrusted'))
+        : (device.blocked ? t('operations.toasts.deviceUnblocked') : t('operations.toasts.deviceBlocked')), 'success');
       await load();
     } catch (requestError) {
       console.error(requestError);
-      showToast('Unable to update this device.', 'error');
+      showToast(t('operations.toasts.deviceUpdateFailed'), 'error');
     }
   };
 
   const removeDevice = async (deviceId: number) => {
     try {
       await api.delete(`/security-center/devices/${deviceId}`);
-      showToast('Device removed successfully', 'success');
+      showToast(t('operations.toasts.deviceRemoved'), 'success');
       await load();
     } catch (requestError) {
       console.error(requestError);
-      showToast('Unable to remove this device.', 'error');
+      showToast(t('operations.toasts.deviceRemoveFailed'), 'error');
     }
   };
 
@@ -302,7 +304,7 @@ export default function OperationsCenter() {
   const chooseAttachment = (file?: File) => {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      showToast('Attachments must not exceed 5 MB.', 'warning');
+      showToast(t('operations.toasts.attachmentTooLarge'), 'warning');
       return;
     }
     const reader = new FileReader();
@@ -325,7 +327,7 @@ export default function OperationsCenter() {
       await loadMessages(selectedTicket.id);
     } catch (requestError) {
       console.error(requestError);
-      showToast('Unable to send this message. Please try again.', 'error');
+      showToast(t('operations.toasts.messageSendFailed'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -339,23 +341,23 @@ export default function OperationsCenter() {
         className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--brand-primary-foreground,#171817)]"
       >
         <Plus size={16} />
-        {activeTab === 'complaints' ? 'New complaint' : 'New request'}
+        {activeTab === 'complaints' ? t('operations.newComplaint') : t('operations.newRequest')}
       </button>
     ) : (
       <button onClick={load} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)]">
-        <RefreshCw size={15} /> Refresh
+        <RefreshCw size={15} /> {t('operations.refresh')}
       </button>
     )
-  ), [activeTab, load]);
+  ), [activeTab, load, t]);
 
   if (loading && !data) return <PremiumLoader />;
-  if (error || !data) return <ApiErrorState message="Unable to load the operations center. Please try again later." onRetry={load} />;
+  if (error || !data) return <ApiErrorState message={t('operations.toasts.loadFailed')} onRetry={load} />;
 
   return (
     <div className="space-y-5">
       <GlassPageHeader
-        title="Operations Center"
-        subtitle="Support, guidance, legal records, account security and service health in one workspace."
+        title={t('operations.title')}
+        subtitle={t('operations.subtitle')}
         icon={Headphones}
         actions={headerAction}
       />
@@ -368,10 +370,10 @@ export default function OperationsCenter() {
             <div className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
               {activeTab === 'complaints' ? <AlertTriangle size={28} className="text-[var(--brand-primary)]" /> : <Headphones size={28} className="text-[var(--brand-primary)]" />}
               <h2 className="mt-4 font-semibold text-[var(--text-primary)]">
-                {activeTab === 'complaints' ? 'No complaints submitted' : 'No support requests'}
+                {activeTab === 'complaints' ? t('operations.noComplaints') : t('operations.noSupportRequests')}
               </h2>
               <p className="mt-2 max-w-md text-sm text-[var(--text-muted)]">
-                {activeTab === 'complaints' ? 'Your complaint tracking history will appear here.' : 'Create a request when your team needs help from Innovax Technologies.'}
+                {activeTab === 'complaints' ? t('operations.noComplaintsDesc') : t('operations.noSupportRequestsDesc')}
               </p>
             </div>
           ) : (
@@ -381,8 +383,12 @@ export default function OperationsCenter() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs text-[var(--brand-primary)]">{ticket.ticketNumber}</span>
-                      <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${priorityClass[ticket.priority] ?? priorityClass.MEDIUM}`}>{ticket.priority}</span>
-                      <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{ticket.status}</span>
+                      <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${priorityClass[ticket.priority] ?? priorityClass.MEDIUM}`}>
+                        {t(`status.priority.${ticket.priority}`, ticket.priority)}
+                      </span>
+                      <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        {t(`status.ticket.${ticket.status}`, ticket.status)}
+                      </span>
                     </div>
                     <h2 className="mt-3 font-semibold text-[var(--text-primary)]">{ticket.subject}</h2>
                     <p className="mt-1 text-sm text-[var(--text-muted)]">{ticket.description}</p>
@@ -391,7 +397,7 @@ export default function OperationsCenter() {
                   <div className="flex items-start gap-3">
                     <time className="text-xs text-[var(--text-muted)]">{formatDate(ticket.createdAt)}</time>
                     <button onClick={() => setSelectedTicket(ticket)} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
-                      <MessageCircle size={14} /> Conversation
+                      <MessageCircle size={14} /> {t('operations.conversation')}
                     </button>
                   </div>
                 </article>
@@ -410,7 +416,7 @@ export default function OperationsCenter() {
               <p className="mt-2 text-sm text-[var(--text-muted)]">{article.summary}</p>
               {expandedArticle === article.id && <p className="mt-4 border-t border-[var(--border-subtle)] pt-4 text-sm leading-6 text-[var(--text-secondary)]">{article.content}</p>}
               <button onClick={() => setExpandedArticle(expandedArticle === article.id ? null : article.id)} className="mt-4 text-sm font-semibold text-[var(--brand-primary)]">
-                {expandedArticle === article.id ? 'Close guide' : 'Read guide'}
+                {expandedArticle === article.id ? t('operations.closeGuide') : t('operations.readGuide')}
               </button>
             </article>
           ))}
@@ -426,16 +432,16 @@ export default function OperationsCenter() {
                   <Scale size={19} className="mt-0.5 text-[var(--brand-primary)]" />
                   <div>
                     <h2 className="font-semibold text-[var(--text-primary)]">{document.title}</h2>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">Version {document.version} · Published {formatDate(document.publishedAt)}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{t('operations.version')} {document.version} · {t('operations.published')} {formatDate(document.publishedAt)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {document.accepted ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 size={14} /> Accepted</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 size={14} /> {t('operations.accepted')}</span>
                   ) : (
-                    <button onClick={() => acceptDocument(document.id)} className="rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-xs font-semibold text-[var(--brand-primary-foreground,#171817)]">Accept document</button>
+                    <button onClick={() => acceptDocument(document.id)} className="rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-xs font-semibold text-[var(--brand-primary-foreground,#171817)]">{t('operations.accept')}</button>
                   )}
-                  <button onClick={() => setExpandedLegal(expandedLegal === document.id ? null : document.id)} className="rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">Review</button>
+                  <button onClick={() => setExpandedLegal(expandedLegal === document.id ? null : document.id)} className="rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">{t('operations.review')}</button>
                 </div>
               </div>
               {expandedLegal === document.id && <p className="mt-5 border-t border-[var(--border-subtle)] pt-5 text-sm leading-6 text-[var(--text-secondary)]">{document.content}</p>}
@@ -451,38 +457,38 @@ export default function OperationsCenter() {
               <div className="flex items-center gap-2">
                 <Smartphone size={18} className="text-[var(--brand-primary)]" />
                 <div>
-                  <h2 className="font-semibold text-[var(--text-primary)]">Known devices</h2>
-                  <p className="text-xs text-[var(--text-muted)]">Trust devices you recognize and block access you do not.</p>
+                  <h2 className="font-semibold text-[var(--text-primary)]">{t('operations.knownDevices')}</h2>
+                  <p className="text-xs text-[var(--text-muted)]">{t('operations.knownDevicesDesc')}</p>
                 </div>
               </div>
               {data.security.passwordExpiresAt && (
                 <span className="rounded-md bg-[var(--bg-hover)] px-3 py-2 text-xs text-[var(--text-secondary)]">
-                  Password expires {formatDate(data.security.passwordExpiresAt)}
+                  {t('operations.passwordExpires', { date: formatDate(data.security.passwordExpiresAt) })}
                 </span>
               )}
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {data.security.devices.length === 0 && <p className="py-8 text-center text-sm text-[var(--text-muted)] md:col-span-2">No known devices recorded yet.</p>}
+              {data.security.devices.length === 0 && <p className="py-8 text-center text-sm text-[var(--text-muted)] md:col-span-2">{t('operations.noKnownDevices')}</p>}
               {data.security.devices.map((device) => (
                 <article key={device.id} className="rounded-lg border border-[var(--border-subtle)] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">{device.name || 'Browser device'}</p>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{device.name || t('operations.browserDevice')}</p>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">{device.browser} · {device.operatingSystem} · {device.ipAddress}</p>
-                      <p className="mt-1 text-xs text-[var(--text-muted)]">Last seen {formatDate(device.lastSeenAt)}</p>
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">{t('operations.lastSeen', { date: formatDate(device.lastSeenAt) })}</p>
                     </div>
                     <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${device.blocked ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : device.trusted ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
-                      {device.blocked ? 'BLOCKED' : device.trusted ? 'TRUSTED' : 'REVIEW'}
+                      {device.blocked ? t('status.device.BLOCKED') : device.trusted ? t('status.device.TRUSTED') : t('status.device.REVIEW')}
                     </span>
                   </div>
                   <div className="mt-4 flex gap-2">
                     <button onClick={() => updateDevice(device, 'trust')} disabled={device.blocked} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:opacity-40">
-                      <ShieldCheck size={14} /> {device.trusted ? 'Untrust' : 'Trust'}
+                      <ShieldCheck size={14} /> {device.trusted ? t('operations.untrust') : t('operations.trust')}
                     </button>
                     <button onClick={() => updateDevice(device, 'block')} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 dark:border-red-500/20">
-                      <ShieldOff size={14} /> {device.blocked ? 'Unblock' : 'Block'}
+                      <ShieldOff size={14} /> {device.blocked ? t('operations.unblock') : t('operations.block')}
                     </button>
-                    <button title="Remove device" onClick={() => removeDevice(device.id)} className="ml-auto rounded-lg p-2 text-[var(--text-muted)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10">
+                    <button title={t('operations.removeDevice') as string} onClick={() => removeDevice(device.id)} className="ml-auto rounded-lg p-2 text-[var(--text-muted)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10">
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -491,32 +497,32 @@ export default function OperationsCenter() {
             </div>
           </section>
           <section className="data-surface p-5">
-            <div className="flex items-center gap-2"><Laptop size={18} className="text-[var(--brand-primary)]" /><h2 className="font-semibold text-[var(--text-primary)]">Active sessions</h2></div>
+            <div className="flex items-center gap-2"><Laptop size={18} className="text-[var(--brand-primary)]" /><h2 className="font-semibold text-[var(--text-primary)]">{t('operations.activeSessions')}</h2></div>
             <div className="mt-4 divide-y divide-[var(--border-subtle)]">
-              {data.security.sessions.length === 0 && <p className="py-8 text-center text-sm text-[var(--text-muted)]">No active sessions found.</p>}
+              {data.security.sessions.length === 0 && <p className="py-8 text-center text-sm text-[var(--text-muted)]">{t('operations.noActiveSessions')}</p>}
               {data.security.sessions.map((session) => (
                 <div key={session.id} className="flex items-start justify-between gap-4 py-4">
                   <div>
-                    <p className="text-sm font-medium text-[var(--text-primary)]">{session.location || session.ipAddress || 'Current device'}</p>
-                    <p className="mt-1 max-w-sm truncate text-xs text-[var(--text-muted)]">{session.userAgent || 'Device information unavailable'}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">Started {formatDate(session.createdAt)}</p>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">{session.location || session.ipAddress || t('operations.currentDevice')}</p>
+                    <p className="mt-1 max-w-sm truncate text-xs text-[var(--text-muted)]">{session.userAgent || t('operations.deviceInfoUnavailable')}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">{t('operations.started', { date: formatDate(session.createdAt) })}</p>
                   </div>
-                  <button onClick={() => revokeSession(session.id)} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 dark:border-red-500/20">Revoke</button>
+                  <button onClick={() => revokeSession(session.id)} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 dark:border-red-500/20">{t('operations.revoke')}</button>
                 </div>
               ))}
             </div>
           </section>
           <section className="data-surface p-5">
-            <div className="flex items-center gap-2"><ShieldCheck size={18} className="text-[var(--brand-primary)]" /><h2 className="font-semibold text-[var(--text-primary)]">Login history</h2></div>
+            <div className="flex items-center gap-2"><ShieldCheck size={18} className="text-[var(--brand-primary)]" /><h2 className="font-semibold text-[var(--text-primary)]">{t('operations.loginHistory')}</h2></div>
             <div className="mt-4 max-h-[430px] divide-y divide-[var(--border-subtle)] overflow-auto">
-              {data.security.loginHistory.length === 0 && <p className="py-8 text-center text-sm text-[var(--text-muted)]">No login history recorded yet.</p>}
+              {data.security.loginHistory.length === 0 && <p className="py-8 text-center text-sm text-[var(--text-muted)]">{t('operations.noLoginHistory')}</p>}
               {data.security.loginHistory.map((item) => (
                 <div key={item.id} className="py-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-medium text-[var(--text-primary)]">{item.success ? 'Successful sign in' : item.failureReason || 'Failed sign in'}</span>
+                    <span className="text-sm font-medium text-[var(--text-primary)]">{item.success ? t('operations.successfulSignIn') : item.failureReason || t('operations.failedSignIn')}</span>
                     <span className={`h-2 w-2 rounded-full ${item.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
                   </div>
-                  <p className="mt-1 text-xs text-[var(--text-muted)]">{item.ipAddress || 'Unknown IP'} · {formatDate(item.createdAt)}{item.suspicious ? ' · Suspicious' : ''}</p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">{item.ipAddress || t('operations.unknownIp')} · {formatDate(item.createdAt)}{item.suspicious ? ` · ${t('operations.suspicious')}` : ''}</p>
                 </div>
               ))}
             </div>
@@ -535,7 +541,7 @@ export default function OperationsCenter() {
                   <span className="capitalize font-semibold text-[var(--text-primary)]">{name}</span>
                   {healthy ? <CheckCircle2 size={18} className="text-emerald-500" /> : optional ? <LockKeyhole size={18} className="text-amber-500" /> : <AlertTriangle size={18} className="text-red-500" />}
                 </div>
-                <p className="mt-4 text-xs font-bold tracking-wide text-[var(--text-muted)]">{service.status.replace('_', ' ')}</p>
+                <p className="mt-4 text-xs font-bold tracking-wide text-[var(--text-muted)]">{t(`status.health.${service.status}`, service.status.replace('_', ' '))}</p>
                 <p className="mt-2 text-sm text-[var(--text-secondary)]">{service.message}</p>
               </article>
             );
@@ -548,32 +554,32 @@ export default function OperationsCenter() {
           <div className="data-surface w-full max-w-xl p-5 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[var(--text-primary)]">{activeTab === 'complaints' ? 'Submit complaint' : 'Create support request'}</h2>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">Your request receives a permanent tracking number.</p>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">{activeTab === 'complaints' ? t('operations.submitComplaint') : t('operations.createSupportRequest')}</h2>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">{t('operations.requestTrackingHint')}</p>
               </div>
               <button onClick={() => setCreating(false)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"><X size={18} /></button>
             </div>
             <div className="mt-5 space-y-4">
-              <input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} placeholder="Subject" className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none" />
+              <input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} placeholder={t('operations.subjectPlaceholder') as string} className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none" />
               <div className="grid grid-cols-2 gap-3">
                 <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none">
-                  <option value="TECHNICAL">Technical</option>
-                  <option value="BILLING">Billing</option>
-                  <option value="SUBSCRIPTION">Subscription</option>
-                  <option value="GPS">GPS</option>
-                  <option value="SECURITY">Security</option>
-                  <option value="SERVICE">Service</option>
+                  <option value="TECHNICAL">{t('operations.category.TECHNICAL')}</option>
+                  <option value="BILLING">{t('operations.category.BILLING')}</option>
+                  <option value="SUBSCRIPTION">{t('operations.category.SUBSCRIPTION')}</option>
+                  <option value="GPS">{t('operations.category.GPS')}</option>
+                  <option value="SECURITY">{t('operations.category.SECURITY')}</option>
+                  <option value="SERVICE">{t('operations.category.SERVICE')}</option>
                 </select>
                 <select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none">
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
+                  <option value="LOW">{t('status.priority.LOW')}</option>
+                  <option value="MEDIUM">{t('status.priority.MEDIUM')}</option>
+                  <option value="HIGH">{t('status.priority.HIGH')}</option>
+                  <option value="CRITICAL">{t('status.priority.CRITICAL')}</option>
                 </select>
               </div>
-              <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={6} placeholder="Describe what happened and the result you need." className="w-full resize-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none" />
+              <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={6} placeholder={t('operations.descriptionPlaceholder') as string} className="w-full resize-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none" />
               <button disabled={submitting} onClick={submitTicket} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-3 text-sm font-semibold text-[var(--brand-primary-foreground,#171817)] disabled:opacity-50">
-                <Send size={16} /> {submitting ? 'Submitting...' : 'Submit request'}
+                <Send size={16} /> {submitting ? t('operations.submitting') : t('operations.submitRequest')}
               </button>
             </div>
           </div>
@@ -591,7 +597,7 @@ export default function OperationsCenter() {
               <button onClick={() => { setSelectedTicket(null); setMessages([]); }} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"><X size={18} /></button>
             </header>
             <div className="flex-1 space-y-4 overflow-auto p-5">
-              {messages.length === 0 && <p className="py-12 text-center text-sm text-[var(--text-muted)]">No messages yet. Start the conversation below.</p>}
+              {messages.length === 0 && <p className="py-12 text-center text-sm text-[var(--text-muted)]">{t('operations.noMessagesYet')}</p>}
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.senderType === 'AGENCY' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[86%] rounded-lg px-4 py-3 ${message.senderType === 'AGENCY' ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground,#171817)]' : 'border border-[var(--border-subtle)] bg-[var(--bg-hover)] text-[var(--text-primary)]'}`}>
@@ -602,7 +608,7 @@ export default function OperationsCenter() {
                         <Paperclip size={13} /> {message.attachmentName}
                       </a>
                     )}
-                    <p className="mt-2 text-[10px] opacity-55">{formatDate(message.createdAt)} · {message.read ? 'Read' : 'Sent'}</p>
+                    <p className="mt-2 text-[10px] opacity-55">{formatDate(message.createdAt)} · {message.read ? t('operations.read') : t('operations.sent')}</p>
                   </div>
                 </div>
               ))}
@@ -615,11 +621,11 @@ export default function OperationsCenter() {
                 </div>
               )}
               <div className="flex items-end gap-2">
-                <label className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)]" title="Attach file">
+                <label className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)]" title={t('operations.attachFile') as string}>
                   <Paperclip size={17} />
                   <input type="file" accept="image/*,application/pdf,audio/*" className="hidden" onChange={(event) => chooseAttachment(event.target.files?.[0])} />
                 </label>
-                <textarea value={messageText} onChange={(event) => setMessageText(event.target.value)} rows={2} placeholder="Write a message..." className="min-h-11 flex-1 resize-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none" />
+                <textarea value={messageText} onChange={(event) => setMessageText(event.target.value)} rows={2} placeholder={t('operations.writeMessage') as string} className="min-h-11 flex-1 resize-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none" />
                 <button disabled={submitting || (!messageText.trim() && !attachment)} onClick={sendMessage} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-primary)] text-[var(--brand-primary-foreground,#171817)] disabled:opacity-40"><Send size={17} /></button>
               </div>
             </footer>

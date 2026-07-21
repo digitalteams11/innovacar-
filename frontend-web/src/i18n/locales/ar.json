@@ -673,7 +673,11 @@
     "reservation": "الحجز",
     "contract": "العقد",
     "actions": "إجراءات",
-    "markPaid": "تعليم كمدفوع"
+    "markPaid": "تعليم كمدفوع",
+    "currentPlan": "الخطة الحالية",
+    "requiredPlan": "الخطة المطلوبة",
+    "statsUnavailable": "إحصاءات الدفع غير متوفرة مؤقتًا — القائمة أدناه محدّثة.",
+    "viewPlans": "عرض الخطط / الترقية"
   },
   "contracts": {
     "prefillReviewMessage": "فشل الإنشاء التلقائي. يرجى مراجعة العقد المعبأ مسبقًا ثم حفظه.",
@@ -1479,7 +1483,9 @@
       "roles": "الأدوار والصلاحيات",
       "cancellationRequests": "طلبات الإلغاء",
       "aiSettings": "الذكاء الاصطناعي والأتمتة",
-      "dataReset": "مركز إعادة تعيين البيانات"
+      "dataReset": "مركز إعادة تعيين البيانات",
+      "contactRequests": "طلبات التواصل",
+      "helpArticles": "مركز المساعدة"
     },
     "ai": {
       "pageTitle": "الذكاء الاصطناعي والأتمتة",
@@ -2800,6 +2806,124 @@
     "noEmailSentYet": "لم يُرسل أي بريد إلكتروني بعد",
     "emailSent": "تم إرسال البريد الإلكتروني",
     "lastSentOn": "آخر إرسال"
+  },
+  "operations": {
+    "title": "مركز العمليات",
+    "subtitle": "الدعم والإرشادات والوثائق القانونية وأمان الحساب وحالة الخدمة في مساحة واحدة.",
+    "refresh": "تحديث",
+    "tabs": {
+      "support": "الدعم",
+      "complaints": "الشكايات",
+      "knowledge": "مركز المعرفة",
+      "legal": "الوثائق القانونية",
+      "security": "الأمان",
+      "systemHealth": "حالة النظام"
+    },
+    "newComplaint": "شكاية جديدة",
+    "newRequest": "طلب جديد",
+    "noComplaints": "لا توجد شكايات مقدَّمة",
+    "noComplaintsDesc": "سيظهر هنا سجل متابعة شكاياتك.",
+    "noSupportRequests": "لا توجد طلبات دعم",
+    "noSupportRequestsDesc": "أنشئ طلبًا عندما يحتاج فريقك إلى مساعدة من Innovax Technologies.",
+    "conversation": "المحادثة",
+    "readGuide": "قراءة الدليل",
+    "closeGuide": "إغلاق الدليل",
+    "version": "الإصدار",
+    "published": "نُشرت بتاريخ",
+    "accept": "قبول الوثيقة",
+    "accepted": "تم القبول",
+    "review": "مراجعة",
+    "knownDevices": "الأجهزة المعروفة",
+    "knownDevicesDesc": "ثق بالأجهزة التي تتعرف عليها، واحظر الوصول الذي لا تتعرف عليه.",
+    "passwordExpires": "تنتهي صلاحية كلمة المرور {{date}}",
+    "noKnownDevices": "لا توجد أجهزة معروفة مسجَّلة بعد.",
+    "browserDevice": "جهاز المتصفح",
+    "lastSeen": "آخر ظهور {{date}}",
+    "untrust": "إلغاء الثقة",
+    "trust": "وثوق",
+    "unblock": "إلغاء الحظر",
+    "block": "حظر",
+    "removeDevice": "إزالة الجهاز",
+    "activeSessions": "الجلسات النشطة",
+    "noActiveSessions": "لم يتم العثور على جلسات نشطة.",
+    "currentDevice": "الجهاز الحالي",
+    "deviceInfoUnavailable": "معلومات الجهاز غير متوفرة",
+    "started": "بدأت {{date}}",
+    "revoke": "إلغاء",
+    "loginHistory": "سجل تسجيل الدخول",
+    "noLoginHistory": "لا يوجد سجل تسجيل دخول مسجَّل بعد.",
+    "successfulSignIn": "تسجيل دخول ناجح",
+    "failedSignIn": "فشل تسجيل الدخول",
+    "unknownIp": "عنوان IP غير معروف",
+    "suspicious": "مشبوه",
+    "submitComplaint": "إرسال الشكاية",
+    "createSupportRequest": "إنشاء طلب دعم",
+    "requestTrackingHint": "يحصل طلبك على رقم متابعة دائم.",
+    "subjectPlaceholder": "الموضوع",
+    "descriptionPlaceholder": "صف ما حدث والنتيجة التي تحتاجها.",
+    "submitting": "جارٍ الإرسال...",
+    "submitRequest": "إرسال الطلب",
+    "noMessagesYet": "لا توجد رسائل بعد. ابدأ المحادثة أدناه.",
+    "writeMessage": "اكتب رسالة...",
+    "attachFile": "إرفاق ملف",
+    "read": "مقروءة",
+    "sent": "مُرسَلة",
+    "notAvailable": "غير متوفر",
+    "category": {
+      "TECHNICAL": "تقني",
+      "BILLING": "الفوترة",
+      "SUBSCRIPTION": "الاشتراك",
+      "GPS": "GPS",
+      "SECURITY": "الأمان",
+      "SERVICE": "الخدمة"
+    },
+    "toasts": {
+      "subjectRequired": "الموضوع والوصف مطلوبان.",
+      "complaintSubmitted": "تم إرسال الشكاية بنجاح",
+      "requestSubmitted": "تم إرسال طلب الدعم بنجاح",
+      "submitFailed": "تعذّر إرسال طلبك. يرجى المحاولة مرة أخرى لاحقًا.",
+      "acceptanceRecorded": "تم تسجيل القبول بنجاح",
+      "acceptanceFailed": "تعذّر تسجيل القبول. يرجى المحاولة مرة أخرى لاحقًا.",
+      "sessionRevoked": "تم إلغاء الجلسة بنجاح",
+      "sessionRevokeFailed": "تعذّر إلغاء هذه الجلسة.",
+      "deviceTrustRemoved": "تمت إزالة الثقة بالجهاز",
+      "deviceTrusted": "تم الوثوق بالجهاز بنجاح",
+      "deviceUnblocked": "تم إلغاء حظر الجهاز",
+      "deviceBlocked": "تم حظر الجهاز",
+      "deviceUpdateFailed": "تعذّر تحديث هذا الجهاز.",
+      "deviceRemoved": "تمت إزالة الجهاز بنجاح",
+      "deviceRemoveFailed": "تعذّر إزالة هذا الجهاز.",
+      "attachmentTooLarge": "يجب ألا تتجاوز المرفقات 5 ميغابايت.",
+      "messageSendFailed": "تعذّر إرسال هذه الرسالة. يرجى المحاولة مرة أخرى.",
+      "loadFailed": "تعذّر تحميل مركز العمليات. يرجى المحاولة مرة أخرى لاحقًا."
+    }
+  },
+  "status": {
+    "ticket": {
+      "OPEN": "مفتوحة",
+      "IN_PROGRESS": "قيد المعالجة",
+      "WAITING": "قيد الانتظار",
+      "RESOLVED": "تم الحل",
+      "CLOSED": "مغلقة",
+      "UNKNOWN": "غير معروفة"
+    },
+    "priority": {
+      "LOW": "منخفضة",
+      "MEDIUM": "متوسطة",
+      "HIGH": "عالية",
+      "CRITICAL": "حرجة",
+      "UNKNOWN": "غير معروفة"
+    },
+    "device": {
+      "BLOCKED": "محظور",
+      "TRUSTED": "موثوق",
+      "REVIEW": "قيد المراجعة"
+    },
+    "health": {
+      "OPERATIONAL": "يعمل بشكل طبيعي",
+      "NOT_CONFIGURED": "غير مُهيَّأ",
+      "DEGRADED": "متدهور"
+    }
   },
   "roleAccess": {
     "title": "صلاحيات الأدوار",
