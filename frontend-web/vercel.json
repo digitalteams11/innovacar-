@@ -4,13 +4,13 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!assets/|brand/|leaflet-images/|favicon\\.svg|icons\\.svg|robots\\.txt|sitemap\\.xml|site\\.webmanifest).*)",
+      "source": "/((?!assets/|brand/|leaflet-images/|favicon\\.svg|icons\\.svg|robots\\.txt|sitemap\\.xml|site\\.webmanifest|fonctionnalites|tarifs).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
     {
-      "source": "/((?!sitemap.xml|robots.txt).*)",
+      "source": "/((?!sitemap.xml|robots.txt|$|fonctionnalites|tarifs).*)",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, follow, noarchive" }
       ]

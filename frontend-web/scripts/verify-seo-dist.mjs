@@ -67,6 +67,40 @@ if (!indexHtml) {
   }
 }
 
+// ── prerendered marketing pages (see scripts/prerender-marketing.mjs) ──────
+const MARKETING_PAGES = [
+  { file: 'index.html', urlPath: '/', expectIndexable: true },
+  { file: path.join('fonctionnalites', 'index.html'), urlPath: '/fonctionnalites', expectIndexable: true },
+  { file: path.join('tarifs', 'index.html'), urlPath: '/tarifs', expectIndexable: true },
+];
+for (const page of MARKETING_PAGES) {
+  const html = readIfExists(page.file);
+  if (!html) {
+    fail(`dist/${page.file} is missing — did scripts/prerender-marketing.mjs run?`);
+    continue;
+  }
+  if (page.expectIndexable && !/<meta\s+name="robots"\s+content="index,follow/.test(html)) {
+    fail(`dist/${page.file} should be indexable ("index,follow...") but its robots meta isn't.`);
+  }
+  const robotsMatches = html.match(/<meta\s+name="robots"/g) || [];
+  if (robotsMatches.length !== 1) {
+    fail(`dist/${page.file} has ${robotsMatches.length} <meta name="robots"> tags — expected exactly 1.`);
+  }
+  const canonicalMatches = html.match(/<link[^>]+rel="canonical"/g) || [];
+  if (canonicalMatches.length !== 1) {
+    fail(`dist/${page.file} has ${canonicalMatches.length} canonical tags — expected exactly 1.`);
+  } else if (!html.includes(`href="https://innovacar.app${page.urlPath}"`)) {
+    fail(`dist/${page.file} canonical does not point to https://innovacar.app${page.urlPath}.`);
+  }
+  const rootMatch = html.match(/<div id="root">([\s\S]*)<\/body>/);
+  if (!rootMatch || rootMatch[1].trim().length < 200) {
+    fail(`dist/${page.file} has little or no static content inside #root — prerender may have failed silently.`);
+  }
+  for (const needle of FORBIDDEN_STRINGS) {
+    if (html.includes(needle)) fail(`dist/${page.file} contains forbidden string "${needle}".`);
+  }
+}
+
 // ── dist/robots.txt ─────────────────────────────────────────────────────
 const robotsTxt = readIfExists('robots.txt');
 if (!robotsTxt) {

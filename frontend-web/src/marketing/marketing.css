@@ -1,0 +1,276 @@
+/*
+ * Styles for the public marketing site (src/marketing/pages.tsx). Scoped
+ * under .im-* class names deliberately, so it never collides with the
+ * private app's Tailwind utility classes. Reuses the app's existing
+ * theme-aware CSS custom properties (--bg-*, --text-*, --brand-*, defined
+ * as :root fallbacks in index.css) since these pages render without
+ * ThemeContext mounted.
+ */
+
+.im-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.im-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-page-raised);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.im-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.im-brand img {
+  border-radius: 8px;
+}
+
+.im-header nav {
+  display: flex;
+  gap: 1.25rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.im-header nav a,
+.im-footer nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.im-header nav a:hover,
+.im-footer nav a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.im-header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.im-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.im-btn-lg {
+  padding: 0.85rem 1.75rem;
+  font-size: 1rem;
+}
+
+.im-btn-primary {
+  background: var(--brand-primary, #10b981);
+  color: var(--brand-primary-foreground, #ffffff);
+}
+
+.im-btn-ghost {
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+main {
+  flex: 1;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.im-hero {
+  text-align: center;
+  padding: 4.5rem 1rem 3.5rem;
+}
+
+.im-hero-compact {
+  padding: 3rem 1rem 2rem;
+}
+
+.im-hero h1 {
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin: 0 0 1rem;
+  line-height: 1.15;
+}
+
+.im-hero-sub {
+  font-size: 1.1rem;
+  color: var(--text-muted, var(--text-primary));
+  max-width: 680px;
+  margin: 0 auto 2rem;
+}
+
+.im-hero-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.im-section {
+  padding: 2.5rem 0;
+}
+
+.im-section h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  text-align: center;
+  margin: 0 0 2rem;
+}
+
+.im-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+.im-card {
+  background: var(--bg-page-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.im-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.im-card p {
+  margin: 0;
+  color: var(--text-muted, var(--text-primary));
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.im-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.im-steps strong {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.im-steps p {
+  margin: 0;
+  color: var(--text-muted, var(--text-primary));
+  font-size: 0.92rem;
+}
+
+.im-cta {
+  text-align: center;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.im-cta h2 {
+  margin-bottom: 1rem;
+}
+
+.im-grid-pricing {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.im-pricing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.im-pricing-tagline {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.im-pricing-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.im-pricing-card li {
+  font-size: 0.9rem;
+  color: var(--text-muted, var(--text-primary));
+}
+
+.im-pricing-card li::before {
+  content: '✓ ';
+  color: var(--brand-primary, #10b981);
+  font-weight: 700;
+}
+
+.im-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 2rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.im-footer-brand p {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted, var(--text-primary));
+  font-size: 0.85rem;
+}
+
+.im-footer nav {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.im-footer-copy {
+  width: 100%;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted, var(--text-primary));
+  margin: 1rem 0 0;
+}
+
+@media (max-width: 640px) {
+  .im-hero h1 {
+    font-size: 1.8rem;
+  }
+}
