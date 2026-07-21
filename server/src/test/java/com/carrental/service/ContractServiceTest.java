@@ -2,6 +2,7 @@ package com.carrental.service;
 
 import com.carrental.dto.contract.ContractResponse;
 import com.carrental.dto.contract.CreateContractRequest;
+import com.carrental.dto.contract.PublicContractResponse;
 import com.carrental.entity.Client;
 import com.carrental.entity.Contract;
 import com.carrental.entity.ContractStatus;
@@ -166,5 +167,56 @@ class ContractServiceTest {
         assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.RENTED);
         verify(reservationRepository).save(reservation);
         verify(vehicleRepository).save(vehicle);
+    }
+
+    /**
+     * Regression test for the production bug where every public contract PDF
+     * download failed: generateContractPdf(Long) loads the contract via
+     * fetchContractInTenant, which reads TenantContext.getCurrentTenantId() —
+     * always null for a public/anonymous request (JwtAuthenticationFilter
+     * skips "/api/public/**" entirely, so TenantContext is never populated).
+     * generateContractPdfPublic must not depend on TenantContext at all.
+     */
+    @Test
+    void generateContractPdfPublicWorksWithoutTenantContext() {
+        TenantContext.clear();
+        Contract contract = Contract.builder()
+                .id(50L).contractNumber("CTR-2026-00050").tenant(tenant)
+                .qrToken("tok-abc123").build();
+
+        when(contractRepository.findById(50L)).thenReturn(Optional.of(contract));
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
+        when(depositRepository.findByContractId(50L)).thenReturn(Optional.empty());
+        byte[] expectedPdf = "PDF-BYTES".getBytes();
+        when(pdfService.generateContractPdf(contract, tenant, null)).thenReturn(expectedPdf);
+
+        byte[] pdf = contractService.generateContractPdfPublic(50L);
+
+        assertThat(pdf).isEqualTo(expectedPdf);
+    }
+
+    /**
+     * Regression test for the production bug where the public contract page's
+     * "Download Signed Contract" button called the AUTHENTICATED admin
+     * endpoint (contract.getPdfUrl() == "/api/contracts/{id}/pdf-file",
+     * @PreAuthorize VIEW_CONTRACTS) and got 401/403 — the public response
+     * must only ever expose the public, token-scoped PDF endpoint.
+     */
+    @Test
+    void publicContractResponseExposesPublicPdfUrlNotTheAuthenticatedOne() {
+        Contract contract = Contract.builder()
+                .id(60L).contractNumber("CTR-2026-00060").tenant(tenant)
+                .qrToken("tok-xyz789")
+                .pdfUrl("/api/contracts/60/pdf-file")
+                .build();
+
+        when(contractRepository.findByQrToken("tok-xyz789")).thenReturn(Optional.of(contract));
+        when(depositRepository.findByContractId(60L)).thenReturn(Optional.empty());
+
+        PublicContractResponse response = contractService.getPublicContract("tok-xyz789");
+
+        assertThat(response.getPdfUrl())
+                .isEqualTo("/api/public/contracts/60/tok-xyz789/pdf")
+                .isNotEqualTo(contract.getPdfUrl());
     }
 }

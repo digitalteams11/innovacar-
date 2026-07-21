@@ -617,7 +617,22 @@ public class ContractController {
     @GetMapping("/public/contracts/{qrToken}")
     public ResponseEntity<PublicContractResponse> getPublicContract(
             @PathVariable String qrToken) {
-        return ResponseEntity.ok(contractService.getPublicContract(qrToken));
+        log.info("PUBLIC_CONTRACT_DOWNLOAD_START tokenPrefix={}", maskToken(qrToken));
+        try {
+            PublicContractResponse resp = contractService.getPublicContract(qrToken);
+            log.info("PUBLIC_TOKEN_LOOKUP_SUCCESS tokenPrefix={} contractNumber={}",
+                    maskToken(qrToken), resp.getContractNumber());
+            return ResponseEntity.ok(resp);
+        } catch (com.carrental.exception.ResourceNotFoundException ex) {
+            log.warn("PUBLIC_TOKEN_LOOKUP_FAILED tokenPrefix={} reason={}", maskToken(qrToken), ex.getMessage());
+            throw ex;
+        }
+    }
+
+    /** Logs only a short, non-reversible prefix — never the full token. */
+    private static String maskToken(String token) {
+        if (token == null || token.isEmpty()) return "empty";
+        return token.substring(0, Math.min(6, token.length())) + "...";
     }
 
     @PostMapping("/public/contracts/{qrToken}/sign")
@@ -632,7 +647,16 @@ public class ContractController {
     public ResponseEntity<PublicContractResponse> getPublicContractByIdAndToken(
             @PathVariable Long contractId,
             @PathVariable String qrToken) {
-        return ResponseEntity.ok(contractService.getPublicContract(contractId, qrToken));
+        String maskedToken = maskToken(qrToken);
+        log.info("PUBLIC_CONTRACT_DOWNLOAD_START tokenPrefix={} contractId={}", maskedToken, contractId);
+        try {
+            PublicContractResponse resp = contractService.getPublicContract(contractId, qrToken);
+            log.info("PUBLIC_TOKEN_LOOKUP_SUCCESS tokenPrefix={} contractNumber={}", maskedToken, resp.getContractNumber());
+            return ResponseEntity.ok(resp);
+        } catch (com.carrental.exception.ResourceNotFoundException ex) {
+            log.warn("PUBLIC_TOKEN_LOOKUP_FAILED tokenPrefix={} contractId={} reason={}", maskedToken, contractId, ex.getMessage());
+            throw ex;
+        }
     }
 
     @PostMapping("/public/contracts/{contractId}/{qrToken}/sign")
@@ -649,31 +673,48 @@ public class ContractController {
     public ResponseEntity<?> downloadPublicContractPdf(
             @PathVariable Long contractId,
             @PathVariable String qrToken) {
+        long start = System.currentTimeMillis();
+        String maskedToken = maskToken(qrToken);
+        Contract contract;
         try {
-            Contract contract = contractRepository.findById(contractId)
+            contract = contractRepository.findById(contractId)
                     .orElseThrow(() -> new com.carrental.exception.ResourceNotFoundException("Contract not found"));
-            if (contract.getQrToken() == null || !contract.getQrToken().equals(qrToken)) {
-                return ResponseEntity.status(404).body(errorBody("Contract not found", "CONTRACT_NOT_FOUND", null));
-            }
-            byte[] pdf = contractService.generateContractPdf(contractId);
-            String safeFileName = "contract-"
-                    + (contract.getContractNumber() != null
-                        ? contract.getContractNumber().replaceAll("[^A-Za-z0-9_-]", "_")
-                        : contractId)
-                    + ".pdf";
-            return ResponseEntity.ok()
-                    .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + safeFileName + "\"")
-                    .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
-                    .header(HttpHeaders.PRAGMA, "no-cache")
-                    .header("X-Content-Type-Options", "nosniff")
-                    .body(pdf);
         } catch (com.carrental.exception.ResourceNotFoundException ex) {
+            log.warn("PUBLIC_CONTRACT_NOT_FOUND tokenPrefix={} contractId={}", maskedToken, contractId);
             return ResponseEntity.status(404).body(errorBody("Contract not found", "CONTRACT_NOT_FOUND", null));
-        } catch (Exception ex) {
-            log.error("Public PDF download failed contractId={}", contractId, ex);
-            return ResponseEntity.status(500).body(errorBody("PDF generation failed", "CONTRACT_TEMPLATE_PDF_FAILED", null));
         }
+        if (contract.getQrToken() == null || !contract.getQrToken().equals(qrToken)) {
+            log.warn("PUBLIC_TOKEN_LOOKUP_FAILED tokenPrefix={} contractId={} reason=token-mismatch", maskedToken, contractId);
+            return ResponseEntity.status(404).body(errorBody("Contract not found", "CONTRACT_NOT_FOUND", null));
+        }
+        log.info("PUBLIC_CONTRACT_FOUND tokenPrefix={} contractNumber={}", maskedToken, contract.getContractNumber());
+        log.info("PUBLIC_PDF_GENERATION_START tokenPrefix={} contractNumber={}", maskedToken, contract.getContractNumber());
+        byte[] pdf;
+        try {
+            pdf = contractService.generateContractPdfPublic(contractId);
+        } catch (Exception ex) {
+            log.error("PUBLIC_PDF_GENERATION_FAILED tokenPrefix={} contractNumber={} durationMs={}",
+                    maskedToken, contract.getContractNumber(), System.currentTimeMillis() - start, ex);
+            return ResponseEntity.status(500).body(errorBody("PDF generation failed", "PDF_GENERATION_FAILED", null));
+        }
+        if (pdf == null || pdf.length == 0) {
+            log.error("PUBLIC_PDF_GENERATION_FAILED tokenPrefix={} contractNumber={} reason=empty-pdf", maskedToken, contract.getContractNumber());
+            return ResponseEntity.status(500).body(errorBody("PDF generation failed", "PDF_GENERATION_FAILED", null));
+        }
+        log.info("PUBLIC_PDF_GENERATION_SUCCESS tokenPrefix={} contractNumber={} durationMs={}",
+                maskedToken, contract.getContractNumber(), System.currentTimeMillis() - start);
+        String safeFileName = "contract-"
+                + (contract.getContractNumber() != null
+                    ? contract.getContractNumber().replaceAll("[^A-Za-z0-9_-]", "_")
+                    : contractId)
+                + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + safeFileName + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header("X-Content-Type-Options", "nosniff")
+                .body(pdf);
     }
 
     // ── Agency Admin: send / resend contract email ───────────────────────────

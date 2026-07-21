@@ -1706,6 +1706,29 @@ public class ContractService {
     }
 
     /**
+     * Public (unauthenticated) equivalent of {@link #generateContractPdf(Long)}.
+     * That method loads the contract via {@link #fetchContractInTenant(Long)},
+     * which reads {@code TenantContext.getCurrentTenantId()} — always null for
+     * a public request, since {@code JwtAuthenticationFilter.shouldNotFilter}
+     * skips the whole "/api/public/**" prefix, so the tenant-scoped lookup
+     * always threw ResourceNotFoundException even for a perfectly valid
+     * contract/token pair (surfaced to the client as a false "Invalid Link").
+     * Safe to bypass the tenant filter here because the caller
+     * (ContractController#downloadPublicContractPdf) already verified the
+     * qrToken belongs to this exact contractId before calling this method —
+     * that check *is* the tenant/access boundary for the public PDF flow.
+     */
+    @Transactional(readOnly = true)
+    public byte[] generateContractPdfPublic(Long id) {
+        Contract contract = contractRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
+        Tenant tenant = tenantRepository.findById(contract.getTenant().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
+        com.carrental.entity.Deposit deposit = depositRepository.findByContractId(contract.getId()).orElse(null);
+        return pdfService.generateContractPdf(contract, tenant, deposit);
+    }
+
+    /**
      * Forces a fresh PDF render from the agency's *current* settings and
      * overwrites the stored file/pdfUrl — used so a signed contract's frozen
      * PDF snapshot (captured at signing time) can be refreshed after the
@@ -1805,7 +1828,16 @@ public class ContractService {
                 .ownerSignedAt(contract.getOwnerSignedAt())
                 .clientSignedAt(contract.getClientSignedAt())
                 .agencyStampUrl(tenant.getAgencyStampUrl())
-                .pdfUrl(contract.getPdfUrl())
+                // Deliberately NOT contract.getPdfUrl() — that field is
+                // "/api/contracts/{id}/pdf-file", the AUTHENTICATED admin
+                // endpoint (@PreAuthorize VIEW_CONTRACTS). A public/anonymous
+                // visitor's browser would get 401/403 fetching it, which is
+                // exactly the "Unable to generate contract PDF" bug this page
+                // hit in production. Public responses must only ever expose
+                // the public, token-scoped PDF endpoint.
+                .pdfUrl(contract.getQrToken() != null
+                        ? "/api/public/contracts/" + contract.getId() + "/" + contract.getQrToken() + "/pdf"
+                        : null)
                 .deposit(com.carrental.dto.deposit.DepositResponse.from(
                         depositRepository.findByContractId(contract.getId()).orElse(null)))
                 .agencyName(tenant.getName())

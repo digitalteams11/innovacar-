@@ -80,6 +80,10 @@ export default function PublicContract() {
   const [contract, setContract] = useState<PublicContractData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string>('Invalid Link');
+  // Separate from `error` on purpose: a failed PDF download must never blow
+  // away an already-successfully-loaded contract page (see downloadSignedPdf).
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [termsChecked, setTermsChecked] = useState(false);
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
@@ -120,13 +124,24 @@ export default function PublicContract() {
       setTermsChecked(data.termsAccepted || false);
     } catch (err: any) {
       const status = err?.response?.status;
-      const detail = err?.response?.data?.error || err?.response?.data?.message || '';
-      console.error('[PublicContract] fetch failed:', path, err);
-      setError(
-        status
-          ? `Server error (HTTP ${status}${detail ? ': ' + detail : ''}). Please try again or contact support.`
-          : 'This contract link is invalid or has expired.'
-      );
+      const errorCode = err?.response?.data?.errorCode;
+      const message = err?.response?.data?.message;
+      // Distinguish "token/contract genuinely doesn't exist" from a transient
+      // server-side failure — do not label every exception "Invalid Link".
+      console.error('[PublicContract] fetch failed:', path, 'errorCode=', errorCode, err);
+      if (errorCode === 'CONTRACT_NOT_FOUND' || status === 404) {
+        setErrorTitle('Invalid Link');
+        setError('This contract link is invalid. Please contact your rental agency for a new link.');
+      } else if (status && status >= 500) {
+        setErrorTitle('Temporary Error');
+        setError(message || 'The contract could not be loaded right now. Please try again shortly.');
+      } else if (status) {
+        setErrorTitle('Unable to Load Contract');
+        setError(message || `Server error (HTTP ${status}). Please try again or contact support.`);
+      } else {
+        setErrorTitle('Invalid Link');
+        setError('This contract link is invalid or has expired.');
+      }
     } finally {
       setLoading(false);
     }
@@ -157,11 +172,21 @@ export default function PublicContract() {
   const downloadSignedPdf = async () => {
     if (!contract?.pdfUrl) return;
     setIsSubmitting(true);
+    setPdfError(null);
     try {
       const res = await fetch(`${API_ORIGIN}${contract.pdfUrl}`);
-      if (!res.ok) throw new Error('Unable to download PDF');
+      if (!res.ok) {
+        let code: string | undefined;
+        try { code = (await res.json())?.errorCode; } catch { /* body wasn't JSON */ }
+        if (res.status === 404 || code === 'CONTRACT_NOT_FOUND') {
+          throw new Error('This contract could not be found. Please contact your rental agency for a new link.');
+        }
+        // The contract itself loaded fine (we're on this page) — a PDF
+        // failure here is a server-side generation problem, not a bad link.
+        throw new Error('The contract exists, but the PDF could not be generated. Please try again.');
+      }
       const blob = await res.blob();
-      if (!blob || blob.size === 0) throw new Error('PDF file is empty');
+      if (!blob || blob.size === 0) throw new Error('The generated PDF was empty. Please try again.');
       const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -170,8 +195,10 @@ export default function PublicContract() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch {
-      setError('Unable to generate contract PDF.');
+    } catch (err) {
+      console.error('[PublicContract] PDF download failed:', err);
+      const message = err instanceof Error ? err.message : undefined;
+      setPdfError(message || 'The contract exists, but the PDF could not be generated. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -201,7 +228,7 @@ export default function PublicContract() {
           <div className="w-16 h-16 bg-danger-50 rounded-2xl flex items-center justify-center mx-auto">
             <AlertCircle size={28} className="text-danger-500" />
           </div>
-          <h1 className="text-xl font-bold text-[#1e293b]">Invalid Link</h1>
+          <h1 className="text-xl font-bold text-[#1e293b]">{errorTitle}</h1>
           <p className="text-sm text-slate-400">{error}</p>
           <p className="text-xs text-slate-300">Please contact your rental agency for assistance.</p>
         </div>
@@ -570,15 +597,33 @@ export default function PublicContract() {
               </div>
             )}
             {contract.pdfUrl && (
-              <button
-                type="button"
-                onClick={downloadSignedPdf}
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-success-600 rounded-xl text-sm font-medium border border-success-200 hover:bg-success-100 transition-all"
-              >
-                <FileText size={16} />
-                Download Signed Contract
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={downloadSignedPdf}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-success-600 rounded-xl text-sm font-medium border border-success-200 hover:bg-success-100 transition-all"
+                >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                  {isSubmitting ? 'Preparing PDF...' : 'Download Signed Contract'}
+                </button>
+                {pdfError && (
+                  <div className="flex flex-col items-center gap-2 p-3 bg-danger-50 text-danger-600 rounded-xl text-xs max-w-xs mx-auto">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>{pdfError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={downloadSignedPdf}
+                      disabled={isSubmitting}
+                      className="underline font-medium"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
