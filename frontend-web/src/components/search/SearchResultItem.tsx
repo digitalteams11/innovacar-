@@ -42,7 +42,7 @@ export function SearchResultItem({
       className={cn(
         'group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-all',
         active
-          ? 'bg-[var(--brand-primary)] text-white shadow-lg'
+          ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] shadow-lg'
           : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
       )}
     >

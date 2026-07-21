@@ -41,8 +41,12 @@
 
     /* Brand */
     --brand-primary: #10b981;
+    /* Pre-JS fallback only — ThemeContext.tsx recomputes this per-preset/white-label
+       color via a luminance check the moment it mounts, same as --text-sidebar above. */
+    --brand-primary-foreground: #ffffff;
     --brand-secondary: #0f766e;
     --brand-accent: #f59e0b;
+    --brand-accent-foreground: #171817;
     --brand-deep: #171817;
     --brand-gold: #b69152;
     --brand-gold-light: #e2d2b5;
