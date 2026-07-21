@@ -6,7 +6,8 @@ import {
   Settings, Eye, EyeOff, Wifi, WifiOff, Clock, Copy, RotateCcw,
   Search, ChevronDown, X, Code,
 } from 'lucide-react';
-import { PageHeader, TabGroup, DataTable, Modal, Badge } from '../../components/superadmin';
+import { PageHeader, TabGroup, DataTable, Modal, Badge, RecipientSelector } from '../../components/superadmin';
+import type { Recipient } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -145,8 +146,10 @@ export default function SuperAdminEmailCenter() {
   // Test-send modal
   const [showTestModal, setShowTestModal] = useState(false);
   const [testTarget, setTestTarget] = useState<EmailTemplate | null>(null);
-  const [testTo, setTestTo] = useState('');
+  const [testRecipients, setTestRecipients] = useState<Recipient[]>([]);
   const [testSending, setTestSending] = useState(false);
+  const [confirmingMultiSend, setConfirmingMultiSend] = useState(false);
+  const [testResults, setTestResults] = useState<Array<{ email: string; status: string; errorCode?: string }> | null>(null);
 
   // Logs
   const [logs, setLogs] = useState<any[]>([]);
@@ -307,16 +310,30 @@ export default function SuperAdminEmailCenter() {
     } catch (err: any) { showToast('Unable to update status', 'error'); }
   };
 
-  const openTestSend = (t: EmailTemplate) => { setTestTarget(t); setTestTo(''); setShowTestModal(true); };
+  const openTestSend = (t: EmailTemplate) => {
+    setTestTarget(t); setTestRecipients([]); setTestResults(null); setConfirmingMultiSend(false); setShowTestModal(true);
+  };
+
+  const requestTestSend = () => {
+    if (testRecipients.length === 0) { showToast('Select at least one recipient', 'error'); return; }
+    if (testRecipients.length > 1) { setConfirmingMultiSend(true); return; }
+    handleTestSend();
+  };
 
   const handleTestSend = async () => {
-    if (!testTarget) return;
-    if (!testTo.trim()) { showToast('Enter a recipient email', 'error'); return; }
+    if (!testTarget || testRecipients.length === 0) return;
     setTestSending(true);
+    setConfirmingMultiSend(false);
     try {
-      const res = await superAdminApi.testSendTemplate(testTarget.id, { to: testTo.trim(), variables: EXAMPLE_VARS });
-      if (res.data?.success) { showToast('Test email sent!', 'success'); setShowTestModal(false); }
-      else showToast(res.data?.message || 'Test send failed', 'error');
+      const res = await superAdminApi.testSendTemplate(testTarget.id, {
+        recipients: testRecipients.map(r => ({ email: r.email, sourceType: r.sourceType, sourceId: r.sourceId })),
+        variables: EXAMPLE_VARS,
+      });
+      const results = Array.isArray(res.data?.results) ? res.data.results : [];
+      setTestResults(results);
+      if (res.data?.status === 'SUCCESS') showToast('Test email sent!', 'success');
+      else if (res.data?.status === 'PARTIAL_SUCCESS') showToast('Some test emails failed to send', 'error');
+      else showToast('Test send failed', 'error');
     } catch (err: any) { showToast(err?.response?.data?.message || 'Test send failed', 'error'); }
     finally { setTestSending(false); }
   };
@@ -568,20 +585,59 @@ export default function SuperAdminEmailCenter() {
       />
 
       {/* ── TEST SEND MODAL ── */}
-      <Modal isOpen={showTestModal} onClose={() => setShowTestModal(false)} title={`Test Send — ${testTarget?.name ?? ''}`} size="sm"
+      <Modal isOpen={showTestModal} onClose={() => setShowTestModal(false)} title={`Test Send — ${testTarget?.name ?? ''}`} size="md"
         footer={
-          <div className="flex gap-3">
-            <button onClick={handleTestSend} disabled={testSending || !testTo.trim()} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors">
-              {testSending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />} Send Test
-            </button>
-            <button onClick={() => setShowTestModal(false)} className="flex-1 bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">Cancel</button>
-          </div>
+          confirmingMultiSend ? (
+            <div className="flex gap-3">
+              <button onClick={handleTestSend} disabled={testSending} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors">
+                {testSending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />} Confirm — send to {testRecipients.length}
+              </button>
+              <button onClick={() => setConfirmingMultiSend(false)} className="flex-1 bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">Back</button>
+            </div>
+          ) : testResults ? (
+            <button onClick={() => setShowTestModal(false)} className="w-full bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">Close</button>
+          ) : (
+            <div className="flex gap-3">
+              <button onClick={requestTestSend} disabled={testSending || testRecipients.length === 0} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors">
+                {testSending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
+                Send Test{testRecipients.length > 1 ? ` (${testRecipients.length})` : ''}
+              </button>
+              <button onClick={() => setShowTestModal(false)} className="flex-1 bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">Cancel</button>
+            </div>
+          )
         }
       >
-        <div className="space-y-3">
-          <label className="space-y-1.5"><span className={labelCls}>Recipient Email</span><input type="email" value={testTo} onChange={e => setTestTo(e.target.value)} placeholder="test@example.com" className={fieldCls} /></label>
-          <p className="text-xs text-slate-400">Example variable values will be used for the preview render.</p>
-        </div>
+        {testResults ? (
+          <div className="space-y-2">
+            {testResults.map(r => (
+              <div key={r.email} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 text-sm">
+                <span className="truncate text-[#1e293b] dark:text-white">{r.email}</span>
+                <Badge variant={r.status === 'SENT' ? 'success' : 'danger'}>
+                  {r.status === 'SENT' ? 'Sent' : r.errorCode ?? 'Failed'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        ) : confirmingMultiSend ? (
+          <div className="space-y-2">
+            <p className="text-sm text-[#1e293b] dark:text-white">
+              This will send <span className="font-semibold">{testRecipients.length}</span> separate test emails — each recipient gets their own individual message.
+            </p>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {testRecipients.map(r => (
+                <p key={r.email} className="text-xs text-slate-400 truncate">{r.displayName} — {r.email}</p>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <label className="space-y-1.5 block">
+              <span className={labelCls}>Recipients</span>
+              <RecipientSelector selected={testRecipients} onChange={setTestRecipients} maxRecipients={10} />
+            </label>
+            <p className="text-xs text-slate-400">Example variable values will be used for the preview render. Each recipient receives their own separate email.</p>
+          </div>
+        )}
       </Modal>
     </div>
   );

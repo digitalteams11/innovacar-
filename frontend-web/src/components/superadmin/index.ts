@@ -12,3 +12,5 @@ export { default as SkeletonTable } from './SkeletonTable';
 export { default as ChartCard } from './ChartCard';
 export { default as ActionMenu } from './ActionMenu';
 export { default as DataTable } from './DataTable';
+export { default as RecipientSelector } from './RecipientSelector';
+export type { Recipient } from './RecipientSelector';

@@ -463,7 +463,10 @@
   .premium-action {
     border-radius: min(var(--radius-card), 16px);
     background: var(--brand-primary);
-    color: #171817;
+    /* Luminance-safe — was a hardcoded #171817, nearly invisible against the
+       clean-white-pro preset's near-black #111827 primary (or any dark custom
+       white-label color). Computed per-theme in ThemeContext.tsx. */
+    color: var(--brand-primary-foreground, #171817);
     box-shadow: 0 8px 22px -14px color-mix(in srgb, var(--brand-primary) 80%, transparent);
   }
 

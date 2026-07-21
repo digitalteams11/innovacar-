@@ -133,7 +133,7 @@ export default function DashboardCustomizeModal({ layout, onReorder, onReset, on
                   {widget.pinned ? (
                     <span
                       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                      style={{ backgroundColor: 'var(--brand-primary)', color: '#fff', opacity: 0.8 }}
+                      style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)', opacity: 0.8 }}
                     >
                       {t('dashboard.alwaysOn', 'Always on')}
                     </span>

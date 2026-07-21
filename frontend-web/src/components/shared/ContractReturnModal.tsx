@@ -208,7 +208,7 @@ export default function ContractReturnModal({
             </button>
             <button onClick={handleSubmit} disabled={submitting}
               className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-              style={{ background: 'var(--brand-primary)', color: '#fff', opacity: submitting ? 0.7 : 1 }}>
+              style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)', opacity: submitting ? 0.7 : 1 }}>
               {submitting
                 ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 : <CheckCircle2 size={16} />

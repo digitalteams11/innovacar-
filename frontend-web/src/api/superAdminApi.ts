@@ -157,11 +157,28 @@ export const superAdminApi = {
   deleteEmailTemplate: (id: number) => api.delete(`/super-admin/email/templates/${id}`),
   duplicateEmailTemplate: (id: number) => api.post(`/super-admin/email/templates/${id}/duplicate`),
   resetEmailTemplate: (id: number) => api.post(`/super-admin/email/templates/${id}/reset-default`),
-  testSendTemplate: (id: number, data: { to: string; language?: string; variables?: Record<string, string> }) =>
-    api.post(`/super-admin/email/templates/${id}/test`, data),
+  testSendTemplate: (
+    id: number,
+    data: {
+      recipients: Array<{ email: string; sourceType: 'AGENCY' | 'USER' | 'EXTERNAL'; sourceId?: number | null }>;
+      locale?: string;
+      variables?: Record<string, string>;
+    }
+  ) => api.post(`/super-admin/email/templates/${id}/test`, data),
   getEmailTemplateTypes: () => api.get('/super-admin/email/templates/types'),
   getEmailTemplateVariables: (templateKey?: string) =>
     api.get('/super-admin/email/templates/variables', { params: templateKey ? { templateKey } : {} }),
+
+  // Recipient directory search backing the Test Send combobox
+  searchEmailRecipients: (params: {
+    q?: string;
+    type?: string;
+    status?: string;
+    verified?: boolean;
+    plan?: string;
+    page?: number;
+    size?: number;
+  }, signal?: AbortSignal) => api.get('/super-admin/email-recipients', { params, signal }),
 
   // Legacy test / logs
   sendTestEmail: (data: any) => api.post('/super-admin/email/test', data),

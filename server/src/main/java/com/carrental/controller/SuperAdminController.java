@@ -77,6 +77,7 @@ public class SuperAdminController {
     private final com.carrental.service.PlatformEmailService platformEmailService;
     private final com.carrental.service.SupportAiAssistantService supportAiAssistantService;
     private final com.carrental.service.EmailTemplateService emailTemplateService;
+    private final com.carrental.service.EmailRecipientSearchService emailRecipientSearchService;
     private final com.carrental.service.SupportRoutingService supportRoutingService;
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1895,73 +1896,112 @@ public class SuperAdminController {
     }
 
     /**
-     * Send a test email using a specific template.
-     * Uses the platform SMTP; variables may be supplied in the request body.
+     * Searchable recipient directory backing the Email Center's test-send
+     * combobox — agencies and users, paginated and search-filtered
+     * server-side so the frontend never has to load the whole table.
+     * Super-Admin-only (class-level @PreAuthorize already covers this route).
+     */
+    @GetMapping("/email-recipients")
+    public ResponseEntity<Map<String, Object>> searchEmailRecipients(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean verified,
+            @RequestParam(required = false) String plan,
+            @RequestParam(defaultValue = "false") boolean includeBlocked,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var result = emailRecipientSearchService.search(q, type, status, verified, plan, includeBlocked, page, size);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "items", result.items(),
+                "page", result.page(),
+                "size", result.size(),
+                "totalElements", result.totalElements(),
+                "hasMore", result.hasMore()));
+    }
+
+    /**
+     * Send a test email using a specific template to one or more recipients.
+     * Uses the platform SMTP; each recipient gets its own individual send and
+     * its own {@link com.carrental.entity.EmailLog} row — recipients never see
+     * each other's addresses (no shared To/CC/BCC list, one call per address).
+     * Duplicate emails within the same request are sent only once.
      */
     @PostMapping("/email/templates/{id}/test")
     public ResponseEntity<Map<String, Object>> testSendTemplate(
-            @PathVariable Long id, @RequestBody Map<String, Object> body) {
+            @PathVariable Long id, @jakarta.validation.Valid @RequestBody com.carrental.dto.superadmin.TestSendRequest request) {
         EmailTemplate template = emailTemplateRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Template not found"));
-        String to = toStr(body.get("to"));
-        if (to == null || to.isBlank()) throw new IllegalArgumentException("Recipient email required");
-        if (!to.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) throw new IllegalArgumentException("Invalid recipient email");
 
-        // Build variable map from request
-        Map<String, String> vars = new java.util.HashMap<>();
-        Object rawVars = body.get("variables");
-        if (rawVars instanceof Map<?,?> m) {
-            m.forEach((k, v) -> { if (k != null && v != null) vars.put(k.toString(), v.toString()); });
+        Map<String, com.carrental.dto.superadmin.TestSendRecipient> deduped = new java.util.LinkedHashMap<>();
+        for (com.carrental.dto.superadmin.TestSendRecipient recipient : request.getRecipients()) {
+            deduped.putIfAbsent(recipient.getEmail().trim().toLowerCase(java.util.Locale.ROOT), recipient);
         }
 
-        // If templateKey present, render via service (includes enrichment); otherwise use raw body
-        String renderedSubject;
-        String renderedHtml;
-        String renderedPlain;
-        if (template.getTemplateKey() != null) {
-            var rendered = emailTemplateService.render(
-                    template.getTemplateKey(),
-                    template.getLanguage() != null ? template.getLanguage() : "EN",
-                    vars);
-            if (rendered.isPresent()) {
-                renderedSubject = rendered.get().subject();
-                renderedHtml    = rendered.get().htmlBody();
-                renderedPlain   = rendered.get().plainBody();
-            } else {
-                renderedSubject = template.getSubject();
-                renderedHtml    = template.getBodyHtml();
-                renderedPlain   = template.getBodyText();
+        Map<String, String> vars = request.getVariables() != null
+                ? new java.util.HashMap<>(request.getVariables()) : new java.util.HashMap<>();
+        String language = request.getLocale() != null && !request.getLocale().isBlank()
+                ? request.getLocale().toUpperCase(java.util.Locale.ROOT)
+                : (template.getLanguage() != null ? template.getLanguage() : "EN");
+
+        RenderedTestEmail rendered = renderTestEmail(template, language, vars);
+
+        java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
+        int sentCount = 0;
+        for (com.carrental.dto.superadmin.TestSendRecipient recipient : deduped.values()) {
+            String to = recipient.getEmail().trim().toLowerCase(java.util.Locale.ROOT);
+
+            com.carrental.service.SmtpMailService.SmtpResult result =
+                    smtpMailService.sendPlatform(to, rendered.subject(),
+                            rendered.html() != null ? rendered.html() : "",
+                            rendered.plain() != null ? rendered.plain() : "");
+
+            com.carrental.entity.EmailLog logEntry = new com.carrental.entity.EmailLog();
+            logEntry.setRecipient(to);
+            logEntry.setSubject(rendered.subject());
+            logEntry.setEmailType("TEMPLATE_TEST");
+            logEntry.setTemplateId(template.getId());
+            logEntry.setTemplateName(template.getName());
+            logEntry.setStatus(result.sent() ? "SENT" : "FAILED");
+            logEntry.setErrorCode(result.sent() ? null : (result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED"));
+            logEntry.setErrorMessage(result.sent() ? null : result.errorMessage());
+            logEntry.setProvider(smtpMailService.activeProvider());
+            emailLogRepository.save(logEntry);
+
+            if (result.sent()) sentCount++;
+
+            Map<String, Object> entry = new java.util.LinkedHashMap<>();
+            entry.put("email", to);
+            entry.put("sourceType", recipient.getSourceType());
+            entry.put("status", result.sent() ? "SENT" : "FAILED");
+            if (!result.sent()) {
+                entry.put("errorCode", result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED");
             }
-        } else {
-            renderedSubject = template.getSubject();
-            renderedHtml    = template.getBodyHtml();
-            renderedPlain   = template.getBodyText();
+            results.add(entry);
         }
 
-        com.carrental.service.SmtpMailService.SmtpResult result =
-                smtpMailService.sendPlatform(to, renderedSubject,
-                        renderedHtml != null ? renderedHtml : "",
-                        renderedPlain != null ? renderedPlain : "");
+        int total = deduped.size();
+        String overallStatus = sentCount == total ? "SUCCESS" : sentCount == 0 ? "FAILED" : "PARTIAL_SUCCESS";
 
-        // Log it
-        com.carrental.entity.EmailLog logEntry = new com.carrental.entity.EmailLog();
-        logEntry.setRecipient(to);
-        logEntry.setSubject(renderedSubject);
-        logEntry.setEmailType("TEMPLATE_TEST");
-        logEntry.setTemplateName(template.getName());
-        logEntry.setStatus(result.sent() ? "SENT" : "FAILED");
-        logEntry.setErrorCode(result.sent() ? null : (result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED"));
-        logEntry.setErrorMessage(result.sent() ? null : result.errorMessage());
-        logEntry.setProvider(smtpMailService.activeProvider());
-        emailLogRepository.save(logEntry);
+        return ResponseEntity.ok(Map.of(
+                "success", sentCount > 0,
+                "status", overallStatus,
+                "sentCount", sentCount,
+                "failedCount", total - sentCount,
+                "results", results));
+    }
 
-        if (result.sent()) {
-            return ResponseEntity.ok(Map.of("success", true,
-                    "message", "Test email sent successfully to " + to));
+    private record RenderedTestEmail(String subject, String html, String plain) {}
+
+    private RenderedTestEmail renderTestEmail(EmailTemplate template, String language, Map<String, String> vars) {
+        if (template.getTemplateKey() != null) {
+            var rendered = emailTemplateService.render(template.getTemplateKey(), language, vars);
+            if (rendered.isPresent()) {
+                return new RenderedTestEmail(rendered.get().subject(), rendered.get().htmlBody(), rendered.get().plainBody());
+            }
         }
-        return ResponseEntity.ok(Map.of("success", false,
-                "errorCode", result.errorCode() != null ? result.errorCode() : "EMAIL_SEND_FAILED",
-                "message", "Failed to send test email: " + result.errorMessage()));
+        return new RenderedTestEmail(template.getSubject(), template.getBodyHtml(), template.getBodyText());
     }
 
     // ── Dedicated SMTP settings endpoints (Super Admin only) ─────────────────

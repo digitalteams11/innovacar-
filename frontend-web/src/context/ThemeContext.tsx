@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
@@ -62,6 +62,15 @@ interface ThemeContextType {
 }
 
 const STORAGE_KEY = 'rentcar_appearance';
+// Tracks which user's server-side themeMode has already been pulled down to this
+// device, so the one-time login sync below only ever fires once per (device, user)
+// pair — not once per page load. A useRef alone resets on every refresh, which was
+// the actual cause of "I picked Light, refreshed, and it went back to Dark": the
+// sync effect re-ran on every refresh and re-applied whatever the server happened
+// to hold (often the User entity's "auto" default, if a previous save silently
+// failed — see setTheme()'s catch below), overwriting the just-loaded, correct
+// localStorage value every single time.
+const THEME_SYNCED_USER_KEY = 'rentcar_theme_synced_user_id';
 
 /**
  * Each 2026 SaaS theme preset defines its own primary/secondary/accent (fixed
@@ -263,7 +272,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(
     appearance.mode === 'auto' ? systemTheme() : appearance.mode,
   );
-  const appliedUserThemeForUserId = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -322,20 +330,42 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     fetchBranding();
   }, [fetchBranding]);
 
-  // Apply the user's own saved theme mode once per login session. This is a
-  // personal account preference (server-persisted on the User entity), kept
-  // separate from the agency-wide Appearance Studio colors/preset above.
+  // Clears the sync-once marker on logout (not on a mere refresh, since a refresh
+  // never transitions isAuthenticated through false) so the next login re-adopts
+  // whatever the server holds — e.g. the user changed their theme from another
+  // device in the meantime — matching "backend wins right at authentication".
+  useEffect(() => {
+    if (isAuthenticated) return;
+    try { localStorage.removeItem(THEME_SYNCED_USER_KEY); } catch { /* non-fatal */ }
+  }, [isAuthenticated]);
+
+  // Pulls the user's server-saved theme mode down to this device exactly once per
+  // (device, user) — genuinely once, surviving refreshes — not once per page load.
+  // A fresh login on a new device/browser (no marker yet) adopts the server value,
+  // same as before; every refresh after that trusts the already-loaded localStorage
+  // value instead of re-pulling and potentially reverting a choice the server copy
+  // is stale on. localStorage.getItem/setItem can legitimately throw (private
+  // browsing, storage disabled) — treated as "never synced", which just means this
+  // one-time pull happens again next time, never breaking theme switching itself.
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
-      appliedUserThemeForUserId.current = null;
       return;
     }
-    if (appliedUserThemeForUserId.current === user.id) return;
-    appliedUserThemeForUserId.current = user.id;
+    let syncedUserId: string | null = null;
+    try {
+      syncedUserId = localStorage.getItem(THEME_SYNCED_USER_KEY);
+    } catch { /* private browsing / storage disabled — fall through and re-sync */ }
+    if (syncedUserId === String(user.id)) return;
+    try {
+      localStorage.setItem(THEME_SYNCED_USER_KEY, String(user.id));
+    } catch { /* non-fatal — worst case this sync-once check runs again next reload */ }
     if (user.themeMode && user.themeMode !== appearance.mode) {
       setAppearance((current) => ({ ...current, mode: user.themeMode as ThemeMode }));
     }
-  }, [isAuthenticated, user?.id, user?.themeMode, appearance.mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- appearance.mode intentionally
+    // excluded: only user.id/user.themeMode should re-arm this one-time sync, never a later
+    // local mode change (that would defeat the whole point of syncing only once).
+  }, [isAuthenticated, user?.id, user?.themeMode]);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -378,15 +408,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const density = appearance.cardDensity === 'compact' ? 0.78 : appearance.cardDensity === 'spacious' ? 1.2 : 1;
     const duration = Math.max(40, appearance.animationSpeed);
     const sidebarText = readableTextOn(appearance.sidebarColor);
+    const resolvedPrimary = branding?.primaryColor || appearance.primaryColor;
+    const resolvedAccent = branding?.accentColor || appearance.accentColor;
+    // Same luminance-safe approach the sidebar already uses, applied to every place
+    // brand colors are used as a solid button/badge background — e.g. .premium-action
+    // in index.css previously hardcoded `color: #171817`, which is nearly invisible
+    // against the clean-white-pro preset's near-black #111827 primary (the reported
+    // "New Contract" label is invisible bug). A custom white-label primary/accent
+    // color is exactly as likely to be dark as any built-in preset, so this must be
+    // computed here rather than assumed.
+    const primaryText = readableTextOn(resolvedPrimary);
+    const accentText = readableTextOn(resolvedAccent);
 
     root.classList.toggle('dark', resolvedTheme === 'dark');
     root.dataset.themePreset = appearance.preset;
     root.dataset.buttonStyle = appearance.buttonStyle;
     // Agency Branding (White Label) colors are the source of truth when configured —
     // they override the preset's primary/accent so saving branding repaints the app immediately.
-    root.style.setProperty('--brand-primary', branding?.primaryColor || appearance.primaryColor);
+    root.style.setProperty('--brand-primary', resolvedPrimary);
+    root.style.setProperty('--brand-primary-foreground', primaryText.text);
     root.style.setProperty('--brand-secondary', appearance.secondaryColor);
-    root.style.setProperty('--brand-accent', branding?.accentColor || appearance.accentColor);
+    root.style.setProperty('--brand-accent', resolvedAccent);
+    root.style.setProperty('--brand-accent-foreground', accentText.text);
     root.style.setProperty('--bg-sidebar', appearance.sidebarColor);
     root.style.setProperty('--text-sidebar', sidebarText.text);
     root.style.setProperty('--text-sidebar-muted', sidebarText.muted);

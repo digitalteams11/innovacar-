@@ -356,7 +356,7 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
           <button
             onClick={() => { setView(new Date()); setSelectedDay(null); }}
             className="ml-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: 'var(--brand-primary)', color: '#fff', opacity: 0.85 }}
+            style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)', opacity: 0.85 }}
           >
             {t('calendar.today')}
           </button>

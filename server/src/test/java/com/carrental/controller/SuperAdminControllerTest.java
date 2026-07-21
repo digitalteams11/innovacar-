@@ -58,6 +58,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -461,6 +463,87 @@ class SuperAdminControllerTest {
                 .createdAt(createdAt)
                 .subscriptionActive(subscriptionActive)
                 .build();
+    }
+
+    private EmailTemplate rawTemplate(Long id) {
+        // No templateKey set so renderTestEmail falls through to the raw subject/body fields,
+        // avoiding the need to mock emailTemplateService (not injected in this test class).
+        return EmailTemplate.builder()
+                .id(id)
+                .name("Welcome Email")
+                .subject("Welcome!")
+                .bodyHtml("<p>Hello</p>")
+                .bodyText("Hello")
+                .build();
+    }
+
+    private com.carrental.dto.superadmin.TestSendRequest testSendRequest(String... emails) {
+        java.util.List<com.carrental.dto.superadmin.TestSendRecipient> recipients = new java.util.ArrayList<>();
+        for (String email : emails) {
+            com.carrental.dto.superadmin.TestSendRecipient r = new com.carrental.dto.superadmin.TestSendRecipient();
+            r.setEmail(email);
+            r.setSourceType("EXTERNAL");
+            recipients.add(r);
+        }
+        com.carrental.dto.superadmin.TestSendRequest request = new com.carrental.dto.superadmin.TestSendRequest();
+        request.setRecipients(recipients);
+        return request;
+    }
+
+    @Test
+    void testSendTemplate_dedupesRecipientsAndSendsOncePerUniqueEmail() {
+        EmailTemplate template = rawTemplate(5L);
+        when(emailTemplateRepository.findById(5L)).thenReturn(Optional.of(template));
+        when(smtpMailService.sendPlatform(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(com.carrental.service.SmtpMailService.SmtpResult.success("ZEPTOMAIL"));
+
+        var response = superAdminController.testSendTemplate(5L,
+                testSendRequest("Dup@Test.com", "dup@test.com", " dup@test.com "));
+
+        verify(smtpMailService, times(1))
+                .sendPlatform(anyString(), anyString(), anyString(), anyString());
+        verify(emailLogRepository, times(1)).save(any(EmailLog.class));
+        Map<String, Object> body = response.getBody();
+        assertThat(body).containsEntry("sentCount", 1);
+        assertThat(body).containsEntry("status", "SUCCESS");
+    }
+
+    @Test
+    void testSendTemplate_partialFailureReturnsPartialSuccessStatus() {
+        EmailTemplate template = rawTemplate(6L);
+        when(emailTemplateRepository.findById(6L)).thenReturn(Optional.of(template));
+        when(smtpMailService.sendPlatform(org.mockito.ArgumentMatchers.eq("ok@test.com"), anyString(), anyString(), anyString()))
+                .thenReturn(com.carrental.service.SmtpMailService.SmtpResult.success("ZEPTOMAIL"));
+        when(smtpMailService.sendPlatform(org.mockito.ArgumentMatchers.eq("bad@test.com"), anyString(), anyString(), anyString()))
+                .thenReturn(com.carrental.service.SmtpMailService.SmtpResult.failure("ZEPTOMAIL", "Rejected", "PROVIDER_REJECTED"));
+
+        var response = superAdminController.testSendTemplate(6L, testSendRequest("ok@test.com", "bad@test.com"));
+
+        Map<String, Object> body = response.getBody();
+        assertThat(body).containsEntry("status", "PARTIAL_SUCCESS");
+        assertThat(body).containsEntry("sentCount", 1);
+        assertThat(body).containsEntry("failedCount", 1);
+        verify(emailLogRepository, times(2)).save(any(EmailLog.class));
+    }
+
+    @Test
+    void testSendTemplate_createsOneEmailLogPerUniqueRecipientWithTemplateId() {
+        EmailTemplate template = rawTemplate(7L);
+        when(emailTemplateRepository.findById(7L)).thenReturn(Optional.of(template));
+        when(smtpMailService.sendPlatform(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(com.carrental.service.SmtpMailService.SmtpResult.success("ZEPTOMAIL"));
+        ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);
+
+        superAdminController.testSendTemplate(7L, testSendRequest("a@test.com", "b@test.com"));
+
+        verify(emailLogRepository, times(2)).save(logCaptor.capture());
+        List<EmailLog> savedLogs = logCaptor.getAllValues();
+        assertThat(savedLogs).extracting(EmailLog::getRecipient)
+                .containsExactlyInAnyOrder("a@test.com", "b@test.com");
+        assertThat(savedLogs).allSatisfy(log -> {
+            assertThat(log.getTemplateId()).isEqualTo(7L);
+            assertThat(log.getStatus()).isEqualTo("SENT");
+        });
     }
 
     private Payment payment(String number, Tenant tenant, String amount, LocalDateTime paymentDate) {
