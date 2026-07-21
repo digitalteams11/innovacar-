@@ -5,7 +5,7 @@ const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
 export default function SplashScreen() {
   const { t } = useTranslation();
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[#0b1437]" role="status">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[#0b1437]" role="status" aria-live="polite">
       <div className="text-center text-white">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-xl overflow-hidden">
           <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-1" />

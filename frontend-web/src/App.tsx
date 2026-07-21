@@ -83,16 +83,17 @@ const SuperAdminAiSettings = React.lazy(() => import('./pages/superadmin/SuperAd
 
 // â”€â”€ Route Guards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+// ThemeProvider is NOT included here — it now wraps the whole route tree in
+// App() below, because public routes (Login's Google-button theming) need
+// useTheme() too. Only nest the providers that are genuinely authenticated-only.
 const AuthenticatedAppProviders = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider>
-    <FeatureAccessProvider>
-      <PermissionProvider>
-        <OnboardingProvider>
-          {children}
-        </OnboardingProvider>
-      </PermissionProvider>
-    </FeatureAccessProvider>
-  </ThemeProvider>
+  <FeatureAccessProvider>
+    <PermissionProvider>
+      <OnboardingProvider>
+        {children}
+      </OnboardingProvider>
+    </PermissionProvider>
+  </FeatureAccessProvider>
 );
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
@@ -323,16 +324,31 @@ function BackendHealthGate({ children }: { children: React.ReactNode }) {
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
+    // Hard cap on the splash screen itself — independent of auth/branding/theme
+    // startup, none of which this timer waits on. See AuthContext's own bootstrap
+    // watchdog for why "loading" can never hang the login page behind this either.
     const timer = window.setTimeout(() => setShowSplash(false), 1400);
     return () => window.clearTimeout(timer);
   }, []);
 
-  // App rendered successfully â€” clear the one-shot auto-reload guards so a
-  // later, unrelated stale-module/chunk error still gets one reload attempt
-  // instead of being permanently disabled for the rest of the tab session.
+  // Re-arms the one-shot auto-reload guards so a later, unrelated stale-module/
+  // chunk error still gets one reload attempt instead of being permanently
+  // disabled for the rest of the tab session. Deliberately delayed (not cleared
+  // immediately on mount): a genuine, deterministic render crash (e.g. a
+  // component throwing "X must be used within <Y>Provider" on every render,
+  // not just a one-off stale-HMR artifact) reloads once, then throws again on
+  // the very next mount — if this effect cleared the guard immediately, that
+  // second throw would see the guard already gone and trigger *another*
+  // reload, forever, which is exactly the infinite-splash/infinite-reload bug
+  // reported in production. Waiting a few seconds gives the just-reloaded page
+  // a chance to actually stay up before we consider the reload "successful"
+  // and re-arm the guard for the future.
   useEffect(() => {
-    sessionStorage.removeItem('rentcar_error_boundary_reload_once');
-    sessionStorage.removeItem(CHUNK_RELOAD_MARKER);
+    const timer = window.setTimeout(() => {
+      sessionStorage.removeItem('rentcar_error_boundary_reload_once');
+      sessionStorage.removeItem(CHUNK_RELOAD_MARKER);
+    }, 4000);
+    return () => window.clearTimeout(timer);
   }, []);
 
   return (
@@ -341,9 +357,15 @@ function App() {
         <NotificationProvider>
           <ToastProvider>
             {showSplash && <SplashScreen />}
-            <BackendHealthGate>
-              <AppRoutes />
-            </BackendHealthGate>
+            {/* ThemeProvider wraps ALL routes (public + protected) — Login's
+                Google-button theming (useTheme()) needs it too, and it only
+                talks to the backend when isAuthenticated, so it's safe/inert
+                on public routes. */}
+            <ThemeProvider>
+              <BackendHealthGate>
+                <AppRoutes />
+              </BackendHealthGate>
+            </ThemeProvider>
           </ToastProvider>
         </NotificationProvider>
       </NotificationSoundProvider>

@@ -145,6 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedRefreshToken = getStoredRefreshToken();
     logAuthDebug({ meStatus: 'BOOTSTRAP_START' });
 
+    // Bootstrap watchdog: the /me call below already resolves via axios's own
+    // 20s request timeout in the worst case, but that's far longer than a
+    // login page should ever sit on a loader. This forces the app out of
+    // "checking session" and into the normal unauthenticated/login-visible
+    // state well before that, treating a slow bootstrap exactly like a failed
+    // one (session state stays whatever it already resolved to, if anything).
+    const watchdog = window.setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 6000);
+
     if (storedAccessToken) {
       api.get('/me')
         .then(({ data }) => {
@@ -168,9 +178,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         })
         .finally(() => {
+          window.clearTimeout(watchdog);
           if (!cancelled) setLoading(false);
         });
     } else {
+      window.clearTimeout(watchdog);
       if (storedUser || storedRefreshToken) {
         logAuthDebug({ meStatus: 'TOKEN_MISSING_FOR_ORIGIN', currentUserRole: null, agencyId: null });
         clearStorage();
@@ -226,6 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener('account-blocked', handleAccountBlocked);
     return () => {
       cancelled = true;
+      window.clearTimeout(watchdog);
       window.removeEventListener('auth-error', handleAuthError);
       window.removeEventListener('tenant-updated', handleTenantUpdated);
       window.removeEventListener('account-blocked', handleAccountBlocked);
