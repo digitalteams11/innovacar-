@@ -1753,10 +1753,10 @@ export default function Dashboard() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
       >
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-[28px] sm:text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
             {t('nav.dashboard', 'Dashboard')}
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-sm mt-0.5 break-words" style={{ color: 'var(--text-muted)' }}>
             {greeting},{' '}
             <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{userName}</span>
             {' — '}{new Intl.DateTimeFormat(resolveLocale(), { weekday: 'long', month: 'long', day: 'numeric' }).format(now)}

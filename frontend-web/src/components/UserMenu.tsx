@@ -42,6 +42,48 @@ const THEME_MODES: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
   { value: 'auto',  label: 'Auto',  icon: Monitor },
 ];
 
+/** First + last initials (or first two letters of a single name), for the avatar fallback. */
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'U';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Renders the user's photo, falling back to a local initials avatar (no
+ * network request, so it can never show a second broken image) if the
+ * photo URL 404s or the request otherwise fails. Previously this fell back
+ * to a ui-avatars.com URL, which is itself a network request that can fail
+ * (offline, blocked, provider down) and surface the browser's native
+ * broken-image glyph — exactly the bug this replaces.
+ */
+function Avatar({
+  src, displayName, sizeClass, textSizeClass = 'text-xs',
+}: { src: string | null | undefined; displayName: string; sizeClass: string; textSizeClass?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div
+        role="img"
+        aria-label={displayName}
+        className={`${sizeClass} ${textSizeClass} rounded-full border-2 border-[var(--border-medium)] flex items-center justify-center shrink-0 font-bold text-[var(--brand-primary-foreground,#fff)]`}
+        style={{ background: 'var(--brand-primary)' }}
+      >
+        {getInitials(displayName)}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={displayName}
+      onError={() => setFailed(true)}
+      className={`${sizeClass} rounded-full object-cover border-2 border-[var(--border-medium)]`}
+    />
+  );
+}
+
 export default function UserMenu() {
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -92,11 +134,10 @@ export default function UserMenu() {
       });
   };
 
-  const avatarSrc =
-    resolveMediaUrl(profile?.avatar) ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      profile?.fullName || user?.email?.split('@')[0] || 'U',
-    )}&background=272725&color=d8c39b`;
+  // No remote placeholder-avatar fallback (e.g. ui-avatars.com) — that's
+  // itself a network request that can fail and show a second broken image.
+  // The Avatar component renders local initials whenever this is null.
+  const avatarSrc = resolveMediaUrl(profile?.avatar);
 
   const displayName = profile?.fullName || user?.email?.split('@')[0] || 'Admin';
   const roleLabel   = ROLE_LABELS[user?.role || ''] || user?.role || '';
@@ -129,11 +170,7 @@ export default function UserMenu() {
         aria-haspopup="menu"
         className="flex items-center gap-2 p-1 rounded-xl hover:bg-[var(--bg-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/40"
       >
-        <img
-          src={avatarSrc}
-          alt={displayName}
-          className="w-8 h-8 rounded-full object-cover border-2 border-[var(--border-medium)]"
-        />
+        <Avatar src={avatarSrc} displayName={displayName} sizeClass="w-8 h-8" textSizeClass="text-[10px]" />
         <span className="hidden xl:block text-start max-w-[120px]">
           <strong className="block text-xs leading-tight truncate text-[var(--text-primary)]">
             {displayName}
@@ -156,11 +193,7 @@ export default function UserMenu() {
           <div className="px-4 pt-4 pb-3 bg-[var(--bg-hover)]">
             <div className="flex items-start gap-3">
               <div className="relative shrink-0">
-                <img
-                  src={avatarSrc}
-                  alt={displayName}
-                  className="w-11 h-11 rounded-full object-cover border-2 border-[var(--border-medium)]"
-                />
+                <Avatar src={avatarSrc} displayName={displayName} sizeClass="w-11 h-11" textSizeClass="text-sm" />
                 <span
                   className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[var(--bg-hover)]"
                   aria-hidden="true"

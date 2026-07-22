@@ -236,11 +236,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       )}>
         <TrialBanner />
         <header className="app-topbar sticky top-2 lg:top-4 z-40 h-[58px] lg:h-[64px] mx-2 lg:mx-4 px-3 sm:px-4 lg:px-5 flex items-center gap-3 rounded-lg">
-          <Link to="/" className="lg:hidden flex items-center gap-2 shrink-0">
-            <span className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
-              <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" onError={onLogoError} />
+          <Link to="/" className="lg:hidden flex items-center gap-2 shrink-0" aria-label={t('layout.innovacarDashboard', 'Innovacar Dashboard')}>
+            <span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+              <img src={logoSrc} alt="" className="h-full w-full object-contain p-0.5" onError={onLogoError} />
             </span>
-            <strong className="hidden min-[375px]:block text-sm">InnovaCar</strong>
+            {/* Wordmark only from the sm breakpoint (640px) up — previously
+                shown from 375px, which covers the entire 390-430px mobile
+                range this was meant to exclude, crowding the header icons. */}
+            <strong className="hidden sm:block text-sm">InnovaCar</strong>
           </Link>
 
           <GlobalSearchBar />
@@ -270,7 +273,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="page-canvas flex-1 w-full p-3 sm:p-4 lg:p-6 pb-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+24px)] lg:pb-6">
+        <main className="page-canvas flex-1 w-full p-3 sm:p-4 lg:p-6 pb-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+32px)] lg:pb-6">
           <AnnouncementBanner />
           <div key={location.pathname} className="animate-fade">{children}</div>
         </main>
