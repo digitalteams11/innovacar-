@@ -1207,6 +1207,7 @@
       "tellUsMore": "Tell us more (optional)",
       "feedbackPlaceholder": "What could we have done better?",
       "discount": "Discount ({{code}})",
+      "promoCheckoutNotConfigured": "This promo's discount is not yet set up with our payment provider. You will not be charged — please contact support before continuing.",
       "trialEndsOn": "Trial ends on {{date}} ({{days}} days left)",
       "renewsOn": "Renews on {{date}}",
       "subscriptionInactive": "Subscription is not active",

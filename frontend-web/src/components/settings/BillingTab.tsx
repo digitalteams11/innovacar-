@@ -12,6 +12,12 @@ import {
   PartyPopper, RefreshCw, FileText, UserCheck,
 } from 'lucide-react';
 
+/** Two decimals, always — a bare `199` or `39.8` next to a proper `159.20` reads as a typo/bug on a pricing summary. */
+function formatMoney(value: number | string | null | undefined): string {
+  const n = typeof value === 'number' ? value : Number(value ?? 0);
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+}
+
 interface PlanData {
   id: number;
   code: string;
@@ -92,7 +98,7 @@ export default function BillingTab() {
       await api.post('/billing/refresh-status');
       await fetchData();
     } catch {
-      // Silently ignore â€” fetchData still runs
+      // Silently ignore — fetchData still runs
       await fetchData();
     } finally {
       setRefreshing(false);
@@ -118,7 +124,7 @@ export default function BillingTab() {
       api.get('/subscriptions/cancellation-requests/mine'),
     ]);
 
-    // Current subscription â€” failure here must NOT block plan rendering
+    // Current subscription — failure here must NOT block plan rendering
     if (statusResult.status === 'fulfilled') {
       const d = statusResult.value.data;
       setStatus(d?.data ? { ...d, ...d.data } : d);
@@ -126,10 +132,10 @@ export default function BillingTab() {
         console.info('[BILLING_DEBUG] currentSubscriptionStatus=', d?.data ?? d);
       }
     } else {
-      console.warn('[BILLING_DEBUG] currentSubscription failed â€”', statusResult.reason?.message ?? statusResult.reason);
+      console.warn('[BILLING_DEBUG] currentSubscription failed —', statusResult.reason?.message ?? statusResult.reason);
     }
 
-    // Plans â€” core rendering depends on this
+    // Plans — core rendering depends on this
     if (plansResult.status === 'fulfilled') {
       const raw = plansResult.value.data;
       const normalized: PlanData[] = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
@@ -139,14 +145,14 @@ export default function BillingTab() {
         console.info('[BILLING_DEBUG] activePlansCount=', normalized.filter((p) => p.code).length);
       }
       if (!Array.isArray(raw) && !Array.isArray(raw?.data)) {
-        console.error('[BILLING_DEBUG] Unexpected plans response shape â€” expected array or {data:[]}', raw);
+        console.error('[BILLING_DEBUG] Unexpected plans response shape — expected array or {data:[]}', raw);
       }
       setPlans(normalized);
     } else {
       const msg = plansResult.reason?.response?.status
-        ? `GET /billing/plans â†’ ${plansResult.reason.response.status}`
+        ? `GET /billing/plans → ${plansResult.reason.response.status}`
         : plansResult.reason?.message ?? 'Unknown error';
-      console.error('[BILLING_DEBUG] plans request failed â€”', msg);
+      console.error('[BILLING_DEBUG] plans request failed —', msg);
       setPlansError(msg);
       setPlans([]);
       showToast(t('settings.billingTab.subscriptionPlansLoadFailed'), 'error');
@@ -227,6 +233,11 @@ export default function BillingTab() {
       const errCode = err?.response?.data?.errorCode;
       if (errCode === 'PLAN_CHECKOUT_URL_MISSING' || errCode === 'CHECKOUT_NOT_CONFIGURED') {
         showToast(err?.response?.data?.message || 'Checkout link is missing for this plan. Please configure it in Super Admin → Subscriptions.', 'error');
+      } else if (errCode === 'PROMO_CHECKOUT_NOT_CONFIGURED') {
+        // The backend refused to redirect rather than send the user to a Whop
+        // checkout priced differently than what we just quoted them — this is
+        // the intended, safe outcome, not a generic failure.
+        showToast(err?.response?.data?.message || t('settings.billingTab.promoCheckoutNotConfigured'), 'error');
       } else {
         showToast(err?.userMessage || 'Failed to create checkout session. Please try again.', 'error');
       }
@@ -288,7 +299,7 @@ export default function BillingTab() {
 
   return (
     <div className="space-y-6">
-      {/* Payment success banner â€” shown when user returns from Whop checkout */}
+      {/* Payment success banner — shown when user returns from Whop checkout */}
       {paymentSuccess && (
         <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
           <PartyPopper size={20} className="text-emerald-600 shrink-0 mt-0.5" />
@@ -304,7 +315,7 @@ export default function BillingTab() {
             className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 disabled:opacity-50 shrink-0"
           >
             <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
-            {refreshing ? 'Checkingâ€¦' : 'Refresh'}
+            {refreshing ? 'Checking…' : 'Refresh'}
           </button>
         </div>
       )}
@@ -633,6 +644,11 @@ export default function BillingTab() {
                   <XCircle size={14} />{promoResult.message}
                 </div>
               )}
+              {promoResult?.valid && promoResult.discountAmount > 0 && promoResult.checkoutConfigured === false && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-amber-600">
+                  <ShieldAlert size={14} className="shrink-0" />{t('settings.billingTab.promoCheckoutNotConfigured')}
+                </div>
+              )}
             </div>
 
             {/* Price summary */}
@@ -640,21 +656,21 @@ export default function BillingTab() {
               <div className="flex justify-between text-slate-600">
                 <span>{t('settings.billingTab.subtotal')}</span>
                 <span className="font-medium">
-                  {billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice} MAD
+                  {formatMoney(billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice)} MAD
                 </span>
               </div>
               {promoResult?.valid && promoResult.discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-600">
                   <span>{t('settings.billingTab.discount', { code: promoResult.code })}</span>
-                  <span>âˆ’{promoResult.discountAmount} MAD</span>
+                  <span>−{formatMoney(promoResult.discountAmount)} MAD</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-[#1e293b] border-t border-[#e8e6e1] pt-1.5 mt-1.5">
                 <span>{t('settings.billingTab.total')}</span>
                 <span>
-                  {promoResult?.valid
+                  {formatMoney(promoResult?.valid
                     ? promoResult.finalPrice
-                    : billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice} MAD
+                    : billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice)} MAD
                 </span>
               </div>
             </div>
@@ -666,7 +682,7 @@ export default function BillingTab() {
             <div className="flex gap-3">
               <button
                 onClick={handleCheckout}
-                disabled={checkoutLoading}
+                disabled={checkoutLoading || (promoResult?.valid && promoResult.discountAmount > 0 && promoResult.checkoutConfigured === false)}
                 className="flex-1 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
               >
                 {checkoutLoading ? <><Loader2 size={14} className="animate-spin" />{t('settings.billingTab.processing')}</> : t('settings.billingTab.continueToCheckout')}

@@ -38,6 +38,7 @@ public class WhopWebhookController {
     private final SubscriptionPlanRepository planRepository;
     private final SubscriptionInvoiceRepository invoiceRepository;
     private final PromoCodeRepository promoCodeRepository;
+    private final PromoCodeRedemptionRepository promoCodeRedemptionRepository;
     private final SubscriptionEventRepository subscriptionEventRepository;
     private final SubscriptionService subscriptionService;
 
@@ -66,6 +67,7 @@ public class WhopWebhookController {
         // Parse event type and data from raw JSON (minimal parsing)
         String eventType   = extractJsonString(rawBody, "event");
         String tenantIdStr = extractNestedJsonString(rawBody, "metadata", "tenant_id");
+        String promoCodeStr = extractNestedJsonString(rawBody, "metadata", "promo_code");
         String membershipId = extractJsonString(rawBody, "id");
         String planId      = extractJsonString(rawBody, "plan_id");
 
@@ -110,7 +112,7 @@ public class WhopWebhookController {
 
         return switch (eventType) {
             case "membership.went_valid", "payment.succeeded", "membership.created" ->
-                    handleActivation(tenant, planId, membershipId, eventType);
+                    handleActivation(tenant, planId, membershipId, eventType, promoCodeStr);
 
             case "membership.went_invalid", "payment.failed", "membership.payment_failed" ->
                     handlePaymentFailed(tenant, eventType);
@@ -128,7 +130,7 @@ public class WhopWebhookController {
     // ── Event handlers ────────────────────────────────────────────────────────────
 
     private ResponseEntity<Map<String, Object>> handleActivation(
-            Tenant tenant, String whopPlanId, String membershipId, String eventType) {
+            Tenant tenant, String whopPlanId, String membershipId, String eventType, String promoCode) {
 
         // Resolve plan by whopPlanId or whopProductId
         SubscriptionPlan plan = null;
@@ -154,8 +156,24 @@ public class WhopWebhookController {
             subscriptionService.extendSubscription(30);
         }
 
+        Long activatedTenantId = tenant.getId();
         log.info("[WHOP_WEBHOOK] ACTIVATED tenantId={} plan={} event={} membershipId={}",
-                tenant.getId(), plan != null ? plan.getCode() : "UNKNOWN", eventType, membershipId);
+                activatedTenantId, plan != null ? plan.getCode() : "UNKNOWN", eventType, membershipId);
+
+        // Redeem the promo reservation (RESERVED → USED) only now that a real
+        // provider event confirms the checkout actually went through — never
+        // at the moment the checkout link was merely created (see BillingController).
+        if (promoCode != null && !promoCode.isBlank()) {
+            promoCodeRedemptionRepository
+                    .findFirstByPromoCode_CodeIgnoreCaseAndTenantIdAndStatusOrderByRedeemedAtDesc(
+                            promoCode.trim(), activatedTenantId, "RESERVED")
+                    .ifPresent(redemption -> {
+                        redemption.setStatus("USED");
+                        promoCodeRedemptionRepository.save(redemption);
+                        log.info("[WHOP_WEBHOOK] Promo redemption confirmed: promo={} tenantId={} redemptionId={}",
+                                promoCode, activatedTenantId, redemption.getId());
+                    });
+        }
 
         return ResponseEntity.ok(Map.of(
                 "success", true,

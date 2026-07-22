@@ -1200,6 +1200,7 @@
       "tellUsMore": "أخبرنا المزيد (اختياري)",
       "feedbackPlaceholder": "ما الذي كان بإمكاننا فعله بشكل أفضل؟",
       "discount": "الخصم ({{code}})",
+      "promoCheckoutNotConfigured": "لم يتم إعداد خصم هذا الرمز بعد لدى مزوّد الدفع. لن يتم خصم أي مبلغ منك — يرجى التواصل مع الدعم قبل المتابعة.",
       "trialEndsOn": "تنتهي الفترة التجريبية في {{date}} (متبقي {{days}} يوم)",
       "renewsOn": "يتجدد في {{date}}",
       "subscriptionInactive": "الاشتراك غير نشط",

@@ -1207,6 +1207,7 @@
       "tellUsMore": "Dites-nous en plus (optionnel)",
       "feedbackPlaceholder": "Qu'aurions-nous pu faire de mieux ?",
       "discount": "Remise ({{code}})",
+      "promoCheckoutNotConfigured": "La remise de ce code n'est pas encore configurée chez notre prestataire de paiement. Vous ne serez pas débité — veuillez contacter le support avant de continuer.",
       "trialEndsOn": "Essai terminé le {{date}} ({{days}} jours restants)",
       "renewsOn": "Renouvellement le {{date}}",
       "subscriptionInactive": "Abonnement inactif",

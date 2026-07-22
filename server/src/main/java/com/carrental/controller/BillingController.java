@@ -240,9 +240,15 @@ public class BillingController {
         finalPrice    = finalPrice.setScale(2, RoundingMode.HALF_UP);
         discountAmount = discountAmount.setScale(2, RoundingMode.HALF_UP);
 
-        // Check if a discounted Whop checkout link is configured (Mode 1)
-        boolean checkoutConfigured = false;
-        if (plan != null) {
+        // A promo that doesn't actually reduce the recurring price (e.g. a
+        // FREE_MONTHS/PLAN_TRIAL promotion where discountAmount is zero) never
+        // needs a provider-side override — Whop's normal price already
+        // matches the quote. Only a real discount amount requires one, and
+        // checkout will hard-block (see BillingController#createCheckout) if
+        // it's missing — this flag lets the frontend warn the user before
+        // they even try, rather than only failing at the checkout click.
+        boolean checkoutConfigured = discountAmount.compareTo(BigDecimal.ZERO) == 0;
+        if (!checkoutConfigured && plan != null) {
             checkoutConfigured = promoCodePlanLinkRepository
                     .findByPromoCodeIdAndPlanCodeIgnoreCaseAndBillingCycleIgnoreCaseAndActiveTrue(
                             promo.getId(), plan.getCode(), cycle)
@@ -323,8 +329,16 @@ public class BillingController {
         BigDecimal discountAmount = promo != null ? computeDiscount(promo, originalPrice) : BigDecimal.ZERO;
         BigDecimal finalPrice = originalPrice.subtract(discountAmount).max(BigDecimal.ZERO);
 
-        // A promo-specific Whop URL is an optional override. If it is missing,
-        // use the normal plan checkout URL and keep promo context as metadata.
+        // A promo-specific Whop URL is a REQUIRED override whenever the promo
+        // actually reduces the price. Whop has no idea WELCOME20-style codes
+        // exist unless a Super Admin has separately created a discounted
+        // checkout link in Whop's own dashboard and registered it here — the
+        // "normal" per-plan checkout URL always shows Whop's full configured
+        // price, discount or no discount. Silently falling back to it when no
+        // override exists (the previous behavior) is exactly how a customer
+        // ends up quoted 159.20 MAD in Innovacar and then billed 199 MAD by
+        // Whop — so a real discount with no override is a hard stop, never a
+        // silent downgrade to the wrong price.
         String promoOverrideUrl = null;
         if (promo != null) {
             promoOverrideUrl = promoCodePlanLinkRepository
@@ -333,9 +347,21 @@ public class BillingController {
                     .map(PromoCodePlanLink::getWhopCheckoutUrlOverride)
                     .orElse(null);
             if (promoOverrideUrl != null && promoOverrideUrl.isBlank()) promoOverrideUrl = null;
-            if (promoOverrideUrl == null) {
-                log.info("[BILLING_CHECKOUT] Promo {} has no dedicated checkout URL for plan={} cycle={}; using normal checkout URL.",
-                        promo.getCode(), plan.getCode(), cycle);
+
+            if (promoOverrideUrl == null && discountAmount.compareTo(BigDecimal.ZERO) > 0) {
+                log.error("[BILLING_CHECKOUT_BLOCKED] Promo {} has no provider-side discounted checkout link for plan={} cycle={} — "
+                                + "refusing to redirect tenantId={} to the full-price checkout.",
+                        promo.getCode(), plan.getCode(), cycle, tenantId);
+                Map<String, Object> errData = new LinkedHashMap<>();
+                errData.put("promoCode", promo.getCode());
+                errData.put("planCode", plan.getCode());
+                errData.put("billingCycle", cycle);
+                return ResponseEntity.status(409).body(Map.of(
+                        "success", false,
+                        "errorCode", "PROMO_CHECKOUT_NOT_CONFIGURED",
+                        "message", "This promo code's discount has not been configured with the payment provider yet. "
+                                + "Please contact support before completing checkout — you have not been charged.",
+                        "data", errData));
             }
         }
 
