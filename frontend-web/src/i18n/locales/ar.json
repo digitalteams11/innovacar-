@@ -946,7 +946,9 @@
     "totalPending": "المعلق الكلي",
     "totalOverdue": "المتأخر الكلي",
     "invoices": "فواتير",
-    "deleteConfirm": "هل تريد حذف هذه الفاتورة؟"
+    "deleteConfirm": "هل تريد حذف هذه الفاتورة؟",
+    "noInvoicesFound": "لم يتم العثور على فواتير",
+    "markAsPaid": "وضع علامة كمدفوعة"
   },
   "agency": {
     "title": "نظرة عامة على الوكالة",

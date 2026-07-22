@@ -13,6 +13,7 @@ import api from '../api/axios';
 import { useSubscription } from '../hooks/useSubscription';
 import ApiErrorState from '../components/ApiErrorState';
 import { normalizeStatusCode, translateFuelType, translateTransmission, translateVehicleCategory, translateVehicleStatus } from '../utils/statusLabels';
+import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 
 interface Vehicle {
   id: number;
@@ -406,6 +407,55 @@ export default function Vehicles() {
           </div>
         ) : (
           <div className="data-surface">
+            <ResponsiveDataView
+              mobile={
+                trashData.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-8 text-center text-xs text-slate-400">
+                    <Trash2 size={20} className="text-slate-300" />
+                    Trash is empty
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-3">
+                    {trashData.map((vehicle) => (
+                      <div key={vehicle.id} className="rounded-xl border border-[#e8e6e1]/60 bg-white p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-[#1e293b]">{vehicle.marque}</p>
+                            <p className="font-mono text-xs text-slate-400">{vehicle.plate || 'N/A'}</p>
+                          </div>
+                          <span className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                            vehicle.daysRemaining <= 3 ? 'bg-danger-50 text-danger-500' : 'bg-warning-50 text-warning-500'
+                          }`}>
+                            {t('vehicles.daysLeft', { count: vehicle.daysRemaining })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          {vehicle.deletedAt ? new Date(vehicle.deletedAt).toLocaleString() : 'N/A'}
+                        </p>
+                        <div className="flex items-center gap-2 border-t border-[#e8e6e1]/60 pt-2">
+                          <button
+                            onClick={() => restoreVehicle(vehicle.id)}
+                            disabled={restoringId === vehicle.id}
+                            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-success-50 text-sm font-semibold text-success-600 disabled:opacity-50"
+                          >
+                            {restoringId === vehicle.id ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
+                            {t('common.restore')}
+                          </button>
+                          <button
+                            onClick={() => purgeVehiclePermanently(vehicle.id, vehicle.marque)}
+                            disabled={purgingId === vehicle.id}
+                            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-danger-50 text-danger-500 disabled:opacity-50"
+                            title={t('common.deletePermanently')}
+                          >
+                            {purgingId === vehicle.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              }
+              desktop={
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left min-w-[600px]">
                 <thead>
@@ -469,6 +519,8 @@ export default function Vehicles() {
                 </tbody>
               </table>
             </div>
+              }
+            />
             {trashData.length > 0 && (
               <div className="px-3 sm:px-5 py-3 flex items-center gap-2 text-[11px] text-slate-400 border-t border-[#e8e6e1]/50">
                 <AlertTriangle size={12} />

@@ -953,7 +953,9 @@
     "totalPending": "Total Pending",
     "totalOverdue": "Total Overdue",
     "invoices": "invoices",
-    "deleteConfirm": "Delete this invoice?"
+    "deleteConfirm": "Delete this invoice?",
+    "noInvoicesFound": "No invoices found",
+    "markAsPaid": "Mark as paid"
   },
   "agency": {
     "title": "Agency Overview",

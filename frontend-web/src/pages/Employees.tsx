@@ -9,6 +9,8 @@ import { isPasswordStrong } from '../lib/passwordPolicy';
 import { Plus, Download, Mail, Phone, Trash2, Edit3, Loader2, KeyRound, Users } from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
+import ResponsiveDataView from '../components/shared/ResponsiveDataView';
+import ActionMenu from '../components/shared/ActionMenu';
 
 interface Employee {
   id: number;
@@ -297,6 +299,54 @@ export default function Employees() {
           <Loader2 size={32} className="animate-spin text-brand-500" />
         </div>
       ) : (
+        <ResponsiveDataView
+          mobile={
+            filteredEmployees.length === 0 ? (
+              <div className="data-surface py-10 text-center text-sm text-[var(--text-muted)]">{t('employees.noEmployees')}</div>
+            ) : (
+              <div className="space-y-3">
+                {filteredEmployees.map((emp) => (
+                  <div key={emp.id} className="data-surface space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-sm font-bold text-brand-500">
+                          {emp.name?.split(' ').map((n) => n[0]).join('').slice(0, 2) || '?'}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-semibold text-[var(--text-primary)]">{emp.name}</h3>
+                          <p className="truncate text-xs text-[var(--text-muted)]">{roleLabel(emp.role)}{emp.department ? ` · ${emp.department}` : ''}</p>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold uppercase ${emp.status === 'ACTIVE' ? 'bg-success-50 text-success-500' : 'bg-slate-500/10 text-[var(--text-muted)]'}`}>
+                        {statusLabel(emp.status)}
+                      </span>
+                    </div>
+                    <div className="space-y-1 border-t border-[var(--border-subtle)] pt-3 text-xs text-[var(--text-muted)]">
+                      <div className="flex items-center gap-1.5 truncate"><Mail size={12} className="shrink-0" />{emp.email}</div>
+                      <div className="flex items-center gap-1.5"><Phone size={12} className="shrink-0" />{emp.phone || t('common.notAvailable', 'N/A')}</div>
+                    </div>
+                    <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] pt-3">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(emp)}
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-50 text-sm font-semibold text-brand-600"
+                      >
+                        <Edit3 size={15} /> {t('common.edit')}
+                      </button>
+                      <ActionMenu
+                        ariaLabel={t('employees.actions')}
+                        items={[
+                          { label: t('employees.resetPassword'), icon: <KeyRound size={15} />, onClick: () => resetPassword(emp) },
+                          { label: t('employees.deleteEmployee'), icon: <Trash2 size={15} />, onClick: () => deleteEmployee(emp.id), danger: true },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          desktop={
         <div className="data-surface">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left">
@@ -348,6 +398,8 @@ export default function Employees() {
             </table>
           </div>
         </div>
+          }
+        />
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => { if (!saving) setIsModalOpen(false); }} title={editingId ? t('employees.editEmployee') : t('employees.newEmployee')}>

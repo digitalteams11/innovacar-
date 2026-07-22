@@ -953,7 +953,9 @@
     "totalPending": "Total en attente",
     "totalOverdue": "Total en retard",
     "invoices": "factures",
-    "deleteConfirm": "Supprimer cette facture ?"
+    "deleteConfirm": "Supprimer cette facture ?",
+    "noInvoicesFound": "Aucune facture trouvée",
+    "markAsPaid": "Marquer comme payée"
   },
   "agency": {
     "title": "Vue d'ensemble de l'agence",

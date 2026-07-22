@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { trialBadgeClass, trialCountdownText } from '../lib/trialDisplay';
+import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 
 const planIcons: Record<string, any> = {
   Trial: Zap,
@@ -555,6 +556,35 @@ export default function Subscription() {
                 No invoices found. Billing history will appear here once you have a paid subscription.
               </div>
             ) : (
+              <ResponsiveDataView
+                mobile={
+                  <div className="space-y-3 p-3">
+                    {invoices.map((inv) => (
+                      <div key={inv.id} className="rounded-xl border border-[#e8e6e1]/60 bg-slate-50/30 p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-mono text-sm text-[#1e293b]">{inv.invoiceNumber}</span>
+                          <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            inv.status === 'PAID'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : inv.status === 'PENDING'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-rose-50 text-rose-600 border border-rose-200'
+                          }`}>
+                            {inv.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-slate-500">
+                          <span className="capitalize">{inv.planName} · {inv.billingCycle?.toLowerCase()}</span>
+                          <span className="font-semibold text-[#1e293b]">{inv.total} {inv.currency}</span>
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {inv.issuedAt ? new Date(inv.issuedAt).toLocaleDateString() : '—'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                }
+                desktop={
               <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full">
                   <thead>
@@ -595,6 +625,8 @@ export default function Subscription() {
                   </tbody>
                 </table>
               </div>
+                }
+              />
             )}
           </div>
         )}

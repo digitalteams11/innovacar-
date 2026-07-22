@@ -5,6 +5,7 @@ import api from '../api/axios';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { resolveApiErrorMessage } from '../i18n/apiError';
+import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 
 const emptyForm = {
   vehicleId: '',
@@ -302,6 +303,66 @@ export default function Maintenance() {
         </div>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="animate-spin text-brand-500" size={28} /></div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-[#e8e6e1] bg-white py-16 text-center">
+          <p className="text-sm font-semibold text-slate-600">{t('maintenance.empty.title')}</p>
+          <p className="mt-1 text-sm text-slate-400">{t('maintenance.empty.subtitle')}</p>
+        </div>
+      ) : (
+        <ResponsiveDataView
+          mobile={
+            <div className="space-y-3">
+              {rows.map((row) => (
+                <div key={row.id} className="rounded-lg border border-[#e8e6e1] bg-white p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#1e293b]">{row.vehicle}</p>
+                      <p className="text-xs text-slate-400">{row.plate}</p>
+                    </div>
+                    <span className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${statusClass(row.status)}`}>
+                      {String(t(`maintenance.statusLabel.${row.status}`, { defaultValue: row.status?.replace('_', ' ') }))}
+                    </span>
+                  </div>
+                  <div className="text-sm text-[#1e293b]">
+                    {row.title}
+                    {row.description && <p className="mt-0.5 text-xs text-slate-400">{row.description}</p>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 border-t border-[#e8e6e1] pt-3 text-xs text-slate-500">
+                    <span>{row.serviceProvider || '-'}</span>
+                    <span className="text-right font-semibold text-[#1e293b]">{Number(row.cost || 0).toLocaleString()} MAD</span>
+                    <span>{(row.scheduledDate || row.scheduledAt) ? new Date(row.scheduledDate || row.scheduledAt).toLocaleDateString() : '-'}</span>
+                    <span className="text-right">{row.mileage ?? '-'}</span>
+                  </div>
+                  {(row.status === 'SCHEDULED' || row.status === 'IN_PROGRESS') && (
+                    <div className="flex items-center gap-2 border-t border-[#e8e6e1] pt-3">
+                      {row.status === 'SCHEDULED' && (
+                        <button title={t('maintenance.actions.start')} disabled={updatingMaintenanceId === row.id}
+                          onClick={() => changeStatus(row.id, 'IN_PROGRESS')}
+                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-50 text-sm font-semibold text-brand-600 disabled:opacity-50">
+                          {updatingMaintenanceId === row.id ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} {t('maintenance.actions.start')}
+                        </button>
+                      )}
+                      {row.status === 'IN_PROGRESS' && (
+                        <button title={t('maintenance.actions.complete')} disabled={updatingMaintenanceId === row.id}
+                          onClick={() => changeStatus(row.id, 'COMPLETED')}
+                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-success-50 text-sm font-semibold text-success-600 disabled:opacity-50">
+                          {updatingMaintenanceId === row.id ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} {t('maintenance.actions.complete')}
+                        </button>
+                      )}
+                      <button title={t('maintenance.actions.cancel')} disabled={updatingMaintenanceId === row.id}
+                        onClick={() => changeStatus(row.id, 'CANCELLED')}
+                        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-danger-50 text-red-500 disabled:opacity-50">
+                        {updatingMaintenanceId === row.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          }
+          desktop={
       <div className="border border-[#e8e6e1] rounded-lg bg-white overflow-x-auto">
         <table className="w-full min-w-[860px] text-left">
           <thead className="bg-[#f5f5f0] text-[11px] uppercase text-slate-500">
@@ -317,16 +378,7 @@ export default function Maintenance() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e8e6e1]">
-            {loading ? (
-              <tr><td colSpan={8} className="py-16 text-center"><Loader2 className="inline animate-spin text-brand-500" /></td></tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center">
-                  <p className="text-sm font-semibold text-slate-600">{t('maintenance.empty.title')}</p>
-                  <p className="mt-1 text-sm text-slate-400">{t('maintenance.empty.subtitle')}</p>
-                </td>
-              </tr>
-            ) : rows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.id} className="text-sm">
                 <td className="p-3 font-medium">
                   {row.vehicle}
@@ -379,6 +431,9 @@ export default function Maintenance() {
           </tbody>
         </table>
       </div>
+          }
+        />
+      )}
 
       <Modal isOpen={open} onClose={() => !saving && setOpen(false)} title={t('maintenance.modal.title')}>
         <div className="space-y-4">

@@ -8,6 +8,8 @@ import { Plus, Download, FileText, Trash2, CheckCircle2, Clock, AlertCircle, Loa
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
 import { FilterChips } from '../components/FilterChips';
+import ResponsiveDataView from '../components/shared/ResponsiveDataView';
+import ActionMenu from '../components/shared/ActionMenu';
 
 interface Invoice {
   id: number;
@@ -174,6 +176,15 @@ export default function Invoices() {
     }
   };
 
+  const invoiceStatusBadge = (invoice: Invoice) => (
+    <span className={`inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+      invoice.status === 'PAID' ? 'bg-success-50 text-success-500' : invoice.status === 'PENDING' ? 'bg-warning-50 text-warning-500' : 'bg-danger-50 text-danger-500'
+    }`}>
+      {invoice.status === 'PAID' ? <CheckCircle2 size={12} /> : invoice.status === 'PENDING' ? <Clock size={12} /> : <AlertCircle size={12} />}
+      {invoice.status === 'PAID' ? t('invoices.paid') : invoice.status === 'PENDING' ? t('invoices.pending') : t('invoices.overdue')}
+    </span>
+  );
+
   const markAsPaid = async (id: number) => {
     try {
       await api.patch(`/invoices/${id}/pay`);
@@ -228,6 +239,55 @@ export default function Invoices() {
           <Loader2 size={32} className="animate-spin text-brand-500" />
         </div>
       ) : (
+        <ResponsiveDataView
+          mobile={
+            filteredData.length === 0 ? (
+              <div className="data-surface py-10 text-center text-sm text-slate-400">{t('invoices.noInvoicesFound', 'No invoices found')}</div>
+            ) : (
+              <div className="space-y-3">
+                {filteredData.map((invoice) => (
+                  <div key={invoice.id} className="data-surface space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-400">
+                          <FileText size={13} /> {invoice.invoiceNumber}
+                        </span>
+                        <h3 className="mt-1 truncate text-sm font-semibold text-[#1e293b] dark:text-white">{invoice.clientName}</h3>
+                      </div>
+                      {invoiceStatusBadge(invoice)}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span>{new Date(invoice.issueDate).toLocaleDateString()} → {new Date(invoice.dueDate).toLocaleDateString()}</span>
+                      <span className="text-sm font-bold text-[#1e293b] dark:text-white">{invoice.amount.toLocaleString()} MAD</span>
+                    </div>
+                    <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] pt-3">
+                      {invoice.status !== 'PAID' && (
+                        <button
+                          onClick={() => markAsPaid(invoice.id)}
+                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-success-50 text-sm font-semibold text-success-600"
+                        >
+                          <CheckCircle2 size={15} /> {t('invoices.markAsPaid', 'Mark as paid')}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => openEdit(invoice)}
+                        className={`flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-50 text-sm font-semibold text-brand-600 ${invoice.status === 'PAID' ? 'flex-1' : 'px-4'}`}
+                      >
+                        <FileText size={15} /> {t('common.edit', 'Edit')}
+                      </button>
+                      <ActionMenu
+                        ariaLabel={t('invoices.actions')}
+                        items={[
+                          { label: t('common.delete', 'Delete'), icon: <Trash2 size={15} />, onClick: () => deleteInvoice(invoice.id), danger: true },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          desktop={
         <div className="data-surface">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left">
@@ -255,14 +315,7 @@ export default function Invoices() {
                     <td className="px-5 py-4 text-sm text-slate-400 font-normal">{new Date(invoice.issueDate).toLocaleDateString()}</td>
                     <td className="px-5 py-4 text-sm text-slate-400 font-normal">{new Date(invoice.dueDate).toLocaleDateString()}</td>
                     <td className="px-5 py-4 font-bold text-[#1e293b]">{invoice.amount.toLocaleString()} MAD</td>
-                    <td className="px-5 py-4">
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
-                        invoice.status === 'PAID' ? 'bg-success-50 text-success-500' : invoice.status === 'PENDING' ? 'bg-warning-50 text-warning-500' : 'bg-danger-50 text-danger-500'
-                      }`}>
-                        {invoice.status === 'PAID' ? <CheckCircle2 size={12} /> : invoice.status === 'PENDING' ? <Clock size={12} /> : <AlertCircle size={12} />}
-                        {invoice.status === 'PAID' ? t('invoices.paid') : invoice.status === 'PENDING' ? t('invoices.pending') : t('invoices.overdue')}
-                      </span>
-                    </td>
+                    <td className="px-5 py-4">{invoiceStatusBadge(invoice)}</td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {invoice.status !== 'PAID' && (
@@ -281,6 +334,8 @@ export default function Invoices() {
             </table>
           </div>
         </div>
+          }
+        />
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Edit Invoice' : t('invoices.newInvoice')}>
