@@ -31,8 +31,14 @@ import java.util.*;
 /**
  * Agency-facing billing endpoints.
  *
- * POST /api/billing/promo/validate  â€” validate & compute promo discount
- * POST /api/billing/checkout        â€” create Whop checkout session and return URL
+ * POST /api/billing/checkout — create Whop checkout session and return URL
+ *
+ * There is deliberately no local promo-code validation endpoint: Whop's own
+ * checkout page has its own "Add promo code" field, which is the single
+ * place a customer enters and applies a promo code. createCheckout() below
+ * still accepts an optional promoCode for the (currently unused, defensive)
+ * case where a caller supplies one — see resolveCheckoutUrl()'s
+ * PROMO_CHECKOUT_NOT_CONFIGURED hard-stop — but no frontend flow sends one.
  */
 @RestController
 @RequestMapping("/api/billing")
@@ -139,140 +145,6 @@ public class BillingController {
     }
     private static long toLong(Object o) { return o instanceof Number n ? n.longValue() : 0L; }
     private static int  toInt(Object o)  { return o instanceof Number n ? n.intValue()  : 0; }
-
-    // â”€â”€ POST /api/billing/promo/validate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    @PostMapping("/promo/validate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> validatePromo(@RequestBody Map<String, Object> body) {
-        Long tenantId = TenantContext.getCurrentTenantId();
-        Tenant tenant  = tenantId != null ? tenantRepository.findById(tenantId).orElse(null) : null;
-
-        String code    = Objects.toString(body.get("code"), "").trim().toUpperCase(Locale.ROOT);
-        Long   planId  = body.get("planId")   != null ? Long.valueOf(body.get("planId").toString())   : null;
-        String planCode= Objects.toString(body.getOrDefault("planCode", ""), "").trim().toUpperCase(Locale.ROOT);
-        String cycle   = Objects.toString(body.getOrDefault("billingCycle", "MONTHLY"), "MONTHLY").toUpperCase(Locale.ROOT);
-
-        if (code.isBlank()) {
-            return promoError("PROMO_CODE_REQUIRED", "Promo code is required.");
-        }
-
-        SubscriptionPlan plan = planId != null
-                ? planRepository.findById(planId).orElse(null)
-                : (!planCode.isBlank() ? planRepository.findByCode(planCode).orElse(null) : null);
-
-        PromoCode promo = promoCodeRepository.findByCodeAndDeletedFalse(code).orElse(null);
-
-        if (promo == null) {
-            return promoError("PROMO_CODE_NOT_FOUND", "Promo code not found.");
-        }
-        if (!Boolean.TRUE.equals(promo.getIsActive())) {
-            return promoError("PROMO_CODE_INACTIVE", "This promo code is not active.");
-        }
-
-        LocalDate today = LocalDate.now();
-        if (promo.getValidFrom() != null && today.isBefore(promo.getValidFrom())) {
-            return promoError("PROMO_CODE_NOT_STARTED", "This promo code is not yet valid.");
-        }
-        if (promo.getValidTo() != null && today.isAfter(promo.getValidTo())) {
-            return promoError("PROMO_CODE_EXPIRED", "This promo code has expired.");
-        }
-
-        // Global redemption limit (count USED redemptions, not RESERVED)
-        if (promo.getMaxUses() != null) {
-            long usedCount = promoCodeRedemptionRepository.countByPromoCodeIdAndStatus(promo.getId(), "USED");
-            if (usedCount >= promo.getMaxUses()) {
-                return promoError("PROMO_CODE_LIMIT_REACHED", "This promo code has reached its maximum usage limit.");
-            }
-        }
-
-        // Per-agency limit
-        if (promo.getMaxUsesPerAgency() != null && tenantId != null) {
-            long agencyUsed = promoCodeRedemptionRepository.countByPromoCodeIdAndTenantIdAndStatus(promo.getId(), tenantId, "USED");
-            if (agencyUsed >= promo.getMaxUsesPerAgency()) {
-                return promoError("PROMO_CODE_AGENCY_LIMIT_REACHED", "You have already used this promo code the maximum allowed times.");
-            }
-        }
-
-        // Plan eligibility (skip if appliesToAllPlans)
-        if (!Boolean.TRUE.equals(promo.getAppliesToAllPlans())
-                && promo.getApplicablePlans() != null && !promo.getApplicablePlans().isBlank()
-                && plan != null) {
-            boolean eligible = Arrays.stream(promo.getApplicablePlans().split(","))
-                    .map(String::trim)
-                    .anyMatch(v -> v.equalsIgnoreCase(plan.getCode()) || v.equalsIgnoreCase(plan.getName()));
-            if (!eligible) {
-                return promoError("PROMO_CODE_PLAN_NOT_ALLOWED", "This promo code does not apply to the selected plan.");
-            }
-        }
-
-        // Billing cycle restriction
-        if (promo.getBillingCycle() != null && !"BOTH".equalsIgnoreCase(promo.getBillingCycle())
-                && !promo.getBillingCycle().equalsIgnoreCase(cycle)) {
-            return promoError("PROMO_CODE_BILLING_CYCLE_NOT_ALLOWED",
-                    "This promo code is only valid for " + promo.getBillingCycle().toLowerCase(Locale.ROOT) + " billing.");
-        }
-
-        // First-time only
-        if (Boolean.TRUE.equals(promo.getFirstTimeOnly()) && tenant != null) {
-            boolean isFirstTime = "TRIAL".equalsIgnoreCase(tenant.getStatus())
-                    || "TRIAL".equalsIgnoreCase(tenant.getPlanName());
-            if (!isFirstTime) {
-                return promoError("PROMO_CODE_FIRST_TIME_ONLY", "This promo code is for first-time subscribers only.");
-            }
-        }
-
-        // Compute amounts
-        BigDecimal originalPrice = BigDecimal.ZERO;
-        if (plan != null) {
-            originalPrice = "YEARLY".equalsIgnoreCase(cycle) ? plan.getYearlyPrice() : plan.getMonthlyPrice();
-            if (originalPrice == null) originalPrice = BigDecimal.ZERO;
-        }
-
-        // Minimum amount check
-        if (promo.getMinimumAmount() != null && originalPrice.compareTo(promo.getMinimumAmount()) < 0) {
-            return promoError("PROMO_CODE_MINIMUM_AMOUNT_NOT_MET",
-                    "This promo code requires a minimum amount of " + promo.getMinimumAmount().toPlainString() + " MAD.");
-        }
-
-        BigDecimal discountAmount = computeDiscount(promo, originalPrice);
-        BigDecimal finalPrice = originalPrice.subtract(discountAmount).max(BigDecimal.ZERO);
-        finalPrice    = finalPrice.setScale(2, RoundingMode.HALF_UP);
-        discountAmount = discountAmount.setScale(2, RoundingMode.HALF_UP);
-
-        // A promo that doesn't actually reduce the recurring price (e.g. a
-        // FREE_MONTHS/PLAN_TRIAL promotion where discountAmount is zero) never
-        // needs a provider-side override — Whop's normal price already
-        // matches the quote. Only a real discount amount requires one, and
-        // checkout will hard-block (see BillingController#createCheckout) if
-        // it's missing — this flag lets the frontend warn the user before
-        // they even try, rather than only failing at the checkout click.
-        boolean checkoutConfigured = discountAmount.compareTo(BigDecimal.ZERO) == 0;
-        if (!checkoutConfigured && plan != null) {
-            checkoutConfigured = promoCodePlanLinkRepository
-                    .findByPromoCodeIdAndPlanCodeIgnoreCaseAndBillingCycleIgnoreCaseAndActiveTrue(
-                            promo.getId(), plan.getCode(), cycle)
-                    .map(link -> link.getWhopCheckoutUrlOverride() != null && !link.getWhopCheckoutUrlOverride().isBlank())
-                    .orElse(false);
-        }
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("valid", true);
-        data.put("promoCodeId", promo.getId());
-        data.put("code", promo.getCode());
-        data.put("discountType", buildDiscountType(promo));
-        data.put("discountValue", promo.getDiscountValue() != null ? promo.getDiscountValue() : 0);
-        data.put("freeMonths", promo.getFreeMonths() != null ? promo.getFreeMonths() : 0);
-        data.put("originalAmount", originalPrice);
-        data.put("originalPrice", originalPrice);
-        data.put("discountAmount", discountAmount);
-        data.put("finalAmount", finalPrice);
-        data.put("finalPrice", finalPrice);
-        data.put("currency", plan != null && plan.getCurrency() != null ? plan.getCurrency() : "MAD");
-        data.put("message", buildPromoMessage(promo, discountAmount, finalPrice));
-        data.put("checkoutConfigured", checkoutConfigured);
-        return ResponseEntity.ok(Map.of("success", true, "data", data));
-    }
 
     // â”€â”€ POST /api/billing/checkout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -599,33 +471,6 @@ public class BillingController {
         };
     }
 
-    private String buildDiscountType(PromoCode promo) {
-        String type = Optional.ofNullable(promo.getPromotionType()).orElse("DISCOUNT").toUpperCase(Locale.ROOT);
-        if ("DISCOUNT".equals(type)) {
-            return "PERCENTAGE".equalsIgnoreCase(promo.getDiscountType()) ? "PERCENT_OFF" : "AMOUNT_OFF";
-        }
-        return type;
-    }
-
-    private String buildPromoMessage(PromoCode promo, BigDecimal discountAmount, BigDecimal finalPrice) {
-        String type = Optional.ofNullable(promo.getPromotionType()).orElse("DISCOUNT").toUpperCase(Locale.ROOT);
-        return switch (type) {
-            case "FREE_MONTHS" -> (promo.getFreeMonths() != null ? promo.getFreeMonths() : 1)
-                    + " free month(s) added to your subscription.";
-            case "PLAN_TRIAL" -> "Special trial plan applied.";
-            case "FREE_FEATURE" -> "Special feature unlocked: " + promo.getFreeFeatureCode();
-            default -> {
-                if ("PERCENTAGE".equalsIgnoreCase(promo.getDiscountType()) && promo.getDiscountValue() != null) {
-                    yield promo.getDiscountValue().toPlainString() + "% discount applied. Final price: "
-                            + finalPrice.toPlainString() + " MAD.";
-                } else {
-                    yield discountAmount.toPlainString() + " MAD discount applied. Final price: "
-                            + finalPrice.toPlainString() + " MAD.";
-                }
-            }
-        };
-    }
-
     // â”€â”€ GET /api/billing/plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @GetMapping("/plans")
@@ -748,13 +593,6 @@ public class BillingController {
         return List.of();
     }
 
-    private ResponseEntity<Map<String, Object>> promoError(String errorCode, String message) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("valid", false);
-        data.put("errorCode", errorCode);
-        data.put("message", message);
-        return ResponseEntity.ok(Map.of("success", false, "data", data));
-    }
 }
 
 

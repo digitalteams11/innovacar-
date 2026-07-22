@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-22T14:25:13.211Z
+Generated: 2026-07-22T15:53:24.330Z
 Scanned source files: 209
-Static translation keys used: 1871
+Static translation keys used: 1877
 
 ## Missing EN Keys (0)
 
@@ -48,7 +48,7 @@ None.
 
 None.
 
-## Possible Visible Hardcoded Text (1468)
+## Possible Visible Hardcoded Text (1469)
 
 ### By file
 
@@ -117,6 +117,7 @@ None.
 - src\components\settings\SecurityTab.tsx: 3
 - src\pages\Login.tsx: 3
 - src\pages\Settings.tsx: 3
+- src\pages\Vehicles.tsx: 3
 - src\components\LanguageSwitcher.tsx: 2
 - src\components\MobileBottomSheet.tsx: 2
 - src\components\Modal.tsx: 2
@@ -130,7 +131,6 @@ None.
 - src\pages\Invoices.tsx: 2
 - src\pages\ResetPassword.tsx: 2
 - src\pages\superadmin\SuperAdminAnalytics.tsx: 2
-- src\pages\Vehicles.tsx: 2
 - src\pages\VerifyEmail.tsx: 2
 - src\pages\VerifyResetCode.tsx: 2
 - src\pages\WhiteLabel.tsx: 2
@@ -182,9 +182,9 @@ None.
 - src\components\Modal.tsx:100 [prop:aria-label] - Close
 - src\components\ReservationDetailsModal.tsx:102 [jsx-text] - ABC-123-XY
 - src\components\ReservationDetailsModal.tsx:133 [jsx-text] - Casablanca International Airport (CMN)
-- src\components\settings\BillingTab.tsx:296 [jsx-text] - Payment received!
-- src\components\settings\BillingTab.tsx:297 [jsx-text] - Your subscription is being activated. This usually takes a few seconds after payment confirmation.
-- src\components\settings\BillingTab.tsx:423 [jsx-text] - Whop
+- src\components\settings\BillingTab.tsx:271 [jsx-text] - Payment received!
+- src\components\settings\BillingTab.tsx:272 [jsx-text] - Your subscription is being activated. This usually takes a few seconds after payment confirmation.
+- src\components\settings\BillingTab.tsx:398 [jsx-text] - Whop
 - src\components\settings\SecurityTab.tsx:447 [object:label] - Enable two-factor authentication
 - src\components\settings\SecurityTab.tsx:448 [object:label] - Verify your email address
 - src\components\settings\SecurityTab.tsx:449 [object:label] - Keep your phone number up to date
@@ -767,8 +767,8 @@ None.
 - src\pages\InspectionCapture.tsx:20 [object:title] - Documents
 - src\pages\InspectionCapture.tsx:21 [object:title] - Accessories
 - src\pages\InspectionCapture.tsx:22 [object:title] - Video Walkaround Photo
-- src\pages\Invoices.tsx:269 [jsx-text] - Pay
-- src\pages\Invoices.tsx:278 [jsx-text] - No invoices found
+- src\pages\Invoices.tsx:322 [jsx-text] - Pay
+- src\pages\Invoices.tsx:331 [jsx-text] - No invoices found
 - src\pages\Login.tsx:354 [prop:title] - Log In
 - src\pages\Login.tsx:355 [prop:description] - Log in to your Innovacar account to manage vehicles, reservations, contracts and clients.
 - src\pages\Login.tsx:479 [prop:placeholder] - XXXXX-XXXXX
@@ -858,70 +858,70 @@ None.
 - src\pages\Settings.tsx:734 [jsx-text] - More branding tools
 - src\pages\Settings.tsx:312 [prop:alt] - Avatar
 - src\pages\Settings.tsx:739 [prop:description] - Custom domain, logo, and white-label branding.
-- src\pages\Subscription.tsx:239 [jsx-text] - Special access by Innovax Technologies
-- src\pages\Subscription.tsx:254 [jsx-text] - Cancellation Scheduled
-- src\pages\Subscription.tsx:255 [jsx-text] - Your subscription will remain
-- src\pages\Subscription.tsx:298 [jsx-text] - Cancelling
-- src\pages\Subscription.tsx:302 [jsx-text] - Most Popular
-- src\pages\Subscription.tsx:359 [jsx-text] - Cancel subscription
-- src\pages\Subscription.tsx:377 [jsx-text] - Monthly
-- src\pages\Subscription.tsx:387 [jsx-text] - Yearly
-- src\pages\Subscription.tsx:389 [jsx-text] - Save 17%
-- src\pages\Subscription.tsx:412 [jsx-text] - Most Popular
-- src\pages\Subscription.tsx:418 [jsx-text] - Current
-- src\pages\Subscription.tsx:446 [jsx-text] - Vehicles
-- src\pages\Subscription.tsx:450 [jsx-text] - Employees
-- src\pages\Subscription.tsx:458 [jsx-text] - Storage
-- src\pages\Subscription.tsx:484 [jsx-text] - Feature Comparison
-- src\pages\Subscription.tsx:490 [jsx-text] - Feature
-- src\pages\Subscription.tsx:539 [jsx-text] - Billing History
-- src\pages\Subscription.tsx:554 [jsx-text] - No invoices found. Billing history will appear here once you have a paid subscription.
-- src\pages\Subscription.tsx:562 [jsx-text] - Invoice
-- src\pages\Subscription.tsx:563 [jsx-text] - Plan
-- src\pages\Subscription.tsx:564 [jsx-text] - Billing
-- src\pages\Subscription.tsx:565 [jsx-text] - Total
-- src\pages\Subscription.tsx:566 [jsx-text] - Status
-- src\pages\Subscription.tsx:567 [jsx-text] - Date
-- src\pages\Subscription.tsx:613 [jsx-text] - Cancel Subscription
-- src\pages\Subscription.tsx:619 [jsx-text] - What happens when you cancel:
-- src\pages\Subscription.tsx:621 [jsx-text] - Your subscription remains
-- src\pages\Subscription.tsx:622 [jsx-text] - All your data is preserved and accessible
-- src\pages\Subscription.tsx:623 [jsx-text] - You can undo this cancellation anytime before the period ends
-- src\pages\Subscription.tsx:624 [jsx-text] - After the period ends, your account switches to read-only mode
-- src\pages\Subscription.tsx:629 [jsx-text] - Why are you cancelling?
-- src\pages\Subscription.tsx:637 [jsx-text] - Select a reason...
-- src\pages\Subscription.tsx:645 [jsx-text] - Anything else you'd like to share?
-- src\pages\Subscription.tsx:662 [jsx-text] - Keep Subscription
-- src\pages\Subscription.tsx:683 [jsx-text] - Confirm Subscription
-- src\pages\Subscription.tsx:684 [jsx-text] - You are subscribing to
-- src\pages\Subscription.tsx:690 [jsx-text] - Plan
-- src\pages\Subscription.tsx:694 [jsx-text] - Billing
-- src\pages\Subscription.tsx:698 [jsx-text] - Total
-- src\pages\Subscription.tsx:705 [jsx-text] - Checkout is not configured for this plan yet. Please contact support.
-- src\pages\Subscription.tsx:718 [jsx-text] - Cancel
-- src\pages\Subscription.tsx:233 [prop:title] - Subscription & Billing
-- src\pages\Subscription.tsx:347 [prop:label] - Vehicles
-- src\pages\Subscription.tsx:348 [prop:label] - Employees
-- src\pages\Subscription.tsx:349 [prop:label] - GPS Devices
-- src\pages\Subscription.tsx:350 [prop:label] - Reservations
-- src\pages\Subscription.tsx:653 [prop:placeholder] - Your feedback helps us improve...
-- src\pages\Subscription.tsx:25 [object:label] - Max Vehicles
-- src\pages\Subscription.tsx:26 [object:label] - Max Employees
-- src\pages\Subscription.tsx:27 [object:label] - GPS Devices
-- src\pages\Subscription.tsx:28 [object:label] - Reservations / Month
-- src\pages\Subscription.tsx:29 [object:label] - Storage
-- src\pages\Subscription.tsx:30 [object:label] - Analytics & Reports
-- src\pages\Subscription.tsx:31 [object:label] - Digital Signatures
-- src\pages\Subscription.tsx:32 [object:label] - QR Contracts
-- src\pages\Subscription.tsx:33 [object:label] - White Label
-- src\pages\Subscription.tsx:34 [object:label] - Priority Support
-- src\pages\Subscription.tsx:38 [object:label] - Too expensive
-- src\pages\Subscription.tsx:39 [object:label] - Missing features I need
-- src\pages\Subscription.tsx:40 [object:label] - Switching to a competitor
-- src\pages\Subscription.tsx:41 [object:label] - Not using it enough
-- src\pages\Subscription.tsx:42 [object:label] - Too many technical issues
-- src\pages\Subscription.tsx:43 [object:label] - Business closed or paused
-- src\pages\Subscription.tsx:44 [object:label] - Other reason
+- src\pages\Subscription.tsx:240 [jsx-text] - Special access by Innovax Technologies
+- src\pages\Subscription.tsx:255 [jsx-text] - Cancellation Scheduled
+- src\pages\Subscription.tsx:256 [jsx-text] - Your subscription will remain
+- src\pages\Subscription.tsx:299 [jsx-text] - Cancelling
+- src\pages\Subscription.tsx:303 [jsx-text] - Most Popular
+- src\pages\Subscription.tsx:360 [jsx-text] - Cancel subscription
+- src\pages\Subscription.tsx:378 [jsx-text] - Monthly
+- src\pages\Subscription.tsx:388 [jsx-text] - Yearly
+- src\pages\Subscription.tsx:390 [jsx-text] - Save 17%
+- src\pages\Subscription.tsx:413 [jsx-text] - Most Popular
+- src\pages\Subscription.tsx:419 [jsx-text] - Current
+- src\pages\Subscription.tsx:447 [jsx-text] - Vehicles
+- src\pages\Subscription.tsx:451 [jsx-text] - Employees
+- src\pages\Subscription.tsx:459 [jsx-text] - Storage
+- src\pages\Subscription.tsx:485 [jsx-text] - Feature Comparison
+- src\pages\Subscription.tsx:491 [jsx-text] - Feature
+- src\pages\Subscription.tsx:540 [jsx-text] - Billing History
+- src\pages\Subscription.tsx:555 [jsx-text] - No invoices found. Billing history will appear here once you have a paid subscription.
+- src\pages\Subscription.tsx:592 [jsx-text] - Invoice
+- src\pages\Subscription.tsx:593 [jsx-text] - Plan
+- src\pages\Subscription.tsx:594 [jsx-text] - Billing
+- src\pages\Subscription.tsx:595 [jsx-text] - Total
+- src\pages\Subscription.tsx:596 [jsx-text] - Status
+- src\pages\Subscription.tsx:597 [jsx-text] - Date
+- src\pages\Subscription.tsx:645 [jsx-text] - Cancel Subscription
+- src\pages\Subscription.tsx:651 [jsx-text] - What happens when you cancel:
+- src\pages\Subscription.tsx:653 [jsx-text] - Your subscription remains
+- src\pages\Subscription.tsx:654 [jsx-text] - All your data is preserved and accessible
+- src\pages\Subscription.tsx:655 [jsx-text] - You can undo this cancellation anytime before the period ends
+- src\pages\Subscription.tsx:656 [jsx-text] - After the period ends, your account switches to read-only mode
+- src\pages\Subscription.tsx:661 [jsx-text] - Why are you cancelling?
+- src\pages\Subscription.tsx:669 [jsx-text] - Select a reason...
+- src\pages\Subscription.tsx:677 [jsx-text] - Anything else you'd like to share?
+- src\pages\Subscription.tsx:694 [jsx-text] - Keep Subscription
+- src\pages\Subscription.tsx:715 [jsx-text] - Confirm Subscription
+- src\pages\Subscription.tsx:716 [jsx-text] - You are subscribing to
+- src\pages\Subscription.tsx:722 [jsx-text] - Plan
+- src\pages\Subscription.tsx:726 [jsx-text] - Billing
+- src\pages\Subscription.tsx:730 [jsx-text] - Total
+- src\pages\Subscription.tsx:737 [jsx-text] - Checkout is not configured for this plan yet. Please contact support.
+- src\pages\Subscription.tsx:750 [jsx-text] - Cancel
+- src\pages\Subscription.tsx:234 [prop:title] - Subscription & Billing
+- src\pages\Subscription.tsx:348 [prop:label] - Vehicles
+- src\pages\Subscription.tsx:349 [prop:label] - Employees
+- src\pages\Subscription.tsx:350 [prop:label] - GPS Devices
+- src\pages\Subscription.tsx:351 [prop:label] - Reservations
+- src\pages\Subscription.tsx:685 [prop:placeholder] - Your feedback helps us improve...
+- src\pages\Subscription.tsx:26 [object:label] - Max Vehicles
+- src\pages\Subscription.tsx:27 [object:label] - Max Employees
+- src\pages\Subscription.tsx:28 [object:label] - GPS Devices
+- src\pages\Subscription.tsx:29 [object:label] - Reservations / Month
+- src\pages\Subscription.tsx:30 [object:label] - Storage
+- src\pages\Subscription.tsx:31 [object:label] - Analytics & Reports
+- src\pages\Subscription.tsx:32 [object:label] - Digital Signatures
+- src\pages\Subscription.tsx:33 [object:label] - QR Contracts
+- src\pages\Subscription.tsx:34 [object:label] - White Label
+- src\pages\Subscription.tsx:35 [object:label] - Priority Support
+- src\pages\Subscription.tsx:39 [object:label] - Too expensive
+- src\pages\Subscription.tsx:40 [object:label] - Missing features I need
+- src\pages\Subscription.tsx:41 [object:label] - Switching to a competitor
+- src\pages\Subscription.tsx:42 [object:label] - Not using it enough
+- src\pages\Subscription.tsx:43 [object:label] - Too many technical issues
+- src\pages\Subscription.tsx:44 [object:label] - Business closed or paused
+- src\pages\Subscription.tsx:45 [object:label] - Other reason
 - src\pages\superadmin\SuperAdminAgencies.tsx:248 [jsx-text] - Create Agency
 - src\pages\superadmin\SuperAdminAgencies.tsx:167 [prop:aria-label] - Verified agency
 - src\pages\superadmin\SuperAdminAgencies.tsx:282 [prop:title] - Create New Agency
@@ -1591,8 +1591,9 @@ None.
 - src\pages\TicketDetail.tsx:160 [jsx-text] - Conversation
 - src\pages\TicketDetail.tsx:162 [jsx-text] - No messages yet.
 - src\pages\TicketDetail.tsx:184 [prop:placeholder] - Write a reply...
-- src\pages\Vehicles.tsx:464 [jsx-text] - Trash is empty
-- src\pages\Vehicles.tsx:474 [jsx-text] - Vehicles are permanently deleted automatically 30 days after being trashed (unless still linked to a contract/reservation).
+- src\pages\Vehicles.tsx:414 [jsx-text] - Trash is empty
+- src\pages\Vehicles.tsx:514 [jsx-text] - Trash is empty
+- src\pages\Vehicles.tsx:526 [jsx-text] - Vehicles are permanently deleted automatically 30 days after being trashed (unless still linked to a contract/reservation).
 - src\pages\VerifyEmail.tsx:43 [prop:title] - Verify Email
 - src\pages\VerifyEmail.tsx:44 [prop:description] - Verify your email address for your Innovacar account.
 - src\pages\VerifyResetCode.tsx:70 [prop:title] - Verify Reset Code

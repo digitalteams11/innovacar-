@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
 
@@ -173,38 +172,18 @@ class BillingControllerTest {
     }
 
     @Test
-    void validatePromo_welcome20OnBasicMonthly_quotes159_20() {
+    void checkout_basicMonthlyNoPromo_quotesFullPrice() {
+        // The modal no longer collects a promo code at all — Whop's own
+        // checkout page owns that field now (see BillingTab.tsx). Innovacar's
+        // side only ever quotes the plain plan price.
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant()));
-        when(planRepository.findById(1L)).thenReturn(Optional.of(basicPlan()));
-        when(promoCodeRepository.findByCodeAndDeletedFalse("WELCOME20")).thenReturn(Optional.of(welcome20()));
-        when(promoCodePlanLinkRepository.findByPromoCodeIdAndPlanCodeIgnoreCaseAndBillingCycleIgnoreCaseAndActiveTrue(
-                9L, "BASIC", "MONTHLY")).thenReturn(Optional.empty());
+        when(planRepository.findByCode("BASIC")).thenReturn(Optional.of(basicPlan()));
 
-        ResponseEntity<Map<String, Object>> response = billingController.validatePromo(Map.of(
-                "code", "welcome20", "planId", "1", "billingCycle", "MONTHLY"));
+        ResponseEntity<Map<String, Object>> response = billingController.createCheckout(Map.of(
+                "planCode", "BASIC", "billingCycle", "MONTHLY"));
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
-        assertThat(data.get("originalAmount")).isEqualTo(new BigDecimal("199.00"));
-        assertThat(data.get("discountAmount")).isEqualTo(new BigDecimal("39.80"));
-        assertThat(data.get("finalAmount")).isEqualTo(new BigDecimal("159.20"));
-        // No override link exists yet — the frontend must be told so it can warn
-        // the user before they click "Continue to checkout", not just fail there.
-        assertThat(data.get("checkoutConfigured")).isEqualTo(false);
-    }
-
-    @Test
-    void validatePromo_expiredCode_isRejected() {
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant()));
-        PromoCode expired = welcome20();
-        expired.setValidTo(LocalDate.now().minusDays(1));
-        when(promoCodeRepository.findByCodeAndDeletedFalse("WELCOME20")).thenReturn(Optional.of(expired));
-
-        ResponseEntity<Map<String, Object>> response = billingController.validatePromo(Map.of("code", "WELCOME20"));
-
-        assertThat(response.getBody()).containsEntry("success", false);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
-        assertThat(data.get("errorCode")).isEqualTo("PROMO_CODE_EXPIRED");
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody().get("finalPrice")).isEqualTo(new BigDecimal("199.00"));
+        assertThat(response.getBody().get("promoCode")).isNull();
     }
 }

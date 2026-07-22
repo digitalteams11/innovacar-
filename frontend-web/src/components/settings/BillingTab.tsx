@@ -39,6 +39,7 @@ interface PlanData {
   highlighted?: boolean;
   billingCycleAllowedMonthly?: boolean;
   billingCycleAllowedYearly?: boolean;
+  trialDays?: number;
 }
 
 interface InvoiceData {
@@ -66,9 +67,6 @@ export default function BillingTab() {
   const [selectedPlan, setSelectedPlan] = useState<PlanData | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showManage, setShowManage] = useState(true);
-  const [promoCode, setPromoCode] = useState('');
-  const [promoResult, setPromoResult] = useState<any>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('TOO_EXPENSIVE');
@@ -174,39 +172,7 @@ export default function BillingTab() {
 
   const openUpgrade = (plan: PlanData) => {
     setSelectedPlan(plan);
-    setPromoCode('');
-    setPromoResult(null);
     setShowUpgradeModal(true);
-  };
-
-  const handleApplyPromo = async (codeOverride?: string, cycleOverride?: string) => {
-    const code = (codeOverride ?? promoCode).trim();
-    if (!code || !selectedPlan) return;
-    setPromoLoading(true);
-    try {
-      const { data } = await api.post('/billing/promo/validate', {
-        code,
-        planId: selectedPlan.id,
-        planCode: selectedPlan.code,
-        billingCycle: (cycleOverride ?? billingCycle).toUpperCase(),
-      });
-      // Backend wraps valid result in { success, data: {...} }
-      const result = data?.data ?? data;
-      setPromoResult(result);
-      if (result?.valid === false) {
-        showToast(result.message || 'Invalid promo code.', 'error');
-      }
-    } catch {
-      setPromoResult(null);
-      showToast(t('settings.billingTab.promoValidationFailed'), 'error');
-    } finally {
-      setPromoLoading(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setPromoCode('');
-    setPromoResult(null);
   };
 
   const handleCheckout = async () => {
@@ -217,10 +183,13 @@ export default function BillingTab() {
     }
     setCheckoutLoading(true);
     try {
+      // Innovacar only ever sends the plan identity — no promo code, no
+      // frontend-calculated price. Whop's own checkout page is the single
+      // place a promo code is entered and applied; the provider is the only
+      // authoritative source for the final discounted price.
       const { data } = await api.post('/billing/checkout', {
-        planId: selectedPlan.id,
+        planCode: selectedPlan.code,
         billingCycle: billingCycle.toUpperCase(),
-        promoCode: promoResult?.valid ? promoCode.trim() : undefined,
       });
       if (data.success && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
@@ -233,11 +202,6 @@ export default function BillingTab() {
       const errCode = err?.response?.data?.errorCode;
       if (errCode === 'PLAN_CHECKOUT_URL_MISSING' || errCode === 'CHECKOUT_NOT_CONFIGURED') {
         showToast(err?.response?.data?.message || 'Checkout link is missing for this plan. Please configure it in Super Admin → Subscriptions.', 'error');
-      } else if (errCode === 'PROMO_CHECKOUT_NOT_CONFIGURED') {
-        // The backend refused to redirect rather than send the user to a Whop
-        // checkout priced differently than what we just quoted them — this is
-        // the intended, safe outcome, not a generic failure.
-        showToast(err?.response?.data?.message || t('settings.billingTab.promoCheckoutNotConfigured'), 'error');
       } else {
         showToast(err?.userMessage || 'Failed to create checkout session. Please try again.', 'error');
       }
@@ -469,19 +433,13 @@ export default function BillingTab() {
           <div className="pt-5 mt-5 border-t border-[#e8e6e1]/60 space-y-4">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => {
-                  setBillingCycle('monthly');
-                  if (promoResult?.valid && promoCode.trim()) handleApplyPromo(promoCode.trim(), 'MONTHLY');
-                }}
+                onClick={() => setBillingCycle('monthly')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium ${billingCycle === 'monthly' ? 'bg-[#0a0f2c] text-white' : 'bg-slate-50 text-slate-500'}`}
               >
                 {t('settings.billingTab.monthly')}
               </button>
               <button
-                onClick={() => {
-                  setBillingCycle('yearly');
-                  if (promoResult?.valid && promoCode.trim()) handleApplyPromo(promoCode.trim(), 'YEARLY');
-                }}
+                onClick={() => setBillingCycle('yearly')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium ${billingCycle === 'yearly' ? 'bg-[#0a0f2c] text-white' : 'bg-slate-50 text-slate-500'}`}
               >
                 {t('settings.billingTab.yearly')}
@@ -602,93 +560,61 @@ export default function BillingTab() {
 
       {/* Upgrade/checkout confirm modal */}
       {showUpgradeModal && selectedPlan && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-elevated w-full max-w-md p-6 space-y-4">
+          <div className="relative bg-white dark:bg-[#0f1428] rounded-2xl shadow-elevated w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto p-5 sm:p-6 space-y-4">
             <div>
-              <h3 className="text-lg font-bold text-[#1e293b]">{t('settings.billingTab.confirmPlanChange')}</h3>
-              <p className="text-sm text-slate-500 mt-1">
+              <h3 className="text-lg font-bold text-[#1e293b] dark:text-white">{t('settings.billingTab.confirmPlanChange')}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {t('settings.billingTab.subscribingTo', { plan: formatPlanName(selectedPlan.name, selectedPlan.code), cycle: formatCycle(billingCycle) })}
               </p>
             </div>
 
-            {/* Promo code */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                <Tag size={12} className="inline me-1" />{t('settings.billingTab.promoCode')}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoResult(null); }}
-                  placeholder="WELCOME20"
-                  className="flex-1 px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 uppercase tracking-wider"
-                />
-                <button
-                  onClick={() => handleApplyPromo()}
-                  disabled={promoLoading || !promoCode.trim()}
-                  className="px-4 py-2 bg-[#0a0f2c] text-white rounded-xl text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
-                >
-                  {promoLoading ? <Loader2 size={14} className="animate-spin" /> : t('settings.billingTab.apply')}
-                </button>
+            {/* Trial + price summary — Innovacar shows only the plain plan
+                price; Whop's own checkout page is the single place a promo
+                code is entered and the only authoritative source for the
+                final discounted price. */}
+            <div className="bg-[#f5f5f0] dark:bg-white/5 rounded-xl p-3 space-y-1.5 text-sm">
+              {(selectedPlan.trialDays ?? 0) > 0 && (
+                <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                  <span>{t('settings.billingTab.freeTrial')}</span>
+                  <span className="font-medium">{t('settings.billingTab.trialDays', { count: selectedPlan.trialDays })}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                <span>{(selectedPlan.trialDays ?? 0) > 0 ? t('settings.billingTab.dueToday') : t('settings.billingTab.subtotal')}</span>
+                <span className="font-medium">
+                  {(selectedPlan.trialDays ?? 0) > 0 ? formatMoney(0) : formatMoney(billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice)} MAD
+                </span>
               </div>
-              {promoResult?.valid && (
-                <div className="mt-2 flex items-center justify-between gap-2 text-sm text-emerald-600">
-                  <span className="flex items-center gap-1"><CheckCircle size={14} />{promoResult.message}</span>
-                  <button onClick={handleRemovePromo} className="text-xs text-rose-500 underline whitespace-nowrap">{t('settings.billingTab.remove')}</button>
-                </div>
-              )}
-              {promoResult && !promoResult.valid && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-rose-600">
-                  <XCircle size={14} />{promoResult.message}
-                </div>
-              )}
-              {promoResult?.valid && promoResult.discountAmount > 0 && promoResult.checkoutConfigured === false && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-amber-600">
-                  <ShieldAlert size={14} className="shrink-0" />{t('settings.billingTab.promoCheckoutNotConfigured')}
-                </div>
-              )}
+              <div className="flex justify-between font-bold text-[#1e293b] dark:text-white border-t border-[#e8e6e1] dark:border-white/10 pt-1.5 mt-1.5">
+                <span>{(selectedPlan.trialDays ?? 0) > 0 ? t('settings.billingTab.afterTrial') : t('settings.billingTab.total')}</span>
+                <span>
+                  {formatMoney(billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice)} MAD
+                  {billingCycle === 'yearly' ? t('settings.billingTab.perYearSuffix') : t('settings.billingTab.perMonthSuffix')}
+                </span>
+              </div>
             </div>
 
-            {/* Price summary */}
-            <div className="bg-[#f5f5f0] rounded-xl p-3 space-y-1.5 text-sm">
-              <div className="flex justify-between text-slate-600">
-                <span>{t('settings.billingTab.subtotal')}</span>
-                <span className="font-medium">
-                  {formatMoney(billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice)} MAD
-                </span>
-              </div>
-              {promoResult?.valid && promoResult.discountAmount > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>{t('settings.billingTab.discount', { code: promoResult.code })}</span>
-                  <span>−{formatMoney(promoResult.discountAmount)} MAD</span>
-                </div>
-              )}
-              <div className="flex justify-between font-bold text-[#1e293b] border-t border-[#e8e6e1] pt-1.5 mt-1.5">
-                <span>{t('settings.billingTab.total')}</span>
-                <span>
-                  {formatMoney(promoResult?.valid
-                    ? promoResult.finalPrice
-                    : billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice)} MAD
-                </span>
-              </div>
-            </div>
+            <p className="text-xs text-slate-400 flex items-start gap-1.5">
+              <Tag size={13} className="mt-0.5 shrink-0" />
+              {t('settings.billingTab.promoOnWhopHint')}
+            </p>
 
             <p className="text-xs text-slate-400">
               {t('settings.billingTab.redirectCheckoutHint')}
             </p>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3">
+              <button onClick={() => setShowUpgradeModal(false)} className="flex-1 min-h-[44px] bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-[#1e293b] dark:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                {t('settings.billingTab.cancel')}
+              </button>
               <button
                 onClick={handleCheckout}
-                disabled={checkoutLoading || (promoResult?.valid && promoResult.discountAmount > 0 && promoResult.checkoutConfigured === false)}
-                className="flex-1 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                disabled={checkoutLoading}
+                className="flex-1 min-h-[44px] bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
               >
                 {checkoutLoading ? <><Loader2 size={14} className="animate-spin" />{t('settings.billingTab.processing')}</> : t('settings.billingTab.continueToCheckout')}
-              </button>
-              <button onClick={() => setShowUpgradeModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                {t('settings.billingTab.cancel')}
               </button>
             </div>
           </div>
