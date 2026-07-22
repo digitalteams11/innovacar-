@@ -103,12 +103,12 @@ export default function SuperAdminUsers() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="appearance-none bg-white dark:bg-[#1a2332]/70 px-4 py-2.5 pr-10 rounded-xl shadow-soft border border-[#e8e6e1]/80 dark:border-white/5 text-sm text-[#1e293b] dark:text-white cursor-pointer outline-none focus:ring-2 ring-brand-100/50"
+            className="appearance-none bg-white dark:bg-[#1a2332]/70 px-4 py-2.5 pe-10 rounded-xl shadow-soft border border-[#e8e6e1]/80 dark:border-white/5 text-sm text-[#1e293b] dark:text-white cursor-pointer outline-none focus:ring-2 ring-brand-100/50"
           >
             <option value="">{t('superAdmin.users.allRoles')}</option>
             {allRoles.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
-          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <ChevronDown size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
       </div>
 

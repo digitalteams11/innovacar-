@@ -36,7 +36,7 @@ export default function ActionMenu({ items }: ActionMenuProps) {
         <MoreHorizontal size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-[#1a2332] rounded-xl shadow-elevated border border-[#e8e6e1]/80 dark:border-white/5 z-50 overflow-hidden py-1">
+        <div className="absolute end-0 top-full mt-1 w-44 bg-white dark:bg-[#1a2332] rounded-xl shadow-elevated border border-[#e8e6e1]/80 dark:border-white/5 z-50 overflow-hidden py-1">
           {items.map((item, idx) => (
             <button
               key={idx}

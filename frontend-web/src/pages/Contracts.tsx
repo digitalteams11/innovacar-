@@ -1366,7 +1366,7 @@ export default function Contracts() {
                     <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-medium text-[#1e293b]">
                       {contract.clientFullName || 'N/A'}
                       {contract.vehicleMissing && (
-                        <span className="ml-2 inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700" title={t('contracts.card.vehicleRemovedDesc')}>
+                        <span className="ms-2 inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700" title={t('contracts.card.vehicleRemovedDesc')}>
                           {t('contracts.card.vehicleRemoved')}
                         </span>
                       )}
@@ -1420,7 +1420,7 @@ export default function Contracts() {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('contracts.form.createContractTitle')} maxWidth="5xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-5 pr-1">
+          <div className="lg:col-span-2 space-y-5 pe-1">
 
             {selectedReservation && (
               <div className="p-3.5 bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl text-white shadow-sm">

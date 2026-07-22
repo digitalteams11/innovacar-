@@ -167,7 +167,7 @@ export default function AiChatPanel({ module, onClose, onThinkingChange, variant
       className={
         variant === 'sheet'
           ? 'flex h-full flex-col'
-          : 'fixed bottom-[4.5rem] right-4 sm:right-6 z-50 w-[min(380px,calc(100vw-2rem))] rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1a2e] shadow-2xl flex flex-col'
+          : 'fixed bottom-[4.5rem] end-4 sm:end-6 z-50 w-[min(380px,calc(100vw-2rem))] rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1a2e] shadow-2xl flex flex-col'
       }
       style={variant === 'floating' ? { maxHeight: 'min(520px, calc(100dvh - 5rem))' } : undefined}
     >
@@ -180,7 +180,7 @@ export default function AiChatPanel({ module, onClose, onThinkingChange, variant
             <button
               onClick={clearChat}
               title="Clear chat"
-              className="ml-1 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors"
+              className="ms-1 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors"
             >
               <Trash2 size={12} />
             </button>
@@ -234,7 +234,7 @@ export default function AiChatPanel({ module, onClose, onThinkingChange, variant
               {msg.role === 'error' && isSuperAdmin && msg.errorCode && SETTINGS_ERROR_CODES.has(msg.errorCode) && (
                 <button
                   onClick={() => { navigate('/super-admin/ai-settings'); onClose(); }}
-                  className="mt-1.5 ml-1 flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-300 border border-brand-100 dark:border-brand-400/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors"
+                  className="mt-1.5 ms-1 flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-300 border border-brand-100 dark:border-brand-400/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors"
                 >
                   <Settings size={10} />
                   Open AI Settings
@@ -245,7 +245,7 @@ export default function AiChatPanel({ module, onClose, onThinkingChange, variant
               {msg.role === 'error' && !isSuperAdmin && msg.errorCode && PLAN_UPGRADE_ERROR_CODES.has(msg.errorCode) && (
                 <button
                   onClick={() => { navigate('/subscription'); onClose(); }}
-                  className="mt-1.5 ml-1 flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-300 border border-brand-100 dark:border-brand-400/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors"
+                  className="mt-1.5 ms-1 flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-300 border border-brand-100 dark:border-brand-400/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors"
                 >
                   <ArrowRight size={10} />
                   View Plans
@@ -253,7 +253,7 @@ export default function AiChatPanel({ module, onClose, onThinkingChange, variant
               )}
 
               {msg.suggestedActions && msg.suggestedActions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1.5 pl-1">
+                <div className="flex flex-wrap gap-1.5 mt-1.5 ps-1">
                   {msg.suggestedActions.map((action) => (
                     <button
                       key={action.route}

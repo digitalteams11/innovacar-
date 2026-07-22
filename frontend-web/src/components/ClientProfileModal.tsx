@@ -61,7 +61,7 @@ export default function ClientProfileModal({ isOpen, onClose, client }: ClientPr
       ) : error ? (
         <div className="py-12 text-center text-danger-500 text-sm">{error}</div>
       ) : (
-        <div className="space-y-5 max-h-[78vh] overflow-y-auto pr-1">
+        <div className="space-y-5 max-h-[78vh] overflow-y-auto pe-1">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-5 border-b border-slate-100">
             <div className="w-16 h-16 bg-brand-50 rounded-xl flex items-center justify-center text-brand-600 text-xl font-bold">
               {client.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}

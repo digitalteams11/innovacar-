@@ -132,7 +132,7 @@ export default function RecipientSelector({
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selected.map(r => (
-            <span key={r.email} className="inline-flex items-center gap-1.5 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 text-xs font-medium pl-2.5 pr-1.5 py-1 rounded-full">
+            <span key={r.email} className="inline-flex items-center gap-1.5 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 text-xs font-medium ps-2.5 pe-1.5 py-1 rounded-full">
               {r.sourceType === 'AGENCY' ? <Building2 size={11} /> : r.sourceType === 'USER' ? <UserIcon size={11} /> : <Mail size={11} />}
               {r.displayName}
               <button type="button" onClick={() => removeRecipient(r.email)} className="hover:bg-brand-100 dark:hover:bg-brand-500/20 rounded-full p-0.5">
@@ -144,7 +144,7 @@ export default function RecipientSelector({
       )}
 
       <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
           value={query}
@@ -153,9 +153,9 @@ export default function RecipientSelector({
           onKeyDown={onKeyDown}
           disabled={atLimit}
           placeholder={atLimit ? `Maximum ${maxRecipients} recipients reached` : 'Search agencies or users, or type an email…'}
-          className="w-full pl-9 pr-9 py-2.5 bg-slate-50 dark:bg-white/5 border border-[#e8e6e1] dark:border-white/10 rounded-xl text-sm text-[#1e293b] dark:text-white outline-none focus:border-brand-400 transition-colors disabled:opacity-50"
+          className="w-full ps-9 pe-9 py-2.5 bg-slate-50 dark:bg-white/5 border border-[#e8e6e1] dark:border-white/10 rounded-xl text-sm text-[#1e293b] dark:text-white outline-none focus:border-brand-400 transition-colors disabled:opacity-50"
         />
-        {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />}
+        {loading && <Loader2 size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />}
       </div>
 
       {error && <p className="text-xs text-rose-500">{error}</p>}

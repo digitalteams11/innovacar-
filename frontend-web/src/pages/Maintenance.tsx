@@ -313,7 +313,7 @@ export default function Maintenance() {
               <th>{t('maintenance.table.cost')}</th>
               <th>{t('maintenance.table.mileage')}</th>
               <th>{t('maintenance.table.status')}</th>
-              <th className="pr-3 text-right">{t('maintenance.table.actions')}</th>
+              <th className="pe-3 text-right">{t('maintenance.table.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e8e6e1]">
@@ -349,7 +349,7 @@ export default function Maintenance() {
                     {String(t(`maintenance.statusLabel.${row.status}`, { defaultValue: row.status?.replace('_', ' ') }))}
                   </span>
                 </td>
-                <td className="pr-3">
+                <td className="pe-3">
                   <div className="flex justify-end gap-1">
                     {row.status === 'SCHEDULED' && (
                       <button title={t('maintenance.actions.start')} disabled={updatingMaintenanceId === row.id}

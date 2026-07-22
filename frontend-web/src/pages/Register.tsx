@@ -56,7 +56,7 @@ function GlassInput({
       }}
     >
       {Icon && (
-        <div className="pl-4 pr-3">
+        <div className="ps-4 pe-3">
           <Icon size={18} className={focused ? 'text-brand-500' : 'text-[var(--text-muted)]'} />
         </div>
       )}
@@ -66,7 +66,7 @@ function GlassInput({
         className="flex-1 bg-transparent border-none outline-none py-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       />
-      {rightElement && <div className="pr-3">{rightElement}</div>}
+      {rightElement && <div className="pe-3">{rightElement}</div>}
     </div>
   );
 }
@@ -268,22 +268,22 @@ export default function Register() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-2 ml-1" style={{ color: 'var(--text-primary)' }}>{t('register.firstName', 'First Name')}</label>
+                  <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('register.firstName', 'First Name')}</label>
                   <GlassInput value={firstName} onChange={setFirstName} placeholder="John" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 ml-1" style={{ color: 'var(--text-primary)' }}>{t('register.lastName', 'Last Name')}</label>
+                  <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('register.lastName', 'Last Name')}</label>
                   <GlassInput value={lastName} onChange={setLastName} placeholder="Doe" required />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 ml-1" style={{ color: 'var(--text-primary)' }}>{t('login.email', 'Email Address')}</label>
+                <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('login.email', 'Email Address')}</label>
                 <GlassInput icon={Mail} type="email" value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder', 'name@company.com')} required />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 ml-1" style={{ color: 'var(--text-primary)' }}>{t('login.password', 'Password')}</label>
+                <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('login.password', 'Password')}</label>
                 <GlassInput
                   icon={Lock}
                   type={showPassword ? 'text' : 'password'}
@@ -302,7 +302,7 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 ml-1" style={{ color: 'var(--text-primary)' }}>{t('register.confirmPassword', 'Confirm Password')}</label>
+                <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('register.confirmPassword', 'Confirm Password')}</label>
                 <GlassInput
                   icon={Lock}
                   type={showConfirmPassword ? 'text' : 'password'}

@@ -141,7 +141,7 @@ export default function AiModelsTab() {
             key: 'modelId', header: t('superAdmin.ai.models.colModel'), render: (row: AiModelRow) => (
               <div className="flex items-center gap-2">
                 <span className="font-medium text-[#1e293b] dark:text-white">{row.displayName || row.modelId}</span>
-                {row.defaultModel && <Badge variant="primary"><Star size={10} className="inline mr-1" />{t('superAdmin.ai.models.default')}</Badge>}
+                {row.defaultModel && <Badge variant="primary"><Star size={10} className="inline me-1" />{t('superAdmin.ai.models.default')}</Badge>}
               </div>
             ),
           },

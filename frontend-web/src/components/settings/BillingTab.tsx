@@ -530,7 +530,7 @@ export default function BillingTab() {
                           </li>
                         ))}
                         {plan.features.length > 5 && (
-                          <li className="text-slate-400 ml-3.5">{t('settings.billingTab.moreFeatures', { count: plan.features.length - 5 })}</li>
+                          <li className="text-slate-400 ms-3.5">{t('settings.billingTab.moreFeatures', { count: plan.features.length - 5 })}</li>
                         )}
                       </ul>
                     )}
@@ -604,7 +604,7 @@ export default function BillingTab() {
             {/* Promo code */}
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                <Tag size={12} className="inline mr-1" />{t('settings.billingTab.promoCode')}
+                <Tag size={12} className="inline me-1" />{t('settings.billingTab.promoCode')}
               </label>
               <div className="flex gap-2">
                 <input

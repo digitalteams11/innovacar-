@@ -355,7 +355,7 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
           </button>
           <button
             onClick={() => { setView(new Date()); setSelectedDay(null); }}
-            className="ml-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
+            className="ms-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
             style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)', opacity: 0.85 }}
           >
             {t('calendar.today')}
@@ -395,7 +395,7 @@ function EnhancedCalendar({ reservations }: { reservations: DashboardReservation
                 {/* Count bubble for high-density days */}
                 {manyEvents && !isToday && !isSelected && (
                   <span
-                    className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full text-[8px] font-bold flex items-center justify-center text-white"
+                    className="absolute -top-0.5 -end-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full text-[8px] font-bold flex items-center justify-center text-white"
                     style={{ backgroundColor: dotColors[0] ?? '#94a3b8' }}
                   >
                     {statuses.length}

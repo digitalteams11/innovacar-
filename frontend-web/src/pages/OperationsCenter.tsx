@@ -392,7 +392,7 @@ export default function OperationsCenter() {
                     </div>
                     <h2 className="mt-3 font-semibold text-[var(--text-primary)]">{ticket.subject}</h2>
                     <p className="mt-1 text-sm text-[var(--text-muted)]">{ticket.description}</p>
-                    {ticket.resolution && <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-[var(--text-secondary)]">{ticket.resolution}</p>}
+                    {ticket.resolution && <p className="mt-3 border-l-2 border-emerald-500 ps-3 text-sm text-[var(--text-secondary)]">{ticket.resolution}</p>}
                   </div>
                   <div className="flex items-start gap-3">
                     <time className="text-xs text-[var(--text-muted)]">{formatDate(ticket.createdAt)}</time>

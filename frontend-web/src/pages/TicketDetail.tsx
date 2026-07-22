@@ -153,7 +153,7 @@ export default function TicketDetail() {
           <span className="text-[var(--text-muted)]">{formatDate(ticket.createdAt)}</span>
         </div>
         <p className="mt-3 text-sm text-[var(--text-secondary)]">{ticket.description}</p>
-        {ticket.resolution && <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-[var(--text-secondary)]">{ticket.resolution}</p>}
+        {ticket.resolution && <p className="mt-3 border-l-2 border-emerald-500 ps-3 text-sm text-[var(--text-secondary)]">{ticket.resolution}</p>}
       </div>
 
       <div className="data-surface flex flex-col p-5">

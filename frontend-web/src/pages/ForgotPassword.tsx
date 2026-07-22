@@ -29,7 +29,7 @@ export default function ForgotPassword() {
     }
   };
 
-  const inputCls = 'block w-full pl-11 pr-4 py-3 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-[#1e293b] font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:bg-white focus:border-brand-300 transition-all';
+  const inputCls = 'block w-full ps-11 pe-4 py-3 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-[#1e293b] font-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:bg-white focus:border-brand-300 transition-all';
   const btnCls = 'w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/15 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70';
 
   return (
@@ -58,11 +58,11 @@ export default function ForgotPassword() {
           {error && <ErrorBox msg={error} />}
           <form onSubmit={handleSendCode} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-[#1e293b] mb-2 ml-1">
+              <label className="block text-sm font-medium text-[#1e293b] mb-2 ms-1">
                 {t('login.email', 'Email Address')}
               </label>
               <div className="relative group">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-500 transition-colors">
+                <span className="absolute inset-y-0 start-0 ps-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-500 transition-colors">
                   <Mail size={18} />
                 </span>
                 <input

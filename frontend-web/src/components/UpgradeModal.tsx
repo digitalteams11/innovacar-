@@ -39,7 +39,7 @@ export default function UpgradeModal({
           </div>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+            className="absolute top-4 end-4 p-1.5 hover:bg-white/10 rounded-lg transition-colors"
           >
             <X size={18} className="text-slate-400" />
           </button>

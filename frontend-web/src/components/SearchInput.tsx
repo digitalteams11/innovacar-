@@ -49,7 +49,7 @@ export function SearchInput({
       <Search
         size={size === 'sm' ? 14 : size === 'lg' ? 18 : 16}
         className={cn(
-          'shrink-0 mr-3 transition-colors duration-300',
+          'shrink-0 me-3 transition-colors duration-300',
           focused ? 'text-brand-500' : 'text-[var(--text-muted)]'
         )}
       />
@@ -69,7 +69,7 @@ export function SearchInput({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
           onClick={() => onChange('')}
-          className="p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors ml-2"
+          className="p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors ms-2"
         >
           <X size={14} className="text-[var(--text-muted)]" />
         </motion.button>

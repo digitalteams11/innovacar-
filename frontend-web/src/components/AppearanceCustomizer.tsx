@@ -88,7 +88,7 @@ export default function AppearanceCustomizer() {
             >
               <mode.icon size={19} />
               {t(mode.labelKey, mode.label)}
-              {appearance.mode === mode.value && <Check size={12} className="absolute top-2 right-2 text-[var(--brand-primary)]" />}
+              {appearance.mode === mode.value && <Check size={12} className="absolute top-2 end-2 text-[var(--brand-primary)]" />}
             </button>
           ))}
         </div>
@@ -120,7 +120,7 @@ export default function AppearanceCustomizer() {
                 </span>
                 <span className="block mt-2 text-xs font-semibold text-[var(--text-primary)]">{t(`appearance.themes.${key}.label`, definition.label)}</span>
                 <span className="block mt-0.5 text-[10px] leading-snug text-[var(--text-muted)] line-clamp-2">{t(`appearance.themes.${key}.description`, definition.description)}</span>
-                {selected && <Check size={13} className="absolute top-2 right-2 text-[var(--brand-primary)]" />}
+                {selected && <Check size={13} className="absolute top-2 end-2 text-[var(--brand-primary)]" />}
               </button>
             );
           })}

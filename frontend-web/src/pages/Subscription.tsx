@@ -414,7 +414,7 @@ export default function Subscription() {
                 </div>
               )}
               {isCurrent && (
-                <div className="absolute -top-3 right-4 px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1">
+                <div className="absolute -top-3 end-4 px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1">
                   <CheckCircle2 size={10} /> Current
                 </div>
               )}
@@ -617,7 +617,7 @@ export default function Subscription() {
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-xs text-amber-800 space-y-1">
               <p className="font-semibold flex items-center gap-1.5"><Clock size={12} /> What happens when you cancel:</p>
-              <ul className="space-y-0.5 ml-4 list-disc">
+              <ul className="space-y-0.5 ms-4 list-disc">
                 <li>Your subscription remains <strong>fully active</strong> until the end of the current billing period</li>
                 <li>All your data is preserved and accessible</li>
                 <li>You can undo this cancellation anytime before the period ends</li>

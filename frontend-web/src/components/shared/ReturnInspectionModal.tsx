@@ -155,8 +155,8 @@ export default function ReturnInspectionModal({
                   <label className="text-xs font-medium text-slate-500">{field.label}</label>
                   <div className="relative">
                     <input type="number" min={0} value={field.value} onChange={(e) => field.setter(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 pr-12" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">MAD</span>
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 pe-12" />
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">MAD</span>
                   </div>
                 </div>
               ))}

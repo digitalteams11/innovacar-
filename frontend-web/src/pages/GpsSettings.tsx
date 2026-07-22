@@ -621,7 +621,7 @@ export default function GpsSettingsPage() {
                 }`}
               >
                 {selected && (
-                  <div className="absolute top-3 right-3 w-5 h-5 bg-brand-500 rounded-full flex items-center justify-center">
+                  <div className="absolute top-3 end-3 w-5 h-5 bg-brand-500 rounded-full flex items-center justify-center">
                     <CheckCircle2 size={12} className="text-white" />
                   </div>
                 )}
@@ -654,13 +654,13 @@ export default function GpsSettingsPage() {
               <GpsFieldHelp fieldKey="appId" provider={settings.provider} />
             </label>
             <div className="relative">
-              <Shield size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Shield size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={settings.appId}
                 onChange={(e) => handleChange('appId', e.target.value)}
                 placeholder={settings.provider === 'IOPGPS' ? 'exact account name' : 'your-app-id'}
-                className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
             </div>
             {settings.provider === 'IOPGPS' && (
@@ -675,21 +675,21 @@ export default function GpsSettingsPage() {
               API Key
               <GpsFieldHelp fieldKey="apiKey" provider={settings.provider} />
               {settings.hasCredentials && !settings.apiKey && (
-                <span className="ml-1 text-xs text-emerald-600 font-medium">• Stored securely</span>
+                <span className="ms-1 text-xs text-emerald-600 font-medium">• Stored securely</span>
               )}
             </label>
             <div className="relative">
-              <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Key size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type={showApiKey ? 'text' : 'password'}
                 value={settings.apiKey}
                 onChange={(e) => handleChange('apiKey', e.target.value)}
                 placeholder={settings.hasCredentials ? '••••••••••••••••' : 'Enter your API key'}
-                className="w-full pl-11 pr-12 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                className="w-full ps-11 pe-12 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
               <button
                 onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e293b] transition-colors"
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e293b] transition-colors"
               >
                 {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -707,21 +707,21 @@ export default function GpsSettingsPage() {
               <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
                 Password
                 {settings.hasPassword && !settings.password && (
-                  <span className="ml-1 text-xs text-emerald-600 font-medium">• Stored securely</span>
+                  <span className="ms-1 text-xs text-emerald-600 font-medium">• Stored securely</span>
                 )}
               </label>
               <div className="relative">
-                <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Key size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={settings.password}
                   onChange={(e) => handleChange('password', e.target.value)}
                   placeholder={settings.hasPassword ? '••••••••••••••••' : 'Traccar password'}
-                  className="w-full pl-11 pr-12 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-12 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
                 <button
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e293b] transition-colors"
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e293b] transition-colors"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -740,13 +740,13 @@ export default function GpsSettingsPage() {
               <div>
                 <label className="block text-sm font-medium text-[#1e293b] mb-2">Auth Header Name</label>
                 <div className="relative">
-                  <Shield size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Shield size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={settings.authHeaderName}
                     onChange={(e) => handleChange('authHeaderName', e.target.value)}
                     placeholder="Authorization"
-                    className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                    className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                   />
                 </div>
                 <p className="text-xs text-slate-400 mt-1.5">HTTP header name sent to your API (default: Authorization)</p>
@@ -754,13 +754,13 @@ export default function GpsSettingsPage() {
               <div>
                 <label className="block text-sm font-medium text-[#1e293b] mb-2">Auth Prefix</label>
                 <div className="relative">
-                  <Shield size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Shield size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={settings.authPrefix}
                     onChange={(e) => handleChange('authPrefix', e.target.value)}
                     placeholder="Bearer"
-                    className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                    className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                   />
                 </div>
                 <p className="text-xs text-slate-400 mt-1.5">Prefix before the API key value (default: Bearer)</p>
@@ -775,13 +775,13 @@ export default function GpsSettingsPage() {
                 <GpsFieldHelp fieldKey="baseUrl" provider={settings.provider} />
               </label>
               <div className="relative">
-                <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Globe size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={settings.baseUrl}
                   onChange={(e) => handleChange('baseUrl', e.target.value)}
                   placeholder="https://api.provider.com"
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>
             </div>
@@ -791,12 +791,12 @@ export default function GpsSettingsPage() {
                 API Host
               </label>
               <div className="relative">
-                <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Globe size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={IOPGPS_BASE_URL}
                   disabled
-                  className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0]/60 border border-[#e8e6e1] rounded-xl text-sm font-normal text-slate-400 cursor-not-allowed"
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0]/60 border border-[#e8e6e1] rounded-xl text-sm font-normal text-slate-400 cursor-not-allowed"
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
@@ -811,13 +811,13 @@ export default function GpsSettingsPage() {
               <GpsFieldHelp fieldKey="deviceGroupId" provider={settings.provider} />
             </label>
             <div className="relative">
-              <Car size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Car size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={settings.deviceGroupId}
                 onChange={(e) => handleChange('deviceGroupId', e.target.value)}
                 placeholder="Optional group filter"
-                className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
             </div>
           </div>
@@ -828,13 +828,13 @@ export default function GpsSettingsPage() {
               <GpsFieldHelp fieldKey="webhookUrl" provider={settings.provider} />
             </label>
             <div className="relative">
-              <Link2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Link2 size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={settings.webhookUrl}
                 onChange={(e) => handleChange('webhookUrl', e.target.value)}
                 placeholder="https://your-domain.com/api/gps/webhook"
-                className="w-full pl-11 pr-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
             </div>
           </div>

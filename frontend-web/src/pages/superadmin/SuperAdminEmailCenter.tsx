@@ -504,8 +504,8 @@ export default function SuperAdminEmailCenter() {
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-[200px]">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className={`${fieldCls} pl-8`} />
+                <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className={`${fieldCls} ps-8`} />
               </div>
               <FilterSelect value={typeFilter} onChange={setTypeFilter} options={['ALL', ...templateTypes]} label="Type" />
               <FilterSelect value={langFilter} onChange={setLangFilter} options={['ALL', ...LANG_OPTIONS]} label="Lang" />
@@ -852,10 +852,10 @@ function FilterSelect({ value, onChange, options, label }: {
   return (
     <div className="relative">
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="appearance-none h-[42px] pl-3 pr-8 bg-slate-50 dark:bg-white/5 border border-[#e8e6e1] dark:border-white/10 rounded-xl text-sm text-[#1e293b] dark:text-white outline-none focus:border-brand-400 transition-colors cursor-pointer">
+        className="appearance-none h-[42px] ps-3 pe-8 bg-slate-50 dark:bg-white/5 border border-[#e8e6e1] dark:border-white/10 rounded-xl text-sm text-[#1e293b] dark:text-white outline-none focus:border-brand-400 transition-colors cursor-pointer">
         {options.map(o => <option key={o} value={o}>{o === 'ALL' ? `All ${label}s` : o}</option>)}
       </select>
-      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+      <ChevronDown size={13} className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
     </div>
   );
 }

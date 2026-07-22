@@ -322,8 +322,8 @@ export default function Employees() {
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="text-xs text-[var(--text-muted)]"><Mail size={12} className="inline mr-1" />{emp.email}</div>
-                      <div className="text-xs text-[var(--text-muted)] mt-0.5"><Phone size={12} className="inline mr-1" />{emp.phone || t('common.notAvailable', 'N/A')}</div>
+                      <div className="text-xs text-[var(--text-muted)]"><Mail size={12} className="inline me-1" />{emp.email}</div>
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5"><Phone size={12} className="inline me-1" />{emp.phone || t('common.notAvailable', 'N/A')}</div>
                     </td>
                     <td className="px-5 py-4 text-sm text-[var(--text-primary)]">{roleLabel(emp.role)}</td>
                     <td className="px-5 py-4 text-sm text-[var(--text-muted)]">{emp.department || t('common.notAvailable', 'N/A')}</td>

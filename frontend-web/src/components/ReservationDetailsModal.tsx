@@ -42,7 +42,7 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('reservations.detailsModalTitle', 'Reservation Details')}>
-      <div className="space-y-6 max-h-[80vh] overflow-y-auto no-scrollbar pr-1">
+      <div className="space-y-6 max-h-[80vh] overflow-y-auto no-scrollbar pe-1">
         {/* Reservation Status Banner */}
         <div className={`p-4 rounded-2xl flex items-center justify-between ${
           reservation.statut === 'CONFIRMED' ? 'bg-success-50 text-success-700 border border-success-100' :

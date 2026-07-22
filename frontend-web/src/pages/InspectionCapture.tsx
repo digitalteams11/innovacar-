@@ -147,7 +147,7 @@ export default function InspectionCapture() {
         </section>
 
         <div className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">
-          <CheckCircle2 size={16} className="mr-1 inline" />
+          <CheckCircle2 size={16} className="me-1 inline" />
           Inspection media is linked to the reservation, contract, client, vehicle, and employee.
         </div>
       </div>

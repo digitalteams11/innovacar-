@@ -110,7 +110,7 @@ export default function GpsDeviceMappingTable({ devices, vehicles, onLinked }: G
                     '—'
                   )}
                   {device.speed != null && (
-                    <span className="inline-flex items-center gap-1 ml-2">
+                    <span className="inline-flex items-center gap-1 ms-2">
                       <Battery size={12} /> {device.speed} km/h
                     </span>
                   )}

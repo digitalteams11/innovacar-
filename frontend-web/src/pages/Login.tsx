@@ -78,7 +78,7 @@ function GlassInput({
       }}
     >
       {Icon && (
-        <div className="pl-4 pr-3">
+        <div className="ps-4 pe-3">
           <Icon size={18} className={focused ? 'text-brand-500' : 'text-[var(--text-muted)]'} />
         </div>
       )}
@@ -92,7 +92,7 @@ function GlassInput({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />
-      {rightElement && <div className="pr-3">{rightElement}</div>}
+      {rightElement && <div className="pe-3">{rightElement}</div>}
     </div>
   );
 }
@@ -593,12 +593,12 @@ export default function Login() {
                     /* Ã¢â€â‚¬Ã¢â€â‚¬ Email + password step Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
                     <>
                       <div>
-                        <label className="block text-sm font-medium mb-2 ml-1" style={{ color: 'var(--text-primary)' }}>{t('login.email')}</label>
+                        <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('login.email')}</label>
                         <GlassInput icon={Mail} type="email" value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder')} required />
                       </div>
 
                       <div>
-                        <div className="flex items-center justify-between mb-2 ml-1">
+                        <div className="flex items-center justify-between mb-2 ms-1">
                           <label className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('login.password')}</label>
                           <Link to="/forgot-password" className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">
                             {t('login.forgot')}

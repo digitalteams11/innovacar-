@@ -450,7 +450,7 @@ export default function SuperAdminSettings() {
 
             <div className="pt-4 border-t border-[#e8e6e1]/40 dark:border-white/5">
               <ToggleSwitch checked={settings.maintenanceMode || false} onChange={(v) => updateField('maintenanceMode', v)} label={t('superAdmin.settings.maintenanceMode')} />
-              <p className="text-xs text-slate-500 mt-1 ml-14">{t('superAdmin.settings.maintenanceDesc')}</p>
+              <p className="text-xs text-slate-500 mt-1 ms-14">{t('superAdmin.settings.maintenanceDesc')}</p>
             </div>
             {settings.maintenanceMode && (
               <FormField label={t('superAdmin.settings.maintenanceMessage')}>

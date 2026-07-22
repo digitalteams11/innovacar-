@@ -79,7 +79,7 @@ export function GlassTabs({
                 {tab.label}
                 {tab.badge !== undefined && tab.badge > 0 && (
                   <span
-                    className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
+                    className="ms-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
                     style={{
                       backgroundColor: isActive
                         ? 'color-mix(in srgb, var(--brand-primary-foreground, #fff) 20%, transparent)'

@@ -50,7 +50,7 @@ export function FilterChips({ options, activeId, onChange, className }: FilterCh
             {option.count !== undefined && (
               <span
                 className={cn(
-                  'ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold',
+                  'ms-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold',
                   isActive ? 'bg-white/20' : 'bg-[var(--bg-hover)]'
                 )}
               >

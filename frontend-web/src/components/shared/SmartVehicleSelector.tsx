@@ -406,7 +406,7 @@ export default function SmartVehicleSelector({
           </button>
         </div>
       ) : (
-        <div className="grid max-h-[360px] grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+        <div className="grid max-h-[360px] grid-cols-1 gap-3 overflow-y-auto pe-1 md:grid-cols-2">
           {filteredVehicles.map((vehicle) => {
             const isSelected = activeVehicle?.id === vehicle.id;
             const imageSrc = resolveMediaUrl(vehicle.imageUrl);

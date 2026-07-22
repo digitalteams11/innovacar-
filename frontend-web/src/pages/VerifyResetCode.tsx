@@ -94,7 +94,7 @@ export default function VerifyResetCode() {
           {error && <ErrorBox msg={error} />}
           <form onSubmit={handleVerifyCode} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-[#1e293b] mb-2 ml-1">
+              <label className="block text-sm font-medium text-[#1e293b] mb-2 ms-1">
                 {t('forgotPassword.code', '6-digit code')}
               </label>
               <input

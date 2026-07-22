@@ -475,7 +475,7 @@ export default function GpsDashboard() {
           {/* Map overlay: mobile toggle */}
           <button
             onClick={() => setShowVehicleList(v => !v)}
-            className="lg:hidden absolute top-3 right-3 z-[1000] flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-lg text-sm font-medium text-[#1e293b] border border-[#e8e6e1]"
+            className="lg:hidden absolute top-3 end-3 z-[1000] flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-lg text-sm font-medium text-[#1e293b] border border-[#e8e6e1]"
           >
             {showVehicleList ? <MapIcon size={14} /> : <List size={14} />}
             {showVehicleList ? 'Map' : 'List'}
@@ -505,17 +505,17 @@ export default function GpsDashboard() {
 
           {/* Search */}
           <div className="relative shrink-0">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={13} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search vehicles..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-8 py-2.5 bg-white border border-[var(--border-subtle)] rounded-xl text-sm text-[#1e293b] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-200"
+              className="w-full ps-8 pe-8 py-2.5 bg-white border border-[var(--border-subtle)] rounded-xl text-sm text-[#1e293b] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-200"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                 <X size={13} />
               </button>
             )}

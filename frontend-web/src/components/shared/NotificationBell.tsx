@@ -200,7 +200,15 @@ export default function NotificationBell() {
 
       {open && (
         <div
-          className="absolute end-0 top-full z-50 mt-3 w-[calc(100vw-1.5rem)] max-w-96 overflow-hidden rounded-3xl animate-scale-in sm:w-96"
+          // Below `sm`, this is viewport-fixed (not anchored to the bell
+          // button) — an `absolute end-0` panel sized near-100vw-wide
+          // overflows past the *opposite* screen edge on narrow phones,
+          // since its anchor point is wherever the bell sits in the header,
+          // not the viewport edge. Fixed + inset-3 guarantees it always
+          // fits within the real viewport regardless of header layout.
+          // From `sm` up there's enough width for the original
+          // anchor-relative dropdown.
+          className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-50 flex max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-3xl animate-scale-in sm:absolute sm:inset-x-auto sm:end-0 sm:top-full sm:mt-3 sm:w-96 sm:max-h-[520px]"
           style={{
             background: 'var(--glass-bg)',
             border: '1px solid var(--glass-border)',
@@ -209,9 +217,9 @@ export default function NotificationBell() {
             WebkitBackdropFilter: 'blur(var(--glass-blur))',
           }}
         >
-          {/* Header */}
+          {/* Header — shrink-0 so it never gets squeezed by the scrolling list below it */}
           <div
-            className="flex items-center justify-between px-4 py-3 gap-2"
+            className="flex shrink-0 items-center justify-between px-4 py-3 gap-2"
             style={{ borderBottom: '1px solid var(--border-subtle)' }}
           >
             <h3 className="text-sm font-bold shrink-0" style={{ color: 'var(--text-primary)' }}>
@@ -263,8 +271,10 @@ export default function NotificationBell() {
             </div>
           </div>
 
-          {/* List */}
-          <div className="max-h-[360px] overflow-y-auto">
+          {/* List — the only scrolling region; min-h-0 lets it actually
+              shrink inside the flex column instead of overflowing the
+              panel's own max-height on short screens. */}
+          <div className="min-h-0 flex-1 overflow-y-auto sm:max-h-[360px] sm:flex-none">
             {loading && notifications.length === 0 ? (
               <div className="p-6 text-center flex items-center justify-center gap-2" style={{ color: 'var(--text-muted)' }}>
                 <RefreshCw size={14} className="animate-spin" />
@@ -305,7 +315,7 @@ export default function NotificationBell() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p
-                            className="text-xs font-semibold truncate"
+                            className="text-xs font-semibold line-clamp-2 break-words"
                             style={{ color: !n.read ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                           >
                             {display.title}
@@ -342,10 +352,10 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer — shrink-0, same reason as the header */}
           {notifications.length > 0 && (
             <div
-              className="px-4 py-2 flex items-center justify-between"
+              className="shrink-0 px-4 py-2 flex items-center justify-between"
               style={{ borderTop: '1px solid var(--border-subtle)' }}
             >
               <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>

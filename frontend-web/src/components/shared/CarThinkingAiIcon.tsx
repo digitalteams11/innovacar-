@@ -33,7 +33,7 @@ export default function CarThinkingAiIcon({ state = 'idle', size = 22 }: Props) 
 
       {/* Thinking bubble / badge — top-right overlay */}
       <span
-        className={`absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full
+        className={`absolute -top-1.5 -end-1.5 flex items-center justify-center rounded-full
           ${state === 'thinking' ? 'w-4 h-4 bg-cyan-400/20' : 'w-3.5 h-3.5'}
         `}
       >
