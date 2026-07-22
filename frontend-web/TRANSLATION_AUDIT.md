@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-21T15:25:01.452Z
+Generated: 2026-07-22T13:16:14.958Z
 Scanned source files: 207
-Static translation keys used: 1835
+Static translation keys used: 1860
 
 ## Missing EN Keys (0)
 
@@ -48,7 +48,7 @@ None.
 
 None.
 
-## Possible Visible Hardcoded Text (1468)
+## Possible Visible Hardcoded Text (1453)
 
 ### By file
 
@@ -60,7 +60,7 @@ None.
 - src\pages\superadmin\SuperAdminSubscriptions.tsx: 58
 - src\pages\HelpCenter.tsx: 52
 - src\pages\superadmin\SuperAdminSettings.tsx: 48
-- src\pages\PublicContract.tsx: 46
+- src\pages\PublicContract.tsx: 45
 - src\pages\superadmin\SuperAdminSecurity.tsx: 44
 - src\marketing\pages.tsx: 42
 - src\pages\superadmin\SuperAdminDataReset.tsx: 40
@@ -89,7 +89,6 @@ None.
 - src\pages\superadmin\SuperAdminContracts.tsx: 15
 - src\components\shared\ContractReturnModal.tsx: 13
 - src\components\shared\VehicleInspection.tsx: 13
-- src\pages\AutomationCenter.tsx: 13
 - src\pages\superadmin\SuperAdminFeatures.tsx: 12
 - src\pages\Reports.tsx: 10
 - src\pages\superadmin\SuperAdminRoles.tsx: 10
@@ -104,8 +103,8 @@ None.
 - src\components\UserMenu.tsx: 6
 - src\context\NotificationContext.tsx: 6
 - src\pages\AccountSuspended.tsx: 6
-- src\components\Layout.tsx: 5
 - src\components\shared\SignaturePad.tsx: 5
+- src\components\Layout.tsx: 4
 - src\pages\Register.tsx: 4
 - src\pages\Reservations.tsx: 4
 - src\pages\superadmin\SuperAdminPayments.tsx: 4
@@ -175,9 +174,8 @@ None.
 - src\components\LanguageSwitcher.tsx:9 [object:label] - Français
 - src\components\Layout.tsx:168 [jsx-text] - Innova
 - src\components\Layout.tsx:168 [jsx-text] - Car
-- src\components\Layout.tsx:243 [jsx-text] - InnovaCar
+- src\components\Layout.tsx:246 [jsx-text] - InnovaCar
 - src\components\Layout.tsx:164 [prop:alt] - InnovaCar
-- src\components\Layout.tsx:241 [prop:alt] - InnovaCar
 - src\components\MobileBottomSheet.tsx:62 [prop:aria-label] - Close
 - src\components\MobileBottomSheet.tsx:83 [prop:aria-label] - Close
 - src\components\Modal.tsx:74 [prop:aria-label] - Close dialog
@@ -321,7 +319,7 @@ None.
 - src\components\superadmin\RecipientSelector.tsx:27 [object:label] - Agencies
 - src\components\superadmin\RecipientSelector.tsx:28 [object:label] - Users
 - src\components\superadmin\RecipientSelector.tsx:29 [object:label] - Verified only
-- src\components\UserMenu.tsx:151 [prop:aria-label] - User menu
+- src\components\UserMenu.tsx:188 [prop:aria-label] - User menu
 - src\components\UserMenu.tsx:34 [object:label] - English
 - src\components\UserMenu.tsx:35 [object:label] - Français
 - src\components\UserMenu.tsx:40 [object:label] - Light
@@ -431,19 +429,6 @@ None.
 - src\pages\AccountSuspended.tsx:39 [jsx-text] - Open Billing
 - src\pages\AccountSuspended.tsx:46 [jsx-text] - Contact Support
 - src\pages\AccountSuspended.tsx:53 [jsx-text] - Logout
-- src\pages\AutomationCenter.tsx:149 [jsx-text] - Unable to load the Automation Center. Please try again.
-- src\pages\AutomationCenter.tsx:151 [jsx-text] - Retry
-- src\pages\AutomationCenter.tsx:173 [jsx-text] - Refresh
-- src\pages\AutomationCenter.tsx:189 [jsx-text] - Agents
-- src\pages\AutomationCenter.tsx:222 [jsx-text] - Alerts
-- src\pages\AutomationCenter.tsx:243 [jsx-text] - Acknowledge
-- src\pages\AutomationCenter.tsx:254 [jsx-text] - Recent runs
-- src\pages\AutomationCenter.tsx:256 [jsx-text] - No automation runs recorded yet.
-- src\pages\AutomationCenter.tsx:158 [object:label] - Active agents
-- src\pages\AutomationCenter.tsx:159 [object:label] - Runs today
-- src\pages\AutomationCenter.tsx:160 [object:label] - Successful runs
-- src\pages\AutomationCenter.tsx:161 [object:label] - Failed runs
-- src\pages\AutomationCenter.tsx:162 [object:label] - Open alerts
 - src\pages\CheckoutTrial.tsx:134 [jsx-text] - Back
 - src\pages\CheckoutTrial.tsx:153 [jsx-text] - Free trial
 - src\pages\CheckoutTrial.tsx:168 [jsx-text] - Everything you need, included
@@ -790,52 +775,51 @@ None.
 - src\pages\PublicContact.tsx:9 [object:label] - Sales
 - src\pages\PublicContact.tsx:10 [object:label] - Pricing / Demo request
 - src\pages\PublicContact.tsx:11 [object:label] - Other
-- src\pages\PublicContract.tsx:185 [jsx-text] - Loading contract...
-- src\pages\PublicContract.tsx:204 [jsx-text] - Invalid Link
-- src\pages\PublicContract.tsx:206 [jsx-text] - Please contact your rental agency for assistance.
-- src\pages\PublicContract.tsx:223 [jsx-text] - Contract Signed!
-- src\pages\PublicContract.tsx:224 [jsx-text] - Your signature has been securely recorded and synced to the agency dashboard.
-- src\pages\PublicContract.tsx:230 [jsx-text] - Contract
-- src\pages\PublicContract.tsx:234 [jsx-text] - Status
-- src\pages\PublicContract.tsx:235 [jsx-text] - Signed
-- src\pages\PublicContract.tsx:239 [jsx-text] - Final Status
-- src\pages\PublicContract.tsx:240 [jsx-text] - Active
-- src\pages\PublicContract.tsx:244 [jsx-text] - You can now close this page. A confirmation email will be sent shortly.
-- src\pages\PublicContract.tsx:277 [jsx-text] - Digital Contract
-- src\pages\PublicContract.tsx:292 [jsx-text] - Contract Number
-- src\pages\PublicContract.tsx:348 [jsx-text] - Start
-- src\pages\PublicContract.tsx:359 [jsx-text] - End
-- src\pages\PublicContract.tsx:369 [jsx-text] - Payment Summary
-- src\pages\PublicContract.tsx:378 [jsx-text] - Deposit
-- src\pages\PublicContract.tsx:384 [jsx-text] - Additional Fees
-- src\pages\PublicContract.tsx:390 [jsx-text] - Discount
-- src\pages\PublicContract.tsx:396 [jsx-text] - Total Amount
-- src\pages\PublicContract.tsx:407 [jsx-text] - Agency Signed
-- src\pages\PublicContract.tsx:425 [jsx-text] - This contract has already been signed by the agency. Please review and sign below to complete the agreement.
-- src\pages\PublicContract.tsx:436 [jsx-text] - Security Deposit
-- src\pages\PublicContract.tsx:440 [jsx-text] - Type
-- src\pages\PublicContract.tsx:444 [jsx-text] - Amount
-- src\pages\PublicContract.tsx:449 [jsx-text] - Reference
-- src\pages\PublicContract.tsx:454 [jsx-text] - Status
-- src\pages\PublicContract.tsx:475 [jsx-text] - I understand and accept the deposit conditions.
-- src\pages\PublicContract.tsx:487 [jsx-text] - Terms & Conditions
-- src\pages\PublicContract.tsx:513 [jsx-text] - I have read and agree to the terms and conditions above.
-- src\pages\PublicContract.tsx:525 [jsx-text] - Your Signature
-- src\pages\PublicContract.tsx:531 [jsx-text] - Please accept the terms and conditions above before signing.
-- src\pages\PublicContract.tsx:538 [jsx-text] - Please acknowledge the security deposit conditions above before signing.
-- src\pages\PublicContract.tsx:553 [jsx-text] - Syncing your signature...
-- src\pages\PublicContract.tsx:561 [jsx-text] - Contract Signed!
-- src\pages\PublicContract.tsx:568 [jsx-text] - Your Signature
-- src\pages\PublicContract.tsx:579 [jsx-text] - Download Signed Contract
-- src\pages\PublicContract.tsx:600 [jsx-text] - This document is digitally signed and timestamped.
-- src\pages\PublicContract.tsx:195 [prop:title] - Contract Signing
-- src\pages\PublicContract.tsx:196 [prop:description] - Secure contract signing link.
-- src\pages\PublicContract.tsx:259 [prop:title] - Contract Signing
-- src\pages\PublicContract.tsx:260 [prop:description] - Secure contract signing link.
-- src\pages\PublicContract.tsx:410 [prop:alt] - Agency Signature
-- src\pages\PublicContract.tsx:420 [prop:alt] - Agency Stamp
-- src\pages\PublicContract.tsx:544 [prop:label] - Sign with your finger or stylus
-- src\pages\PublicContract.tsx:569 [prop:alt] - Your Signature
+- src\pages\PublicContract.tsx:212 [jsx-text] - Loading contract...
+- src\pages\PublicContract.tsx:233 [jsx-text] - Please contact your rental agency for assistance.
+- src\pages\PublicContract.tsx:250 [jsx-text] - Contract Signed!
+- src\pages\PublicContract.tsx:251 [jsx-text] - Your signature has been securely recorded and synced to the agency dashboard.
+- src\pages\PublicContract.tsx:257 [jsx-text] - Contract
+- src\pages\PublicContract.tsx:261 [jsx-text] - Status
+- src\pages\PublicContract.tsx:262 [jsx-text] - Signed
+- src\pages\PublicContract.tsx:266 [jsx-text] - Final Status
+- src\pages\PublicContract.tsx:267 [jsx-text] - Active
+- src\pages\PublicContract.tsx:271 [jsx-text] - You can now close this page. A confirmation email will be sent shortly.
+- src\pages\PublicContract.tsx:304 [jsx-text] - Digital Contract
+- src\pages\PublicContract.tsx:319 [jsx-text] - Contract Number
+- src\pages\PublicContract.tsx:375 [jsx-text] - Start
+- src\pages\PublicContract.tsx:386 [jsx-text] - End
+- src\pages\PublicContract.tsx:396 [jsx-text] - Payment Summary
+- src\pages\PublicContract.tsx:405 [jsx-text] - Deposit
+- src\pages\PublicContract.tsx:411 [jsx-text] - Additional Fees
+- src\pages\PublicContract.tsx:417 [jsx-text] - Discount
+- src\pages\PublicContract.tsx:423 [jsx-text] - Total Amount
+- src\pages\PublicContract.tsx:434 [jsx-text] - Agency Signed
+- src\pages\PublicContract.tsx:452 [jsx-text] - This contract has already been signed by the agency. Please review and sign below to complete the agreement.
+- src\pages\PublicContract.tsx:463 [jsx-text] - Security Deposit
+- src\pages\PublicContract.tsx:467 [jsx-text] - Type
+- src\pages\PublicContract.tsx:471 [jsx-text] - Amount
+- src\pages\PublicContract.tsx:476 [jsx-text] - Reference
+- src\pages\PublicContract.tsx:481 [jsx-text] - Status
+- src\pages\PublicContract.tsx:502 [jsx-text] - I understand and accept the deposit conditions.
+- src\pages\PublicContract.tsx:514 [jsx-text] - Terms & Conditions
+- src\pages\PublicContract.tsx:540 [jsx-text] - I have read and agree to the terms and conditions above.
+- src\pages\PublicContract.tsx:552 [jsx-text] - Your Signature
+- src\pages\PublicContract.tsx:558 [jsx-text] - Please accept the terms and conditions above before signing.
+- src\pages\PublicContract.tsx:565 [jsx-text] - Please acknowledge the security deposit conditions above before signing.
+- src\pages\PublicContract.tsx:580 [jsx-text] - Syncing your signature...
+- src\pages\PublicContract.tsx:588 [jsx-text] - Contract Signed!
+- src\pages\PublicContract.tsx:595 [jsx-text] - Your Signature
+- src\pages\PublicContract.tsx:621 [jsx-text] - Retry
+- src\pages\PublicContract.tsx:645 [jsx-text] - This document is digitally signed and timestamped.
+- src\pages\PublicContract.tsx:222 [prop:title] - Contract Signing
+- src\pages\PublicContract.tsx:223 [prop:description] - Secure contract signing link.
+- src\pages\PublicContract.tsx:286 [prop:title] - Contract Signing
+- src\pages\PublicContract.tsx:287 [prop:description] - Secure contract signing link.
+- src\pages\PublicContract.tsx:437 [prop:alt] - Agency Signature
+- src\pages\PublicContract.tsx:447 [prop:alt] - Agency Stamp
+- src\pages\PublicContract.tsx:571 [prop:label] - Sign with your finger or stylus
+- src\pages\PublicContract.tsx:596 [prop:alt] - Your Signature
 - src\pages\Register.tsx:211 [prop:title] - Create Account
 - src\pages\Register.tsx:212 [prop:description] - Create your Innovacar account to start managing your car rental agency
 - src\pages\Register.tsx:272 [prop:placeholder] - John

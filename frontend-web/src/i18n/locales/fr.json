@@ -2919,7 +2919,72 @@
       "OPERATIONAL": "Opérationnel",
       "NOT_CONFIGURED": "Non configuré",
       "DEGRADED": "Dégradé"
+    },
+    "agent": {
+      "ACTIVE": "Actif",
+      "PAUSED": "En pause",
+      "DEGRADED": "Dégradé",
+      "ERROR": "Erreur",
+      "DISABLED": "Désactivé",
+      "REQUIRES_CONFIGURATION": "Configuration requise"
+    },
+    "severity": {
+      "INFO": "Info",
+      "WARNING": "Avertissement",
+      "CRITICAL": "Critique"
+    },
+    "runStatus": {
+      "SUCCESS": "Réussi",
+      "FAILED": "Échoué"
     }
+  },
+  "agents": {
+    "BACKUP_VERIFICATION": {
+      "name": "Agent de vérification des sauvegardes",
+      "description": "Vérifie que la sauvegarde de la base de données de la plateforme est récente, de taille correcte et que sa somme de contrôle est valide."
+    },
+    "GPS_MONITORING": {
+      "name": "Agent de surveillance GPS",
+      "description": "Vérifie que les appareils GPS configurés ne sont pas hors ligne ou inactifs depuis trop longtemps."
+    },
+    "SUBSCRIPTION_TRIAL": {
+      "name": "Agent d'abonnement et de période d'essai",
+      "description": "Suit le compte à rebours de l'essai et le cycle de vie de l'abonnement, envoie des rappels de renouvellement."
+    }
+  },
+  "aiAutomation": {
+    "subtitle": "Automatisez les contrats, rappels, paiements, alertes GPS et le support client.",
+    "refresh": "Actualiser",
+    "stats": {
+      "activeAgents": "Agents actifs",
+      "runsToday": "Exécutions aujourd'hui",
+      "successfulRuns": "Exécutions réussies",
+      "failedRuns": "Échecs",
+      "openAlerts": "Alertes ouvertes"
+    },
+    "sections": {
+      "agents": "Agents",
+      "alerts": "Alertes",
+      "recentRuns": "Exécutions récentes"
+    },
+    "actions": {
+      "disableAgent": "Désactiver l'agent",
+      "enableAgent": "Activer l'agent",
+      "acknowledge": "Accuser réception",
+      "retry": "Réessayer"
+    },
+    "labels": {
+      "successes": "Réussites",
+      "failures": "Échecs",
+      "lastRun": "Dernière exécution",
+      "lastSuccess": "Dernière réussite"
+    },
+    "emptyStates": {
+      "noAlerts": "Aucune alerte — tout fonctionne normalement.",
+      "noRuns": "Aucune exécution d'automatisation enregistrée pour le moment."
+    },
+    "loading": "Chargement des données d'automatisation...",
+    "loadError": "Impossible de charger le centre d'automatisation. Veuillez réessayer."
   },
   "roleAccess": {
     "title": "Accès par rôle",
@@ -3083,5 +3148,10 @@
   "branches": {
     "branch": "Succursale",
     "unassigned": "Non assigne"
+  },
+  "runErrors": {
+    "NO_BACKUP_FOUND": "Aucune sauvegarde terminée n'a jamais été enregistrée.",
+    "PARTIAL_FAILURE": "Certains locataires n'ont pas pu être traités — consultez les journaux du serveur pour plus de détails.",
+    "GPS_CHECK_FAILED": "Impossible de vérifier l'état des appareils GPS."
   }
 }

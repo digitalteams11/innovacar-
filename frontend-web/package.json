@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "i18n:audit": "node scripts/i18n-audit.mjs",
+    "theme:audit": "node scripts/theme-audit.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "prerender:marketing": "node scripts/prerender-marketing.mjs",
     "verify:seo": "node scripts/verify-seo-dist.mjs"

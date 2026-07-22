@@ -2924,7 +2924,72 @@
       "OPERATIONAL": "يعمل بشكل طبيعي",
       "NOT_CONFIGURED": "غير مُهيَّأ",
       "DEGRADED": "متدهور"
+    },
+    "agent": {
+      "ACTIVE": "نشط",
+      "PAUSED": "متوقف مؤقتًا",
+      "DEGRADED": "متدهور",
+      "ERROR": "خطأ",
+      "DISABLED": "معطَّل",
+      "REQUIRES_CONFIGURATION": "يتطلب الإعداد"
+    },
+    "severity": {
+      "INFO": "معلومة",
+      "WARNING": "تحذير",
+      "CRITICAL": "حرج"
+    },
+    "runStatus": {
+      "SUCCESS": "ناجحة",
+      "FAILED": "فاشلة"
     }
+  },
+  "agents": {
+    "BACKUP_VERIFICATION": {
+      "name": "وكيل التحقق من النسخ الاحتياطية",
+      "description": "يتحقق من أن النسخة الاحتياطية لقاعدة بيانات المنصة حديثة، وبحجم صحيح، وبمجموع اختباري (checksum) صالح."
+    },
+    "GPS_MONITORING": {
+      "name": "وكيل مراقبة GPS",
+      "description": "يتحقق من أجهزة GPS المُهيَّأة للكشف عن الأجهزة غير المتصلة أو المتوقفة عن التحديث."
+    },
+    "SUBSCRIPTION_TRIAL": {
+      "name": "وكيل الاشتراك والفترة التجريبية",
+      "description": "يتابع العد التنازلي للفترة التجريبية ودورة حياة الاشتراك، ويرسل تذكيرات التجديد."
+    }
+  },
+  "aiAutomation": {
+    "subtitle": "أتمتة العقود والتذكيرات والمدفوعات وتنبيهات GPS ودعم العملاء.",
+    "refresh": "تحديث",
+    "stats": {
+      "activeAgents": "الوكلاء النشطون",
+      "runsToday": "عمليات اليوم",
+      "successfulRuns": "العمليات الناجحة",
+      "failedRuns": "العمليات الفاشلة",
+      "openAlerts": "التنبيهات المفتوحة"
+    },
+    "sections": {
+      "agents": "الوكلاء",
+      "alerts": "التنبيهات",
+      "recentRuns": "العمليات الأخيرة"
+    },
+    "actions": {
+      "disableAgent": "تعطيل الوكيل",
+      "enableAgent": "تفعيل الوكيل",
+      "acknowledge": "الإقرار",
+      "retry": "إعادة المحاولة"
+    },
+    "labels": {
+      "successes": "النجاحات",
+      "failures": "الإخفاقات",
+      "lastRun": "آخر تشغيل",
+      "lastSuccess": "آخر نجاح"
+    },
+    "emptyStates": {
+      "noAlerts": "لا توجد تنبيهات — كل شيء يعمل بشكل جيد.",
+      "noRuns": "لم يتم تسجيل أي عمليات أتمتة حتى الآن."
+    },
+    "loading": "جارٍ تحميل بيانات الأتمتة...",
+    "loadError": "تعذّر تحميل مركز الأتمتة. يرجى المحاولة مرة أخرى."
   },
   "roleAccess": {
     "title": "صلاحيات الأدوار",
@@ -3111,5 +3176,10 @@
   "branches": {
     "branch": "الفرع",
     "unassigned": "غير معين"
+  },
+  "runErrors": {
+    "NO_BACKUP_FOUND": "لم يتم تسجيل أي نسخة احتياطية مكتملة على الإطلاق.",
+    "PARTIAL_FAILURE": "تعذّرت معالجة بعض المستأجرين — راجع سجلات الخادم لمزيد من التفاصيل.",
+    "GPS_CHECK_FAILED": "تعذّر التحقق من حالة أجهزة GPS."
   }
 }

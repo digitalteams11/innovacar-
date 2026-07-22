@@ -2919,7 +2919,72 @@
       "OPERATIONAL": "Operational",
       "NOT_CONFIGURED": "Not configured",
       "DEGRADED": "Degraded"
+    },
+    "agent": {
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "DEGRADED": "Degraded",
+      "ERROR": "Error",
+      "DISABLED": "Disabled",
+      "REQUIRES_CONFIGURATION": "Requires configuration"
+    },
+    "severity": {
+      "INFO": "Info",
+      "WARNING": "Warning",
+      "CRITICAL": "Critical"
+    },
+    "runStatus": {
+      "SUCCESS": "Success",
+      "FAILED": "Failed"
     }
+  },
+  "agents": {
+    "BACKUP_VERIFICATION": {
+      "name": "Backup Verification Agent",
+      "description": "Verifies the platform database backup is recent, sized correctly, and checksum-valid."
+    },
+    "GPS_MONITORING": {
+      "name": "GPS Monitoring Agent",
+      "description": "Checks configured GPS devices for offline or stale status."
+    },
+    "SUBSCRIPTION_TRIAL": {
+      "name": "Subscription & Trial Agent",
+      "description": "Tracks trial countdown and subscription lifecycle, sends renewal reminders."
+    }
+  },
+  "aiAutomation": {
+    "subtitle": "Automate contracts, reminders, payments, GPS alerts and customer support.",
+    "refresh": "Refresh",
+    "stats": {
+      "activeAgents": "Active agents",
+      "runsToday": "Runs today",
+      "successfulRuns": "Successful runs",
+      "failedRuns": "Failed runs",
+      "openAlerts": "Open alerts"
+    },
+    "sections": {
+      "agents": "Agents",
+      "alerts": "Alerts",
+      "recentRuns": "Recent runs"
+    },
+    "actions": {
+      "disableAgent": "Disable agent",
+      "enableAgent": "Enable agent",
+      "acknowledge": "Acknowledge",
+      "retry": "Retry"
+    },
+    "labels": {
+      "successes": "Successes",
+      "failures": "Failures",
+      "lastRun": "Last run",
+      "lastSuccess": "Last success"
+    },
+    "emptyStates": {
+      "noAlerts": "No alerts — everything looks healthy.",
+      "noRuns": "No automation runs recorded yet."
+    },
+    "loading": "Loading automation data...",
+    "loadError": "Unable to load the Automation Center. Please try again."
   },
   "roleAccess": {
     "title": "Role Access",
@@ -3083,5 +3148,10 @@
   "branches": {
     "branch": "Branch",
     "unassigned": "Unassigned"
+  },
+  "runErrors": {
+    "NO_BACKUP_FOUND": "No completed backup has ever been recorded.",
+    "PARTIAL_FAILURE": "Some tenants failed to process — check server logs for details.",
+    "GPS_CHECK_FAILED": "Unable to check GPS device status."
   }
 }

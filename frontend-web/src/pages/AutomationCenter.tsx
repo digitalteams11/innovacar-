@@ -51,18 +51,6 @@ type Overview = {
   agents: AgentState[];
 };
 
-const AGENT_LABELS: Record<string, string> = {
-  SUBSCRIPTION_TRIAL: 'Subscription & Trial Agent',
-  GPS_MONITORING: 'GPS Monitoring Agent',
-  BACKUP_VERIFICATION: 'Backup Verification Agent',
-};
-
-const AGENT_DESCRIPTIONS: Record<string, string> = {
-  SUBSCRIPTION_TRIAL: 'Tracks trial countdown and subscription lifecycle, sends renewal reminders.',
-  GPS_MONITORING: 'Checks configured GPS devices for offline or stale status.',
-  BACKUP_VERIFICATION: 'Verifies the platform database backup is recent, sized correctly, and checksum-valid.',
-};
-
 const STATUS_STYLE: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20',
   PAUSED: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-white/5 dark:text-slate-300 dark:border-white/10',
@@ -78,13 +66,13 @@ const SEVERITY_STYLE: Record<string, string> = {
   CRITICAL: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20',
 };
 
-function formatDate(iso: string | null) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
 export default function AutomationCenter() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return '—';
+    return new Intl.DateTimeFormat(i18n.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+  };
   const [overview, setOverview] = useState<Overview | null>(null);
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [alerts, setAlerts] = useState<AlertRecord[]>([]);
@@ -139,38 +127,43 @@ export default function AutomationCenter() {
   };
 
   if (loading && !overview) {
-    return <div className="min-h-[50vh] flex items-center justify-center"><Loader2 className="animate-spin text-brand-500" size={28} /></div>;
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="animate-spin text-brand-500" size={28} />
+        <p className="text-sm text-[var(--text-muted)]">{t('aiAutomation.loading')}</p>
+      </div>
+    );
   }
 
   if (error && !overview) {
     return (
       <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3 text-center p-6">
         <XCircle className="text-rose-500" size={32} />
-        <p className="text-sm text-[var(--text-muted)]">Unable to load the Automation Center. Please try again.</p>
+        <p className="text-sm text-[var(--text-muted)]">{t('aiAutomation.loadError')}</p>
         <button onClick={load} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-semibold">
-          <RefreshCw size={14} /> Retry
+          <RefreshCw size={14} /> {t('aiAutomation.actions.retry')}
         </button>
       </div>
     );
   }
 
   const metrics = [
-    { label: 'Active agents', value: overview?.activeAgents ?? 0, icon: Activity, tone: 'text-brand-500' },
-    { label: 'Runs today', value: overview?.runsToday ?? 0, icon: Sparkles, tone: 'text-blue-500' },
-    { label: 'Successful runs', value: overview?.successfulRunsToday ?? 0, icon: CheckCircle2, tone: 'text-emerald-500' },
-    { label: 'Failed runs', value: overview?.failedRunsToday ?? 0, icon: XCircle, tone: 'text-rose-500' },
-    { label: 'Open alerts', value: overview?.openAlerts ?? 0, icon: Bell, tone: 'text-amber-500' },
+    { label: t('aiAutomation.stats.activeAgents'), value: overview?.activeAgents ?? 0, icon: Activity, tone: 'text-brand-500' },
+    { label: t('aiAutomation.stats.runsToday'), value: overview?.runsToday ?? 0, icon: Sparkles, tone: 'text-blue-500' },
+    { label: t('aiAutomation.stats.successfulRuns'), value: overview?.successfulRunsToday ?? 0, icon: CheckCircle2, tone: 'text-emerald-500' },
+    { label: t('aiAutomation.stats.failedRuns'), value: overview?.failedRunsToday ?? 0, icon: XCircle, tone: 'text-rose-500' },
+    { label: t('aiAutomation.stats.openAlerts'), value: overview?.openAlerts ?? 0, icon: Bell, tone: 'text-amber-500' },
   ];
 
   return (
     <div className="space-y-6 pb-10">
       <GlassPageHeader
         title={t('nav.automationCenter', 'AI & Automation')}
-        subtitle="Automate contracts, reminders, payments, GPS alerts and customer support."
+        subtitle={t('aiAutomation.subtitle')}
         icon={Sparkles}
         actions={
           <button onClick={load} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-secondary)] disabled:opacity-50 min-h-[44px]">
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> {t('aiAutomation.refresh')}
           </button>
         }
       />
@@ -186,24 +179,24 @@ export default function AutomationCenter() {
       </section>
 
       <section>
-        <h2 className="text-sm font-bold text-[var(--text-primary)] mb-3">Agents</h2>
+        <h2 className="text-sm font-bold text-[var(--text-primary)] mb-3">{t('aiAutomation.sections.agents')}</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(overview?.agents ?? []).map((agent) => (
             <article key={agent.key} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card-solid)] p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-bold text-[var(--text-primary)]">{AGENT_LABELS[agent.key] || agent.key}</p>
-                  <p className="mt-1 text-xs text-[var(--text-muted)] leading-5">{AGENT_DESCRIPTIONS[agent.key] || ''}</p>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">{t(`agents.${agent.key}.name`, agent.key)}</p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)] leading-5">{t(`agents.${agent.key}.description`, '')}</p>
                 </div>
                 <span className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-bold uppercase ${STATUS_STYLE[agent.status] || STATUS_STYLE.ACTIVE}`}>
-                  {agent.status}
+                  {t(`status.agent.${agent.status}`, agent.status)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-[var(--text-muted)]">
-                <div>Last run: {formatDate(agent.lastRunAt)}</div>
-                <div>Successes: {agent.successCount}</div>
-                <div>Last success: {formatDate(agent.lastSuccessAt)}</div>
-                <div>Failures: {agent.failureCount}</div>
+                <div>{t('aiAutomation.labels.lastRun')}: {formatDate(agent.lastRunAt)}</div>
+                <div>{t('aiAutomation.labels.successes')}: {agent.successCount}</div>
+                <div>{t('aiAutomation.labels.lastSuccess')}: {formatDate(agent.lastSuccessAt)}</div>
+                <div>{t('aiAutomation.labels.failures')}: {agent.failureCount}</div>
               </div>
               <button
                 onClick={() => toggleAgent(agent)}
@@ -211,7 +204,7 @@ export default function AutomationCenter() {
                 className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:opacity-50 min-h-[44px]"
               >
                 {agent.enabled ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
-                {agent.enabled ? 'Disable agent' : 'Enable agent'}
+                {agent.enabled ? t('aiAutomation.actions.disableAgent') : t('aiAutomation.actions.enableAgent')}
               </button>
             </article>
           ))}
@@ -219,9 +212,9 @@ export default function AutomationCenter() {
       </section>
 
       <section>
-        <h2 className="text-sm font-bold text-[var(--text-primary)] mb-3">Alerts</h2>
+        <h2 className="text-sm font-bold text-[var(--text-primary)] mb-3">{t('aiAutomation.sections.alerts')}</h2>
         {alerts.length === 0 ? (
-          <p className="text-sm text-[var(--text-muted)]">No alerts — everything looks healthy.</p>
+          <p className="text-sm text-[var(--text-muted)]">{t('aiAutomation.emptyStates.noAlerts')}</p>
         ) : (
           <div className="space-y-2">
             {alerts.map((alert) => (
@@ -230,7 +223,7 @@ export default function AutomationCenter() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-[var(--text-primary)]">{alert.title}</p>
-                    <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase ${SEVERITY_STYLE[alert.severity]}`}>{alert.severity}</span>
+                    <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase ${SEVERITY_STYLE[alert.severity]}`}>{t(`status.severity.${alert.severity}`, alert.severity)}</span>
                   </div>
                   {alert.message && <p className="mt-1 text-xs text-[var(--text-muted)]">{alert.message}</p>}
                   <p className="mt-1 text-[10px] text-[var(--text-muted)]">{formatDate(alert.createdAt)}</p>
@@ -241,7 +234,7 @@ export default function AutomationCenter() {
                     disabled={busyKey === `alert-${alert.id}`}
                     className="shrink-0 rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] disabled:opacity-50 min-h-[44px]"
                   >
-                    Acknowledge
+                    {t('aiAutomation.actions.acknowledge')}
                   </button>
                 )}
               </div>
@@ -251,22 +244,24 @@ export default function AutomationCenter() {
       </section>
 
       <section>
-        <h2 className="text-sm font-bold text-[var(--text-primary)] mb-3">Recent runs</h2>
+        <h2 className="text-sm font-bold text-[var(--text-primary)] mb-3">{t('aiAutomation.sections.recentRuns')}</h2>
         {runs.length === 0 ? (
-          <p className="text-sm text-[var(--text-muted)]">No automation runs recorded yet.</p>
+          <p className="text-sm text-[var(--text-muted)]">{t('aiAutomation.emptyStates.noRuns')}</p>
         ) : (
           <div className="space-y-2">
             {runs.slice(0, 20).map((run) => (
               <div key={run.id} className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card-solid)] p-3">
                 {run.status === 'SUCCESS' ? (
-                  <CheckCircle2 size={16} className="shrink-0 text-emerald-500" />
+                  <CheckCircle2 size={16} className="shrink-0 text-emerald-500" aria-label={t('status.runStatus.SUCCESS') as string} />
                 ) : (
-                  <XCircle size={16} className="shrink-0 text-rose-500" />
+                  <XCircle size={16} className="shrink-0 text-rose-500" aria-label={t('status.runStatus.FAILED') as string} />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-[var(--text-primary)]">{AGENT_LABELS[run.agentKey] || run.agentKey}</p>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">{t(`agents.${run.agentKey}.name`, run.agentKey)}</p>
                   <p className="text-[11px] text-[var(--text-muted)] truncate">
-                    {run.status === 'SUCCESS' ? run.resultSummary : run.sanitizedErrorMessage}
+                    {run.status === 'SUCCESS'
+                      ? run.resultSummary
+                      : (run.errorCode ? t(`runErrors.${run.errorCode}`, run.sanitizedErrorMessage || '') : run.sanitizedErrorMessage)}
                   </p>
                 </div>
                 <span className="shrink-0 text-[10px] text-[var(--text-muted)]">{formatDate(run.startedAt)}</span>
