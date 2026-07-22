@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-22T13:16:14.958Z
-Scanned source files: 207
-Static translation keys used: 1860
+Generated: 2026-07-22T14:25:13.211Z
+Scanned source files: 209
+Static translation keys used: 1871
 
 ## Missing EN Keys (0)
 
@@ -48,7 +48,7 @@ None.
 
 None.
 
-## Possible Visible Hardcoded Text (1453)
+## Possible Visible Hardcoded Text (1468)
 
 ### By file
 
@@ -58,11 +58,11 @@ None.
 - src\pages\superadmin\SuperAdminEmailCenter.tsx: 73
 - src\pages\Subscription.tsx: 64
 - src\pages\superadmin\SuperAdminSubscriptions.tsx: 58
+- src\marketing\pages.tsx: 57
 - src\pages\HelpCenter.tsx: 52
 - src\pages\superadmin\SuperAdminSettings.tsx: 48
 - src\pages\PublicContract.tsx: 45
 - src\pages\superadmin\SuperAdminSecurity.tsx: 44
-- src\marketing\pages.tsx: 42
 - src\pages\superadmin\SuperAdminDataReset.tsx: 40
 - src\components\shared\ReturnInspectionModal.tsx: 38
 - src\pages\GpsDashboard.tsx: 38
@@ -381,48 +381,63 @@ None.
 - src\data\helpCenterContent.ts:238 [object:title] - Settings
 - src\data\helpCenterContent.ts:267 [object:title] - Operations Center
 - src\data\helpCenterContent.ts:294 [object:title] - RentCar Platform
-- src\marketing\pages.tsx:47 [jsx-text] - Connexion
-- src\marketing\pages.tsx:48 [jsx-text] - Essai gratuit
-- src\marketing\pages.tsx:59 [jsx-text] - Un produit d'Innovax Technologies.
-- src\marketing\pages.tsx:65 [jsx-text] - Connexion
-- src\marketing\pages.tsx:110 [jsx-text] - Le logiciel de gestion pour agences de location de voitures
-- src\marketing\pages.tsx:116 [jsx-text] - Commencer l'essai gratuit
-- src\marketing\pages.tsx:122 [jsx-text] - Tout ce qu'il faut pour piloter votre agence
-- src\marketing\pages.tsx:139 [jsx-text] - Consultez vos rapports et pilotez votre agence depuis un tableau de bord unique.
-- src\marketing\pages.tsx:147 [jsx-text] - Commencer l'essai gratuit
-- src\marketing\pages.tsx:166 [jsx-text] - Voir Innovacar en action
-- src\marketing\pages.tsx:167 [jsx-text] - Commencer l'essai gratuit
-- src\marketing\pages.tsx:201 [jsx-text] - Tarifs
-- src\marketing\pages.tsx:216 [jsx-text] - Commencer l'essai gratuit
-- src\marketing\pages.tsx:222 [jsx-text] - Une question sur nos tarifs ?
-- src\marketing\pages.tsx:223 [jsx-text] - Contactez-nous
-- src\marketing\pages.tsx:229 [jsx-text] - ReturnType
-- src\marketing\pages.tsx:41 [prop:aria-label] - Navigation principale
-- src\marketing\pages.tsx:61 [prop:aria-label] - Liens du pied de page
+- src\marketing\pages.tsx:56 [jsx-text] - Connexion
+- src\marketing\pages.tsx:57 [jsx-text] - Essai gratuit
+- src\marketing\pages.tsx:68 [jsx-text] - Un produit d'Innovax Technologies.
+- src\marketing\pages.tsx:74 [jsx-text] - Connexion
+- src\marketing\pages.tsx:164 [jsx-text] - Le logiciel de gestion pour agences de location de voitures
+- src\marketing\pages.tsx:170 [jsx-text] - Commencer l'essai gratuit
+- src\marketing\pages.tsx:176 [jsx-text] - Tout ce qu'il faut pour piloter votre agence
+- src\marketing\pages.tsx:193 [jsx-text] - Consultez vos rapports et pilotez votre agence depuis un tableau de bord unique.
+- src\marketing\pages.tsx:201 [jsx-text] - Commencer l'essai gratuit
+- src\marketing\pages.tsx:220 [jsx-text] - Voir Innovacar en action
+- src\marketing\pages.tsx:221 [jsx-text] - Commencer l'essai gratuit
+- src\marketing\pages.tsx:255 [jsx-text] - Tarifs
+- src\marketing\pages.tsx:270 [jsx-text] - Commencer l'essai gratuit
+- src\marketing\pages.tsx:276 [jsx-text] - Une question sur nos tarifs ?
+- src\marketing\pages.tsx:277 [jsx-text] - Contactez-nous
+- src\marketing\pages.tsx:530 [jsx-text] - ReturnType
+- src\marketing\pages.tsx:50 [prop:aria-label] - Navigation principale
+- src\marketing\pages.tsx:70 [prop:aria-label] - Liens du pied de page
+- src\marketing\pages.tsx:76 [prop:aria-label] - Mentions légales
+- src\marketing\pages.tsx:288 [prop:title] - Politique de confidentialité
+- src\marketing\pages.tsx:360 [prop:title] - Conditions d
+- src\marketing\pages.tsx:423 [prop:title] - Politique de cookies
+- src\marketing\pages.tsx:474 [prop:title] - Sécurité
 - src\marketing\pages.tsx:29 [object:label] - Fonctionnalités
 - src\marketing\pages.tsx:30 [object:label] - Tarifs
 - src\marketing\pages.tsx:31 [object:label] - Contact
-- src\marketing\pages.tsx:83 [object:title] - Gestion de flotte
-- src\marketing\pages.tsx:84 [object:title] - Contrats & signature électronique
-- src\marketing\pages.tsx:85 [object:title] - Suivi GPS
-- src\marketing\pages.tsx:85 [object:description] - Surveillez la position de vos véhicules équipés d’un traceur GPS et recevez une alerte si un appareil passe hors ligne.
-- src\marketing\pages.tsx:86 [object:title] - Paiements & factures
-- src\marketing\pages.tsx:86 [object:description] - Enregistrez les paiements de vos clients et générez des factures liées à chaque contrat et réservation.
-- src\marketing\pages.tsx:87 [object:title] - Rapports & statistiques
-- src\marketing\pages.tsx:87 [object:description] - Consultez des rapports sur l
-- src\marketing\pages.tsx:88 [object:title] - Support & centre d’aide
-- src\marketing\pages.tsx:88 [object:description] - Vos équipes et vos clients peuvent ouvrir des tickets de support, suivis depuis un centre d’aide intégré.
-- src\marketing\pages.tsx:89 [object:title] - Multi-agence & permissions
-- src\marketing\pages.tsx:89 [object:description] - Gérez plusieurs agences ou succursales, avec des rôles et permissions distincts pour chaque employé.
-- src\marketing\pages.tsx:90 [object:title] - Multi-langue
-- src\marketing\pages.tsx:90 [object:description] - Interface disponible en français, anglais et arabe, pour votre équipe comme pour vos clients.
-- src\marketing\pages.tsx:181 [object:name] - Basic
-- src\marketing\pages.tsx:186 [object:name] - Standard
-- src\marketing\pages.tsx:191 [object:name] - Premium
-- src\marketing\pages.tsx:233 [object:title] - Innovacar | Logiciel de gestion pour agences de location de voitures
-- src\marketing\pages.tsx:241 [object:title] - Fonctionnalités | Innovacar
-- src\marketing\pages.tsx:249 [object:title] - Tarifs | Innovacar
-- src\marketing\pages.tsx:250 [object:description] - Découvrez les formules Basic, Standard et Premium d
+- src\marketing\pages.tsx:37 [object:label] - Confidentialité
+- src\marketing\pages.tsx:38 [object:label] - Conditions d’utilisation
+- src\marketing\pages.tsx:39 [object:label] - Cookies
+- src\marketing\pages.tsx:40 [object:label] - Sécurité
+- src\marketing\pages.tsx:137 [object:title] - Gestion de flotte
+- src\marketing\pages.tsx:138 [object:title] - Contrats & signature électronique
+- src\marketing\pages.tsx:139 [object:title] - Suivi GPS
+- src\marketing\pages.tsx:139 [object:description] - Surveillez la position de vos véhicules équipés d’un traceur GPS et recevez une alerte si un appareil passe hors ligne.
+- src\marketing\pages.tsx:140 [object:title] - Paiements & factures
+- src\marketing\pages.tsx:140 [object:description] - Enregistrez les paiements de vos clients et générez des factures liées à chaque contrat et réservation.
+- src\marketing\pages.tsx:141 [object:title] - Rapports & statistiques
+- src\marketing\pages.tsx:141 [object:description] - Consultez des rapports sur l
+- src\marketing\pages.tsx:142 [object:title] - Support & centre d’aide
+- src\marketing\pages.tsx:142 [object:description] - Vos équipes et vos clients peuvent ouvrir des tickets de support, suivis depuis un centre d’aide intégré.
+- src\marketing\pages.tsx:143 [object:title] - Multi-agence & permissions
+- src\marketing\pages.tsx:143 [object:description] - Gérez plusieurs agences ou succursales, avec des rôles et permissions distincts pour chaque employé.
+- src\marketing\pages.tsx:144 [object:title] - Multi-langue
+- src\marketing\pages.tsx:144 [object:description] - Interface disponible en français, anglais et arabe, pour votre équipe comme pour vos clients.
+- src\marketing\pages.tsx:235 [object:name] - Basic
+- src\marketing\pages.tsx:240 [object:name] - Standard
+- src\marketing\pages.tsx:245 [object:name] - Premium
+- src\marketing\pages.tsx:534 [object:title] - Innovacar | Logiciel de gestion pour agences de location de voitures
+- src\marketing\pages.tsx:542 [object:title] - Fonctionnalités | Innovacar
+- src\marketing\pages.tsx:550 [object:title] - Tarifs | Innovacar
+- src\marketing\pages.tsx:551 [object:description] - Découvrez les formules Basic, Standard et Premium d
+- src\marketing\pages.tsx:558 [object:title] - Politique de confidentialité | Innovacar
+- src\marketing\pages.tsx:566 [object:title] - Conditions d
+- src\marketing\pages.tsx:567 [object:description] - Conditions d
+- src\marketing\pages.tsx:574 [object:title] - Politique de cookies | Innovacar
+- src\marketing\pages.tsx:582 [object:title] - Sécurité | Innovacar
+- src\marketing\pages.tsx:583 [object:description] - Chiffrement, authentification à deux facteurs, isolation des données par agence, sauvegardes et journaux d
 - src\pages\AccountSuspended.tsx:18 [jsx-text] - Account suspended
 - src\pages\AccountSuspended.tsx:25 [jsx-text] - Plan
 - src\pages\AccountSuspended.tsx:29 [jsx-text] - Status

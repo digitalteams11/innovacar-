@@ -17,6 +17,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import PremiumLoader from './components/PremiumLoader';
 import SplashScreen from './components/SplashScreen';
 import ErrorBoundary from './components/ErrorBoundary';
+import CookieConsentBanner from './components/CookieConsentBanner';
 import { CHUNK_RELOAD_MARKER } from './lazyLoadRecovery';
 import Login from './pages/Login';
 const AccountSuspended = React.lazy(() => import('./pages/AccountSuspended'));
@@ -365,6 +366,7 @@ function App() {
               <BackendHealthGate>
                 <AppRoutes />
               </BackendHealthGate>
+              <CookieConsentBanner />
             </ThemeProvider>
           </ToastProvider>
         </NotificationProvider>

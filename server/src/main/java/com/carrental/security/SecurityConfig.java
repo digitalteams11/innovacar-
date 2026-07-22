@@ -81,6 +81,25 @@ public class SecurityConfig {
             // Disable CSRF (not needed for stateless REST)
             .csrf(AbstractHttpConfigurer::disable)
 
+            // Response security headers. This API is pure JSON and never
+            // meant to be framed/embedded, so the policy here is
+            // deliberately restrictive — the real, permissive CSP that
+            // reflects what the frontend actually loads (Google Fonts,
+            // Google Identity, map tiles, etc.) lives in vercel.json for
+            // the frontend origin, not here.
+            .headers(headers -> headers
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(63072000))
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+                .referrerPolicy(referrer -> referrer
+                    .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+                .permissionsPolicy(permissions -> permissions
+                    .policy("camera=(), microphone=(), geolocation=(), payment=(), usb=()")))
+
             // Stateless session — no HTTP session
             .sessionManagement(sm -> sm
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

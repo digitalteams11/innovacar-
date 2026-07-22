@@ -1,5 +1,9 @@
 [
   { "path": "/" },
   { "path": "/fonctionnalites" },
-  { "path": "/tarifs" }
+  { "path": "/tarifs" },
+  { "path": "/confidentialite" },
+  { "path": "/conditions" },
+  { "path": "/cookies" },
+  { "path": "/securite" }
 ]

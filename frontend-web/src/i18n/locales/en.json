@@ -3153,5 +3153,24 @@
     "NO_BACKUP_FOUND": "No completed backup has ever been recorded.",
     "PARTIAL_FAILURE": "Some tenants failed to process — check server logs for details.",
     "GPS_CHECK_FAILED": "Unable to check GPS device status."
+  },
+  "cookieBanner": {
+    "title": "We use cookies",
+    "description": "Innovacar only uses cookies that are strictly necessary to keep you signed in. We do not use any advertising or analytics cookies.",
+    "categories": {
+      "necessary": {
+        "title": "Necessary",
+        "description": "Keeps you signed in securely. Always on — the service cannot work without it."
+      },
+      "preferences": {
+        "title": "Preferences",
+        "description": "Remembers your theme and language choice on this device."
+      }
+    },
+    "acceptAll": "Accept all",
+    "rejectNonEssential": "Reject non-essential",
+    "customize": "Customize",
+    "savePreferences": "Save preferences",
+    "learnMore": "Cookie Policy"
   }
 }

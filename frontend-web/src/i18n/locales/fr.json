@@ -3153,5 +3153,24 @@
     "NO_BACKUP_FOUND": "Aucune sauvegarde terminée n'a jamais été enregistrée.",
     "PARTIAL_FAILURE": "Certains locataires n'ont pas pu être traités — consultez les journaux du serveur pour plus de détails.",
     "GPS_CHECK_FAILED": "Impossible de vérifier l'état des appareils GPS."
+  },
+  "cookieBanner": {
+    "title": "Nous utilisons des cookies",
+    "description": "Innovacar utilise uniquement des cookies strictement nécessaires pour vous garder connecté. Nous n'utilisons aucun cookie publicitaire ou d'analyse.",
+    "categories": {
+      "necessary": {
+        "title": "Nécessaires",
+        "description": "Vous garde connecté en toute sécurité. Toujours actif — le service ne peut pas fonctionner sans cela."
+      },
+      "preferences": {
+        "title": "Préférences",
+        "description": "Mémorise votre choix de thème et de langue sur cet appareil."
+      }
+    },
+    "acceptAll": "Tout accepter",
+    "rejectNonEssential": "Refuser le non essentiel",
+    "customize": "Personnaliser",
+    "savePreferences": "Enregistrer les préférences",
+    "learnMore": "Politique de cookies"
   }
 }

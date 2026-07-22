@@ -274,3 +274,46 @@ main {
     font-size: 1.8rem;
   }
 }
+
+/* Long-form legal content (Privacy, Terms, Cookies, Security) */
+.im-legal {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.im-legal-updated {
+  color: var(--text-muted, var(--text-primary));
+  font-size: 0.85rem;
+  margin: 0 0 2rem;
+}
+
+.im-legal h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 2.25rem 0 0.75rem;
+}
+
+.im-legal h2:first-of-type {
+  margin-top: 0;
+}
+
+.im-legal p {
+  line-height: 1.7;
+  margin: 0 0 1rem;
+}
+
+.im-legal ul {
+  margin: 0 0 1rem;
+  padding-inline-start: 1.25rem;
+  line-height: 1.7;
+}
+
+.im-legal li {
+  margin-bottom: 0.4rem;
+}
+
+.im-legal a {
+  color: inherit;
+  text-decoration: underline;
+}

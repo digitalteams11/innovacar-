@@ -72,6 +72,10 @@ const MARKETING_PAGES = [
   { file: 'index.html', urlPath: '/', expectIndexable: true },
   { file: path.join('fonctionnalites', 'index.html'), urlPath: '/fonctionnalites', expectIndexable: true },
   { file: path.join('tarifs', 'index.html'), urlPath: '/tarifs', expectIndexable: true },
+  { file: path.join('confidentialite', 'index.html'), urlPath: '/confidentialite', expectIndexable: true },
+  { file: path.join('conditions', 'index.html'), urlPath: '/conditions', expectIndexable: true },
+  { file: path.join('cookies', 'index.html'), urlPath: '/cookies', expectIndexable: true },
+  { file: path.join('securite', 'index.html'), urlPath: '/securite', expectIndexable: true },
 ];
 for (const page of MARKETING_PAGES) {
   const html = readIfExists(page.file);
