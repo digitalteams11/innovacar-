@@ -22,7 +22,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.carrental.entity.ClientIdentityDocument;
+import com.carrental.entity.DocumentType;
+
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -47,11 +51,13 @@ import java.util.Optional;
 public class ClientService {
 
     private final ClientRepository clientRepository;
+    private final ClientIdentityDocumentRepository identityDocumentRepository;
     private final TenantRepository tenantRepository;
     private final ReservationRepository reservationRepository;
     private final ContractRepository contractRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final RolePermissionService rolePermissionService;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -62,10 +68,13 @@ public class ClientService {
     public List<ClientResponse> getAllClients() {
         Long tenantId = requireTenantId();
         log.debug("Listing clients for tenant [{}]", tenantId);
+        boolean canViewFull = canSeeFullDocument();
 
         return clientRepository.findAllByTenantId(tenantId)
                 .stream()
-                .map(ClientResponse::from)
+                .map(client -> ClientResponse.from(client,
+                        identityDocumentRepository.findFirstByClientIdAndTenantIdAndIsPrimaryTrue(client.getId(), tenantId).orElse(null),
+                        canViewFull))
                 .toList();
     }
 
@@ -76,7 +85,44 @@ public class ClientService {
      */
     @Transactional(readOnly = true)
     public ClientResponse getClientById(Long id) {
-        return ClientResponse.from(fetchClientInTenant(id));
+        Long tenantId = requireTenantId();
+        Client client = fetchClientInTenant(id);
+        return ClientResponse.from(client,
+                identityDocumentRepository.findFirstByClientIdAndTenantIdAndIsPrimaryTrue(id, tenantId).orElse(null),
+                canSeeFullDocument());
+    }
+
+    private boolean canSeeFullDocument() {
+        return rolePermissionService.has("VIEW_CLIENT_DOCUMENTS_FULL");
+    }
+
+    /** {@code AB••••56} style masking: first 2 + last 2 chars visible, rest replaced with bullets. */
+    public static String maskDocumentNumber(String value) {
+        if (value == null) return null;
+        String v = value.trim();
+        if (v.length() <= 4) {
+            return v.isEmpty() ? v : v.charAt(0) + "•".repeat(Math.max(1, v.length() - 1));
+        }
+        int maskLen = Math.max(4, v.length() - 4);
+        return v.substring(0, 2) + "•".repeat(maskLen) + v.substring(v.length() - 2);
+    }
+
+    /** A resolved (type, number) pair from either the new unified fields or legacy cin/passportNumber. */
+    private record ResolvedDocument(DocumentType type, String number) {
+        boolean isPresent() { return type != null && StringUtils.hasText(number); }
+    }
+
+    private ResolvedDocument resolveDocument(DocumentType type, String number, String legacyCin, String legacyPassport) {
+        if (type != null && StringUtils.hasText(number)) {
+            return new ResolvedDocument(type, number.trim());
+        }
+        if (StringUtils.hasText(legacyCin)) {
+            return new ResolvedDocument(DocumentType.CIN, legacyCin.trim());
+        }
+        if (StringUtils.hasText(legacyPassport)) {
+            return new ResolvedDocument(DocumentType.PASSPORT, legacyPassport.trim());
+        }
+        return new ResolvedDocument(null, null);
     }
 
     // ── CREATE ────────────────────────────────────────────────────────────────
@@ -89,8 +135,11 @@ public class ClientService {
     @Transactional
     public ClientResponse createClient(CreateClientRequest request) {
         Long tenantId = requireTenantId();
-        validateRequired(request);
-        checkDuplicates(tenantId, request);
+        ResolvedDocument doc = resolveDocument(
+                request.getDocumentType(), request.getDocumentNumber(),
+                request.getCin(), request.getPassportNumber());
+        validateRequired(request, doc);
+        checkDuplicates(tenantId, request, doc, null);
 
         Tenant tenant   = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ClientValidationException(
@@ -110,11 +159,16 @@ public class ClientService {
                     .nationality(required(request.getNationality()))
                     .gender(normalizeGender(request.getGender()))
                     .birthDate(request.getBirthDate())
-                    .cin(optional(request.getCin()))
-                    .passportNumber(optional(request.getPassportNumber()))
+                    // Legacy columns mirrored from the unified document so the
+                    // desktop app (still reading cin/passportNumber directly)
+                    // keeps working unchanged.
+                    .cin(doc.type() == DocumentType.CIN ? doc.number() : null)
+                    .passportNumber(doc.type() == DocumentType.PASSPORT ? doc.number() : null)
                     .drivingLicense(optional(request.getDrivingLicense()))
                     .drivingLicenseIssue(request.getDrivingLicenseIssue())
                     .drivingLicenseExpiry(request.getDrivingLicenseExpiry())
+                    .drivingLicenseCategory(optional(request.getDrivingLicenseCategory()))
+                    .drivingLicenseCountry(optional(request.getDrivingLicenseCountry()))
                     .emergencyContactName(optional(request.getEmergencyContactName()))
                     .emergencyContactPhone(optional(request.getEmergencyContactPhone()))
                     .companyName(optional(request.getCompanyName()))
@@ -134,10 +188,27 @@ public class ClientService {
             throw new ClientDuplicateException("Client already exists", "CLIENT_ALREADY_EXISTS", null);
         }
 
+        if (request.getDocumentExpiryDate() != null && request.getDocumentIssueDate() != null
+                && request.getDocumentExpiryDate().isBefore(request.getDocumentIssueDate())) {
+            throw new ClientValidationException("Document expiry date cannot be before the issue date.", "DOCUMENT_EXPIRY_BEFORE_ISSUE");
+        }
+        ClientIdentityDocument savedDoc = identityDocumentRepository.save(ClientIdentityDocument.builder()
+                .tenantId(tenantId)
+                .clientId(client.getId())
+                .documentType(doc.type())
+                .documentNumber(doc.number())
+                .issuingCountry(optional(request.getDocumentIssuingCountry()))
+                .issuingAuthority(optional(request.getDocumentIssuingAuthority()))
+                .issueDate(request.getDocumentIssueDate())
+                .expiryDate(request.getDocumentExpiryDate())
+                .notes(optional(request.getDocumentNotes()))
+                .isPrimary(true)
+                .build());
+
         log.info("Created client [id={}] '{}' in tenant [{}]",
                 client.getId(), client.getName(), tenantId);
 
-        return ClientResponse.from(client);
+        return ClientResponse.from(client, savedDoc, canSeeFullDocument());
     }
 
     @Transactional(readOnly = true)
@@ -222,11 +293,37 @@ public class ClientService {
         if (request.getBirthDate() != null) {
             client.setBirthDate(request.getBirthDate());
         }
-        if (request.getCin() != null) {
-            client.setCin(request.getCin().isEmpty() ? null : request.getCin());
-        }
-        if (request.getPassportNumber() != null) {
-            client.setPassportNumber(request.getPassportNumber().isEmpty() ? null : request.getPassportNumber());
+        Long tenantId = TenantContext.getCurrentTenantId();
+        boolean documentChangeRequested = request.getDocumentType() != null || request.getDocumentNumber() != null
+                || request.getCin() != null || request.getPassportNumber() != null;
+        if (documentChangeRequested) {
+            ResolvedDocument doc = resolveDocument(request.getDocumentType(), request.getDocumentNumber(),
+                    request.getCin(), request.getPassportNumber());
+            if (!doc.isPresent()) {
+                throw new ClientValidationException("Document type and document number are required together.", "DOCUMENT_NUMBER_REQUIRED");
+            }
+            var existing = identityDocumentRepository.findFirstByTenantIdAndDocumentNumberIgnoreCaseAndIsPrimaryTrueAndClientIdNot(
+                    tenantId, doc.number(), id);
+            if (existing.isPresent()) {
+                throw new DuplicateClientException(duplicateMessage("documentNumber"), "documentNumber", existing.get().getClientId());
+            }
+            client.setCin(doc.type() == DocumentType.CIN ? doc.number() : null);
+            client.setPassportNumber(doc.type() == DocumentType.PASSPORT ? doc.number() : null);
+
+            var primary = identityDocumentRepository.findFirstByClientIdAndTenantIdAndIsPrimaryTrue(id, tenantId);
+            ClientIdentityDocument row = primary.orElseGet(() -> ClientIdentityDocument.builder()
+                    .tenantId(tenantId).clientId(id).isPrimary(true).build());
+            row.setDocumentType(doc.type());
+            row.setDocumentNumber(doc.number());
+            if (request.getDocumentIssuingCountry() != null) row.setIssuingCountry(optional(request.getDocumentIssuingCountry()));
+            if (request.getDocumentIssuingAuthority() != null) row.setIssuingAuthority(optional(request.getDocumentIssuingAuthority()));
+            if (request.getDocumentIssueDate() != null) row.setIssueDate(request.getDocumentIssueDate());
+            if (request.getDocumentExpiryDate() != null) row.setExpiryDate(request.getDocumentExpiryDate());
+            if (request.getDocumentNotes() != null) row.setNotes(optional(request.getDocumentNotes()));
+            if (row.getExpiryDate() != null && row.getIssueDate() != null && row.getExpiryDate().isBefore(row.getIssueDate())) {
+                throw new ClientValidationException("Document expiry date cannot be before the issue date.", "DOCUMENT_EXPIRY_BEFORE_ISSUE");
+            }
+            identityDocumentRepository.save(row);
         }
         if (request.getDrivingLicense() != null) {
             client.setDrivingLicense(request.getDrivingLicense().isEmpty() ? null : request.getDrivingLicense());
@@ -236,6 +333,16 @@ public class ClientService {
         }
         if (request.getDrivingLicenseExpiry() != null) {
             client.setDrivingLicenseExpiry(request.getDrivingLicenseExpiry());
+        }
+        if (request.getDrivingLicenseCategory() != null) {
+            client.setDrivingLicenseCategory(request.getDrivingLicenseCategory().isEmpty() ? null : request.getDrivingLicenseCategory());
+        }
+        if (request.getDrivingLicenseCountry() != null) {
+            client.setDrivingLicenseCountry(request.getDrivingLicenseCountry().isEmpty() ? null : request.getDrivingLicenseCountry());
+        }
+        if (client.getDrivingLicenseExpiry() != null && client.getDrivingLicenseIssue() != null
+                && client.getDrivingLicenseExpiry().isBefore(client.getDrivingLicenseIssue())) {
+            throw new ClientValidationException("Driver license expiry date cannot be before the issue date.", "LICENSE_EXPIRY_BEFORE_ISSUE");
         }
         if (request.getEmergencyContactName() != null) {
             client.setEmergencyContactName(request.getEmergencyContactName().isEmpty() ? null : request.getEmergencyContactName());
@@ -252,7 +359,9 @@ public class ClientService {
 
         Client saved = clientRepository.save(client);
         log.info("Updated client [id={}] in tenant [{}]", id, TenantContext.getCurrentTenantId());
-        return ClientResponse.from(saved);
+        return ClientResponse.from(saved,
+                identityDocumentRepository.findFirstByClientIdAndTenantIdAndIsPrimaryTrue(id, tenantId).orElse(null),
+                canSeeFullDocument());
     }
 
     /**
@@ -482,31 +591,45 @@ public class ClientService {
         return tenantId;
     }
 
-    private void validateRequired(CreateClientRequest request) {
+    private void validateRequired(CreateClientRequest request, ResolvedDocument doc) {
         if (!StringUtils.hasText(request.getFullName())) {
-            throw new ClientValidationException("Full name is required");
+            throw new ClientValidationException("Full name is required", "FULL_NAME_REQUIRED");
         }
         if (!StringUtils.hasText(request.getPhone())) {
-            throw new ClientValidationException("Phone is required");
+            throw new ClientValidationException("Phone is required", "PHONE_REQUIRED");
         }
         if (!StringUtils.hasText(request.getAddress())) {
-            throw new ClientValidationException("Address is required");
+            throw new ClientValidationException("Address is required", "ADDRESS_REQUIRED");
         }
         if (!StringUtils.hasText(request.getCity())) {
-            throw new ClientValidationException("City is required");
+            throw new ClientValidationException("City is required", "CITY_REQUIRED");
         }
         if (!StringUtils.hasText(request.getCountry())) {
-            throw new ClientValidationException("Country is required");
+            throw new ClientValidationException("Country is required", "COUNTRY_REQUIRED");
         }
         if (!StringUtils.hasText(request.getNationality())) {
-            throw new ClientValidationException("Nationality is required");
+            throw new ClientValidationException("Nationality is required", "NATIONALITY_REQUIRED");
         }
-        if (!StringUtils.hasText(request.getCin()) && !StringUtils.hasText(request.getPassportNumber())) {
-            throw new ClientValidationException("CIN or passport number is required");
+        if (doc.type() == null) {
+            throw new ClientValidationException("Identity document type is required.", "DOCUMENT_TYPE_REQUIRED");
+        }
+        if (!StringUtils.hasText(doc.number())) {
+            throw new ClientValidationException("Identity document number is required.", "DOCUMENT_NUMBER_REQUIRED");
+        }
+        if (request.getBirthDate() != null && request.getBirthDate().isAfter(LocalDate.now())) {
+            throw new ClientValidationException("Date of birth cannot be in the future.", "BIRTH_DATE_FUTURE");
+        }
+        if (request.getDocumentExpiryDate() != null && request.getDocumentIssueDate() != null
+                && request.getDocumentExpiryDate().isBefore(request.getDocumentIssueDate())) {
+            throw new ClientValidationException("Document expiry date cannot be before the issue date.", "DOCUMENT_EXPIRY_BEFORE_ISSUE");
+        }
+        if (request.getDrivingLicenseExpiry() != null && request.getDrivingLicenseIssue() != null
+                && request.getDrivingLicenseExpiry().isBefore(request.getDrivingLicenseIssue())) {
+            throw new ClientValidationException("Driver license expiry date cannot be before the issue date.", "LICENSE_EXPIRY_BEFORE_ISSUE");
         }
     }
 
-    private void checkDuplicates(Long tenantId, CreateClientRequest request) {
+    private void checkDuplicates(Long tenantId, CreateClientRequest request, ResolvedDocument doc, Long excludeClientId) {
         String phone = required(request.getPhone());
         var byPhone = clientRepository.findFirstByTenantIdAndPhoneIgnoreCase(tenantId, phone);
         if (byPhone.isPresent()) {
@@ -518,17 +641,12 @@ public class ClientService {
         if (byEmail.isPresent()) {
             throw duplicate("email", byEmail.get());
         }
-        String cin = optional(request.getCin());
-        var byCin = cin == null ? Optional.<Client>empty()
-                : clientRepository.findFirstByTenantIdAndCinIgnoreCase(tenantId, cin);
-        if (byCin.isPresent()) {
-            throw duplicate("cin", byCin.get());
-        }
-        String passport = optional(request.getPassportNumber());
-        var byPassport = passport == null ? Optional.<Client>empty()
-                : clientRepository.findFirstByTenantIdAndPassportNumberIgnoreCase(tenantId, passport);
-        if (byPassport.isPresent()) {
-            throw duplicate("passportNumber", byPassport.get());
+        if (doc.isPresent()) {
+            var byDocument = identityDocumentRepository.findFirstByTenantIdAndDocumentNumberIgnoreCaseAndIsPrimaryTrue(
+                    tenantId, doc.number());
+            if (byDocument.isPresent() && !byDocument.get().getClientId().equals(excludeClientId)) {
+                throw new DuplicateClientException(duplicateMessage("documentNumber"), "documentNumber", byDocument.get().getClientId());
+            }
         }
     }
 
@@ -551,6 +669,7 @@ public class ClientService {
         String lower = constraintName.toLowerCase();
         if (lower.contains("email")) return "email";
         if (lower.contains("phone")) return "phone";
+        if (lower.contains("identity_documents")) return "documentNumber";
         if (lower.contains("passport")) return "passportNumber";
         if (lower.contains("cin")) return "cin";
         return null;
@@ -562,6 +681,7 @@ public class ClientService {
             case "phone" -> "A client with this phone number already exists in this agency.";
             case "cin" -> "A client with this CIN already exists in this agency.";
             case "passportNumber" -> "A client with this passport number already exists in this agency.";
+            case "documentNumber" -> "A client with this identity document number already exists in this agency.";
             default -> "A client with this information already exists in this agency.";
         };
     }

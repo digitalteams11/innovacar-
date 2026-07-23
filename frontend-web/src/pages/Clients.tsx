@@ -11,9 +11,11 @@ import { StatusBadge } from '../components/StatusBadge';
 import api from '../api/axios';
 import {
   Plus, Mail, Phone, MapPin, Loader2,
-  Shield, Building2, Users, Pencil, Trash2, Eye, User
+  Shield, Building2, Users, Pencil, Trash2, Eye, User, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import ApiErrorState from '../components/ApiErrorState';
+
+type DocumentType = 'CIN' | 'PASSPORT' | 'RESIDENCE_PERMIT' | 'OTHER';
 
 interface Client {
   id: number;
@@ -30,10 +32,38 @@ interface Client {
   birthDate: string;
   cin: string;
   passportNumber: string;
+  documentType: DocumentType | null;
+  documentNumber: string | null;
+  documentMasked: string | null;
+  documentIssuingCountry: string | null;
+  documentIssuingAuthority: string | null;
+  documentIssueDate: string | null;
+  documentExpiryDate: string | null;
   drivingLicense: string;
+  drivingLicenseIssue: string | null;
+  drivingLicenseExpiry: string | null;
+  drivingLicenseCategory: string | null;
+  drivingLicenseCountry: string | null;
   companyName: string;
   notes: string;
+  warnings?: string[];
 }
+
+const DOCUMENT_TYPES: DocumentType[] = ['CIN', 'PASSPORT', 'RESIDENCE_PERMIT', 'OTHER'];
+
+/** CIN -> Cin, RESIDENCE_PERMIT -> ResidencePermit — matches i18n key suffixes below. */
+function toPascalCase(value: string) {
+  return value.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+}
+
+const EMPTY_FORM = {
+  name: '', email: '', phone: '', secondaryPhone: '', gender: '', birthDate: '', nationality: '',
+  documentType: '' as DocumentType | '', documentNumber: '', documentIssuingCountry: '',
+  documentIssuingAuthority: '', documentIssueDate: '', documentExpiryDate: '', documentNotes: '',
+  address: '', city: '', postalCode: '', country: '',
+  drivingLicense: '', drivingLicenseIssue: '', drivingLicenseExpiry: '', drivingLicenseCategory: '', drivingLicenseCountry: '',
+  companyName: '', notes: '',
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -64,12 +94,9 @@ export default function Clients() {
   const [saving, setSaving] = useState(false);
   const [duplicateField, setDuplicateField] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showDocumentDetails, setShowDocumentDetails] = useState(false);
 
-  const [form, setForm] = useState({
-    name: '', email: '', phone: '', secondaryPhone: '', address: '', city: '',
-    country: '', postalCode: '', nationality: '', gender: '', birthDate: '',
-    cin: '', passportNumber: '', drivingLicense: '', companyName: '', notes: ''
-  });
+  const [form, setForm] = useState({ ...EMPTY_FORM });
 
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -98,7 +125,7 @@ export default function Clients() {
     return c.name?.toLowerCase().includes(q) ||
       c.email?.toLowerCase().includes(q) ||
       c.phone?.includes(q) ||
-      c.cin?.includes(q) ||
+      c.documentMasked?.toLowerCase().includes(q) ||
       c.companyName?.toLowerCase().includes(q);
   });
 
@@ -106,11 +133,8 @@ export default function Clients() {
     setEditingId(null);
     setDuplicateField(null);
     setFieldErrors({});
-    setForm({
-      name: '', email: '', phone: '', secondaryPhone: '', address: '', city: '',
-      country: '', postalCode: '', nationality: '', gender: '', birthDate: '',
-      cin: '', passportNumber: '', drivingLicense: '', companyName: '', notes: ''
-    });
+    setShowDocumentDetails(false);
+    setForm({ ...EMPTY_FORM });
     setIsModalOpen(true);
   };
 
@@ -118,20 +142,45 @@ export default function Clients() {
     setEditingId(client.id);
     setDuplicateField(null);
     setFieldErrors({});
+    setShowDocumentDetails(Boolean(client.documentIssueDate || client.documentExpiryDate || client.documentIssuingCountry || client.documentIssuingAuthority));
     setForm({
       name: client.name || '', email: client.email || '', phone: client.phone || '',
-      secondaryPhone: client.secondaryPhone || '', address: client.address || '',
-      city: client.city || '', country: client.country || '', postalCode: client.postalCode || '',
-      nationality: client.nationality || '', gender: client.gender || '',
-      birthDate: client.birthDate || '', cin: client.cin || '',
-      passportNumber: client.passportNumber || '', drivingLicense: client.drivingLicense || '',
+      secondaryPhone: client.secondaryPhone || '', gender: client.gender || '', birthDate: client.birthDate || '',
+      nationality: client.nationality || '',
+      documentType: (client.documentType || (client.cin ? 'CIN' : client.passportNumber ? 'PASSPORT' : '')) as DocumentType | '',
+      documentNumber: client.documentMasked ? (client.documentNumber || '') : (client.cin || client.passportNumber || ''),
+      documentIssuingCountry: client.documentIssuingCountry || '', documentIssuingAuthority: client.documentIssuingAuthority || '',
+      documentIssueDate: client.documentIssueDate || '', documentExpiryDate: client.documentExpiryDate || '', documentNotes: '',
+      address: client.address || '', city: client.city || '', postalCode: client.postalCode || '', country: client.country || '',
+      drivingLicense: client.drivingLicense || '', drivingLicenseIssue: client.drivingLicenseIssue || '',
+      drivingLicenseExpiry: client.drivingLicenseExpiry || '', drivingLicenseCategory: client.drivingLicenseCategory || '',
+      drivingLicenseCountry: client.drivingLicenseCountry || '',
       companyName: client.companyName || '', notes: client.notes || ''
     });
     setIsModalOpen(true);
   };
 
+  /** Document-type label/placeholder pairs — the single number input relabels itself per type. */
+  const documentFieldMeta = (type: string) => {
+    switch (type) {
+      case 'CIN': return { label: t('clients.form.documentNumberCin'), placeholder: t('clients.form.documentPlaceholderCin') };
+      case 'PASSPORT': return { label: t('clients.form.documentNumberPassport'), placeholder: t('clients.form.documentPlaceholderPassport') };
+      case 'RESIDENCE_PERMIT': return { label: t('clients.form.documentNumberResidencePermit'), placeholder: '' };
+      case 'OTHER': return { label: t('clients.form.documentNumberOther'), placeholder: '' };
+      default: return { label: t('clients.form.documentNumber'), placeholder: '' };
+    }
+  };
+
   const updateFormField = (field: keyof typeof form, value: string, errorKeys?: string[]) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Default to CIN only for Moroccan clients, and only while the admin
+      // hasn't already picked a document type — never force it otherwise.
+      if (field === 'nationality' && !prev.documentType && /^morocc/i.test(value.trim())) {
+        next.documentType = 'CIN';
+      }
+      return next;
+    });
     const keys = errorKeys || [field === 'name' ? 'fullName' : field];
     setFieldErrors((prev) => {
       if (!keys.some((key) => prev[key])) return prev;
@@ -146,9 +195,13 @@ export default function Clients() {
     const errors: Record<string, string> = {};
     if (!form.name.trim()) errors.fullName = t('clients.validation.fullNameRequired');
     if (!form.phone.trim()) errors.phone = t('clients.validation.phoneRequired');
-    if (!form.cin.trim() && !form.passportNumber.trim()) {
-      errors.cin = t('clients.validation.cinPassportRequired');
-      errors.passportNumber = t('clients.validation.cinPassportRequired');
+    if (!form.documentType) errors.documentType = t('clients.validation.documentTypeRequired');
+    if (!form.documentNumber.trim()) errors.documentNumber = t('clients.validation.documentNumberRequired');
+    if (form.documentIssueDate && form.documentExpiryDate && form.documentExpiryDate < form.documentIssueDate) {
+      errors.documentExpiryDate = t('clients.validation.documentExpiryBeforeIssue');
+    }
+    if (form.birthDate && form.birthDate > new Date().toISOString().slice(0, 10)) {
+      errors.birthDate = t('clients.validation.birthDateFuture');
     }
     if (!form.nationality.trim()) errors.nationality = t('clients.validation.nationalityRequired');
     if (!form.address.trim()) errors.address = t('clients.validation.addressRequired');
@@ -190,9 +243,18 @@ export default function Clients() {
       nationality: optional(form.nationality),
       gender: normalizeGender(form.gender),
       birthDate: normalizeDate(form.birthDate),
-      cin: optional(form.cin),
-      passportNumber: optional(form.passportNumber),
+      documentType: form.documentType || null,
+      documentNumber: optional(form.documentNumber),
+      documentIssuingCountry: optional(form.documentIssuingCountry),
+      documentIssuingAuthority: optional(form.documentIssuingAuthority),
+      documentIssueDate: normalizeDate(form.documentIssueDate),
+      documentExpiryDate: normalizeDate(form.documentExpiryDate),
+      documentNotes: optional(form.documentNotes),
       drivingLicense: optional(form.drivingLicense),
+      drivingLicenseIssue: normalizeDate(form.drivingLicenseIssue),
+      drivingLicenseExpiry: normalizeDate(form.drivingLicenseExpiry),
+      drivingLicenseCategory: optional(form.drivingLicenseCategory),
+      drivingLicenseCountry: optional(form.drivingLicenseCountry),
       companyName: optional(form.companyName),
       notes: optional(form.notes),
     };
@@ -206,8 +268,8 @@ export default function Clients() {
         const params = new URLSearchParams();
         if (payload.email) params.set('email', payload.email);
         if (payload.phone) params.set('phone', payload.phone);
-        if (payload.cin) params.set('cin', payload.cin);
-        if (payload.passportNumber) params.set('passportNumber', payload.passportNumber);
+        if (payload.documentType === 'CIN' && payload.documentNumber) params.set('cin', payload.documentNumber);
+        if (payload.documentType === 'PASSPORT' && payload.documentNumber) params.set('passportNumber', payload.documentNumber);
         const checkResponse = await api.get(`/clients/check?${params.toString()}`);
         const duplicate = checkResponse.data?.data;
         if (duplicate?.exists) {
@@ -223,11 +285,7 @@ export default function Clients() {
       setIsModalOpen(false);
       setEditingId(null);
       setFieldErrors({});
-      setForm({
-        name: '', email: '', phone: '', secondaryPhone: '', address: '', city: '',
-        country: '', postalCode: '', nationality: '', gender: '', birthDate: '',
-        cin: '', passportNumber: '', drivingLicense: '', companyName: '', notes: ''
-      });
+      setForm({ ...EMPTY_FORM });
       await fetchClients();
     } catch (err: any) {
       const responseData = err?.response?.data;
@@ -273,7 +331,7 @@ export default function Clients() {
   };
 
   const inputClass = (field: string) =>
-    `w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] ${
+    `w-full px-3.5 py-2.5 min-h-[44px] glass-input text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] ${
       duplicateField === field || fieldErrors[field] ? 'border-danger-500 ring-2 ring-danger-500/20' : ''
     }`;
 
@@ -357,10 +415,18 @@ export default function Clients() {
                             <span className="truncate">{client.companyName}</span>
                           </div>
                         )}
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                           <StatusBadge variant="neutral" size="sm">
-                            {client.cin || client.passportNumber || t('clients.identityNotProvided')}
+                            {client.documentType
+                              ? `${t(`clients.form.documentType${toPascalCase(client.documentType)}`)} · ${client.documentMasked || t('clients.identityNotProvided')}`
+                              : (client.documentMasked || t('clients.identityNotProvided'))}
                           </StatusBadge>
+                          {client.warnings?.includes('DOCUMENT_EXPIRED') && (
+                            <span title={t('clients.warnings.documentExpired')}><AlertTriangle size={12} className="text-danger-500" /></span>
+                          )}
+                          {client.warnings?.includes('LICENSE_EXPIRED') && (
+                            <span title={t('clients.warnings.licenseExpired')}><AlertTriangle size={12} className="text-amber-500" /></span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -404,7 +470,7 @@ export default function Clients() {
                       <div className="w-7 h-7 rounded-lg bg-brand-500/5 flex items-center justify-center shrink-0">
                         <Shield size={13} className="text-brand-500" />
                       </div>
-                      <span className="truncate">{client.cin || client.passportNumber || 'N/A'}</span>
+                      <span className="truncate">{client.documentMasked || 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2.5 text-[var(--text-secondary)] text-sm">
                       <div className="w-7 h-7 rounded-lg bg-brand-500/5 flex items-center justify-center shrink-0">
@@ -450,121 +516,243 @@ export default function Clients() {
       )}
 
       {/* Create/Edit Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? t('clients.editClient') : t('clients.newClient')} maxWidth="2xl">
-        <div className="space-y-5 pe-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.fullName')} <span className="text-danger-500">*</span></label>
-              <input type="text" value={form.name} onChange={(e) => updateFormField('name', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.fullName)}
-                className={inputClass('fullName')} />
-              {fieldError('fullName')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.email')}</label>
-              <input type="email" value={form.email} onChange={(e) => updateFormField('email', e.target.value)}
-                className={inputClass('email')} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.phone')} <span className="text-danger-500">*</span></label>
-              <input type="tel" value={form.phone} onChange={(e) => updateFormField('phone', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.phone)}
-                className={inputClass('phone')} />
-              {fieldError('phone')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.secondaryPhone')}</label>
-              <input type="tel" value={form.secondaryPhone} onChange={(e) => updateFormField('secondaryPhone', e.target.value)}
-                className="w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.cinPassport')} <span className="text-danger-500">*</span></label>
-              <input type="text" value={form.cin} onChange={(e) => updateFormField('cin', e.target.value, ['cin', 'passportNumber'])}
-                aria-invalid={Boolean(fieldErrors.cin)}
-                className={inputClass('cin')} />
-              {fieldError('cin')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.passportNumber')}</label>
-              <input type="text" value={form.passportNumber} onChange={(e) => updateFormField('passportNumber', e.target.value, ['cin', 'passportNumber'])}
-                aria-invalid={Boolean(fieldErrors.passportNumber)}
-                className={inputClass('passportNumber')} />
-              {fieldError('passportNumber')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.drivingLicense')} <span className="font-normal text-[var(--text-faint)]">({t('common.optional')})</span></label>
-              <input type="text" value={form.drivingLicense} onChange={(e) => updateFormField('drivingLicense', e.target.value)}
-                className="w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.nationality')} <span className="text-danger-500">*</span></label>
-              <input type="text" value={form.nationality} onChange={(e) => updateFormField('nationality', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.nationality)}
-                className={inputClass('nationality')} />
-              {fieldError('nationality')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.gender')}</label>
-              <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                className="w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)]">
-                <option value="">{t('common.select')}</option>
-                <option value="Male">{t('clients.gender.male')}</option>
-                <option value="Female">{t('clients.gender.female')}</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.birthDate')}</label>
-              <input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
-                className="w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)]" />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.address')} <span className="text-danger-500">*</span></label>
-              <input type="text" value={form.address} onChange={(e) => updateFormField('address', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.address)}
-                className={inputClass('address')} />
-              {fieldError('address')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.city')} <span className="text-danger-500">*</span></label>
-              <input type="text" value={form.city} onChange={(e) => updateFormField('city', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.city)}
-                className={inputClass('city')} />
-              {fieldError('city')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.country')} <span className="text-danger-500">*</span></label>
-              <input type="text" value={form.country} onChange={(e) => updateFormField('country', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.country)}
-                className={inputClass('country')} />
-              {fieldError('country')}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.postalCode')}</label>
-              <input type="text" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
-                className="w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.companyName')}</label>
-              <input type="text" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                className="w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]" />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.notes')}</label>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2}
-                className="w-full px-3.5 py-2.5 glass-input text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none" />
-            </div>
-          </div>
-          <div className="pt-2">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingId ? t('clients.editClient') : t('clients.newClient')}
+        maxWidth="form"
+        footer={
+          <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="min-h-[44px] px-5 py-2.5 rounded-xl text-sm font-medium bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
             <motion.button
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               onClick={saveClient}
               disabled={saving}
-              className="w-full py-3 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60"
+              className="min-h-[44px] px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60"
             >
               {saving ? t('common.saving') : editingId ? t('common.saveChanges') : t('clients.newClient')}
             </motion.button>
           </div>
+        }
+      >
+        <div className="space-y-6 pe-1">
+          {/* A. Personal information */}
+          <section>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-brand-500 mb-3">{t('clients.form.sectionPersonal')}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.fullName')} <span className="text-danger-500">*</span></label>
+                <input type="text" value={form.name} onChange={(e) => updateFormField('name', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.fullName)}
+                  className={inputClass('fullName')} />
+                {fieldError('fullName')}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.email')}</label>
+                <input type="email" value={form.email} onChange={(e) => updateFormField('email', e.target.value)}
+                  className={inputClass('email')} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.phone')} <span className="text-danger-500">*</span></label>
+                <input type="tel" value={form.phone} onChange={(e) => updateFormField('phone', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.phone)}
+                  className={inputClass('phone')} />
+                {fieldError('phone')}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.secondaryPhone')}</label>
+                <input type="tel" value={form.secondaryPhone} onChange={(e) => updateFormField('secondaryPhone', e.target.value)}
+                  className={inputClass('secondaryPhone')} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.gender')}</label>
+                <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                  className="w-full px-3.5 py-2.5 glass-input text-base sm:text-sm text-[var(--text-primary)]">
+                  <option value="">{t('common.select')}</option>
+                  <option value="Male">{t('clients.gender.male')}</option>
+                  <option value="Female">{t('clients.gender.female')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.birthDate')}</label>
+                <input type="date" value={form.birthDate} onChange={(e) => updateFormField('birthDate', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.birthDate)}
+                  className={inputClass('birthDate')} />
+                {fieldError('birthDate')}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.nationality')} <span className="text-danger-500">*</span></label>
+                <input type="text" value={form.nationality} onChange={(e) => updateFormField('nationality', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.nationality)}
+                  className={inputClass('nationality')} />
+                {fieldError('nationality')}
+              </div>
+            </div>
+          </section>
+
+          {/* B. Identity document — one type selector, one number input */}
+          <section className="pt-5 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-brand-500 mb-3">{t('clients.form.sectionIdentityDocument')}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.documentType')} <span className="text-danger-500">*</span></label>
+                <select value={form.documentType} onChange={(e) => updateFormField('documentType', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.documentType)}
+                  className={`${inputClass('documentType')} text-base sm:text-sm`}>
+                  <option value="">{t('common.select')}</option>
+                  {DOCUMENT_TYPES.map((type) => (
+                    <option key={type} value={type}>{t(`clients.form.documentType${toPascalCase(type)}`)}</option>
+                  ))}
+                </select>
+                {fieldError('documentType')}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+                  {documentFieldMeta(form.documentType).label} <span className="text-danger-500">*</span>
+                </label>
+                <input type="text" value={form.documentNumber}
+                  onChange={(e) => updateFormField('documentNumber', e.target.value.toUpperCase())}
+                  placeholder={documentFieldMeta(form.documentType).placeholder}
+                  aria-invalid={Boolean(fieldErrors.documentNumber)}
+                  className={`${inputClass('documentNumber')} uppercase tracking-wide`} />
+                {fieldError('documentNumber')}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowDocumentDetails((v) => !v)}
+              className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-brand-500"
+            >
+              <ChevronDown size={14} className={`transition-transform ${showDocumentDetails ? 'rotate-180' : ''}`} />
+              {t('clients.form.documentDetails')}
+            </button>
+
+            {showDocumentDetails && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.documentIssueDate')}</label>
+                  <input type="date" value={form.documentIssueDate} onChange={(e) => updateFormField('documentIssueDate', e.target.value)}
+                    className={inputClass('documentIssueDate')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.documentExpiryDate')}</label>
+                  <input type="date" value={form.documentExpiryDate} onChange={(e) => updateFormField('documentExpiryDate', e.target.value)}
+                    aria-invalid={Boolean(fieldErrors.documentExpiryDate)}
+                    className={inputClass('documentExpiryDate')} />
+                  {fieldError('documentExpiryDate')}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.issuingCountry')}</label>
+                  <input type="text" value={form.documentIssuingCountry} onChange={(e) => setForm({ ...form, documentIssuingCountry: e.target.value })}
+                    className={inputClass('documentIssuingCountry')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.issuingAuthority')}</label>
+                  <input type="text" value={form.documentIssuingAuthority} onChange={(e) => setForm({ ...form, documentIssuingAuthority: e.target.value })}
+                    className={inputClass('documentIssuingAuthority')} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.notes')}</label>
+                  <textarea value={form.documentNotes} onChange={(e) => setForm({ ...form, documentNotes: e.target.value })} rows={2}
+                    className={`${inputClass('documentNotes')} resize-none`} />
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* C. Address */}
+          <section className="pt-5 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-brand-500 mb-3">{t('clients.form.sectionAddress')}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.address')} <span className="text-danger-500">*</span></label>
+                <input type="text" value={form.address} onChange={(e) => updateFormField('address', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.address)}
+                  className={inputClass('address')} />
+                {fieldError('address')}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.city')} <span className="text-danger-500">*</span></label>
+                <input type="text" value={form.city} onChange={(e) => updateFormField('city', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.city)}
+                  className={inputClass('city')} />
+                {fieldError('city')}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.postalCode')}</label>
+                <input type="text" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                  className={inputClass('postalCode')} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.country')} <span className="text-danger-500">*</span></label>
+                <input type="text" value={form.country} onChange={(e) => updateFormField('country', e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.country)}
+                  className={inputClass('country')} />
+                {fieldError('country')}
+              </div>
+            </div>
+          </section>
+
+          {/* D. Driver license — separate from identity documents */}
+          <section className="pt-5 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-brand-500 mb-3">
+              {t('clients.form.sectionDriverLicense')} <span className="font-normal normal-case text-[var(--text-faint)]">({t('common.optional')})</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.drivingLicense')}</label>
+                <input type="text" value={form.drivingLicense} onChange={(e) => updateFormField('drivingLicense', e.target.value)}
+                  className={inputClass('drivingLicense')} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.drivingLicenseCategory')}</label>
+                <input type="text" value={form.drivingLicenseCategory} onChange={(e) => setForm({ ...form, drivingLicenseCategory: e.target.value.toUpperCase() })}
+                  placeholder="B"
+                  className={inputClass('drivingLicenseCategory')} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.documentIssueDate')}</label>
+                <input type="date" value={form.drivingLicenseIssue} onChange={(e) => setForm({ ...form, drivingLicenseIssue: e.target.value })}
+                  className={inputClass('drivingLicenseIssue')} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.documentExpiryDate')}</label>
+                <input type="date" value={form.drivingLicenseExpiry} onChange={(e) => setForm({ ...form, drivingLicenseExpiry: e.target.value })}
+                  className={inputClass('drivingLicenseExpiry')} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.issuingCountry')}</label>
+                <input type="text" value={form.drivingLicenseCountry} onChange={(e) => setForm({ ...form, drivingLicenseCountry: e.target.value })}
+                  className={inputClass('drivingLicenseCountry')} />
+              </div>
+            </div>
+          </section>
+
+          {/* E. Professional information */}
+          <section className="pt-5 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-brand-500 mb-3">{t('clients.form.sectionProfessional')}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.companyName')}</label>
+                <input type="text" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                  className={inputClass('companyName')} />
+              </div>
+            </div>
+          </section>
+
+          {/* F. Notes */}
+          <section className="pt-5 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <h4 className="text-xs font-bold uppercase tracking-wide text-brand-500 mb-3">{t('clients.form.sectionNotes')}</h4>
+            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3}
+              className={`${inputClass('notes')} resize-none`} />
+          </section>
         </div>
       </Modal>
 

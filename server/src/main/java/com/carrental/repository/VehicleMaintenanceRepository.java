@@ -16,6 +16,10 @@ public interface VehicleMaintenanceRepository extends JpaRepository<VehicleMaint
     Optional<VehicleMaintenance> findByIdAndTenantId(Long id, Long tenantId);
     boolean existsByTenantIdAndVehicleIdAndStatusIn(Long tenantId, Long vehicleId, Collection<MaintenanceStatus> statuses);
 
+    /** Batch lookup for the fleet export's "next maintenance date" column — avoids one query per vehicle. */
+    List<VehicleMaintenance> findAllByTenantIdAndVehicleIdInAndStatus(
+            Long tenantId, Collection<Long> vehicleIds, MaintenanceStatus status);
+
     @Query(value = "SELECT vehicle_id FROM vehicle_maintenance WHERE id = :id", nativeQuery = true)
     Long findVehicleIdById(@Param("id") Long id);
 }

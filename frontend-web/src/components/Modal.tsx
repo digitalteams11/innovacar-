@@ -8,6 +8,8 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: string;
+  /** Optional sticky footer (e.g. Save/Cancel buttons) rendered below the scrollable body, pinned above the safe area on mobile. */
+  footer?: React.ReactNode;
 }
 
 const modalWidthClasses: Record<string, string> = {
@@ -25,9 +27,12 @@ const modalWidthClasses: Record<string, string> = {
   'max-w-4xl': 'max-w-4xl',
   '5xl': 'max-w-5xl',
   'max-w-5xl': 'max-w-5xl',
+  // 760-900px band for forms that need two columns but shouldn't go full 3xl.
+  form: 'max-w-[860px]',
+  'max-w-[860px]': 'max-w-[860px]',
 };
 
-export default function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg', footer }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
@@ -105,6 +110,14 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
           {children}
         </div>
+        {footer && (
+          <div
+            className="shrink-0 p-4 sm:p-5"
+            style={{ borderTop: '1px solid var(--border-subtle)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            {footer}
+          </div>
+        )}
       </section>
     </div>,
     document.body,

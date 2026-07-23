@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-22T15:53:24.330Z
+Generated: 2026-07-23T13:37:46.140Z
 Scanned source files: 209
-Static translation keys used: 1877
+Static translation keys used: 1913
 
 ## Missing EN Keys (0)
 
@@ -48,12 +48,12 @@ None.
 
 None.
 
-## Possible Visible Hardcoded Text (1469)
+## Possible Visible Hardcoded Text (1465)
 
 ### By file
 
 - src\pages\GpsSettings.tsx: 85
-- src\pages\ContractDetails.tsx: 81
+- src\pages\ContractDetails.tsx: 80
 - src\pages\superadmin\SuperAdminAgencyDetail.tsx: 80
 - src\pages\superadmin\SuperAdminEmailCenter.tsx: 73
 - src\pages\Subscription.tsx: 64
@@ -64,8 +64,8 @@ None.
 - src\pages\PublicContract.tsx: 45
 - src\pages\superadmin\SuperAdminSecurity.tsx: 44
 - src\pages\superadmin\SuperAdminDataReset.tsx: 40
-- src\components\shared\ReturnInspectionModal.tsx: 38
 - src\pages\GpsDashboard.tsx: 38
+- src\components\shared\ReturnInspectionModal.tsx: 36
 - src\pages\superadmin\SuperAdminSupport.tsx: 33
 - src\pages\superadmin\SuperAdminBackups.tsx: 31
 - src\pages\superadmin\SuperAdminMarketing.tsx: 29
@@ -87,8 +87,8 @@ None.
 - src\pages\superadmin\SuperAdminTicketDetail.tsx: 16
 - src\data\gpsFieldGuide.ts: 15
 - src\pages\superadmin\SuperAdminContracts.tsx: 15
-- src\components\shared\ContractReturnModal.tsx: 13
 - src\components\shared\VehicleInspection.tsx: 13
+- src\components\shared\ContractReturnModal.tsx: 12
 - src\pages\superadmin\SuperAdminFeatures.tsx: 12
 - src\pages\Reports.tsx: 10
 - src\pages\superadmin\SuperAdminRoles.tsx: 10
@@ -178,8 +178,8 @@ None.
 - src\components\Layout.tsx:164 [prop:alt] - InnovaCar
 - src\components\MobileBottomSheet.tsx:62 [prop:aria-label] - Close
 - src\components\MobileBottomSheet.tsx:83 [prop:aria-label] - Close
-- src\components\Modal.tsx:74 [prop:aria-label] - Close dialog
-- src\components\Modal.tsx:100 [prop:aria-label] - Close
+- src\components\Modal.tsx:79 [prop:aria-label] - Close dialog
+- src\components\Modal.tsx:105 [prop:aria-label] - Close
 - src\components\ReservationDetailsModal.tsx:102 [jsx-text] - ABC-123-XY
 - src\components\ReservationDetailsModal.tsx:133 [jsx-text] - Casablanca International Airport (CMN)
 - src\components\settings\BillingTab.tsx:271 [jsx-text] - Payment received!
@@ -200,19 +200,18 @@ None.
 - src\components\shared\AiChatPanel.tsx:286 [prop:placeholder] - Ask the AI assistant...
 - src\components\shared\AiStatusBadge.tsx:11 [jsx-text] - AI is unavailable.
 - src\components\shared\CarThinkingAiIcon.tsx:60 [prop:title] - AI error
-- src\components\shared\ContractReturnModal.tsx:89 [jsx-text] - Vehicle Return Inspection
-- src\components\shared\ContractReturnModal.tsx:104 [jsx-text] - Fuel Level at Return
-- src\components\shared\ContractReturnModal.tsx:136 [jsx-text] - Mileage at Return
-- src\components\shared\ContractReturnModal.tsx:147 [jsx-text] - Distance driven:
-- src\components\shared\ContractReturnModal.tsx:157 [jsx-text] - Condition Notes
-- src\components\shared\ContractReturnModal.tsx:179 [jsx-text] - Optional Fees (MAD)
-- src\components\shared\ContractReturnModal.tsx:206 [jsx-text] - Cancel
-- src\components\shared\ContractReturnModal.tsx:142 [prop:placeholder] - Final odometer reading (km)
-- src\components\shared\ContractReturnModal.tsx:162 [prop:placeholder] - General vehicle condition at return...
-- src\components\shared\ContractReturnModal.tsx:170 [prop:placeholder] - Damage observed at return (if any)...
-- src\components\shared\ContractReturnModal.tsx:182 [object:label] - Fuel Charge
-- src\components\shared\ContractReturnModal.tsx:183 [object:label] - Mileage Fee
-- src\components\shared\ContractReturnModal.tsx:184 [object:label] - Damage Fee
+- src\components\shared\ContractReturnModal.tsx:87 [jsx-text] - Vehicle Return Inspection
+- src\components\shared\ContractReturnModal.tsx:102 [jsx-text] - Fuel Level at Return
+- src\components\shared\ContractReturnModal.tsx:138 [jsx-text] - Mileage at Return (fleet record only)
+- src\components\shared\ContractReturnModal.tsx:149 [jsx-text] - Distance driven:
+- src\components\shared\ContractReturnModal.tsx:159 [jsx-text] - Condition Notes
+- src\components\shared\ContractReturnModal.tsx:181 [jsx-text] - Optional Fees (MAD)
+- src\components\shared\ContractReturnModal.tsx:207 [jsx-text] - Cancel
+- src\components\shared\ContractReturnModal.tsx:144 [prop:placeholder] - Final odometer reading (km)
+- src\components\shared\ContractReturnModal.tsx:164 [prop:placeholder] - General vehicle condition at return...
+- src\components\shared\ContractReturnModal.tsx:172 [prop:placeholder] - Damage observed at return (if any)...
+- src\components\shared\ContractReturnModal.tsx:184 [object:label] - Fuel Charge
+- src\components\shared\ContractReturnModal.tsx:185 [object:label] - Damage Fee
 - src\components\shared\LivePriceSidebar.tsx:82 [jsx-text] - Select dates to see pricing
 - src\components\shared\LivePriceSidebar.tsx:92 [jsx-text] - Live Pricing
 - src\components\shared\LivePriceSidebar.tsx:106 [jsx-text] - Subtotal
@@ -223,44 +222,42 @@ None.
 - src\components\shared\LivePriceSidebar.tsx:100 [prop:label] - Extra Hours
 - src\components\shared\QRCodeModal.tsx:338 [jsx-text] - WhatsApp
 - src\components\shared\QRCodeModal.tsx:352 [jsx-text] - Email
-- src\components\shared\ReturnInspectionModal.tsx:83 [jsx-text] - Vehicle Return Inspection
-- src\components\shared\ReturnInspectionModal.tsx:84 [jsx-text] - Process deposit return after inspection
-- src\components\shared\ReturnInspectionModal.tsx:95 [jsx-text] - Inspection Checklist
-- src\components\shared\ReturnInspectionModal.tsx:98 [jsx-text] - Fuel Level
-- src\components\shared\ReturnInspectionModal.tsx:101 [jsx-text] - Full
-- src\components\shared\ReturnInspectionModal.tsx:105 [jsx-text] - Empty
-- src\components\shared\ReturnInspectionModal.tsx:109 [jsx-text] - Mileage End
-- src\components\shared\ReturnInspectionModal.tsx:115 [jsx-text] - Interior Condition
-- src\components\shared\ReturnInspectionModal.tsx:118 [jsx-text] - Clean
-- src\components\shared\ReturnInspectionModal.tsx:119 [jsx-text] - Light Dirt
-- src\components\shared\ReturnInspectionModal.tsx:120 [jsx-text] - Heavy Dirt
-- src\components\shared\ReturnInspectionModal.tsx:121 [jsx-text] - Damage
-- src\components\shared\ReturnInspectionModal.tsx:125 [jsx-text] - Exterior Condition
-- src\components\shared\ReturnInspectionModal.tsx:128 [jsx-text] - Clean
-- src\components\shared\ReturnInspectionModal.tsx:129 [jsx-text] - Light Scratches
-- src\components\shared\ReturnInspectionModal.tsx:130 [jsx-text] - Damage
-- src\components\shared\ReturnInspectionModal.tsx:135 [jsx-text] - Missing Items / Notes
-- src\components\shared\ReturnInspectionModal.tsx:145 [jsx-text] - Deductions
-- src\components\shared\ReturnInspectionModal.tsx:165 [jsx-text] - Return Notes
-- src\components\shared\ReturnInspectionModal.tsx:177 [jsx-text] - Deposit Calculation
-- src\components\shared\ReturnInspectionModal.tsx:180 [jsx-text] - Deposit
-- src\components\shared\ReturnInspectionModal.tsx:185 [jsx-text] - Damage
-- src\components\shared\ReturnInspectionModal.tsx:191 [jsx-text] - Cleaning
-- src\components\shared\ReturnInspectionModal.tsx:197 [jsx-text] - Late Fee
-- src\components\shared\ReturnInspectionModal.tsx:203 [jsx-text] - Fuel
-- src\components\shared\ReturnInspectionModal.tsx:209 [jsx-text] - Other
-- src\components\shared\ReturnInspectionModal.tsx:215 [jsx-text] - Total Deductions
-- src\components\shared\ReturnInspectionModal.tsx:219 [jsx-text] - Deposit Returned
-- src\components\shared\ReturnInspectionModal.tsx:225 [jsx-text] - Total deductions exceed deposit amount
-- src\components\shared\ReturnInspectionModal.tsx:233 [jsx-text] - Cancel
-- src\components\shared\ReturnInspectionModal.tsx:111 [prop:placeholder] - Enter final mileage
-- src\components\shared\ReturnInspectionModal.tsx:137 [prop:placeholder] - Describe any missing items or other observations...
-- src\components\shared\ReturnInspectionModal.tsx:167 [prop:placeholder] - Additional notes about the return...
-- src\components\shared\ReturnInspectionModal.tsx:148 [object:label] - Damage Cost
-- src\components\shared\ReturnInspectionModal.tsx:149 [object:label] - Cleaning Cost
-- src\components\shared\ReturnInspectionModal.tsx:150 [object:label] - Late Return Fee
-- src\components\shared\ReturnInspectionModal.tsx:151 [object:label] - Fuel Charge
-- src\components\shared\ReturnInspectionModal.tsx:152 [object:label] - Other Charges
+- src\components\shared\ReturnInspectionModal.tsx:81 [jsx-text] - Vehicle Return Inspection
+- src\components\shared\ReturnInspectionModal.tsx:82 [jsx-text] - Process deposit return after inspection
+- src\components\shared\ReturnInspectionModal.tsx:93 [jsx-text] - Inspection Checklist
+- src\components\shared\ReturnInspectionModal.tsx:96 [jsx-text] - Fuel Level
+- src\components\shared\ReturnInspectionModal.tsx:99 [jsx-text] - Full
+- src\components\shared\ReturnInspectionModal.tsx:103 [jsx-text] - Empty
+- src\components\shared\ReturnInspectionModal.tsx:107 [jsx-text] - Interior Condition
+- src\components\shared\ReturnInspectionModal.tsx:110 [jsx-text] - Clean
+- src\components\shared\ReturnInspectionModal.tsx:111 [jsx-text] - Light Dirt
+- src\components\shared\ReturnInspectionModal.tsx:112 [jsx-text] - Heavy Dirt
+- src\components\shared\ReturnInspectionModal.tsx:113 [jsx-text] - Damage
+- src\components\shared\ReturnInspectionModal.tsx:117 [jsx-text] - Exterior Condition
+- src\components\shared\ReturnInspectionModal.tsx:120 [jsx-text] - Clean
+- src\components\shared\ReturnInspectionModal.tsx:121 [jsx-text] - Light Scratches
+- src\components\shared\ReturnInspectionModal.tsx:122 [jsx-text] - Damage
+- src\components\shared\ReturnInspectionModal.tsx:127 [jsx-text] - Missing Items / Notes
+- src\components\shared\ReturnInspectionModal.tsx:137 [jsx-text] - Deductions
+- src\components\shared\ReturnInspectionModal.tsx:157 [jsx-text] - Return Notes
+- src\components\shared\ReturnInspectionModal.tsx:169 [jsx-text] - Deposit Calculation
+- src\components\shared\ReturnInspectionModal.tsx:172 [jsx-text] - Deposit
+- src\components\shared\ReturnInspectionModal.tsx:177 [jsx-text] - Damage
+- src\components\shared\ReturnInspectionModal.tsx:183 [jsx-text] - Cleaning
+- src\components\shared\ReturnInspectionModal.tsx:189 [jsx-text] - Late Fee
+- src\components\shared\ReturnInspectionModal.tsx:195 [jsx-text] - Fuel
+- src\components\shared\ReturnInspectionModal.tsx:201 [jsx-text] - Other
+- src\components\shared\ReturnInspectionModal.tsx:207 [jsx-text] - Total Deductions
+- src\components\shared\ReturnInspectionModal.tsx:211 [jsx-text] - Deposit Returned
+- src\components\shared\ReturnInspectionModal.tsx:217 [jsx-text] - Total deductions exceed deposit amount
+- src\components\shared\ReturnInspectionModal.tsx:225 [jsx-text] - Cancel
+- src\components\shared\ReturnInspectionModal.tsx:129 [prop:placeholder] - Describe any missing items or other observations...
+- src\components\shared\ReturnInspectionModal.tsx:159 [prop:placeholder] - Additional notes about the return...
+- src\components\shared\ReturnInspectionModal.tsx:140 [object:label] - Damage Cost
+- src\components\shared\ReturnInspectionModal.tsx:141 [object:label] - Cleaning Cost
+- src\components\shared\ReturnInspectionModal.tsx:142 [object:label] - Late Return Fee
+- src\components\shared\ReturnInspectionModal.tsx:143 [object:label] - Fuel Charge
+- src\components\shared\ReturnInspectionModal.tsx:144 [object:label] - Other Charges
 - src\components\shared\SignaturePad.tsx:136 [jsx-text] - Clear
 - src\components\shared\SignaturePad.tsx:176 [jsx-text] - Digital Signature
 - src\components\shared\SignaturePad.tsx:184 [jsx-text] - Signature locked
@@ -463,87 +460,86 @@ None.
 - src\pages\CheckoutTrial.tsx:33 [object:label] - Vehicles
 - src\pages\CheckoutTrial.tsx:34 [object:label] - Reports
 - src\pages\CheckoutTrial.tsx:35 [object:label] - Support
-- src\pages\ContractDetails.tsx:813 [jsx-text] - No agency signature configured.
-- src\pages\ContractDetails.tsx:814 [jsx-text] - Set it in Settings
-- src\pages\ContractDetails.tsx:995 [jsx-text] - Security Deposit
-- src\pages\ContractDetails.tsx:1010 [jsx-text] - Type
-- src\pages\ContractDetails.tsx:1014 [jsx-text] - Amount
-- src\pages\ContractDetails.tsx:1019 [jsx-text] - Reference
-- src\pages\ContractDetails.tsx:1029 [jsx-text] - Process Vehicle Return
-- src\pages\ContractDetails.tsx:1035 [jsx-text] - Return Summary
-- src\pages\ContractDetails.tsx:1037 [jsx-text] - Deposit
-- src\pages\ContractDetails.tsx:1042 [jsx-text] - Damage
-- src\pages\ContractDetails.tsx:1048 [jsx-text] - Cleaning
-- src\pages\ContractDetails.tsx:1054 [jsx-text] - Late Fee
-- src\pages\ContractDetails.tsx:1060 [jsx-text] - Fuel
-- src\pages\ContractDetails.tsx:1066 [jsx-text] - Other
-- src\pages\ContractDetails.tsx:1072 [jsx-text] - Returned
-- src\pages\ContractDetails.tsx:1088 [jsx-text] - Client
-- src\pages\ContractDetails.tsx:1097 [jsx-text] - Vehicle
-- src\pages\ContractDetails.tsx:1106 [jsx-text] - Period
-- src\pages\ContractDetails.tsx:1117 [jsx-text] - Payment
-- src\pages\ContractDetails.tsx:1128 [jsx-text] - Client Information
-- src\pages\ContractDetails.tsx:1147 [jsx-text] - Vehicle Information
-- src\pages\ContractDetails.tsx:1166 [jsx-text] - Rental Payment
-- src\pages\ContractDetails.tsx:1178 [jsx-text] - Deposit / Guarantee (Caution)
-- src\pages\ContractDetails.tsx:1213 [jsx-text] - The deposit/guarantee is separate from the rental price and is refundable according to the contract terms.
-- src\pages\ContractDetails.tsx:1225 [jsx-text] - Vehicle Inspection Media
-- src\pages\ContractDetails.tsx:1226 [jsx-text] - Proof before delivery and after return, linked to this contract.
-- src\pages\ContractDetails.tsx:1230 [jsx-text] - Before Delivery QR
-- src\pages\ContractDetails.tsx:1234 [jsx-text] - After Return QR
-- src\pages\ContractDetails.tsx:1238 [jsx-text] - Refresh media
-- src\pages\ContractDetails.tsx:1253 [jsx-text] - Legacy Damage Markers
-- src\pages\ContractDetails.tsx:1278 [jsx-text] - Document Checklist
-- src\pages\ContractDetails.tsx:1289 [jsx-text] - No documents recorded
-- src\pages\ContractDetails.tsx:1296 [jsx-text] - Additional Drivers
-- src\pages\ContractDetails.tsx:1311 [jsx-text] - No additional drivers
-- src\pages\ContractDetails.tsx:1318 [jsx-text] - Activity Log
-- src\pages\ContractDetails.tsx:1333 [jsx-text] - No activity recorded
-- src\pages\ContractDetails.tsx:823 [prop:label] - Owner Signature
-- src\pages\ContractDetails.tsx:1130 [prop:label] - Full Name
-- src\pages\ContractDetails.tsx:1131 [prop:label] - Nationality
-- src\pages\ContractDetails.tsx:1132 [prop:label] - Gender
-- src\pages\ContractDetails.tsx:1133 [prop:label] - Birth Date
-- src\pages\ContractDetails.tsx:1134 [prop:label] - CIN / ID
-- src\pages\ContractDetails.tsx:1135 [prop:label] - Passport
-- src\pages\ContractDetails.tsx:1136 [prop:label] - Driver License
-- src\pages\ContractDetails.tsx:1137 [prop:label] - Phone
-- src\pages\ContractDetails.tsx:1138 [prop:label] - Email
-- src\pages\ContractDetails.tsx:1139 [prop:label] - Address
-- src\pages\ContractDetails.tsx:1140 [prop:label] - Emergency Contact
-- src\pages\ContractDetails.tsx:1149 [prop:label] - Brand / Model
-- src\pages\ContractDetails.tsx:1150 [prop:label] - Category
-- src\pages\ContractDetails.tsx:1151 [prop:label] - Year
-- src\pages\ContractDetails.tsx:1152 [prop:label] - Color
-- src\pages\ContractDetails.tsx:1153 [prop:label] - Registration
-- src\pages\ContractDetails.tsx:1154 [prop:label] - Transmission
-- src\pages\ContractDetails.tsx:1155 [prop:label] - Fuel Type
-- src\pages\ContractDetails.tsx:1156 [prop:label] - Fuel Level
-- src\pages\ContractDetails.tsx:1157 [prop:label] - Mileage Start
-- src\pages\ContractDetails.tsx:1168 [prop:label] - Total Price
-- src\pages\ContractDetails.tsx:1169 [prop:label] - Daily Price
-- src\pages\ContractDetails.tsx:1170 [prop:label] - Paid Amount
-- src\pages\ContractDetails.tsx:1171 [prop:label] - Remaining
-- src\pages\ContractDetails.tsx:1172 [prop:label] - Payment Method
-- src\pages\ContractDetails.tsx:1173 [prop:label] - Payment Status
-- src\pages\ContractDetails.tsx:1183 [prop:label] - Deposit Required
-- src\pages\ContractDetails.tsx:1187 [prop:label] - Deposit Status
-- src\pages\ContractDetails.tsx:1205 [prop:label] - Deposit Held
-- src\pages\ContractDetails.tsx:1207 [prop:label] - Deposit Returned
-- src\pages\ContractDetails.tsx:1244 [prop:title] - Before Delivery
-- src\pages\ContractDetails.tsx:1245 [prop:title] - After Return
-- src\pages\ContractDetails.tsx:1458 [prop:title] - Vehicle Inspection QR
-- src\pages\ContractDetails.tsx:1256 [object:label] - Front
-- src\pages\ContractDetails.tsx:1257 [object:label] - Rear
-- src\pages\ContractDetails.tsx:1258 [object:label] - Left Side
-- src\pages\ContractDetails.tsx:1259 [object:label] - Right Side
-- src\pages\ContractDetails.tsx:1260 [object:label] - Windshield
-- src\pages\ContractDetails.tsx:1261 [object:label] - Interior
-- src\pages\ContractDetails.tsx:1262 [object:label] - Roof
-- src\pages\ContractDetails.tsx:1263 [object:label] - Front Bumper
-- src\pages\ContractDetails.tsx:1264 [object:label] - Rear Bumper
-- src\pages\ContractDetails.tsx:1265 [object:label] - Hood
-- src\pages\ContractDetails.tsx:1266 [object:label] - Trunk
+- src\pages\ContractDetails.tsx:812 [jsx-text] - No agency signature configured.
+- src\pages\ContractDetails.tsx:813 [jsx-text] - Set it in Settings
+- src\pages\ContractDetails.tsx:994 [jsx-text] - Security Deposit
+- src\pages\ContractDetails.tsx:1009 [jsx-text] - Type
+- src\pages\ContractDetails.tsx:1013 [jsx-text] - Amount
+- src\pages\ContractDetails.tsx:1018 [jsx-text] - Reference
+- src\pages\ContractDetails.tsx:1028 [jsx-text] - Process Vehicle Return
+- src\pages\ContractDetails.tsx:1034 [jsx-text] - Return Summary
+- src\pages\ContractDetails.tsx:1036 [jsx-text] - Deposit
+- src\pages\ContractDetails.tsx:1041 [jsx-text] - Damage
+- src\pages\ContractDetails.tsx:1047 [jsx-text] - Cleaning
+- src\pages\ContractDetails.tsx:1053 [jsx-text] - Late Fee
+- src\pages\ContractDetails.tsx:1059 [jsx-text] - Fuel
+- src\pages\ContractDetails.tsx:1065 [jsx-text] - Other
+- src\pages\ContractDetails.tsx:1071 [jsx-text] - Returned
+- src\pages\ContractDetails.tsx:1087 [jsx-text] - Client
+- src\pages\ContractDetails.tsx:1096 [jsx-text] - Vehicle
+- src\pages\ContractDetails.tsx:1105 [jsx-text] - Period
+- src\pages\ContractDetails.tsx:1116 [jsx-text] - Payment
+- src\pages\ContractDetails.tsx:1127 [jsx-text] - Client Information
+- src\pages\ContractDetails.tsx:1146 [jsx-text] - Vehicle Information
+- src\pages\ContractDetails.tsx:1164 [jsx-text] - Rental Payment
+- src\pages\ContractDetails.tsx:1176 [jsx-text] - Deposit / Guarantee (Caution)
+- src\pages\ContractDetails.tsx:1211 [jsx-text] - The deposit/guarantee is separate from the rental price and is refundable according to the contract terms.
+- src\pages\ContractDetails.tsx:1223 [jsx-text] - Vehicle Inspection Media
+- src\pages\ContractDetails.tsx:1224 [jsx-text] - Proof before delivery and after return, linked to this contract.
+- src\pages\ContractDetails.tsx:1228 [jsx-text] - Before Delivery QR
+- src\pages\ContractDetails.tsx:1232 [jsx-text] - After Return QR
+- src\pages\ContractDetails.tsx:1236 [jsx-text] - Refresh media
+- src\pages\ContractDetails.tsx:1251 [jsx-text] - Legacy Damage Markers
+- src\pages\ContractDetails.tsx:1276 [jsx-text] - Document Checklist
+- src\pages\ContractDetails.tsx:1287 [jsx-text] - No documents recorded
+- src\pages\ContractDetails.tsx:1294 [jsx-text] - Additional Drivers
+- src\pages\ContractDetails.tsx:1309 [jsx-text] - No additional drivers
+- src\pages\ContractDetails.tsx:1316 [jsx-text] - Activity Log
+- src\pages\ContractDetails.tsx:1331 [jsx-text] - No activity recorded
+- src\pages\ContractDetails.tsx:822 [prop:label] - Owner Signature
+- src\pages\ContractDetails.tsx:1129 [prop:label] - Full Name
+- src\pages\ContractDetails.tsx:1130 [prop:label] - Nationality
+- src\pages\ContractDetails.tsx:1131 [prop:label] - Gender
+- src\pages\ContractDetails.tsx:1132 [prop:label] - Birth Date
+- src\pages\ContractDetails.tsx:1133 [prop:label] - CIN / ID
+- src\pages\ContractDetails.tsx:1134 [prop:label] - Passport
+- src\pages\ContractDetails.tsx:1135 [prop:label] - Driver License
+- src\pages\ContractDetails.tsx:1136 [prop:label] - Phone
+- src\pages\ContractDetails.tsx:1137 [prop:label] - Email
+- src\pages\ContractDetails.tsx:1138 [prop:label] - Address
+- src\pages\ContractDetails.tsx:1139 [prop:label] - Emergency Contact
+- src\pages\ContractDetails.tsx:1148 [prop:label] - Brand / Model
+- src\pages\ContractDetails.tsx:1149 [prop:label] - Category
+- src\pages\ContractDetails.tsx:1150 [prop:label] - Year
+- src\pages\ContractDetails.tsx:1151 [prop:label] - Color
+- src\pages\ContractDetails.tsx:1152 [prop:label] - Registration
+- src\pages\ContractDetails.tsx:1153 [prop:label] - Transmission
+- src\pages\ContractDetails.tsx:1154 [prop:label] - Fuel Type
+- src\pages\ContractDetails.tsx:1155 [prop:label] - Fuel Level
+- src\pages\ContractDetails.tsx:1166 [prop:label] - Total Price
+- src\pages\ContractDetails.tsx:1167 [prop:label] - Daily Price
+- src\pages\ContractDetails.tsx:1168 [prop:label] - Paid Amount
+- src\pages\ContractDetails.tsx:1169 [prop:label] - Remaining
+- src\pages\ContractDetails.tsx:1170 [prop:label] - Payment Method
+- src\pages\ContractDetails.tsx:1171 [prop:label] - Payment Status
+- src\pages\ContractDetails.tsx:1181 [prop:label] - Deposit Required
+- src\pages\ContractDetails.tsx:1185 [prop:label] - Deposit Status
+- src\pages\ContractDetails.tsx:1203 [prop:label] - Deposit Held
+- src\pages\ContractDetails.tsx:1205 [prop:label] - Deposit Returned
+- src\pages\ContractDetails.tsx:1242 [prop:title] - Before Delivery
+- src\pages\ContractDetails.tsx:1243 [prop:title] - After Return
+- src\pages\ContractDetails.tsx:1456 [prop:title] - Vehicle Inspection QR
+- src\pages\ContractDetails.tsx:1254 [object:label] - Front
+- src\pages\ContractDetails.tsx:1255 [object:label] - Rear
+- src\pages\ContractDetails.tsx:1256 [object:label] - Left Side
+- src\pages\ContractDetails.tsx:1257 [object:label] - Right Side
+- src\pages\ContractDetails.tsx:1258 [object:label] - Windshield
+- src\pages\ContractDetails.tsx:1259 [object:label] - Interior
+- src\pages\ContractDetails.tsx:1260 [object:label] - Roof
+- src\pages\ContractDetails.tsx:1261 [object:label] - Front Bumper
+- src\pages\ContractDetails.tsx:1262 [object:label] - Rear Bumper
+- src\pages\ContractDetails.tsx:1263 [object:label] - Hood
+- src\pages\ContractDetails.tsx:1264 [object:label] - Trunk
 - src\pages\ForgotPassword.tsx:38 [prop:title] - Forgot Password
 - src\pages\ForgotPassword.tsx:39 [prop:description] - Reset your Innovacar account password.
 - src\pages\GpsAlerts.tsx:160 [jsx-text] - Mark all read
@@ -790,51 +786,51 @@ None.
 - src\pages\PublicContact.tsx:9 [object:label] - Sales
 - src\pages\PublicContact.tsx:10 [object:label] - Pricing / Demo request
 - src\pages\PublicContact.tsx:11 [object:label] - Other
-- src\pages\PublicContract.tsx:212 [jsx-text] - Loading contract...
-- src\pages\PublicContract.tsx:233 [jsx-text] - Please contact your rental agency for assistance.
-- src\pages\PublicContract.tsx:250 [jsx-text] - Contract Signed!
-- src\pages\PublicContract.tsx:251 [jsx-text] - Your signature has been securely recorded and synced to the agency dashboard.
-- src\pages\PublicContract.tsx:257 [jsx-text] - Contract
-- src\pages\PublicContract.tsx:261 [jsx-text] - Status
-- src\pages\PublicContract.tsx:262 [jsx-text] - Signed
-- src\pages\PublicContract.tsx:266 [jsx-text] - Final Status
-- src\pages\PublicContract.tsx:267 [jsx-text] - Active
-- src\pages\PublicContract.tsx:271 [jsx-text] - You can now close this page. A confirmation email will be sent shortly.
-- src\pages\PublicContract.tsx:304 [jsx-text] - Digital Contract
-- src\pages\PublicContract.tsx:319 [jsx-text] - Contract Number
-- src\pages\PublicContract.tsx:375 [jsx-text] - Start
-- src\pages\PublicContract.tsx:386 [jsx-text] - End
-- src\pages\PublicContract.tsx:396 [jsx-text] - Payment Summary
-- src\pages\PublicContract.tsx:405 [jsx-text] - Deposit
-- src\pages\PublicContract.tsx:411 [jsx-text] - Additional Fees
-- src\pages\PublicContract.tsx:417 [jsx-text] - Discount
-- src\pages\PublicContract.tsx:423 [jsx-text] - Total Amount
-- src\pages\PublicContract.tsx:434 [jsx-text] - Agency Signed
-- src\pages\PublicContract.tsx:452 [jsx-text] - This contract has already been signed by the agency. Please review and sign below to complete the agreement.
-- src\pages\PublicContract.tsx:463 [jsx-text] - Security Deposit
-- src\pages\PublicContract.tsx:467 [jsx-text] - Type
-- src\pages\PublicContract.tsx:471 [jsx-text] - Amount
-- src\pages\PublicContract.tsx:476 [jsx-text] - Reference
-- src\pages\PublicContract.tsx:481 [jsx-text] - Status
-- src\pages\PublicContract.tsx:502 [jsx-text] - I understand and accept the deposit conditions.
-- src\pages\PublicContract.tsx:514 [jsx-text] - Terms & Conditions
-- src\pages\PublicContract.tsx:540 [jsx-text] - I have read and agree to the terms and conditions above.
-- src\pages\PublicContract.tsx:552 [jsx-text] - Your Signature
-- src\pages\PublicContract.tsx:558 [jsx-text] - Please accept the terms and conditions above before signing.
-- src\pages\PublicContract.tsx:565 [jsx-text] - Please acknowledge the security deposit conditions above before signing.
-- src\pages\PublicContract.tsx:580 [jsx-text] - Syncing your signature...
-- src\pages\PublicContract.tsx:588 [jsx-text] - Contract Signed!
-- src\pages\PublicContract.tsx:595 [jsx-text] - Your Signature
-- src\pages\PublicContract.tsx:621 [jsx-text] - Retry
-- src\pages\PublicContract.tsx:645 [jsx-text] - This document is digitally signed and timestamped.
-- src\pages\PublicContract.tsx:222 [prop:title] - Contract Signing
-- src\pages\PublicContract.tsx:223 [prop:description] - Secure contract signing link.
-- src\pages\PublicContract.tsx:286 [prop:title] - Contract Signing
-- src\pages\PublicContract.tsx:287 [prop:description] - Secure contract signing link.
-- src\pages\PublicContract.tsx:437 [prop:alt] - Agency Signature
-- src\pages\PublicContract.tsx:447 [prop:alt] - Agency Stamp
-- src\pages\PublicContract.tsx:571 [prop:label] - Sign with your finger or stylus
-- src\pages\PublicContract.tsx:596 [prop:alt] - Your Signature
+- src\pages\PublicContract.tsx:211 [jsx-text] - Loading contract...
+- src\pages\PublicContract.tsx:232 [jsx-text] - Please contact your rental agency for assistance.
+- src\pages\PublicContract.tsx:249 [jsx-text] - Contract Signed!
+- src\pages\PublicContract.tsx:250 [jsx-text] - Your signature has been securely recorded and synced to the agency dashboard.
+- src\pages\PublicContract.tsx:256 [jsx-text] - Contract
+- src\pages\PublicContract.tsx:260 [jsx-text] - Status
+- src\pages\PublicContract.tsx:261 [jsx-text] - Signed
+- src\pages\PublicContract.tsx:265 [jsx-text] - Final Status
+- src\pages\PublicContract.tsx:266 [jsx-text] - Active
+- src\pages\PublicContract.tsx:270 [jsx-text] - You can now close this page. A confirmation email will be sent shortly.
+- src\pages\PublicContract.tsx:303 [jsx-text] - Digital Contract
+- src\pages\PublicContract.tsx:318 [jsx-text] - Contract Number
+- src\pages\PublicContract.tsx:374 [jsx-text] - Start
+- src\pages\PublicContract.tsx:385 [jsx-text] - End
+- src\pages\PublicContract.tsx:395 [jsx-text] - Payment Summary
+- src\pages\PublicContract.tsx:404 [jsx-text] - Deposit
+- src\pages\PublicContract.tsx:410 [jsx-text] - Additional Fees
+- src\pages\PublicContract.tsx:416 [jsx-text] - Discount
+- src\pages\PublicContract.tsx:422 [jsx-text] - Total Amount
+- src\pages\PublicContract.tsx:433 [jsx-text] - Agency Signed
+- src\pages\PublicContract.tsx:451 [jsx-text] - This contract has already been signed by the agency. Please review and sign below to complete the agreement.
+- src\pages\PublicContract.tsx:462 [jsx-text] - Security Deposit
+- src\pages\PublicContract.tsx:466 [jsx-text] - Type
+- src\pages\PublicContract.tsx:470 [jsx-text] - Amount
+- src\pages\PublicContract.tsx:475 [jsx-text] - Reference
+- src\pages\PublicContract.tsx:480 [jsx-text] - Status
+- src\pages\PublicContract.tsx:501 [jsx-text] - I understand and accept the deposit conditions.
+- src\pages\PublicContract.tsx:513 [jsx-text] - Terms & Conditions
+- src\pages\PublicContract.tsx:539 [jsx-text] - I have read and agree to the terms and conditions above.
+- src\pages\PublicContract.tsx:551 [jsx-text] - Your Signature
+- src\pages\PublicContract.tsx:557 [jsx-text] - Please accept the terms and conditions above before signing.
+- src\pages\PublicContract.tsx:564 [jsx-text] - Please acknowledge the security deposit conditions above before signing.
+- src\pages\PublicContract.tsx:579 [jsx-text] - Syncing your signature...
+- src\pages\PublicContract.tsx:587 [jsx-text] - Contract Signed!
+- src\pages\PublicContract.tsx:594 [jsx-text] - Your Signature
+- src\pages\PublicContract.tsx:620 [jsx-text] - Retry
+- src\pages\PublicContract.tsx:644 [jsx-text] - This document is digitally signed and timestamped.
+- src\pages\PublicContract.tsx:221 [prop:title] - Contract Signing
+- src\pages\PublicContract.tsx:222 [prop:description] - Secure contract signing link.
+- src\pages\PublicContract.tsx:285 [prop:title] - Contract Signing
+- src\pages\PublicContract.tsx:286 [prop:description] - Secure contract signing link.
+- src\pages\PublicContract.tsx:436 [prop:alt] - Agency Signature
+- src\pages\PublicContract.tsx:446 [prop:alt] - Agency Stamp
+- src\pages\PublicContract.tsx:570 [prop:label] - Sign with your finger or stylus
+- src\pages\PublicContract.tsx:595 [prop:alt] - Your Signature
 - src\pages\Register.tsx:211 [prop:title] - Create Account
 - src\pages\Register.tsx:212 [prop:description] - Create your Innovacar account to start managing your car rental agency
 - src\pages\Register.tsx:272 [prop:placeholder] - John
@@ -1591,9 +1587,9 @@ None.
 - src\pages\TicketDetail.tsx:160 [jsx-text] - Conversation
 - src\pages\TicketDetail.tsx:162 [jsx-text] - No messages yet.
 - src\pages\TicketDetail.tsx:184 [prop:placeholder] - Write a reply...
-- src\pages\Vehicles.tsx:414 [jsx-text] - Trash is empty
-- src\pages\Vehicles.tsx:514 [jsx-text] - Trash is empty
-- src\pages\Vehicles.tsx:526 [jsx-text] - Vehicles are permanently deleted automatically 30 days after being trashed (unless still linked to a contract/reservation).
+- src\pages\Vehicles.tsx:464 [jsx-text] - Trash is empty
+- src\pages\Vehicles.tsx:564 [jsx-text] - Trash is empty
+- src\pages\Vehicles.tsx:576 [jsx-text] - Vehicles are permanently deleted automatically 30 days after being trashed (unless still linked to a contract/reservation).
 - src\pages\VerifyEmail.tsx:43 [prop:title] - Verify Email
 - src\pages\VerifyEmail.tsx:44 [prop:description] - Verify your email address for your Innovacar account.
 - src\pages\VerifyResetCode.tsx:70 [prop:title] - Verify Reset Code

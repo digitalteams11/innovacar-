@@ -1,24 +1,43 @@
 package com.carrental.controller;
 
+import com.carrental.dto.export.VehicleExportRow;
 import com.carrental.dto.vehicle.CreateVehicleRequest;
 import com.carrental.dto.vehicle.UpdateVehicleRequest;
 import com.carrental.dto.vehicle.VehicleResponse;
+import com.carrental.entity.Tenant;
 import com.carrental.entity.VehicleStatus;
+import com.carrental.repository.TenantRepository;
+import com.carrental.security.TenantContext;
 import com.carrental.service.AvailabilityService;
 import com.carrental.service.PlanLimitService;
 import com.carrental.service.VehiclePurgeService;
 import com.carrental.service.VehicleService;
 import com.carrental.service.VehicleStatusSyncService;
+import com.carrental.service.export.VehicleCsvExporter;
+import com.carrental.service.export.VehicleExportService;
+import com.carrental.service.export.VehiclePdfExporter;
+import com.carrental.service.export.VehicleXlsxExporter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +61,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/vehicles")
 @RequiredArgsConstructor
+@Slf4j
 public class VehicleController {
 
     private final VehicleService vehicleService;
@@ -49,6 +69,11 @@ public class VehicleController {
     private final PlanLimitService planLimitService;
     private final AvailabilityService availabilityService;
     private final VehicleStatusSyncService vehicleStatusSyncService;
+    private final VehicleExportService vehicleExportService;
+    private final VehicleCsvExporter vehicleCsvExporter;
+    private final VehicleXlsxExporter vehicleXlsxExporter;
+    private final VehiclePdfExporter vehiclePdfExporter;
+    private final TenantRepository tenantRepository;
 
     // ── GET /api/vehicles ────────────────────────────────────────────────────
 
@@ -309,5 +334,141 @@ public class VehicleController {
         body.put("errorCode", errorCode);
         body.put("data", data);
         return body;
+    }
+
+    // ── GET /api/vehicles/export/{pdf,xlsx,csv} ──────────────────────────────
+
+    @GetMapping(value = "/export/pdf")
+    @PreAuthorize("@rolePermissionService.has('VIEW_VEHICLES')")
+    public ResponseEntity<?> exportPdf(
+            @RequestParam(required = false) VehicleStatus status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") boolean archived,
+            @RequestParam(required = false) List<Long> ids) {
+        try {
+            List<VehicleExportRow> rows = vehicleExportService.resolveRows(
+                    exportFilters(status, category, branchId, search, archived, ids), VehicleExportService.MAX_ROWS_PDF_XLSX);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            vehiclePdfExporter.write(buffer, rows, reportMeta(status, category, branchId, search, archived));
+            return fileResponse(buffer.toByteArray(), MediaType.APPLICATION_PDF, exportFilename("pdf"));
+        } catch (VehicleExportService.ExportNoDataException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(ex.getMessage(), "EXPORT_NO_DATA", null));
+        } catch (VehicleExportService.ExportTooLargeException ex) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorBody(ex.getMessage(), "EXPORT_TOO_LARGE", null));
+        } catch (Exception ex) {
+            log.error("[FLEET_EXPORT] PDF generation failed", ex);
+            return ResponseEntity.internalServerError().body(errorBody("Failed to generate the PDF report.", "PDF_GENERATION_FAILED", null));
+        }
+    }
+
+    @GetMapping(value = "/export/xlsx")
+    @PreAuthorize("@rolePermissionService.has('VIEW_VEHICLES')")
+    public ResponseEntity<?> exportXlsx(
+            @RequestParam(required = false) VehicleStatus status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") boolean archived,
+            @RequestParam(required = false) List<Long> ids,
+            @RequestParam(required = false, defaultValue = "true") boolean includeSummary) {
+        try {
+            List<VehicleExportRow> rows = vehicleExportService.resolveRows(
+                    exportFilters(status, category, branchId, search, archived, ids), VehicleExportService.MAX_ROWS_PDF_XLSX);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            vehicleXlsxExporter.write(buffer, rows, includeSummary);
+            return fileResponse(buffer.toByteArray(),
+                    MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                    exportFilename("xlsx"));
+        } catch (VehicleExportService.ExportNoDataException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(ex.getMessage(), "EXPORT_NO_DATA", null));
+        } catch (VehicleExportService.ExportTooLargeException ex) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorBody(ex.getMessage(), "EXPORT_TOO_LARGE", null));
+        } catch (Exception ex) {
+            log.error("[FLEET_EXPORT] XLSX generation failed", ex);
+            return ResponseEntity.internalServerError().body(errorBody("Failed to generate the Excel workbook.", "XLSX_GENERATION_FAILED", null));
+        }
+    }
+
+    @GetMapping(value = "/export/csv")
+    @PreAuthorize("@rolePermissionService.has('VIEW_VEHICLES')")
+    public ResponseEntity<?> exportCsv(
+            @RequestParam(required = false) VehicleStatus status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") boolean archived,
+            @RequestParam(required = false) List<Long> ids,
+            @RequestParam(required = false, defaultValue = ",") String delimiter) {
+        try {
+            List<VehicleExportRow> rows = vehicleExportService.resolveRows(
+                    exportFilters(status, category, branchId, search, archived, ids), VehicleExportService.MAX_ROWS_CSV);
+            char delim = ";".equals(delimiter) ? ';' : ',';
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            String[] headers = {"ID", "Brand", "Model", "Category", "Plate", "Status", "Price/Day",
+                    "Fuel", "Transmission", "Mileage", "Branch", "Next Maintenance"};
+            List<java.util.function.Function<VehicleExportRow, Object>> columns = List.of(
+                    VehicleExportRow::getId, VehicleExportRow::getBrand, VehicleExportRow::getModel,
+                    VehicleExportRow::getCategory, VehicleExportRow::getPlate, VehicleExportRow::getStatus,
+                    VehicleExportRow::getPricePerDay, VehicleExportRow::getFuel, VehicleExportRow::getTransmission,
+                    VehicleExportRow::getMileage, VehicleExportRow::getBranch, VehicleExportRow::getNextMaintenanceDate);
+            vehicleCsvExporter.write(buffer, rows, headers, columns, delim);
+            return fileResponse(buffer.toByteArray(),
+                    MediaType.parseMediaType("text/csv; charset=UTF-8"), exportFilename("csv"));
+        } catch (VehicleExportService.ExportNoDataException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(ex.getMessage(), "EXPORT_NO_DATA", null));
+        } catch (VehicleExportService.ExportTooLargeException ex) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorBody(ex.getMessage(), "EXPORT_TOO_LARGE", null));
+        } catch (Exception ex) {
+            log.error("[FLEET_EXPORT] CSV generation failed", ex);
+            return ResponseEntity.internalServerError().body(errorBody("Failed to generate the CSV file.", "CSV_GENERATION_FAILED", null));
+        }
+    }
+
+    private VehicleExportService.Filters exportFilters(VehicleStatus status, String category, Long branchId,
+            String search, boolean archived, List<Long> ids) {
+        return new VehicleExportService.Filters(status, category, branchId, search, archived, null, null, ids);
+    }
+
+    private Map<String, Object> reportMeta(VehicleStatus status, String category, Long branchId, String search, boolean archived) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        String agencyName = tenantRepository.findById(tenantId).map(Tenant::getName).orElse("");
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        String generatedBy = auth != null ? auth.getName() : "system";
+
+        List<String> activeFilters = new ArrayList<>();
+        if (status != null) activeFilters.add("Status=" + status);
+        if (category != null) activeFilters.add("Category=" + category);
+        if (branchId != null) activeFilters.add("Branch=" + branchId);
+        if (search != null) activeFilters.add("Search=" + search);
+        if (archived) activeFilters.add("Includes archived");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("agencyName", agencyName);
+        meta.put("generatedBy", generatedBy);
+        meta.put("generatedAt", java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        meta.put("filters", activeFilters.isEmpty() ? "None" : String.join(", ", activeFilters));
+        return meta;
+    }
+
+    private String exportFilename(String extension) {
+        return "innovacar-flotte-" + LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE) + "." + extension;
+    }
+
+    /** Content-Disposition with an RFC 5987 UTF-8 filename — safe even though our filenames are ASCII today. */
+    private ResponseEntity<byte[]> fileResponse(byte[] content, MediaType mediaType, String filename) {
+        String encoded;
+        try {
+            encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8.name()).replace("+", "%20");
+        } catch (UnsupportedEncodingException e) {
+            encoded = filename;
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(mediaType);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"; filename*=UTF-8''" + encoded);
+        headers.set(HttpHeaders.CACHE_CONTROL, "no-store");
+        headers.set("X-Content-Type-Options", "nosniff");
+        return ResponseEntity.ok().headers(headers).body(content);
     }
 }

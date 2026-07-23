@@ -36,6 +36,14 @@ public class Vehicle {
     @Column(nullable = false, length = 150)
     private String marque;
 
+    /** Split-out brand, e.g. "Toyota" — backfilled from marque, used by fleet exports. */
+    @Column(length = 100)
+    private String brand;
+
+    /** Split-out model, e.g. "Corolla 2023" — backfilled from marque, used by fleet exports. */
+    @Column(length = 100)
+    private String model;
+
     /** Daily rental price */
     @Column(name = "prix_jour", nullable = false, precision = 10, scale = 2)
     private BigDecimal prixJour;

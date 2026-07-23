@@ -65,6 +65,7 @@ public class RolePermissionService {
             {"EDIT_VEHICLE", "Edit Vehicle", "Fleet"}, {"DELETE_VEHICLE", "Delete Vehicle", "Fleet"},
             {"VIEW_CLIENTS", "View Clients", "Clients"}, {"CREATE_CLIENT", "Create Client", "Clients"},
             {"EDIT_CLIENT", "Edit Client", "Clients"}, {"DELETE_CLIENT", "Delete Client", "Clients"},
+            {"VIEW_CLIENT_DOCUMENTS_FULL", "View Full Identity Document Numbers", "Clients"},
             {"VIEW_RESERVATIONS", "View Reservations", "Reservations"}, {"CREATE_RESERVATION", "Create Reservation", "Reservations"},
             {"EDIT_RESERVATION", "Edit Reservation", "Reservations"}, {"CANCEL_RESERVATION", "Cancel Reservation", "Reservations"},
             {"VIEW_CONTRACTS", "View Contracts", "Contracts"}, {"CREATE_CONTRACT", "Create Contract", "Contracts"},

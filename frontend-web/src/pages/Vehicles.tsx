@@ -8,7 +8,7 @@ import { SearchInput } from '../components/SearchInput';
 import { FilterChips } from '../components/FilterChips';
 import { StatusBadge } from '../components/StatusBadge';
 import { motion } from 'framer-motion';
-import { Plus, Download, ChevronRight, Fuel, Shield, Users as UsersIcon, Camera, Loader2, Car, RotateCcw, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Download, ChevronRight, Fuel, Shield, Users as UsersIcon, Camera, Loader2, Car, RotateCcw, Trash2, AlertTriangle, FileText, FileSpreadsheet, FileType } from 'lucide-react';
 import api from '../api/axios';
 import { useSubscription } from '../hooks/useSubscription';
 import ApiErrorState from '../components/ApiErrorState';
@@ -199,27 +199,77 @@ export default function Vehicles() {
     return matchesFilter && matchesSearch;
   });
 
-  const exportFleet = () => {
-    const headers = ['ID', t('vehicles.brandModel'), t('vehicles.category'), t('vehicles.plate'), t('vehicles.status'), t('vehicles.pricePerDay'), t('vehicles.fuel'), t('vehicles.transmission')];
-    const rows = filteredData.map((v) => [
-      v.id,
-      v.marque,
-      translateVehicleCategory(v.category),
-      v.plate,
-      translateVehicleStatus(v.statut),
-      v.prixJour,
-      translateFuelType(v.fuel),
-      translateTransmission(v.transmission),
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'fleet.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(t('toast.fleetExported'));
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'xlsx' | 'csv'>('pdf');
+  const [exportScope, setExportScope] = useState<'all' | 'filtered'>('filtered');
+  const [exporting, setExporting] = useState(false);
+
+  /**
+   * Real server-side export — replaces the old client-side comma-join that
+   * produced a mislabeled, mojibake-prone "fleet.csv" (no BOM, no quoting,
+   * everything jammed into one cell in French-locale Excel). The backend now
+   * returns a real PDF, a real .xlsx workbook, or a correctly-encoded CSV.
+   */
+  const runExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const params: Record<string, string> = {};
+      if (exportScope === 'filtered') {
+        if (filter !== 'All') params.status = filter.toUpperCase();
+        if (searchQuery.trim()) params.search = searchQuery.trim();
+      }
+      const response = await api.get(`/vehicles/export/${exportFormat}`, {
+        params,
+        responseType: 'blob',
+      });
+
+      const contentType = String(response.headers['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        // A 2xx with a JSON body would be unexpected, but never trust
+        // Content-Type blindly — treat any JSON body as an error payload
+        // rather than downloading it as a fake PDF/Excel/CSV file.
+        const text = await (response.data as Blob).text();
+        const parsed = JSON.parse(text);
+        throw new Error(parsed.message || t('vehicles.export.errors.generic'));
+      }
+
+      const disposition: string = String(response.headers['content-disposition'] || '');
+      const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)"?/i);
+      const filename = match ? decodeURIComponent(match[1]) : `innovacar-flotte.${exportFormat}`;
+
+      const blob = new Blob([response.data], { type: contentType || undefined });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      showToast(t('vehicles.export.downloadReady'));
+      setIsExportModalOpen(false);
+    } catch (err: any) {
+      let message = t('vehicles.export.errors.generic');
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await data.text());
+          const errorCode = parsed.errorCode;
+          if (errorCode === 'EXPORT_NO_DATA') message = t('vehicles.export.errors.noData');
+          else if (errorCode === 'EXPORT_TOO_LARGE') message = t('vehicles.export.errors.tooLarge');
+          else if (parsed.message) message = parsed.message;
+        } catch {
+          // Body wasn't JSON either — fall back to the generic message below.
+        }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      showToast(message, 'error');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const openCreate = () => {
@@ -352,7 +402,7 @@ export default function Vehicles() {
         actions={
           <>
             <motion.button
-              onClick={exportFleet}
+              onClick={() => { setExportFormat('pdf'); setIsExportModalOpen(true); }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all"
@@ -755,6 +805,68 @@ export default function Vehicles() {
             >
               {editingId ? t('vehicles.manageDetails') : t('vehicles.addVehicle')}
             </motion.button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Export modal — PDF is the primary/default format for agency users */}
+      <Modal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        title={t('vehicles.export.title')}
+        footer={
+          <button
+            onClick={runExport}
+            disabled={exporting}
+            className="w-full min-h-[44px] flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-wait"
+          >
+            {exporting ? <><Loader2 size={16} className="animate-spin" />{t('vehicles.export.generating')}</> : t('vehicles.export.exportButton')}
+          </button>
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">{t('vehicles.export.format')}</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {([
+                { key: 'pdf', label: t('vehicles.export.formatPdf'), icon: FileText },
+                { key: 'xlsx', label: t('vehicles.export.formatExcel'), icon: FileSpreadsheet },
+                { key: 'csv', label: t('vehicles.export.formatCsv'), icon: FileType },
+              ] as const).map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setExportFormat(key)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 text-sm font-medium transition-all min-h-[44px] ${
+                    exportFormat === key ? 'border-brand-500 bg-brand-500/10 text-brand-500' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'
+                  }`}
+                >
+                  <Icon size={22} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">{t('vehicles.export.scope')}</label>
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <button
+                onClick={() => setExportScope('all')}
+                className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                  exportScope === 'all' ? 'border-brand-500 bg-brand-500/10 text-brand-500' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'
+                }`}
+              >
+                {t('vehicles.export.scopeAll')}
+              </button>
+              <button
+                onClick={() => setExportScope('filtered')}
+                className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                  exportScope === 'filtered' ? 'border-brand-500 bg-brand-500/10 text-brand-500' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'
+                }`}
+              >
+                {t('vehicles.export.scopeFiltered')}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>

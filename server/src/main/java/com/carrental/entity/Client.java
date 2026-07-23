@@ -81,6 +81,12 @@ public class Client {
     @Column(name = "driving_license_expiry")
     private LocalDate drivingLicenseExpiry;
 
+    @Column(name = "driving_license_category", length = 20)
+    private String drivingLicenseCategory;
+
+    @Column(name = "driving_license_country", length = 100)
+    private String drivingLicenseCountry;
+
     @Column(name = "emergency_contact_name", length = 150)
     private String emergencyContactName;
 
