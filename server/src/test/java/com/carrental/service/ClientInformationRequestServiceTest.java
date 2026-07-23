@@ -464,4 +464,99 @@ class ClientInformationRequestServiceTest {
                 .extracting(e -> ((ClientInfoRequestException) e).getCode())
                 .isEqualTo("REQUEST_EXPIRED");
     }
+
+    // ── Simplified form: no dates, single CIN/passport selector ────────────
+
+    @Test
+    void approvingWithPassportOnly_setsPassportNotCin() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(40L).tenantId(1L).status(ClientInfoRequestStatus.SUBMITTED)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .submissionPayload("""
+                        {"fullName":"Karim Client","phone":"+212600000001",
+                         "documentType":"PASSPORT","documentNumber":"PP998877","privacyAccepted":true}""")
+                .build();
+        when(requestRepository.findByIdAndTenantId(40L, 1L)).thenReturn(Optional.of(r));
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
+        ArgumentCaptor<Client> clientCaptor = ArgumentCaptor.forClass(Client.class);
+        when(clientRepository.save(clientCaptor.capture())).thenAnswer(inv -> {
+            Client c = inv.getArgument(0);
+            c.setId(78L);
+            return c;
+        });
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ApproveClientInformationRequest approveReq = new ApproveClientInformationRequest();
+        approveReq.setAction(ApproveClientInformationRequest.Action.CREATE_NEW);
+        service.approve(40L, approveReq);
+
+        Client saved = clientCaptor.getValue();
+        assertThat(saved.getPassportNumber()).isEqualTo("PP998877");
+        assertThat(saved.getCin()).isNull();
+    }
+
+    @Test
+    void approvedClientAndIdentityDocumentCarryNoDates() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(41L).tenantId(1L).status(ClientInfoRequestStatus.SUBMITTED)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .submissionPayload("""
+                        {"fullName":"Karim Client","phone":"+212600000001",
+                         "documentType":"CIN","documentNumber":"AB998877",
+                         "driverLicenseNumber":"DL12345","privacyAccepted":true}""")
+                .build();
+        when(requestRepository.findByIdAndTenantId(41L, 1L)).thenReturn(Optional.of(r));
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
+        ArgumentCaptor<Client> clientCaptor = ArgumentCaptor.forClass(Client.class);
+        when(clientRepository.save(clientCaptor.capture())).thenAnswer(inv -> {
+            Client c = inv.getArgument(0);
+            c.setId(79L);
+            return c;
+        });
+        ArgumentCaptor<com.carrental.entity.ClientIdentityDocument> docCaptor =
+                ArgumentCaptor.forClass(com.carrental.entity.ClientIdentityDocument.class);
+        when(identityDocumentRepository.save(docCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ApproveClientInformationRequest approveReq = new ApproveClientInformationRequest();
+        approveReq.setAction(ApproveClientInformationRequest.Action.CREATE_NEW);
+        service.approve(41L, approveReq);
+
+        Client savedClient = clientCaptor.getValue();
+        assertThat(savedClient.getDrivingLicense()).isEqualTo("DL12345");
+        assertThat(savedClient.getDrivingLicenseIssue()).isNull();
+        assertThat(savedClient.getDrivingLicenseExpiry()).isNull();
+        assertThat(savedClient.getDrivingLicenseCategory()).isNull();
+        assertThat(savedClient.getDrivingLicenseCountry()).isNull();
+
+        com.carrental.entity.ClientIdentityDocument savedDoc = docCaptor.getValue();
+        assertThat(savedDoc.getDocumentNumber()).isEqualTo("AB998877");
+        assertThat(savedDoc.getIssueDate()).isNull();
+        assertThat(savedDoc.getExpiryDate()).isNull();
+        assertThat(savedDoc.getIssuingCountry()).isNull();
+    }
+
+    @Test
+    void duplicateDetectionByDocumentNumber() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(42L).tenantId(1L).status(ClientInfoRequestStatus.SUBMITTED)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .submissionPayload("""
+                        {"fullName":"Karim Client","phone":"+212600000099",
+                         "documentType":"CIN","documentNumber":"AB998877","privacyAccepted":true}""")
+                .build();
+        when(requestRepository.findByIdAndTenantId(42L, 1L)).thenReturn(Optional.of(r));
+        com.carrental.entity.ClientIdentityDocument existingDoc = com.carrental.entity.ClientIdentityDocument.builder()
+                .id(5L).tenantId(1L).clientId(88L).documentNumber("AB998877").isPrimary(true).build();
+        when(identityDocumentRepository.findFirstByTenantIdAndDocumentNumberIgnoreCaseAndIsPrimaryTrue(1L, "AB998877"))
+                .thenReturn(Optional.of(existingDoc));
+        Client existing = Client.builder().id(88L).tenant(tenant).name("Karim C.").build();
+        when(clientRepository.findByIdAndTenantId(88L, 1L)).thenReturn(Optional.of(existing));
+
+        ClientInformationRequestResponse response = service.getDetail(42L);
+
+        assertThat(response.getPotentialDuplicates()).hasSize(1);
+        assertThat(response.getPotentialDuplicates().get(0).getClientId()).isEqualTo(88L);
+        assertThat(response.getPotentialDuplicates().get(0).getMatchedOn()).isEqualTo("document");
+    }
 }

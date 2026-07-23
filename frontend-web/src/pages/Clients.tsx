@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../context/ToastContext';
@@ -83,6 +84,7 @@ const itemVariants = {
 };
 
 export default function Clients() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,6 +211,27 @@ export default function Clients() {
     });
     setIsModalOpen(true);
   };
+
+  // Deep-link support for the "View client" / "Edit client" buttons on the
+  // Client Information Requests page (?viewClientId=/?editClientId=) — the
+  // client just approved there may not be in the currently loaded list yet,
+  // so it's fetched directly instead of depending on `data`/pagination.
+  useEffect(() => {
+    const viewClientId = searchParams.get('viewClientId');
+    const editClientId = searchParams.get('editClientId');
+    if (!viewClientId && !editClientId) return;
+    const targetId = Number(viewClientId || editClientId);
+    api.get(`/clients/${targetId}`).then(({ data: client }) => {
+      if (viewClientId) {
+        setSelectedClient(client);
+        setIsProfileModalOpen(true);
+      } else {
+        openEdit(client);
+      }
+    }).catch(() => showToast(t('clients.loadError', 'Unable to load client information. Please try again later.'), 'error'));
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   /** Document-type label/placeholder pairs — the single number input relabels itself per type. */
   const documentFieldMeta = (type: string) => {

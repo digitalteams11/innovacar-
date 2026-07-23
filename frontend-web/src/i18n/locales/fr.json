@@ -445,6 +445,7 @@
   "clients": {
     "title": "Répertoire des Clients",
     "subtitle": "Gérez vos relations clients et leur historique.",
+    "loadError": "Impossible de charger les informations du client. Veuillez réessayer plus tard.",
     "newClient": "Nouveau Client",
     "editClient": "Modifier le client",
     "searchPlaceholder": "Rechercher par nom, email ou téléphone...",
@@ -620,6 +621,7 @@
     "subtitle": "Aperçu de toutes les locations de voitures actuelles, à venir et passées.",
     "exportCSV": "Exporter CSV",
     "createReservation": "Créer une réservation",
+    "prefillLoadFailed": "Impossible de charger le client. Veuillez réessayer plus tard.",
     "all": "Tous",
     "confirmed": "Confirmée",
     "pending": "En attente",

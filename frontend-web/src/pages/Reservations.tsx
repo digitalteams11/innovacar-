@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from '../components/Modal';
 import SmartClientSearch, { type SmartClientSearchValue } from '../components/shared/SmartClientSearch';
@@ -94,6 +94,7 @@ const statusVariantMap: Record<string, import('../components/StatusBadge').Statu
 
 export default function Reservations() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<Reservation[]>([]);
@@ -233,6 +234,28 @@ export default function Reservations() {
     setNotes('');
     setIsModalOpen(true);
   };
+
+  // Preselects an already-approved client (used by the "Continue to
+  // reservation" button on the Client Information Requests page) so the
+  // admin never has to search for/retype a client that was just approved.
+  const openCreateFromClient = async (clientId: number) => {
+    openCreate();
+    try {
+      const { data } = await api.get(`/clients/${clientId}`);
+      setClientData({ clientId: data.id, clientFullName: data.name });
+    } catch {
+      showToast(t('reservations.prefillLoadFailed', 'Unable to load the client. Please try again later.'), 'error');
+    }
+  };
+
+  useEffect(() => {
+    const fromClientId = searchParams.get('fromClientId');
+    if (fromClientId) {
+      openCreateFromClient(Number(fromClientId));
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const openEdit = (res: Reservation) => {
     if (res.readOnly) {

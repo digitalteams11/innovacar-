@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-23T21:15:37.640Z
+Generated: 2026-07-23T21:23:22.999Z
 Scanned source files: 212
-Static translation keys used: 2018
+Static translation keys used: 2020
 
 ## Missing EN Keys (0)
 
@@ -852,10 +852,10 @@ None.
 - src\pages\Reports.tsx:114 [prop:description] - Paid invoices will appear here as soon as revenue is recorded.
 - src\pages\Reports.tsx:139 [prop:title] - No fleet utilization yet
 - src\pages\Reports.tsx:140 [prop:description] - Vehicles will appear here once fleet records exist.
-- src\pages\Reservations.tsx:659 [jsx-text] - Auto-created from contract
-- src\pages\Reservations.tsx:943 [jsx-text] - Plate:
-- src\pages\Reservations.tsx:944 [jsx-text] - Fuel:
-- src\pages\Reservations.tsx:945 [jsx-text] - Day:
+- src\pages\Reservations.tsx:682 [jsx-text] - Auto-created from contract
+- src\pages\Reservations.tsx:966 [jsx-text] - Plate:
+- src\pages\Reservations.tsx:967 [jsx-text] - Fuel:
+- src\pages\Reservations.tsx:968 [jsx-text] - Day:
 - src\pages\ResetPassword.tsx:85 [prop:title] - Reset Password
 - src\pages\ResetPassword.tsx:86 [prop:description] - Set a new password for your Innovacar account.
 - src\pages\Settings.tsx:734 [jsx-text] - More branding tools

@@ -445,6 +445,7 @@
   "clients": {
     "title": "Client Directory",
     "subtitle": "Manage your client relationships and their history.",
+    "loadError": "Unable to load client information. Please try again later.",
     "newClient": "New Client",
     "editClient": "Edit Client",
     "searchPlaceholder": "Search by name, email or phone...",
@@ -620,6 +621,7 @@
     "subtitle": "Overview of all current, upcoming and past car rentals.",
     "exportCSV": "Export CSV",
     "createReservation": "Create Reservation",
+    "prefillLoadFailed": "Unable to load the client. Please try again later.",
     "all": "All",
     "confirmed": "Confirmed",
     "pending": "Pending",
