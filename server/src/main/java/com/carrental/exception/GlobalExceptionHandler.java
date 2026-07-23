@@ -217,6 +217,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    @ExceptionHandler(ClientInfoRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleClientInfoRequest(ClientInfoRequestException ex) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("success", false);
+        body.put("code", ex.getCode());
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(ex.getStatus()).body(body);
+    }
+
     @ExceptionHandler(AiServiceException.class)
     public ResponseEntity<Map<String, Object>> handleAiService(AiServiceException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {

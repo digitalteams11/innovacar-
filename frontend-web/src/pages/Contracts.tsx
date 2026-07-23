@@ -15,11 +15,12 @@ import { SearchInput } from '../components/SearchInput';
 import { FilterChips } from '../components/FilterChips';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 import ActionMenu from '../components/shared/ActionMenu';
+import SendClientInfoRequestModal from '../components/shared/SendClientInfoRequestModal';
 import {
   Plus, Download, FileText, Trash2, CheckCircle2,
   Loader2, QrCode, Eye, User, Car, Shield, Fuel, Gauge,
   Calendar, ChevronDown, ChevronUp, Hash, Wallet, X,
-  MapPin, Phone, RotateCcw, AlertTriangle, XCircle
+  MapPin, Phone, RotateCcw, AlertTriangle, XCircle, UserPlus
 } from 'lucide-react';
 
 interface Contract {
@@ -246,6 +247,7 @@ export default function Contracts() {
     conflictEndDate?: string;
   }>({ open: false });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showSendClientInfo, setShowSendClientInfo] = useState(false);
   const [qrModal, setQrModal] = useState<{ open: boolean; contract?: Contract }>({ open: false });
 
   // Form state
@@ -1110,6 +1112,11 @@ export default function Contracts() {
             <Download size={16} className="sm:hidden" />
             <Download size={18} className="hidden sm:block" />
             <span className="hidden sm:inline">{t('contracts.export')}</span>
+          </button>
+          <button onClick={() => setShowSendClientInfo(true)} aria-label={t('clientInfoAdmin.sendToClient', 'Send form to client')} className="surface-control flex h-11 min-w-11 items-center justify-center gap-2 px-3 font-medium text-xs sm:h-10 sm:px-4 sm:text-sm active:scale-95">
+            <UserPlus size={16} className="sm:hidden" />
+            <UserPlus size={18} className="hidden sm:block" />
+            <span className="hidden sm:inline">{t('clientInfoAdmin.sendToClient', 'Send form to client')}</span>
           </button>
           {/* Primary action — text stays visible at every width, per the mobile UX
               requirement that the primary action must never be icon-only. */}
@@ -2003,6 +2010,8 @@ export default function Contracts() {
           contractNumber={qrModal.contract.contractNumber} clientName={qrModal.contract.clientFullName || ''}
           clientEmail={qrModal.contract.clientEmail} clientPhone={qrModal.contract.clientPhone} />
       )}
+
+      <SendClientInfoRequestModal isOpen={showSendClientInfo} onClose={() => setShowSendClientInfo(false)} />
 
       {/* Restore Conflict Modal */}
       {restoreConflict.open && restoreConflict.contractId != null && (

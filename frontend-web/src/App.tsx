@@ -33,6 +33,8 @@ const CheckoutTrial = React.lazy(() => import('./pages/CheckoutTrial'));
 const Contracts = React.lazy(() => import('./pages/Contracts'));
 const ContractDetails = React.lazy(() => import('./pages/ContractDetails'));
 const PublicContract = React.lazy(() => import('./pages/PublicContract'));
+const PublicClientInformation = React.lazy(() => import('./pages/PublicClientInformation'));
+const ClientInformationRequests = React.lazy(() => import('./pages/ClientInformationRequests'));
 const InspectionCapture = React.lazy(() => import('./pages/InspectionCapture'));
 const Invoices = React.lazy(() => import('./pages/Invoices'));
 const Agency = React.lazy(() => import('./pages/Agency'));
@@ -187,6 +189,7 @@ function AppRoutes() {
       {/* Public Contract Signing â€” isolated from all auth guards */}
       <Route path="/contract-sign/:contractId/:token" element={<PublicContract />} />
       <Route path="/contract-sign/:token" element={<PublicContract />} />
+      <Route path="/client-info/:token" element={<PublicClientInformation />} />
       <Route path="/inspection/:token" element={<InspectionCapture />} />
       {/* Public Contact â€” no login required */}
       <Route path="/contact" element={<PublicContact />} />
@@ -238,6 +241,7 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/contracts" element={<ProtectedRoute><PermissionGate permission="VIEW_CONTRACTS"><FeatureGate feature="CONTRACT_MANAGEMENT"><Contracts /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/contracts/:id" element={<ProtectedRoute><PermissionGate permission="VIEW_CONTRACTS"><FeatureGate feature="CONTRACT_MANAGEMENT"><ContractDetails /></FeatureGate></PermissionGate></ProtectedRoute>} />
+      <Route path="/client-information-requests" element={<ProtectedRoute><PermissionGate permission="VIEW_CONTRACTS"><FeatureGate feature="CONTRACT_MANAGEMENT"><ClientInformationRequests /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute><PermissionGate permission="VIEW_INVOICES"><FeatureGate feature="INVOICE_GENERATION"><Invoices /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/agency" element={<ProtectedRoute><Agency /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><FeatureGate feature="MULTI_EMPLOYEE"><Employees /></FeatureGate></PermissionGate></ProtectedRoute>} />

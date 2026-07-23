@@ -981,6 +981,93 @@
     "noResults": "Aucun client trouve",
     "createNew": "Creer le client \"{{name}}\""
   },
+  "clientInfo": {
+    "header": { "subtitle": "Formulaire d'informations client" },
+    "intro": "Veuillez compléter vos informations afin que l'agence prépare votre dossier de location. Vos informations seront vérifiées par l'agence avant validation.",
+    "sections": {
+      "personal": "Informations personnelles",
+      "document": "Pièce d'identité",
+      "address": "Adresse",
+      "license": "Permis de conduire"
+    },
+    "form": {
+      "fullName": "Nom complet",
+      "phone": "Téléphone principal",
+      "secondaryPhone": "Téléphone secondaire",
+      "email": "Email",
+      "birthDate": "Date de naissance",
+      "nationality": "Nationalité",
+      "documentType": "Type de document",
+      "documentIssueDate": "Date de délivrance",
+      "documentExpiryDate": "Date d'expiration",
+      "cinNumber": "Numéro de CIN",
+      "passportNumber": "Numéro de passeport",
+      "residencePermitNumber": "Numéro de carte de séjour",
+      "otherDocumentNumber": "Numéro du document",
+      "address": "Adresse",
+      "city": "Ville",
+      "country": "Pays",
+      "licenseNumber": "Numéro de permis",
+      "licenseIssueDate": "Date de délivrance",
+      "licenseExpiryDate": "Date d'expiration",
+      "requiredFields": "Veuillez remplir tous les champs obligatoires.",
+      "invalidEmail": "Veuillez saisir une adresse email valide.",
+      "privacyRequired": "Veuillez accepter la notice de confidentialité pour continuer."
+    },
+    "documentTypes": {
+      "cin": "CIN",
+      "passport": "Passeport",
+      "residencePermit": "Carte de séjour",
+      "other": "Autre"
+    },
+    "privacyNotice": "Je confirme que ces informations sont exactes et j'accepte que l'agence les traite, y compris mes pièces d'identité, pour préparer mon dossier de location.",
+    "submit": "Envoyer les informations",
+    "confirmation": {
+      "title": "Informations envoyées",
+      "body": "Merci. L'agence va vérifier vos informations avant validation."
+    },
+    "errors": {
+      "title": "Impossible d'ouvrir ce lien",
+      "invalid": "Ce lien n'est pas valide.",
+      "expired": "Ce lien a expiré. Veuillez demander un nouveau lien à l'agence.",
+      "revoked": "Ce lien n'est plus actif.",
+      "alreadyApproved": "Cette demande a déjà été traitée.",
+      "alreadySubmitted": "Ces informations ont déjà été envoyées."
+    }
+  },
+  "clientInfoAdmin": {
+    "title": "Demandes d'informations client",
+    "subtitle": "Vérifiez et approuvez les soumissions des clients avant de les lier à un contrat.",
+    "sendToClient": "Envoyer le formulaire au client",
+    "generateLink": "Générer le lien sécurisé",
+    "linkReady": "Partagez ce lien sécurisé avec le client. Il expire dans 48 heures.",
+    "linkCopied": "Lien copié dans le presse-papiers.",
+    "copyLink": "Copier le lien",
+    "loadError": "Impossible de charger les demandes d'informations client.",
+    "actionFailed": "Action échouée. Veuillez réessayer.",
+    "revoked": "Lien révoqué.",
+    "approved": "Informations client approuvées.",
+    "empty": "Aucune demande d'informations client pour le moment.",
+    "possibleDuplicates": "Clients existants possibles",
+    "linkExisting": "Lier au client existant sélectionné",
+    "createNew": "Approuver et créer un nouveau client",
+    "revoke": "Révoquer",
+    "approvedNote": "Approuvé et lié.",
+    "status": {
+      "SENT": "Lien envoyé",
+      "SUBMITTED": "Soumis",
+      "APPROVED": "Approuvé",
+      "EXPIRED": "Expiré",
+      "REVOKED": "Révoqué"
+    },
+    "form": {
+      "intro": "Saisissez les informations minimales pour contacter le client. Il complétera le reste lui-même.",
+      "name": "Nom du client",
+      "phone": "Numéro de téléphone",
+      "email": "Email (optionnel)",
+      "required": "Veuillez saisir au moins un nom et un numéro de téléphone."
+    }
+  },
   "invoices": {
     "title": "Factures & Facturation",
     "subtitle": "Générez et gérez les factures clients.",

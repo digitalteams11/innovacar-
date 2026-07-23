@@ -981,6 +981,93 @@
     "noResults": "No clients found",
     "createNew": "Create new client \"{{name}}\""
   },
+  "clientInfo": {
+    "header": { "subtitle": "Client information form" },
+    "intro": "Please complete your information so the agency can prepare your rental file. The agency will review the information before approval.",
+    "sections": {
+      "personal": "Personal information",
+      "document": "Identity document",
+      "address": "Address",
+      "license": "Driver license"
+    },
+    "form": {
+      "fullName": "Full name",
+      "phone": "Primary phone",
+      "secondaryPhone": "Secondary phone",
+      "email": "Email",
+      "birthDate": "Date of birth",
+      "nationality": "Nationality",
+      "documentType": "Document type",
+      "documentIssueDate": "Issue date",
+      "documentExpiryDate": "Expiry date",
+      "cinNumber": "CIN number",
+      "passportNumber": "Passport number",
+      "residencePermitNumber": "Residence permit number",
+      "otherDocumentNumber": "Document number",
+      "address": "Address",
+      "city": "City",
+      "country": "Country",
+      "licenseNumber": "License number",
+      "licenseIssueDate": "Issue date",
+      "licenseExpiryDate": "Expiry date",
+      "requiredFields": "Please fill all required fields.",
+      "invalidEmail": "Please enter a valid email address.",
+      "privacyRequired": "Please accept the privacy notice to continue."
+    },
+    "documentTypes": {
+      "cin": "CIN",
+      "passport": "Passport",
+      "residencePermit": "Residence permit",
+      "other": "Other"
+    },
+    "privacyNotice": "I confirm this information is accurate and I agree that the agency may process it, including my identity documents, to prepare my rental file.",
+    "submit": "Submit information",
+    "confirmation": {
+      "title": "Information submitted",
+      "body": "Thank you. The agency will review your information before approval."
+    },
+    "errors": {
+      "title": "Unable to open this link",
+      "invalid": "This link is invalid.",
+      "expired": "This link has expired. Please ask the agency for a new one.",
+      "revoked": "This link is no longer active.",
+      "alreadyApproved": "This request has already been processed.",
+      "alreadySubmitted": "This information has already been submitted."
+    }
+  },
+  "clientInfoAdmin": {
+    "title": "Client Information Requests",
+    "subtitle": "Review and approve client self-fill submissions before they are linked to a contract.",
+    "sendToClient": "Send form to client",
+    "generateLink": "Generate secure link",
+    "linkReady": "Share this secure link with the client. It expires in 48 hours.",
+    "linkCopied": "Link copied to clipboard.",
+    "copyLink": "Copy link",
+    "loadError": "Unable to load client information requests.",
+    "actionFailed": "Action failed. Please try again.",
+    "revoked": "Link revoked.",
+    "approved": "Client information approved.",
+    "empty": "No client information requests yet.",
+    "possibleDuplicates": "Possible existing clients",
+    "linkExisting": "Link to selected existing client",
+    "createNew": "Approve & create new client",
+    "revoke": "Revoke",
+    "approvedNote": "Approved and linked.",
+    "status": {
+      "SENT": "Link sent",
+      "SUBMITTED": "Submitted",
+      "APPROVED": "Approved",
+      "EXPIRED": "Expired",
+      "REVOKED": "Revoked"
+    },
+    "form": {
+      "intro": "Enter the minimum information needed to contact the client. They will fill in the rest themselves.",
+      "name": "Client name",
+      "phone": "Phone number",
+      "email": "Email (optional)",
+      "required": "Please enter at least a name and phone number."
+    }
+  },
   "invoices": {
     "title": "Invoices & Billing",
     "subtitle": "Generate and manage client invoices.",
