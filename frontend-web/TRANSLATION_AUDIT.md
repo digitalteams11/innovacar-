@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-23T14:28:51.428Z
+Generated: 2026-07-23T17:56:41.814Z
 Scanned source files: 212
-Static translation keys used: 1980
+Static translation keys used: 1988
 
 ## Missing EN Keys (0)
 
@@ -339,22 +339,22 @@ None.
 - src\context\NotificationContext.tsx:33 [jsx-text] - Promise
 - src\context\OnboardingContext.tsx:17 [jsx-text] - Promise
 - src\context\OnboardingContext.tsx:18 [jsx-text] - Promise
-- src\context\ThemeContext.tsx:123 [object:label] - Neo Emerald
-- src\context\ThemeContext.tsx:124 [object:description] - Modern green SaaS, clean and fresh.
-- src\context\ThemeContext.tsx:132 [object:label] - Carbon Lime
-- src\context\ThemeContext.tsx:133 [object:description] - Dark developer dashboard, strong modern contrast.
-- src\context\ThemeContext.tsx:141 [object:label] - Titanium 2026
-- src\context\ThemeContext.tsx:142 [object:description] - Minimal Apple-like, graphite and silver.
-- src\context\ThemeContext.tsx:150 [object:label] - Luxury Black Gold
-- src\context\ThemeContext.tsx:151 [object:description] - Premium rental/luxury car style. Gold is an accent only — never a full sidebar fill.
-- src\context\ThemeContext.tsx:159 [object:label] - Ocean Blue Pro
-- src\context\ThemeContext.tsx:160 [object:description] - Corporate clean blue, professional but not heavy.
-- src\context\ThemeContext.tsx:168 [object:label] - Moroccan Sand
-- src\context\ThemeContext.tsx:169 [object:description] - Warm Moroccan professional theme, not yellow-heavy.
-- src\context\ThemeContext.tsx:177 [object:label] - Purple Slate
-- src\context\ThemeContext.tsx:178 [object:description] - Modern SaaS, creative but professional.
-- src\context\ThemeContext.tsx:186 [object:label] - Clean White Pro
-- src\context\ThemeContext.tsx:187 [object:description] - Very clean enterprise dashboard.
+- src\context\ThemeContext.tsx:148 [object:label] - Neo Emerald
+- src\context\ThemeContext.tsx:149 [object:description] - Modern green SaaS, clean and fresh.
+- src\context\ThemeContext.tsx:157 [object:label] - Carbon Lime
+- src\context\ThemeContext.tsx:158 [object:description] - Dark developer dashboard, strong modern contrast.
+- src\context\ThemeContext.tsx:166 [object:label] - Titanium 2026
+- src\context\ThemeContext.tsx:167 [object:description] - Minimal Apple-like, graphite and silver.
+- src\context\ThemeContext.tsx:175 [object:label] - Luxury Black Gold
+- src\context\ThemeContext.tsx:176 [object:description] - Premium rental/luxury car style. Gold is an accent only — never a full sidebar fill.
+- src\context\ThemeContext.tsx:184 [object:label] - Ocean Blue Pro
+- src\context\ThemeContext.tsx:185 [object:description] - Corporate clean blue, professional but not heavy.
+- src\context\ThemeContext.tsx:193 [object:label] - Moroccan Sand
+- src\context\ThemeContext.tsx:194 [object:description] - Warm Moroccan professional theme, not yellow-heavy.
+- src\context\ThemeContext.tsx:202 [object:label] - Purple Slate
+- src\context\ThemeContext.tsx:203 [object:description] - Modern SaaS, creative but professional.
+- src\context\ThemeContext.tsx:211 [object:label] - Clean White Pro
+- src\context\ThemeContext.tsx:212 [object:description] - Very clean enterprise dashboard.
 - src\context\ToastContext.tsx:171 [prop:aria-label] - Dismiss
 - src\data\gpsFieldGuide.ts:12 [object:title] - GPS Provider
 - src\data\gpsFieldGuide.ts:18 [object:title] - APP ID / Account ID

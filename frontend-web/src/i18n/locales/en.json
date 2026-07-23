@@ -457,6 +457,10 @@
     "emptyHint": "Get started by adding your first client.",
     "updateAction": "Update",
     "deleteAction": "Delete",
+    "exportPdf": "Export PDF",
+    "exportSuccess": "Client list exported.",
+    "exportFailed": "Failed to generate the PDF report.",
+    "exportNoData": "No clients match the selected filters.",
     "saveFailed": "Unable to save client. Please try again later.",
     "deleteFailed": "Unable to delete client. Please try again later.",
     "deleteConfirm": "Delete this client?",
@@ -742,7 +746,9 @@
     "currentPlan": "Current plan",
     "requiredPlan": "Required plan",
     "statsUnavailable": "Payment statistics are temporarily unavailable — the list below is up to date.",
-    "viewPlans": "View plans / Upgrade"
+    "viewPlans": "View plans / Upgrade",
+    "exportFailed": "Failed to generate the PDF report.",
+    "exportNoData": "No payments match the selected filters."
   },
   "contracts": {
     "prefillReviewMessage": "Direct creation failed. Please review the prefilled contract and save.",
@@ -766,6 +772,8 @@
     "completed": "Completed",
     "cancelled": "Cancelled",
     "export": "Export Contracts",
+    "exportFailed": "Failed to generate the PDF report.",
+    "exportNoData": "No contracts match the selected filters.",
     "newContract": "New Contract",
     "contractNumber": "Contract Number",
     "contractNumberPlaceholder": "e.g. CTR-2026-0001",

@@ -62,6 +62,7 @@ export default function Payments() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [statsUnavailable, setStatsUnavailable] = useState(false);
+  const [exportingStatements, setExportingStatements] = useState(false);
   const { showToast } = useToast();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -169,28 +170,56 @@ export default function Payments() {
     ].some((value) => value?.toLowerCase().includes(q));
   });
 
-  const exportStatements = () => {
-    const headers = ['Payment ID', 'Client', 'Vehicle', 'Reservation', 'Contract', 'Amount', 'Method', 'Status', 'Date'];
-    const rows = filteredPayments.map((p) => [
-      p.paymentNumber || `PAY-${p.id}`,
-      p.clientName || '',
-      p.vehicleLabel || '',
-      p.reservationLabel || (p.reservationId ? `RES-${p.reservationId}` : ''),
-      p.contractNumber || '',
-      p.amount,
-      p.paymentMethod || '',
-      p.status,
-      p.paymentDate || '',
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'payments.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(t('toast.statementsExported'));
+  /**
+   * Real server-side PDF — replaces the old client-side comma-join that
+   * produced a mislabeled, mojibake-prone "payments.csv" (no BOM, no
+   * quoting). PDF is now the primary/default export action for normal
+   * agency users; CSV/XLSX remain available as an advanced/secondary
+   * action elsewhere (Vehicles page), not duplicated here.
+   */
+  const exportStatements = async () => {
+    if (exportingStatements) return;
+    setExportingStatements(true);
+    try {
+      const response = await api.get('/payments/export/pdf', { responseType: 'blob' });
+      const contentType = String(response.headers['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (response.data as Blob).text();
+        const parsed = JSON.parse(text);
+        throw new Error(parsed.message || t('payments.exportFailed', 'Failed to generate the PDF report.'));
+      }
+      const disposition = String(response.headers['content-disposition'] || '');
+      const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)"?/i);
+      const filename = match ? decodeURIComponent(match[1]) : 'innovacar-payments.pdf';
+
+      const blob = new Blob([response.data], { type: contentType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(t('toast.statementsExported'));
+    } catch (err: any) {
+      let message = t('payments.exportFailed', 'Failed to generate the PDF report.');
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await data.text());
+          if (parsed.errorCode === 'EXPORT_NO_DATA') message = t('payments.exportNoData', 'No payments match the selected filters.');
+          else if (parsed.message) message = parsed.message;
+        } catch {
+          /* body wasn't JSON either — fall back to the generic message above */
+        }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      showToast(message, 'error');
+    } finally {
+      setExportingStatements(false);
+    }
   };
 
   const markAsPaid = async (reservationId?: number) => {
@@ -261,8 +290,12 @@ export default function Payments() {
         subtitle={t('payments.subtitle')}
         icon={CreditCard}
         actions={(
-          <button onClick={exportStatements} className="surface-control flex items-center gap-2 h-10 px-4 font-medium text-xs sm:text-sm active:scale-95">
-            <Download size={16} />
+          <button
+            onClick={exportStatements}
+            disabled={exportingStatements}
+            className="surface-control flex items-center gap-2 h-10 px-4 font-medium text-xs sm:text-sm active:scale-95 disabled:opacity-60 disabled:cursor-wait"
+          >
+            {exportingStatements ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             <span className="hidden sm:inline">{t('payments.exportStatements')}</span>
           </button>
         )}

@@ -5,16 +5,29 @@ import com.carrental.dto.client.UpdateClientRequest;
 import com.carrental.dto.client.UpdateClientEmailRequest;
 import com.carrental.dto.client.ClientResponse;
 import com.carrental.dto.ApiResponse;
+import com.carrental.entity.Tenant;
+import com.carrental.repository.TenantRepository;
+import com.carrental.security.TenantContext;
 import com.carrental.service.ClientService;
 import com.carrental.service.PlanLimitService;
+import com.carrental.service.export.ExportHttpUtil;
+import com.carrental.service.export.GenericPdfTableExporter;
+import com.carrental.service.export.ReportExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Client-management REST controller.
@@ -34,10 +47,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/clients")
 @RequiredArgsConstructor
+@Slf4j
 public class ClientController {
 
     private final ClientService    clientService;
     private final PlanLimitService planLimitService;
+    private final ReportExportService reportExportService;
+    private final GenericPdfTableExporter pdfTableExporter;
+    private final TenantRepository tenantRepository;
 
     // ── GET /api/clients ─────────────────────────────────────────────────────
 
@@ -171,5 +188,47 @@ public class ClientController {
     @GetMapping("/{id}/profile")
     public ResponseEntity<java.util.Map<String, Object>> getClientProfile(@PathVariable Long id) {
         return ResponseEntity.ok(clientService.getClientProfile(id));
+    }
+
+    // ── GET /api/clients/export/pdf ──────────────────────────────────────────
+
+    @GetMapping("/export/pdf")
+    @PreAuthorize("@rolePermissionService.has('VIEW_CLIENTS')")
+    public ResponseEntity<?> exportPdf(@RequestParam(required = false) String search) {
+        try {
+            List<String[]> rows = reportExportService.clientRows(search);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            pdfTableExporter.write(buffer, "Clients Report", ReportExportService.CLIENT_HEADERS, rows, reportMeta(search, "clients"));
+            return ExportHttpUtil.fileResponse(buffer.toByteArray(), MediaType.APPLICATION_PDF, ExportHttpUtil.filename("clients", "pdf"));
+        } catch (ReportExportService.ExportNoDataException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(ex.getMessage(), "EXPORT_NO_DATA"));
+        } catch (ReportExportService.ExportTooLargeException ex) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorBody(ex.getMessage(), "EXPORT_TOO_LARGE"));
+        } catch (Exception ex) {
+            log.error("[CLIENTS_EXPORT] PDF generation failed", ex);
+            return ResponseEntity.internalServerError().body(errorBody("Failed to generate the PDF report.", "PDF_GENERATION_FAILED"));
+        }
+    }
+
+    private Map<String, Object> reportMeta(String search, String entityLabel) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        String agencyName = tenantRepository.findById(tenantId).map(Tenant::getName).orElse("");
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        String generatedBy = auth != null ? auth.getName() : "system";
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("agencyName", agencyName);
+        meta.put("generatedBy", generatedBy);
+        meta.put("generatedAt", java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        meta.put("filters", (search != null && !search.isBlank()) ? "Search=" + search : "None");
+        meta.put("entityLabel", entityLabel);
+        return meta;
+    }
+
+    private Map<String, Object> errorBody(String message, String errorCode) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", message);
+        body.put("errorCode", errorCode);
+        return body;
     }
 }

@@ -3,17 +3,30 @@ package com.carrental.controller;
 import com.carrental.dto.payment.PaymentResponse;
 import com.carrental.dto.payment.PaymentStatsResponse;
 import com.carrental.dto.payment.RecordPaymentRequest;
+import com.carrental.entity.PaymentStatus;
+import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
+import com.carrental.repository.TenantRepository;
+import com.carrental.security.TenantContext;
 import com.carrental.service.PaymentService;
 import com.carrental.service.RolePermissionService;
+import com.carrental.service.export.ExportHttpUtil;
+import com.carrental.service.export.GenericPdfTableExporter;
+import com.carrental.service.export.ReportExportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +42,9 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final RolePermissionService rolePermissionService;
+    private final ReportExportService reportExportService;
+    private final GenericPdfTableExporter pdfTableExporter;
+    private final TenantRepository tenantRepository;
 
     // ── GET /api/payments ────────────────────────────────────────────────────
 
@@ -139,5 +155,46 @@ public class PaymentController {
         } catch (Exception ex) {
             log.debug("[PAYMENTS_ACCESS_DEBUG] failed to log access details: {}", ex.getMessage());
         }
+    }
+
+    // ── GET /api/payments/export/pdf ─────────────────────────────────────────
+
+    @GetMapping("/export/pdf")
+    @PreAuthorize("@rolePermissionService.has('PAYMENT_VIEW')")
+    public ResponseEntity<?> exportPdf(@RequestParam(required = false) PaymentStatus status) {
+        try {
+            List<String[]> rows = reportExportService.paymentRows(status);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            pdfTableExporter.write(buffer, "Payments Report", ReportExportService.PAYMENT_HEADERS, rows, paymentReportMeta(status));
+            return ExportHttpUtil.fileResponse(buffer.toByteArray(), MediaType.APPLICATION_PDF, ExportHttpUtil.filename("payments", "pdf"));
+        } catch (ReportExportService.ExportNoDataException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exportErrorBody(ex.getMessage(), "EXPORT_NO_DATA"));
+        } catch (ReportExportService.ExportTooLargeException ex) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(exportErrorBody(ex.getMessage(), "EXPORT_TOO_LARGE"));
+        } catch (Exception ex) {
+            log.error("[PAYMENTS_EXPORT] PDF generation failed", ex);
+            return ResponseEntity.internalServerError().body(exportErrorBody("Failed to generate the PDF report.", "PDF_GENERATION_FAILED"));
+        }
+    }
+
+    private Map<String, Object> paymentReportMeta(PaymentStatus status) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        String agencyName = tenantRepository.findById(tenantId).map(Tenant::getName).orElse("");
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("agencyName", agencyName);
+        meta.put("generatedBy", auth != null ? auth.getName() : "system");
+        meta.put("generatedAt", java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        meta.put("filters", status != null ? "Status=" + status : "None");
+        meta.put("entityLabel", "payments");
+        return meta;
+    }
+
+    private Map<String, Object> exportErrorBody(String message, String errorCode) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", message);
+        body.put("errorCode", errorCode);
+        return body;
     }
 }

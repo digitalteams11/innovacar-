@@ -11,7 +11,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import api from '../api/axios';
 import {
   Plus, Mail, Phone, MapPin, Loader2,
-  Shield, Building2, Users, Pencil, Trash2, Eye, User, ChevronDown, AlertTriangle
+  Shield, Building2, Users, Pencil, Trash2, Eye, User, ChevronDown, AlertTriangle, Download
 } from 'lucide-react';
 import ApiErrorState from '../components/ApiErrorState';
 
@@ -92,6 +92,7 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exportingClients, setExportingClients] = useState(false);
   const [duplicateField, setDuplicateField] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showDocumentDetails, setShowDocumentDetails] = useState(false);
@@ -128,6 +129,55 @@ export default function Clients() {
       c.documentMasked?.toLowerCase().includes(q) ||
       c.companyName?.toLowerCase().includes(q);
   });
+
+  /** PDF is the primary/default export action — see server ClientController#exportPdf. */
+  const exportClients = async () => {
+    if (exportingClients) return;
+    setExportingClients(true);
+    try {
+      const response = await api.get('/clients/export/pdf', {
+        responseType: 'blob',
+        params: searchQuery.trim() ? { search: searchQuery.trim() } : undefined,
+      });
+      const contentType = String(response.headers['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (response.data as Blob).text();
+        const parsed = JSON.parse(text);
+        throw new Error(parsed.message || t('clients.exportFailed', 'Failed to generate the PDF report.'));
+      }
+      const disposition = String(response.headers['content-disposition'] || '');
+      const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)"?/i);
+      const filename = match ? decodeURIComponent(match[1]) : 'innovacar-clients.pdf';
+
+      const blob = new Blob([response.data], { type: contentType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(t('clients.exportSuccess', 'Client list exported.'));
+    } catch (err: any) {
+      let message = t('clients.exportFailed', 'Failed to generate the PDF report.');
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await data.text());
+          if (parsed.errorCode === 'EXPORT_NO_DATA') message = t('clients.exportNoData', 'No clients match the selected filters.');
+          else if (parsed.message) message = parsed.message;
+        } catch {
+          /* body wasn't JSON either — fall back to the generic message above */
+        }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      showToast(message, 'error');
+    } finally {
+      setExportingClients(false);
+    }
+  };
 
   const openCreate = () => {
     setEditingId(null);
@@ -347,17 +397,30 @@ export default function Clients() {
         subtitle={t('clients.subtitle')}
         icon={User}
         actions={
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={openCreate}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60"
-          >
-            <Plus size={18} />
-            <span className="hidden sm:inline">{t('clients.newClient')}</span>
-            <span className="sm:hidden">{t('clients.newClient')}</span>
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={exportClients}
+              disabled={exportingClients}
+              aria-label={t('clients.exportPdf', 'Export PDF')}
+              className="flex h-11 min-w-11 items-center justify-center gap-2 px-3 surface-control rounded-xl font-medium text-xs sm:h-auto sm:px-4 sm:py-2.5 sm:text-sm active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60"
+            >
+              {exportingClients ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              <span className="hidden sm:inline">{t('clients.exportPdf', 'Export PDF')}</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={openCreate}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60"
+            >
+              <Plus size={18} />
+              <span className="hidden sm:inline">{t('clients.newClient')}</span>
+              <span className="sm:hidden">{t('clients.newClient')}</span>
+            </motion.button>
+          </div>
         }
       />
 

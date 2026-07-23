@@ -457,6 +457,10 @@
     "emptyHint": "Commencez par ajouter votre premier client.",
     "updateAction": "Mise à jour",
     "deleteAction": "Suppression",
+    "exportPdf": "Exporter en PDF",
+    "exportSuccess": "Liste des clients exportée.",
+    "exportFailed": "Échec de la génération du rapport PDF.",
+    "exportNoData": "Aucun client ne correspond aux filtres sélectionnés.",
     "saveFailed": "Impossible d'enregistrer le client. Veuillez réessayer plus tard.",
     "deleteFailed": "Impossible de supprimer le client. Veuillez réessayer plus tard.",
     "deleteConfirm": "Supprimer ce client ?",
@@ -742,7 +746,9 @@
     "currentPlan": "Forfait actuel",
     "requiredPlan": "Forfait requis",
     "statsUnavailable": "Les statistiques de paiement sont temporairement indisponibles — la liste ci-dessous est à jour.",
-    "viewPlans": "Voir les forfaits / Mettre à niveau"
+    "viewPlans": "Voir les forfaits / Mettre à niveau",
+    "exportFailed": "Échec de la génération du rapport PDF.",
+    "exportNoData": "Aucun paiement ne correspond aux filtres sélectionnés."
   },
   "contracts": {
     "prefillReviewMessage": "La création automatique a échoué. Vérifiez le contrat prérempli puis enregistrez-le.",
@@ -766,6 +772,8 @@
     "completed": "Terminé",
     "cancelled": "Annulé",
     "export": "Exporter les contrats",
+    "exportFailed": "Échec de la génération du rapport PDF.",
+    "exportNoData": "Aucun contrat ne correspond aux filtres sélectionnés.",
     "newContract": "Nouveau contrat",
     "contractNumber": "Numéro de contrat",
     "contractNumberPlaceholder": "ex. CTR-2026-0001",

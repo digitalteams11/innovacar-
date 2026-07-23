@@ -434,6 +434,10 @@
     "emptyHint": "ابدأ بإضافة أول عميل.",
     "updateAction": "تحديث",
     "deleteAction": "حذف",
+    "exportPdf": "تصدير PDF",
+    "exportSuccess": "تم تصدير قائمة العملاء.",
+    "exportFailed": "فشل إنشاء تقرير PDF.",
+    "exportNoData": "لا يوجد عملاء مطابقون للفلاتر المحددة.",
     "saveFailed": "تعذر حفظ العميل. يرجى إعادة المحاولة لاحقاً.",
     "deleteFailed": "تعذر حذف العميل. يرجى إعادة المحاولة لاحقاً.",
     "deleteConfirm": "هل تريد حذف هذا العميل؟",
@@ -731,7 +735,9 @@
     "currentPlan": "الخطة الحالية",
     "requiredPlan": "الخطة المطلوبة",
     "statsUnavailable": "إحصاءات الدفع غير متوفرة مؤقتًا — القائمة أدناه محدّثة.",
-    "viewPlans": "عرض الخطط / الترقية"
+    "viewPlans": "عرض الخطط / الترقية",
+    "exportFailed": "فشل إنشاء تقرير PDF.",
+    "exportNoData": "لا توجد مدفوعات مطابقة للفلاتر المحددة."
   },
   "contracts": {
     "prefillReviewMessage": "فشل الإنشاء التلقائي. يرجى مراجعة العقد المعبأ مسبقًا ثم حفظه.",
@@ -755,6 +761,8 @@
     "completed": "مكتمل",
     "cancelled": "ملغى",
     "export": "تصدير العقود",
+    "exportFailed": "فشل إنشاء تقرير PDF.",
+    "exportNoData": "لا توجد عقود مطابقة للفلاتر المحددة.",
     "newContract": "عقد جديد",
     "contractNumber": "رقم العقد",
     "contractNumberPlaceholder": "مثال CTR-2026-0001",

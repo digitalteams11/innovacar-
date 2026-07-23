@@ -12,6 +12,9 @@ public interface ClientIdentityDocumentRepository extends JpaRepository<ClientId
 
     List<ClientIdentityDocument> findAllByClientIdAndTenantId(Long clientId, Long tenantId);
 
+    /** Batch lookup for list/export reports — avoids one query per client. */
+    List<ClientIdentityDocument> findAllByTenantIdAndIsPrimaryTrue(Long tenantId);
+
     Optional<ClientIdentityDocument> findFirstByClientIdAndTenantIdAndIsPrimaryTrue(Long clientId, Long tenantId);
 
     boolean existsByTenantIdAndDocumentNumberIgnoreCaseAndIsPrimaryTrue(Long tenantId, String documentNumber);

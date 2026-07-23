@@ -7,11 +7,17 @@ import com.carrental.service.ContractService;
 import com.carrental.service.PdfService;
 import com.carrental.service.PlanLimitService;
 import com.carrental.repository.ContractRepository;
+import com.carrental.repository.TenantRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.entity.Contract;
 import com.carrental.entity.ContractStatus;
+import com.carrental.entity.Tenant;
 import com.carrental.entity.Vehicle;
 import com.carrental.entity.VehicleStatus;
+import com.carrental.security.TenantContext;
+import com.carrental.service.export.ExportHttpUtil;
+import com.carrental.service.export.GenericPdfTableExporter;
+import com.carrental.service.export.ReportExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,10 +27,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.io.ByteArrayOutputStream;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -47,6 +56,9 @@ public class ContractController {
     private final com.carrental.service.PlatformEmailService platformEmailService;
     private final com.carrental.repository.EmailLogRepository emailLogRepository;
     private final com.carrental.repository.ClientRepository clientRepository;
+    private final ReportExportService reportExportService;
+    private final GenericPdfTableExporter pdfTableExporter;
+    private final TenantRepository tenantRepository;
 
     // ── CRUD ─────────────────────────────────────────────────────────────────
 
@@ -817,6 +829,49 @@ public class ContractController {
         return clientRepository.findById(contract.getClient().getId())
                 .map(com.carrental.entity.Client::getEmail)
                 .orElse(null);
+    }
+
+    // ── GET /api/contracts/export/pdf ─────────────────────────────────────────
+    // List/report PDF — deliberately separate from the individual legal
+    // contract PDF (see PdfService / GET /contracts/{id}/pdf above).
+
+    @GetMapping("/contracts/export/pdf")
+    @PreAuthorize("@rolePermissionService.has('VIEW_CONTRACTS')")
+    public ResponseEntity<?> exportContractsPdf(@RequestParam(required = false) ContractStatus status) {
+        try {
+            List<String[]> rows = reportExportService.contractRows(status);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            pdfTableExporter.write(buffer, "Contracts Report", ReportExportService.CONTRACT_HEADERS, rows, contractReportMeta(status));
+            return ExportHttpUtil.fileResponse(buffer.toByteArray(), MediaType.APPLICATION_PDF, ExportHttpUtil.filename("contracts", "pdf"));
+        } catch (ReportExportService.ExportNoDataException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exportErrorBody(ex.getMessage(), "EXPORT_NO_DATA"));
+        } catch (ReportExportService.ExportTooLargeException ex) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(exportErrorBody(ex.getMessage(), "EXPORT_TOO_LARGE"));
+        } catch (Exception ex) {
+            log.error("[CONTRACTS_EXPORT] PDF generation failed", ex);
+            return ResponseEntity.internalServerError().body(exportErrorBody("Failed to generate the PDF report.", "PDF_GENERATION_FAILED"));
+        }
+    }
+
+    private Map<String, Object> contractReportMeta(ContractStatus status) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        String agencyName = tenantRepository.findById(tenantId).map(Tenant::getName).orElse("");
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("agencyName", agencyName);
+        meta.put("generatedBy", auth != null ? auth.getName() : "system");
+        meta.put("generatedAt", java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        meta.put("filters", status != null ? "Status=" + status : "None");
+        meta.put("entityLabel", "contracts");
+        return meta;
+    }
+
+    private Map<String, Object> exportErrorBody(String message, String errorCode) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", message);
+        body.put("errorCode", errorCode);
+        return body;
     }
 }
 

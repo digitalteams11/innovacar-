@@ -226,6 +226,7 @@ export default function Contracts() {
   const [data, setData] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [exportingContracts, setExportingContracts] = useState(false);
   const [trashData, setTrashData] = useState<TrashedContract[]>([]);
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashLoadError, setTrashLoadError] = useState('');
@@ -478,21 +479,56 @@ export default function Contracts() {
     );
   });
 
-  const exportCSV = () => {
-    const headers = ['Contract ID', 'Client', 'Status', 'Start', 'End', 'Total', 'Signed'];
-    const rows = filteredData.map((c) => [
-      c.contractNumber, c.clientFullName, c.status, c.startDate, c.endDate,
-      c.totalPrice, c.clientSigned ? 'Yes' : 'No'
-    ]);
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'contracts.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(t('toast.dataExported'));
+  /**
+   * Real server-side PDF report — replaces the old client-side comma-join
+   * that produced a mislabeled, mojibake-prone "contracts.csv". This is the
+   * contracts-LIST report, deliberately separate from the individual legal
+   * contract PDF (see the per-row "Export PDF" action elsewhere on this
+   * page, which calls GET /contracts/{id}/pdf).
+   */
+  const exportCSV = async () => {
+    if (exportingContracts) return;
+    setExportingContracts(true);
+    try {
+      const response = await api.get('/contracts/export/pdf', { responseType: 'blob' });
+      const contentType = String(response.headers['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (response.data as Blob).text();
+        const parsed = JSON.parse(text);
+        throw new Error(parsed.message || t('contracts.exportFailed', 'Failed to generate the PDF report.'));
+      }
+      const disposition = String(response.headers['content-disposition'] || '');
+      const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)"?/i);
+      const filename = match ? decodeURIComponent(match[1]) : 'innovacar-contracts.pdf';
+
+      const blob = new Blob([response.data], { type: contentType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(t('toast.dataExported'));
+    } catch (err: any) {
+      let message = t('contracts.exportFailed', 'Failed to generate the PDF report.');
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await data.text());
+          if (parsed.errorCode === 'EXPORT_NO_DATA') message = t('contracts.exportNoData', 'No contracts match the selected filters.');
+          else if (parsed.message) message = parsed.message;
+        } catch {
+          /* body wasn't JSON either — fall back to the generic message above */
+        }
+      } else if (err?.message) {
+        message = err.message;
+      }
+      showToast(message, 'error');
+    } finally {
+      setExportingContracts(false);
+    }
   };
 
   const generateNumber = async () => {
@@ -1108,9 +1144,20 @@ export default function Contracts() {
         subtitle={t('contracts.subtitle')}
         icon={FileText}
         actions={<>
-          <button onClick={exportCSV} aria-label={t('contracts.export')} className="surface-control flex h-11 min-w-11 items-center justify-center gap-2 px-3 font-medium text-xs sm:h-10 sm:px-4 sm:text-sm active:scale-95">
-            <Download size={16} className="sm:hidden" />
-            <Download size={18} className="hidden sm:block" />
+          <button
+            onClick={exportCSV}
+            disabled={exportingContracts}
+            aria-label={t('contracts.export')}
+            className="surface-control flex h-11 min-w-11 items-center justify-center gap-2 px-3 font-medium text-xs sm:h-10 sm:px-4 sm:text-sm active:scale-95 disabled:opacity-60 disabled:cursor-wait"
+          >
+            {exportingContracts ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <>
+                <Download size={16} className="sm:hidden" />
+                <Download size={18} className="hidden sm:block" />
+              </>
+            )}
             <span className="hidden sm:inline">{t('contracts.export')}</span>
           </button>
           <button onClick={() => setShowSendClientInfo(true)} aria-label={t('clientInfoAdmin.sendToClient', 'Send form to client')} className="surface-control flex h-11 min-w-11 items-center justify-center gap-2 px-3 font-medium text-xs sm:h-10 sm:px-4 sm:text-sm active:scale-95">

@@ -17,21 +17,35 @@
 (function () {
   'use strict';
   try {
-    var STORAGE_KEY = 'rentcar_appearance';
+    var PREFERENCE_KEY = 'innovacar.theme.preference';
+    var LEGACY_STORAGE_KEY = 'rentcar_appearance';
     var mode = 'light';
 
+    // Normalizes the same way ThemeContext.tsx's normalizeThemePreference()
+    // does: accepts light/dark/system plus the legacy "auto" value and any
+    // casing, everything else (including a missing/corrupt mode) is light.
+    function normalize(raw) {
+      var normalized = String(raw || '').trim().toLowerCase();
+      if (normalized === 'light' || normalized === 'dark') return normalized;
+      if (normalized === 'system' || normalized === 'auto') return 'system';
+      return null;
+    }
+
     try {
-      var raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        // Normalizes the same way ThemeContext.tsx's normalizeThemePreference()
-        // does: accepts light/dark/system plus the legacy "auto" value and any
-        // casing, everything else (including a missing/corrupt mode) is light.
-        var normalized = String((parsed && parsed.mode) || '').trim().toLowerCase();
-        if (normalized === 'light' || normalized === 'dark') {
-          mode = normalized;
-        } else if (normalized === 'system' || normalized === 'auto') {
-          mode = 'system';
+      // The dedicated preference key is authoritative when present — it's
+      // written on every mode change (see ThemeContext.tsx) and is the only
+      // thing this script needs to read for the common case.
+      var dedicated = normalize(window.localStorage.getItem(PREFERENCE_KEY));
+      if (dedicated) {
+        mode = dedicated;
+      } else {
+        // Fallback for a device that hasn't been migrated to the dedicated
+        // key yet (existing users' larger Appearance Studio blob).
+        var raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          var legacy = normalize(parsed && parsed.mode);
+          if (legacy) mode = legacy;
         }
       }
     } catch (e) {

@@ -85,6 +85,31 @@ interface ThemeContextType {
 }
 
 const STORAGE_KEY = 'rentcar_appearance';
+// Dedicated canonical key for just the light/dark/system preference (as
+// opposed to STORAGE_KEY above, which holds the whole white-label Appearance
+// Studio blob — presets, brand colors, glass effects, etc). Kept in sync
+// with `appearance.mode` on every change and is the value the CSP-safe
+// external bootstrap script (public/theme-bootstrap.js) reads before React
+// mounts, so the anti-flash script never has to parse the larger blob.
+const THEME_PREFERENCE_KEY = 'innovacar.theme.preference';
+
+function readThemePreferenceKey(): ThemeMode | null {
+  try {
+    const raw = localStorage.getItem(THEME_PREFERENCE_KEY);
+    if (!raw) return null;
+    return normalizeThemePreference(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeThemePreferenceKey(mode: ThemeMode) {
+  try {
+    localStorage.setItem(THEME_PREFERENCE_KEY, mode);
+  } catch {
+    /* non-fatal — worst case the dedicated key lags the appearance blob until the next successful write */
+  }
+}
 // Tracks which user's server-side themeMode has already been pulled down to this
 // device, so the one-time login sync below only ever fires once per (device, user)
 // pair — not once per page load. A useRef alone resets on every refresh, which was
@@ -308,11 +333,23 @@ function readableTextOn(bgHex: string): { text: string; muted: string } {
 }
 
 function loadAppearance(): AppearanceSettings {
+  // The dedicated innovacar.theme.preference key (written on every mode
+  // change, see the layout effect below) is authoritative for `mode` when
+  // present — it's what the CSP-safe bootstrap script also reads, so the
+  // very first React render must resolve to the exact same value the
+  // pre-paint script already applied to <html>, never a stale value from
+  // the larger appearance blob.
+  const dedicatedKeyMode = readThemePreferenceKey();
+
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return defaultAppearance;
+    if (!stored) {
+      return dedicatedKeyMode ? { ...defaultAppearance, mode: dedicatedKeyMode } : defaultAppearance;
+    }
     const parsed = JSON.parse(stored);
-    if (typeof parsed !== 'object' || parsed === null) return defaultAppearance;
+    if (typeof parsed !== 'object' || parsed === null) {
+      return dedicatedKeyMode ? { ...defaultAppearance, mode: dedicatedKeyMode } : defaultAppearance;
+    }
 
     // Legacy/malformed `mode` values (the pre-rename "auto", wrong casing
     // like "LIGHT"/"DARK", or anything else a stale deployment could have
@@ -320,7 +357,7 @@ function loadAppearance(): AppearanceSettings {
     // production crash: an unnormalized mode flowed into resolveTheme(),
     // wasn't a real presetCatalog[...] key, and reading `.background` off
     // the resulting `undefined` threw during ThemeProvider's render.
-    parsed.mode = normalizeThemePreference(parsed.mode);
+    parsed.mode = dedicatedKeyMode ?? normalizeThemePreference(parsed.mode);
 
     // A preset removed in a previous theme-catalog upgrade (e.g. the old
     // mustard-toned "luxury-gold") must not leave its stale colors behind —
@@ -330,7 +367,7 @@ function loadAppearance(): AppearanceSettings {
     }
     return { ...defaultAppearance, ...parsed };
   } catch {
-    return defaultAppearance;
+    return dedicatedKeyMode ? { ...defaultAppearance, mode: dedicatedKeyMode } : defaultAppearance;
   }
 }
 
@@ -551,6 +588,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--density-scale', String(density));
     root.style.setProperty('--font-ui', `'${appearance.fontFamily}', Inter, system-ui, sans-serif`);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appearance));
+    writeThemePreferenceKey(appearance.mode);
   }, [appearance, resolvedTheme, branding]);
 
   useEffect(() => {
