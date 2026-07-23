@@ -591,13 +591,13 @@ export default function Reservations() {
               {loading ? (
                 [1, 2, 3].map(i => (
                   <tr key={i} className="animate-pulse">
-                    <td className="px-5 py-6"><div className="h-5 w-32 bg-gray-100 rounded shimmer" /></td>
-                    <td className="px-5 py-6"><div className="h-5 w-32 bg-gray-100 rounded shimmer" /></td>
-                    <td className="px-5 py-6"><div className="h-5 w-24 bg-gray-100 rounded shimmer" /></td>
-                    <td className="px-5 py-6"><div className="h-5 w-40 bg-gray-100 rounded shimmer" /></td>
-                    <td className="px-5 py-6"><div className="h-6 w-20 bg-gray-100 rounded-full shimmer" /></td>
-                    <td className="px-5 py-6"><div className="h-5 w-16 bg-gray-100 rounded shimmer" /></td>
-                    <td className="px-5 py-6"><div className="h-8 w-8 bg-gray-100 rounded ms-auto shimmer" /></td>
+                    <td className="px-5 py-6"><div className="h-5 w-32 rounded shimmer" /></td>
+                    <td className="px-5 py-6"><div className="h-5 w-32 rounded shimmer" /></td>
+                    <td className="px-5 py-6"><div className="h-5 w-24 rounded shimmer" /></td>
+                    <td className="px-5 py-6"><div className="h-5 w-40 rounded shimmer" /></td>
+                    <td className="px-5 py-6"><div className="h-6 w-20 rounded-full shimmer" /></td>
+                    <td className="px-5 py-6"><div className="h-5 w-16 rounded shimmer" /></td>
+                    <td className="px-5 py-6"><div className="h-8 w-8 rounded ms-auto shimmer" /></td>
                   </tr>
                 ))
               ) : filteredData.length > 0 ? (
@@ -656,7 +656,7 @@ export default function Reservations() {
                           <span className="text-xs font-normal">{res.pickupLocation || t('reservations.casablancaAirport')}</span>
                         </div>
                         {res.source === 'AUTO_FROM_CONTRACT' && (
-                          <div className="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                          <div className="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/5 dark:text-emerald-300">
                             Auto-created from contract
                           </div>
                         )}
@@ -926,12 +926,12 @@ export default function Reservations() {
                   transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                   className="p-4 rounded-2xl border space-y-3"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(248,249,252,0.8), rgba(255,255,255,0.9))',
+                    background: 'var(--bg-hover)',
                     borderColor: 'var(--border-subtle)',
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-sm">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)' }}>
                       <Car size={18} />
                     </div>
                     <div>

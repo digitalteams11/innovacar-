@@ -941,11 +941,6 @@
   border-color: rgba(71, 125, 145, .22) !important;
 }
 
-.bg-\[\#0a0f2c\],
-.bg-\[\#0b1437\] {
-  background-color: #171817 !important;
-}
-
 table thead {
   background: color-mix(in srgb, var(--bg-card-solid) 66%, transparent) !important;
 }

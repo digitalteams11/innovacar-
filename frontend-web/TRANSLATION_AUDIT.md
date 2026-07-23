@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-23T13:37:46.140Z
-Scanned source files: 209
-Static translation keys used: 1913
+Generated: 2026-07-23T14:01:45.209Z
+Scanned source files: 212
+Static translation keys used: 1980
 
 ## Missing EN Keys (0)
 
@@ -48,7 +48,7 @@ None.
 
 None.
 
-## Possible Visible Hardcoded Text (1465)
+## Possible Visible Hardcoded Text (1471)
 
 ### By file
 
@@ -103,6 +103,7 @@ None.
 - src\components\UserMenu.tsx: 6
 - src\context\NotificationContext.tsx: 6
 - src\pages\AccountSuspended.tsx: 6
+- src\pages\PublicClientInformation.tsx: 6
 - src\components\shared\SignaturePad.tsx: 5
 - src\components\Layout.tsx: 4
 - src\pages\Register.tsx: 4
@@ -151,7 +152,7 @@ None.
 
 - src\components\AppearanceCustomizer.tsx:15 [object:label] - Light
 - src\components\AppearanceCustomizer.tsx:16 [object:label] - Dark
-- src\components\AppearanceCustomizer.tsx:17 [object:label] - Auto
+- src\components\AppearanceCustomizer.tsx:17 [object:label] - System
 - src\components\BottomNavigation.tsx:30 [prop:aria-label] - Mobile navigation
 - src\components\checkout\PriceSummaryCard.tsx:19 [jsx-text] - Total due today
 - src\components\checkout\PriceSummaryCard.tsx:24 [jsx-text] - Total after trial
@@ -768,6 +769,12 @@ None.
 - src\pages\Login.tsx:354 [prop:title] - Log In
 - src\pages\Login.tsx:355 [prop:description] - Log in to your Innovacar account to manage vehicles, reservations, contracts and clients.
 - src\pages\Login.tsx:479 [prop:placeholder] - XXXXX-XXXXX
+- src\pages\PublicClientInformation.tsx:110 [prop:title] - Client Information
+- src\pages\PublicClientInformation.tsx:110 [prop:description] - Secure client information form.
+- src\pages\PublicClientInformation.tsx:125 [prop:title] - Client Information
+- src\pages\PublicClientInformation.tsx:125 [prop:description] - Secure client information form.
+- src\pages\PublicClientInformation.tsx:141 [prop:title] - Client Information
+- src\pages\PublicClientInformation.tsx:141 [prop:description] - Secure client information form.
 - src\pages\PublicContact.tsx:54 [jsx-text] - We sent your request to the right team
 - src\pages\PublicContact.tsx:55 [jsx-text] - Your ticket number is
 - src\pages\PublicContact.tsx:74 [jsx-text] - Contact Us

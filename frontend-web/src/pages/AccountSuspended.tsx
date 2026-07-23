@@ -34,7 +34,7 @@ export default function AccountSuspended() {
         <div className="space-y-2">
           <button
             onClick={() => navigate('/subscription')}
-            className="w-full flex items-center justify-center gap-2 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-[var(--brand-primary)] hover:opacity-90 text-[var(--brand-primary-foreground)] py-2.5 rounded-xl text-sm font-semibold transition-colors"
           >
             <CreditCard size={16} />
             Open Billing

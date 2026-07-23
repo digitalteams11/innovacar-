@@ -13,6 +13,6 @@ public class UpdatePreferencesRequest {
     @Pattern(regexp = "en|fr|ar", message = "language must be one of: en, fr, ar")
     private String language;
 
-    @Pattern(regexp = "light|dark|auto", message = "themeMode must be one of: light, dark, auto")
+    @Pattern(regexp = "light|dark|system", message = "themeMode must be one of: light, dark, system")
     private String themeMode;
 }

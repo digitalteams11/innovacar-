@@ -1229,7 +1229,7 @@ export default function ContractDetails() {
                     Before Delivery QR
                   </button>
                   <button onClick={() => handleStartInspection('AFTER_RETURN')} disabled={isSubmitting}
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+                    className="rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-[var(--brand-primary-foreground)] hover:opacity-90 disabled:opacity-50">
                     After Return QR
                   </button>
                   <button onClick={() => contract && fetchInspections(contract.id)} disabled={isSubmitting}

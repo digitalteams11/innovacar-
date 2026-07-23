@@ -6,7 +6,7 @@ export default function ThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { t } = useTranslation();
   const isDark = resolvedTheme === 'dark';
-  const isAuto = theme === 'auto';
+  const isAuto = theme === 'system';
 
   const toggleTheme = () => {
     setTheme(isDark ? 'light' : 'dark');
@@ -44,7 +44,7 @@ export default function ThemeToggle() {
 
       <button
         type="button"
-        onClick={() => setTheme('auto')}
+        onClick={() => setTheme('system')}
         aria-pressed={isAuto}
         className={`hidden items-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition-all sm:inline-flex ${
           isAuto

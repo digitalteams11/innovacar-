@@ -14,7 +14,7 @@ import { useToast } from '../context/ToastContext';
 const modes: Array<{ value: ThemeMode; labelKey: string; label: string; icon: typeof Sun }> = [
   { value: 'light', labelKey: 'appearance.modeLight', label: 'Light', icon: Sun },
   { value: 'dark', labelKey: 'appearance.modeDark', label: 'Dark', icon: Moon },
-  { value: 'auto', labelKey: 'appearance.modeAuto', label: 'Auto', icon: Monitor },
+  { value: 'system', labelKey: 'appearance.modeAuto', label: 'System', icon: Monitor },
 ];
 
 const presetOrder: ThemePreset[] = [
@@ -39,7 +39,12 @@ export default function AppearanceCustomizer() {
   const saveAppearance = async () => {
     setSaving(true);
     try {
-      const { data } = await api.put('/tenant-settings', { appearance });
+      // `mode` is a personal preference saved separately via
+      // /api/users/me/preferences (see setTheme() in ThemeContext) — it must
+      // never be pushed into the shared, tenant-wide appearance blob, which
+      // is what this button saves.
+      const { mode: _mode, ...appearanceForTenant } = appearance;
+      const { data } = await api.put('/tenant-settings', { appearance: appearanceForTenant });
       showToast(data?.message || t('appearance.savedSuccess', 'Appearance settings saved successfully.'), 'success');
     } catch (err: any) {
       showToast((err as any).userMessage || t('appearance.saveFailed', 'Unable to save appearance settings. Please try again.'), 'error');
@@ -73,7 +78,12 @@ export default function AppearanceCustomizer() {
       </header>
 
       <section>
-        <SettingLabel title={t('appearance.displayMode', 'Display mode')} description={t('appearance.currentlyUsingMode', 'Currently using {{mode}} mode', { mode: resolvedTheme })} />
+        <SettingLabel
+          title={t('appearance.displayMode', 'Display mode')}
+          description={appearance.mode === 'system'
+            ? t('appearance.followingDeviceMode', 'Following your device appearance — currently {{mode}}.', { mode: resolvedTheme === 'dark' ? t('appearance.modeDark', 'Dark') : t('appearance.modeLight', 'Light') })
+            : t('appearance.currentlyUsingMode', 'Currently using {{mode}} mode', { mode: resolvedTheme })}
+        />
         <div className="mt-3 grid grid-cols-3 gap-2">
           {modes.map((mode) => (
             <button

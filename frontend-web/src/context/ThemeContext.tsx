@@ -1,10 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
-export type ThemeMode = 'light' | 'dark' | 'auto';
+export type ThemeMode = 'light' | 'dark' | 'system';
 export type ThemePreset =
   | 'neo-emerald'
   | 'carbon-lime'
@@ -67,7 +67,7 @@ const STORAGE_KEY = 'rentcar_appearance';
 // pair — not once per page load. A useRef alone resets on every refresh, which was
 // the actual cause of "I picked Light, refreshed, and it went back to Dark": the
 // sync effect re-ran on every refresh and re-applied whatever the server happened
-// to hold (often the User entity's "auto" default, if a previous save silently
+// to hold (often the User entity's "light" default, if a previous save silently
 // failed — see setTheme()'s catch below), overwriting the just-loaded, correct
 // localStorage value every single time.
 const THEME_SYNCED_USER_KEY = 'rentcar_theme_synced_user_id';
@@ -188,7 +188,10 @@ function presetColorsFor(preset: ThemePreset, mode: 'light' | 'dark'): PresetCol
 }
 
 const defaultAppearance: AppearanceSettings = {
-  mode: 'auto',
+  // Default must be LIGHT — never default new/cleared-storage users to
+  // System, which is functionally equivalent to "may render Dark" and
+  // violates the explicit "LIGHT stays light until the user changes it" rule.
+  mode: 'light',
   preset: 'neo-emerald',
   ...presetColorsFor('neo-emerald', 'light'),
   glassIntensity: 58,
@@ -270,8 +273,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [loadedRemoteAppearance, setLoadedRemoteAppearance] = useState(false);
   const [branding, setBranding] = useState<BrandingOverride | null>(null);
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(
-    appearance.mode === 'auto' ? systemTheme() : appearance.mode,
+    appearance.mode === 'system' ? systemTheme() : appearance.mode,
   );
+  // Set true the instant the user explicitly changes the mode via setTheme()
+  // (this session). Once true, no later server sync/fetch may overwrite the
+  // mode for the rest of this session — a local explicit choice always wins
+  // over a stale or late backend response (see setTheme() and the sync-once
+  // effect below).
+  const hasUserChangedThemeRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -292,7 +301,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           setAppearance((current) => {
             const merged = { ...current, ...appearanceWithoutMode };
             if (!presetCatalog[merged.preset as ThemePreset]) {
-              const mode = current.mode === 'auto' ? systemTheme() : current.mode;
+              const mode = current.mode === 'system' ? systemTheme() : current.mode;
               Object.assign(merged, { preset: defaultAppearance.preset, ...presetColorsFor(defaultAppearance.preset, mode) });
             }
             return merged;
@@ -351,6 +360,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || !user?.id) {
       return;
     }
+    // A local explicit change this session always wins — never let a sync
+    // (even a first-time one) clobber a choice the user just made.
+    if (hasUserChangedThemeRef.current) return;
     let syncedUserId: string | null = null;
     try {
       syncedUserId = localStorage.getItem(THEME_SYNCED_USER_KEY);
@@ -370,7 +382,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const updateResolvedTheme = () => {
-      setResolvedTheme(appearance.mode === 'auto' ? (media.matches ? 'dark' : 'light') : appearance.mode);
+      setResolvedTheme(appearance.mode === 'system' ? (media.matches ? 'dark' : 'light') : appearance.mode);
     };
     updateResolvedTheme();
     media.addEventListener('change', updateResolvedTheme);
@@ -402,7 +414,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     });
   }, [resolvedTheme, appearance.preset]);
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect): applies the `dark` class and CSS vars
+  // synchronously after DOM mutation but before the browser paints, shrinking
+  // the flash window for brand-color-dependent foreground text (see
+  // readableTextOn() below) — the inline script in index.html already
+  // handles the class/color-scheme before React even mounts, this effect
+  // just needs to apply the same thing on every subsequent state change.
+  useLayoutEffect(() => {
     const root = document.documentElement;
     const glass = hexToRgb(appearance.glassColor);
     const density = appearance.cardDensity === 'compact' ? 0.78 : appearance.cardDensity === 'spacious' ? 1.2 : 1;
@@ -421,8 +439,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const accentText = readableTextOn(resolvedAccent);
 
     root.classList.toggle('dark', resolvedTheme === 'dark');
+    root.style.colorScheme = resolvedTheme;
     root.dataset.themePreset = appearance.preset;
     root.dataset.buttonStyle = appearance.buttonStyle;
+    // Keeps the mobile/PWA browser chrome tint in sync with the resolved
+    // theme (the inline anti-flash script in index.html sets an approximate
+    // value before this ever runs; this corrects it to the exact surface).
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', resolvedTheme === 'dark' ? '#0F172A' : '#F8FAFC');
+    }
     // Agency Branding (White Label) colors are the source of truth when configured —
     // they override the preset's primary/accent so saving branding repaints the app immediately.
     root.style.setProperty('--brand-primary', resolvedPrimary);
@@ -466,6 +492,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [appearance, isAuthenticated, loadedRemoteAppearance]);
 
   const setTheme = useCallback((mode: ThemeMode) => {
+    hasUserChangedThemeRef.current = true;
     setAppearance((current) => ({ ...current, mode }));
     if (!isAuthenticated) return;
     api.put('/users/me/preferences', { themeMode: mode })
@@ -484,7 +511,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const applyPreset = useCallback((preset: ThemePreset) => {
     setAppearance((current) => {
-      const mode = current.mode === 'auto' ? systemTheme() : current.mode;
+      const mode = current.mode === 'system' ? systemTheme() : current.mode;
       return { ...current, ...presetColorsFor(preset, mode), preset };
     });
   }, []);

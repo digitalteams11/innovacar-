@@ -138,7 +138,7 @@ public class User implements UserDetails {
     @Column(name = "language", length = 8)
     private String language;
 
-    /** Quick theme mode: light / dark / auto. Defaults to "auto" if unset. */
+    /** Quick theme mode: light / dark / system. Defaults to "light" if unset. */
     @Column(name = "theme_mode", length = 16)
     private String themeMode;
 
@@ -166,7 +166,7 @@ public class User implements UserDetails {
         if (emailOtpEnabled == null) emailOtpEnabled = false;
         if (passwordChangedAt == null) passwordChangedAt = createdAt;
         if (language == null) language = "en";
-        if (themeMode == null) themeMode = "auto";
+        if (themeMode == null) themeMode = "light";
     }
 
     @PreUpdate

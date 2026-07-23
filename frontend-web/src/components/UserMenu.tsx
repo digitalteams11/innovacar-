@@ -39,7 +39,7 @@ const LANGUAGES = [
 const THEME_MODES: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'dark',  label: 'Dark',  icon: Moon },
-  { value: 'auto',  label: 'Auto',  icon: Monitor },
+  { value: 'system', label: 'System', icon: Monitor },
 ];
 
 /** First + last initials (or first two letters of a single name), for the avatar fallback. */

@@ -276,7 +276,7 @@ export default function Subscription() {
         <div className="data-surface p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className={`w-14 h-14 rounded-2xl bg-[#0a0f2c] flex items-center justify-center text-white`}>
+              <div className={`w-14 h-14 rounded-2xl bg-[var(--brand-primary)] flex items-center justify-center text-[var(--brand-primary-foreground)]`}>
                 <Crown size={26} />
               </div>
               <div>
@@ -336,7 +336,7 @@ export default function Subscription() {
                   const premium = plans.find(p => p.code === 'premium');
                   if (premium) openUpgrade(premium);
                 }}
-                className="bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
+                className="bg-[var(--brand-primary)] hover:opacity-90 text-[var(--brand-primary-foreground)] px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
               >
                 {status.isTrial ? 'Upgrade Plan' : 'Manage Plan'} <ArrowRight size={16} />
               </button>
@@ -372,7 +372,7 @@ export default function Subscription() {
             onClick={() => setBillingCycle('monthly')}
             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
               billingCycle === 'monthly'
-                ? 'bg-[#0a0f2c] text-white'
+                ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
                 : 'text-slate-500 hover:text-[#1e293b]'
             }`}
           >
@@ -382,7 +382,7 @@ export default function Subscription() {
             onClick={() => setBillingCycle('yearly')}
             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
               billingCycle === 'yearly'
-                ? 'bg-[#0a0f2c] text-white'
+                ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
                 : 'text-slate-500 hover:text-[#1e293b]'
             }`}
           >
@@ -410,7 +410,7 @@ export default function Subscription() {
               } ${plan.code === 'standard' ? 'xl:scale-105 xl:z-10' : ''}`}
             >
               {plan.code === 'standard' && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-brand-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-brand-500 text-[var(--brand-primary-foreground)] text-[10px] font-bold uppercase tracking-wider rounded-full">
                   Most Popular
                 </div>
               )}
@@ -421,8 +421,8 @@ export default function Subscription() {
               )}
 
               <div className="mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#0a0f2c]/5 flex items-center justify-center mb-3">
-                  <Icon size={20} className="text-[#0a0f2c]" />
+                <div className="w-10 h-10 rounded-xl bg-[var(--brand-primary)]/10 flex items-center justify-center mb-3">
+                  <Icon size={20} className="text-[var(--brand-primary)]" />
                 </div>
                 <h3 className="text-base font-bold text-[#1e293b]">{plan.name}</h3>
                 <p className="text-xs text-slate-500 mt-1 line-clamp-2">{plan.description}</p>
@@ -468,7 +468,7 @@ export default function Subscription() {
                   isCurrent
                     ? 'bg-slate-100 text-slate-400 cursor-default'
                     : plan.code === 'standard'
-                    ? 'bg-[#0a0f2c] text-white hover:bg-[#0a0f2c]/90'
+                    ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:opacity-90'
                     : 'bg-slate-100 text-[#1e293b] hover:bg-slate-200'
                 }`}
               >
@@ -740,7 +740,7 @@ export default function Subscription() {
               <button
                 onClick={handleUpgrade}
                 disabled={upgrading || checkoutUrlMissing}
-                className="flex-1 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                className="flex-1 bg-[var(--brand-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--brand-primary-foreground)] py-2.5 rounded-xl text-sm font-semibold transition-colors"
               >
                 {upgrading ? 'Redirecting...' : 'Continue to Checkout'}
               </button>
