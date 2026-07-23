@@ -8,6 +8,35 @@ import { CHUNK_RELOAD_MARKER } from '../lazyLoadRecovery';
 // dynamically imported module", "Importing a module script failed".
 const CHUNK_LOAD_ERROR_PATTERN = /(fetch|load(ing)?)\s+dynamically imported module|failed to load module script|importing a module script failed/i;
 
+// Matches "Cannot read properties of undefined (reading 'background')" and
+// the same shape for any other theme-token key — the signature of a stale/
+// legacy/malformed `rentcar_appearance.mode` value reaching a preset lookup
+// as an invalid key. ThemeContext.tsx's normalizeThemePreference()/
+// resolveTheme() close the actual gap; this is the last-resort recovery
+// for anyone who still hits it (e.g. a deploy that shipped between the bug
+// and the fix, or any future token this class of bug could recur on).
+const THEME_TOKEN_READ_ERROR_PATTERN = /cannot read propert(?:y|ies) of undefined \(reading '(background|surface|sidebar|foreground)'\)/i;
+const THEME_STORAGE_KEY = 'rentcar_appearance';
+
+/** Best-effort: drops the persisted appearance blob only if it's missing or
+ * doesn't parse to an object with a recognizable mode — never touches
+ * auth/user/language/tenant/reservation data, all of which live under
+ * different keys. Never throws. */
+function clearInvalidThemeCache() {
+  try {
+    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    const mode = String(parsed?.mode ?? '').trim().toLowerCase();
+    if (typeof parsed !== 'object' || parsed === null || !['light', 'dark', 'system', 'auto'].includes(mode)) {
+      window.localStorage.removeItem(THEME_STORAGE_KEY);
+    }
+  } catch {
+    // Malformed JSON is exactly the case we're guarding against — drop it.
+    try { window.localStorage.removeItem(THEME_STORAGE_KEY); } catch { /* non-fatal */ }
+  }
+}
+
 interface ErrorBoundaryState {
   hasError: boolean;
 }
@@ -49,10 +78,33 @@ export default class ErrorBoundary extends React.Component<React.PropsWithChildr
         sessionStorage.setItem(CHUNK_RELOAD_MARKER, '1');
         window.location.reload();
       }
+      return;
+    }
+
+    // A theme-token property read off `undefined` — a stale/legacy/invalid
+    // persisted theme preference reached a preset lookup as an invalid key
+    // (see ThemeContext.tsx's normalizeThemePreference()/resolveTheme()).
+    // Reset ONLY the invalid theme cache, never auth/user/language/tenant/
+    // reservation data, then reload once so the next boot picks up the
+    // now-clean (defaults to light) preference. Same one-shot guard as the
+    // other recovery branches above, so a genuinely different recurring bug
+    // still falls through to the normal Retry UI instead of reload-looping.
+    if (error instanceof Error && THEME_TOKEN_READ_ERROR_PATTERN.test(error.message)) {
+      console.error('[ErrorBoundary] Theme token read on undefined — resetting persisted theme preference to light.');
+      const key = 'rentcar_theme_error_reload_once';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        clearInvalidThemeCache();
+        window.location.reload();
+      }
     }
   }
 
   private retry = () => {
+    // Restore a valid theme state before re-attempting the route — if the
+    // crash that got us here was theme-related, retrying without this would
+    // just crash again on the same invalid persisted value.
+    clearInvalidThemeCache();
     this.setState({ hasError: false });
   };
 

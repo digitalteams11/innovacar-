@@ -109,7 +109,10 @@ export default function AppearanceCustomizer() {
         <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           {presetOrder.map((key) => {
             const definition = presetCatalog[key];
-            const swatch = definition[resolvedTheme];
+            // Defense in depth, matching ThemeContext.tsx's own fallback:
+            // resolvedTheme is guaranteed 'light' | 'dark' by resolveTheme(),
+            // but never assume a context value can't be stale mid-render.
+            const swatch = definition[resolvedTheme] ?? definition.light;
             const selected = appearance.preset === key;
             return (
               <button

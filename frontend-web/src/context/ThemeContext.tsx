@@ -5,6 +5,29 @@ import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+/**
+ * Normalizes any raw theme-preference input — backend value, localStorage,
+ * agency settings, a stale pre-rename "auto"/"AUTO" string, wrong casing
+ * ("LIGHT"/"DARK"), null, or garbage — to a canonical ThemeMode. Never
+ * throws, never returns anything outside 'light' | 'dark' | 'system'.
+ *
+ * This exists because trusting a raw stored/fetched string as a ThemeMode
+ * is exactly what crashed every route in production: a value that isn't a
+ * real presetCatalog[...] key (e.g. the literal string "auto" surviving in
+ * an existing user's localStorage from before the 'auto'->'system' rename)
+ * flowed straight into `definition[mode]`, and reading `.background` off
+ * the resulting `undefined` threw inside ThemeProvider's render/layout
+ * effect — see resolveTheme() and presetColorsFor() below, both of which
+ * only ever receive an already-normalized value now.
+ */
+export function normalizeThemePreference(value: unknown): ThemeMode {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'light') return 'light';
+  if (normalized === 'dark') return 'dark';
+  if (normalized === 'system' || normalized === 'auto') return 'system';
+  return 'light';
+}
 export type ThemePreset =
   | 'neo-emerald'
   | 'carbon-lime'
@@ -173,9 +196,29 @@ export const presetCatalog: Record<ThemePreset, PresetDefinition> = {
 type PresetColorFields = Pick<AppearanceSettings,
   'primaryColor' | 'secondaryColor' | 'accentColor' | 'backgroundColor' | 'surfaceColor' | 'sidebarColor' | 'glassColor'>;
 
+// Dev-only parity guard: every preset must define the same token set for
+// both light and dark, so a preset can never ship a mode that's missing a
+// key the other mode has (which is exactly the class of bug — an
+// undefined mode-colors object — this whole normalization pass exists to
+// prevent). Runs once at module load, stripped in production bundles.
+if (import.meta.env.DEV) {
+  for (const [key, definition] of Object.entries(presetCatalog)) {
+    const lightKeys = Object.keys(definition.light).sort();
+    const darkKeys = Object.keys(definition.dark).sort();
+    if (JSON.stringify(lightKeys) !== JSON.stringify(darkKeys)) {
+      // eslint-disable-next-line no-console
+      console.error(`[ThemeContext] preset "${key}" has mismatched light/dark token keys:`, { lightKeys, darkKeys });
+    }
+  }
+}
+
 function presetColorsFor(preset: ThemePreset, mode: 'light' | 'dark'): PresetColorFields {
   const definition = presetCatalog[preset] ?? presetCatalog['neo-emerald'];
-  const modeColors = definition[mode];
+  // Defense in depth: `mode` is typed 'light' | 'dark', but a runtime value
+  // that slipped past resolveTheme() (e.g. a caller passing an unnormalized
+  // string) must still never produce `undefined` here — that undefined is
+  // exactly what crashed every route when `.background` was read off it.
+  const modeColors = definition[mode] ?? definition.light ?? presetCatalog['neo-emerald'].light;
   return {
     primaryColor: definition.primaryColor,
     secondaryColor: definition.secondaryColor,
@@ -211,7 +254,22 @@ const defaultAppearance: AppearanceSettings = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 function systemTheme(): 'light' | 'dark' {
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  try {
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+/**
+ * The ONLY place a preference is turned into a renderable light/dark value.
+ * Always normalizes first, so a raw/legacy/invalid input can never reach a
+ * presetCatalog[...] lookup as anything other than 'light' or 'dark'.
+ */
+function resolveTheme(preference: unknown): 'light' | 'dark' {
+  const normalized = normalizeThemePreference(preference);
+  if (normalized === 'system') return systemTheme();
+  return normalized;
 }
 
 function hexToRgb(hex: string) {
@@ -254,6 +312,16 @@ function loadAppearance(): AppearanceSettings {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return defaultAppearance;
     const parsed = JSON.parse(stored);
+    if (typeof parsed !== 'object' || parsed === null) return defaultAppearance;
+
+    // Legacy/malformed `mode` values (the pre-rename "auto", wrong casing
+    // like "LIGHT"/"DARK", or anything else a stale deployment could have
+    // written) must never reach state as raw strings — this is the actual
+    // production crash: an unnormalized mode flowed into resolveTheme(),
+    // wasn't a real presetCatalog[...] key, and reading `.background` off
+    // the resulting `undefined` threw during ThemeProvider's render.
+    parsed.mode = normalizeThemePreference(parsed.mode);
+
     // A preset removed in a previous theme-catalog upgrade (e.g. the old
     // mustard-toned "luxury-gold") must not leave its stale colors behind —
     // reset both the preset key and its color fields to a current default.
@@ -272,9 +340,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [appearance, setAppearance] = useState<AppearanceSettings>(loadAppearance);
   const [loadedRemoteAppearance, setLoadedRemoteAppearance] = useState(false);
   const [branding, setBranding] = useState<BrandingOverride | null>(null);
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(
-    appearance.mode === 'system' ? systemTheme() : appearance.mode,
-  );
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(appearance.mode));
   // Set true the instant the user explicitly changes the mode via setTheme()
   // (this session). Once true, no later server sync/fetch may overwrite the
   // mode for the rest of this session — a local explicit choice always wins
@@ -301,13 +367,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           setAppearance((current) => {
             const merged = { ...current, ...appearanceWithoutMode };
             if (!presetCatalog[merged.preset as ThemePreset]) {
-              const mode = current.mode === 'system' ? systemTheme() : current.mode;
-              Object.assign(merged, { preset: defaultAppearance.preset, ...presetColorsFor(defaultAppearance.preset, mode) });
+              Object.assign(merged, { preset: defaultAppearance.preset, ...presetColorsFor(defaultAppearance.preset, resolveTheme(current.mode)) });
             }
             return merged;
           });
         }
       })
+      // Tenant-settings failures (network error, 500, malformed body) must
+      // never crash or block ThemeProvider — the app shell already has a
+      // fully valid theme from loadAppearance()'s synchronous default.
       .catch(() => undefined)
       .finally(() => {
         if (!cancelled) setLoadedRemoteAppearance(true);
@@ -371,8 +439,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(THEME_SYNCED_USER_KEY, String(user.id));
     } catch { /* non-fatal — worst case this sync-once check runs again next reload */ }
-    if (user.themeMode && user.themeMode !== appearance.mode) {
-      setAppearance((current) => ({ ...current, mode: user.themeMode as ThemeMode }));
+    if (user.themeMode) {
+      const normalizedRemoteMode = normalizeThemePreference(user.themeMode);
+      if (normalizedRemoteMode !== appearance.mode) {
+        setAppearance((current) => ({ ...current, mode: normalizedRemoteMode }));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- appearance.mode intentionally
     // excluded: only user.id/user.themeMode should re-arm this one-time sync, never a later
@@ -382,7 +453,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const updateResolvedTheme = () => {
-      setResolvedTheme(appearance.mode === 'system' ? (media.matches ? 'dark' : 'light') : appearance.mode);
+      setResolvedTheme(resolveTheme(appearance.mode));
     };
     updateResolvedTheme();
     media.addEventListener('change', updateResolvedTheme);
@@ -393,9 +464,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // resolved mode flips (light <-> dark), so a theme stays readable and on-
   // brand in both modes instead of dragging light-mode colors into dark mode.
   useEffect(() => {
-    const definition = presetCatalog[appearance.preset];
-    if (!definition) return;
-    const modeColors = definition[resolvedTheme];
+    const definition = presetCatalog[appearance.preset] ?? presetCatalog['neo-emerald'];
+    // resolvedTheme is state, not a freshly-normalized value — defend the
+    // same way presetColorsFor() does rather than trusting it's always
+    // exactly 'light' | 'dark' at runtime.
+    const modeColors = definition[resolvedTheme] ?? definition.light;
     setAppearance((current) => {
       if (
         current.backgroundColor === modeColors.background
@@ -492,10 +565,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [appearance, isAuthenticated, loadedRemoteAppearance]);
 
   const setTheme = useCallback((mode: ThemeMode) => {
+    const normalizedMode = normalizeThemePreference(mode);
     hasUserChangedThemeRef.current = true;
-    setAppearance((current) => ({ ...current, mode }));
+    setAppearance((current) => ({ ...current, mode: normalizedMode }));
     if (!isAuthenticated) return;
-    api.put('/users/me/preferences', { themeMode: mode })
+    api.put('/users/me/preferences', { themeMode: normalizedMode })
       .then(({ data }) => {
         const saved = data?.data;
         if (saved?.themeMode) updateCurrentUser({ themeMode: saved.themeMode });
@@ -510,10 +584,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyPreset = useCallback((preset: ThemePreset) => {
-    setAppearance((current) => {
-      const mode = current.mode === 'system' ? systemTheme() : current.mode;
-      return { ...current, ...presetColorsFor(preset, mode), preset };
-    });
+    setAppearance((current) => ({ ...current, ...presetColorsFor(preset, resolveTheme(current.mode)), preset }));
   }, []);
 
   const resetAppearance = useCallback(() => setAppearance(defaultAppearance), []);

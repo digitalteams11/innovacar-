@@ -15,44 +15,13 @@
     <!--
       Anti-flash: applies the resolved theme to <html> before any CSS/React
       paints, so the page never flashes light-then-dark or dark-then-light.
-      Must stay a small, blocking, synchronous script (no defer/async/module)
-      placed before any other script tag. Defensive: localStorage/matchMedia
-      can throw (private browsing, storage disabled) or be unavailable, and
-      the stored blob can be corrupt/stale — any failure here must fall back
-      to the app's default (light), never crash the page load.
+      Served as a same-origin static file (not inline) so it satisfies a
+      strict CSP `script-src 'self'` with no 'unsafe-inline' — see
+      public/theme-bootstrap.js for the full implementation and rationale.
+      Must load before any other script tag, no defer/async/module (needs
+      to run synchronously before first paint).
     -->
-    <script>
-      (function () {
-        try {
-          var STORAGE_KEY = 'rentcar_appearance';
-          var mode = 'light';
-          try {
-            var raw = window.localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-              var parsed = JSON.parse(raw);
-              if (parsed && (parsed.mode === 'light' || parsed.mode === 'dark' || parsed.mode === 'system')) {
-                mode = parsed.mode;
-              }
-            }
-          } catch (e) { /* storage unavailable or corrupt — keep default light */ }
-
-          var resolved = mode;
-          if (mode === 'system') {
-            try {
-              resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            } catch (e) { resolved = 'light'; }
-          }
-
-          var root = document.documentElement;
-          if (resolved === 'dark') root.classList.add('dark');
-          else root.classList.remove('dark');
-          root.style.colorScheme = resolved;
-
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0F172A' : '#F8FAFC');
-        } catch (e) { /* never block page load on theme resolution */ }
-      })();
-    </script>
+    <script src="/theme-bootstrap.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Innovacar" />
