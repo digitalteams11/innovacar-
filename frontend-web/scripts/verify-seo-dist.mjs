@@ -7,6 +7,7 @@ import path from 'node:path';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(ROOT, '..', 'dist');
+const PROJECT_ROOT = path.join(ROOT, '..');
 
 // Bare-word check — used only for the three SEO-facing static files
 // (index.html, robots.txt, sitemap.xml), where none of these substrings
@@ -124,10 +125,78 @@ if (!sitemapXml) {
     if (sitemapXml.includes(needle)) fail(`dist/sitemap.xml contains forbidden string "${needle}".`);
   }
   const locs = [...sitemapXml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1]);
+  const seenLocs = new Set();
+  // Flags anything that looks like a secret/opaque token or internal
+  // identifier riding along in a sitemap URL — a UUID, a long hex string,
+  // or a query string (auth tokens are always passed as query params or
+  // path segments in this app, never as clean path segments).
+  const TOKEN_LIKE_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{24,}|\?/i;
   for (const loc of locs) {
     if (!loc.startsWith('https://innovacar.app/')) {
       fail(`dist/sitemap.xml <loc> "${loc}" does not use the canonical https://innovacar.app origin.`);
     }
+    if (TOKEN_LIKE_PATTERN.test(loc)) {
+      fail(`dist/sitemap.xml <loc> "${loc}" looks like it contains a token/query string — sitemap URLs must be clean, tokenless, canonical paths.`);
+    }
+    if (seenLocs.has(loc)) {
+      fail(`dist/sitemap.xml contains a duplicate <loc> "${loc}".`);
+    }
+    seenLocs.add(loc);
+  }
+}
+
+// ── vercel.json routing config ──────────────────────────────────────────
+// The actual production bug this suite guards against ("/sitemap" served
+// the noindex SPA shell instead of redirecting to the real sitemap.xml)
+// can't be reproduced from a static dist/ scan alone — it's a routing-table
+// behavior. Assert the config itself is present and shaped correctly
+// instead; production-verification (see docs/seo-route-inventory.md) covers
+// the live HTTP behavior after deploy.
+const vercelConfigRaw = readFileSync(path.join(PROJECT_ROOT, 'vercel.json'), 'utf8');
+const vercelConfig = JSON.parse(vercelConfigRaw);
+
+const redirects = vercelConfig.redirects || [];
+const hasSitemapRedirect = redirects.some((r) =>
+  r.source === '/sitemap' && r.destination === '/sitemap.xml' && r.permanent === true);
+if (!hasSitemapRedirect) {
+  fail('vercel.json is missing a permanent redirect from "/sitemap" to "/sitemap.xml" — this is the exact production bug (Search Console: "Excluded by noindex tag" on /sitemap).');
+}
+
+const hasWwwRedirect = redirects.some((r) =>
+  r.destination === 'https://innovacar.app/$1'
+  && Array.isArray(r.has)
+  && r.has.some((h) => h.type === 'host' && h.value === 'www.innovacar.app'));
+if (!hasWwwRedirect) {
+  fail('vercel.json is missing a permanent redirect from www.innovacar.app to the canonical apex domain.');
+}
+
+const headerRules = vercelConfig.headers || [];
+const hasPreviewNoindexRule = headerRules.some((rule) =>
+  Array.isArray(rule.missing)
+  && rule.missing.some((m) => m.type === 'host' && m.value === 'innovacar.app')
+  && rule.headers.some((h) => h.key === 'X-Robots-Tag' && /noindex/i.test(h.value)));
+if (!hasPreviewNoindexRule) {
+  fail('vercel.json is missing a host-scoped rule that forces X-Robots-Tag: noindex on any non-production host (preview deployments must never be indexable, even on paths that are indexable in production).');
+}
+
+// The path-based noindex rule (as opposed to the host-based preview rule
+// just checked above) must exclude sitemap.xml/robots.txt via its own
+// negative-lookahead source pattern — verify by actually running that
+// regex against both paths, rather than eyeballing the pattern.
+const pathNoindexRule = headerRules.find((rule) =>
+  !rule.missing && rule.headers.some((h) => h.key === 'X-Robots-Tag' && /noindex/i.test(h.value)));
+if (!pathNoindexRule) {
+  fail('vercel.json is missing the path-based X-Robots-Tag noindex rule that protects private/unlisted paths by default.');
+} else {
+  const sourceRegex = new RegExp(`^${pathNoindexRule.source}$`);
+  if (sourceRegex.test('/sitemap.xml')) {
+    fail('vercel.json\'s path-based X-Robots-Tag noindex rule matches "/sitemap.xml" — the sitemap must never get a noindex header.');
+  }
+  if (sourceRegex.test('/robots.txt')) {
+    fail('vercel.json\'s path-based X-Robots-Tag noindex rule matches "/robots.txt".');
+  }
+  if (!sourceRegex.test('/some-private-app-path')) {
+    fail('vercel.json\'s path-based X-Robots-Tag noindex rule unexpectedly does NOT match an arbitrary private path — check the negative-lookahead pattern.');
   }
 }
 

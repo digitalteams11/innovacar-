@@ -50,6 +50,35 @@ Three real, hash-free, indexable pages now exist, served without touching HashRo
 
 `vercel.json` excludes `/fonctionnalites` and `/tarifs` from the SPA catch-all rewrite (so Vercel serves the prerendered static files, not the generic shell) and excludes `/`, `/fonctionnalites`, `/tarifs` from the site-wide `X-Robots-Tag: noindex` header.
 
+## Part 4 — fixed the `/sitemap` noindex bug (2026-07-24)
+
+Google Search Console reported `https://innovacar.app/sitemap` (no `.xml`) as
+"Excluded by noindex tag." Root cause: that path was never a real route —
+it's not in `App.tsx`, not in `src/marketing/pages.tsx`, and wasn't in
+`vercel.json`'s rewrite-exclusion list or its `X-Robots-Tag` header
+exclusion list. So it fell through to the generic SPA rewrite (served the
+`index.html` shell, whose raw HTML default is `noindex,follow,noarchive`)
+*and* got the site-wide `X-Robots-Tag: noindex` header — doubly blocked.
+`sitemap.xml` itself was never affected; the bug was specifically the
+extensionless path.
+
+Fix (`vercel.json` only, no app code changed):
+- Added a permanent redirect `/sitemap` → `/sitemap.xml`, so Search Console
+  re-crawling that exact URL now gets a 301 straight to the real sitemap.
+- Added a permanent `www.innovacar.app` → `https://innovacar.app` redirect —
+  the canonical hostname decision (bare apex) is now enforced at the routing
+  layer, not just documented.
+- Added a host-scoped `X-Robots-Tag: noindex, nofollow, noarchive` header
+  rule (`missing: host=innovacar.app`) so any non-production host — a Vercel
+  preview/branch deployment — is forced noindex on every path, including the
+  marketing pages that are otherwise exempted by path on production.
+- `scripts/verify-seo-dist.mjs` now asserts all three rules exist in
+  `vercel.json` (by parsing it directly, not just scanning `dist/`) and
+  actually runs the path-based noindex rule's regex against `/sitemap.xml`,
+  `/robots.txt`, and an arbitrary private path to prove the exclusion works,
+  rather than eyeballing the pattern. Also added: duplicate-`<loc>` and
+  token/query-string checks on `sitemap.xml` entries.
+
 ## Follow-up work not done here (explicitly out of scope this pass)
 
 1. **Multilingual `/en/ /fr/ /ar/` URLs and hreflang.** The 3 pages above are French-only. Do not add hreflang tags until real English/Arabic page content exists (reviewed, not machine-translated at request time) — a self-referencing hreflang with only one language is misleading.

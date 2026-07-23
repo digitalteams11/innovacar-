@@ -2,6 +2,19 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.innovacar.app" }],
+      "destination": "https://innovacar.app/$1",
+      "permanent": true
+    },
+    {
+      "source": "/sitemap",
+      "destination": "/sitemap.xml",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!assets/|brand/|leaflet-images/|favicon\\.svg|icons\\.svg|robots\\.txt|sitemap\\.xml|site\\.webmanifest|fonctionnalites|tarifs|confidentialite|conditions|cookies|securite).*)",
@@ -27,6 +40,13 @@
       "source": "/((?!sitemap.xml|robots.txt|$|fonctionnalites|tarifs|confidentialite|conditions|cookies|securite).*)",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, follow, noarchive" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "missing": [{ "type": "host", "value": "innovacar.app" }],
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
       ]
     },
     {
