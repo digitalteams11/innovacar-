@@ -4,6 +4,7 @@ import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
  * Email service for sending transactional emails.
@@ -174,6 +175,72 @@ public class EmailService {
                 : smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject,
                         htmlBody, plainBody);
         deliver(result, toEmail, subject);
+    }
+
+    /**
+     * Sends the "please complete your information" email for the client
+     * self-fill workflow (ClientInformationRequestService). Localized to the
+     * client's preferred language, falling back to French, and sent via the
+     * agency's own sender identity when configured (falls back to Innovacar).
+     */
+    public SmtpMailService.SmtpResult sendClientInformationRequestEmail(String toEmail, String clientName,
+                                                                          String agencyName, String publicUrl,
+                                                                          java.time.LocalDateTime expiresAt, String language) {
+        String lang = normalizeLanguage(language);
+        record Copy(String htmlLang, String dir, String subject, String heading, String greeting, String intro,
+                    String expiryNote, String button, String fallbackLabel, String security) {}
+        Copy c = switch (lang) {
+            case "fr" -> new Copy("fr", "ltr",
+                    "Veuillez compléter vos informations de location",
+                    "Complétez vos informations",
+                    "Bonjour",
+                    "Votre agence de location vous invite à compléter vos informations afin de préparer votre dossier et votre contrat.",
+                    "Ce lien expire le %s.",
+                    "Compléter mes informations",
+                    "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
+                    "Ce lien est personnel et sécurisé. Ne le partagez avec personne.");
+            case "ar" -> new Copy("ar", "rtl",
+                    "يرجى استكمال معلومات الحجز الخاصة بك",
+                    "أكمل معلوماتك",
+                    "مرحباً",
+                    "تدعوك وكالة التأجير الخاصة بك لاستكمال معلوماتك من أجل تجهيز ملفك وعقدك.",
+                    "تنتهي صلاحية هذا الرابط في %s.",
+                    "أكمل معلوماتي",
+                    "إذا لم يعمل الزر، انسخ هذا الرابط في متصفحك:",
+                    "هذا الرابط شخصي وآمن. لا تشاركه مع أي شخص.");
+            default -> new Copy("en", "ltr",
+                    "Please complete your rental information",
+                    "Complete your information",
+                    "Hello",
+                    "Your rental agency invites you to complete your information so they can prepare your file and contract.",
+                    "This link expires on %s.",
+                    "Complete my information",
+                    "If the button doesn't work, copy this link into your browser:",
+                    "This link is personal and secure. Do not share it with anyone.");
+        };
+        String name = StringUtils.hasText(clientName) ? clientName : (lang.equals("fr") ? "cher client" : lang.equals("ar") ? "عميلنا العزيز" : "there");
+        String agency = StringUtils.hasText(agencyName) ? agencyName : "Innovacar";
+        String expiryFormatted = expiresAt != null
+                ? expiresAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                : "";
+
+        String bodyHtml =
+              "<h2 style=\"margin:0 0 16px;color:#0f172a;font-size:20px;\">" + escape(c.heading()) + "</h2>"
+            + "<p style=\"margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;\">" + escape(c.greeting()) + " " + escape(name) + ",</p>"
+            + "<p style=\"margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;\">" + escape(c.intro()) + "</p>"
+            + BrandedEmailLayout.cta(c.button(), publicUrl)
+            + "<p style=\"margin:0 0 8px;color:#6b7280;font-size:13px;line-height:1.6;\">" + escape(c.fallbackLabel()) + "</p>"
+            + "<p style=\"margin:0 0 20px;word-break:break-all;\"><a href=\"" + publicUrl + "\" style=\"color:#0f766e;font-size:13px;\">" + publicUrl + "</a></p>"
+            + BrandedEmailLayout.alertBox(c.expiryNote().formatted(expiryFormatted), c.security());
+        String htmlBody = "<!DOCTYPE html><html lang=\"" + c.htmlLang() + "\" dir=\"" + c.dir() + "\">"
+                + "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + escape(c.subject()) + "</title></head>"
+                + "<body style=\"margin:0;padding:0;\">" + BrandedEmailLayout.shell(c.subject(), null, bodyHtml, agency, "support@innovacar.app") + "</body></html>";
+
+        String plainBody = c.greeting() + " " + name + ",\n\n" + c.intro() + "\n\n" + publicUrl + "\n\n" + c.expiryNote().formatted(expiryFormatted);
+
+        SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, c.subject(), htmlBody, plainBody);
+        deliver(result, toEmail, c.subject());
+        return result;
     }
 
     /**

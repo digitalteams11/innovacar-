@@ -764,6 +764,9 @@
       "alreadyExists": "Un contrat existe déjà pour cette réservation.",
       "openExistingContract": "Ouvrir le contrat existant"
     },
+    "fromClient": {
+      "prefilledNotice": "Client prérempli à partir de la demande d'informations approuvée."
+    },
     "title": "Contrats & Accords",
     "subtitle": "Signature, PDF, vérification QR et statut de paiement dans un flux juridique unique",
     "all": "Tous",
@@ -1004,20 +1007,23 @@
       "secondaryPhone": "Téléphone secondaire",
       "email": "Email",
       "birthDate": "Date de naissance",
+      "gender": "Sexe",
+      "genderMale": "Homme",
+      "genderFemale": "Femme",
+      "genderUnspecified": "—",
       "nationality": "Nationalité",
+      "companyName": "Société (optionnel)",
       "documentType": "Type de document",
-      "documentIssueDate": "Date de délivrance",
-      "documentExpiryDate": "Date d'expiration",
       "cinNumber": "Numéro de CIN",
       "passportNumber": "Numéro de passeport",
       "residencePermitNumber": "Numéro de carte de séjour",
       "otherDocumentNumber": "Numéro du document",
       "address": "Adresse",
       "city": "Ville",
+      "postalCode": "Code postal",
       "country": "Pays",
-      "licenseNumber": "Numéro de permis",
-      "licenseIssueDate": "Date de délivrance",
-      "licenseExpiryDate": "Date d'expiration",
+      "notes": "Remarques (optionnel)",
+      "licenseNumber": "Numéro de permis de conduire",
       "requiredFields": "Veuillez remplir tous les champs obligatoires.",
       "invalidEmail": "Veuillez saisir une adresse email valide.",
       "privacyRequired": "Veuillez accepter la notice de confidentialité pour continuer."
@@ -1060,21 +1066,59 @@
     "linkExisting": "Lier au client existant sélectionné",
     "createNew": "Approuver et créer un nouveau client",
     "revoke": "Révoquer",
+    "reject": "Rejeter",
+    "rejected": "Demande rejetée.",
+    "resend": "Renvoyer",
+    "generateAndSend": "Générer et envoyer",
     "approvedNote": "Approuvé et lié.",
+    "viewClient": "Voir le client",
+    "editClient": "Modifier le client",
+    "continueToReservation": "Continuer vers la réservation",
+    "continueToContract": "Continuer vers le contrat",
     "status": {
       "SENT": "Lien envoyé",
+      "OPENED": "Ouvert",
       "SUBMITTED": "Soumis",
       "APPROVED": "Approuvé",
+      "REJECTED": "Rejeté",
       "EXPIRED": "Expiré",
-      "REVOKED": "Révoqué"
+      "REVOKED": "Annulé"
     },
     "form": {
       "intro": "Saisissez les informations minimales pour contacter le client. Il complétera le reste lui-même.",
       "name": "Nom du client",
       "phone": "Numéro de téléphone",
-      "email": "Email (optionnel)",
-      "required": "Veuillez saisir au moins un nom et un numéro de téléphone."
-    }
+      "email": "Email",
+      "whatsapp": "WhatsApp",
+      "required": "Veuillez saisir au moins un nom et un numéro de téléphone.",
+      "nameRequired": "Le nom du client est requis.",
+      "destinationRequired": "Saisissez au moins un numéro de téléphone ou une adresse email.",
+      "channelsIntro": "Choisissez comment envoyer le lien sécurisé au client.",
+      "emailUnavailable": "Email non disponible",
+      "phoneUnavailable": "Numéro de téléphone non disponible",
+      "selectChannel": "Sélectionnez au moins un canal d'envoi.",
+      "sending": "Génération du lien sécurisé et envoi en cours…"
+    },
+    "result": {
+      "linkCreated": "Lien sécurisé créé",
+      "sent": "Envoyé",
+      "notConfigured": "Non configuré",
+      "failedRetry": "Échec — Réessayer",
+      "retrySuccess": "Message envoyé avec succès.",
+      "retryFailed": "Toujours impossible à livrer. Veuillez réessayer plus tard.",
+      "expiresAt": "Expire le {{date}}"
+    },
+    "errors": {
+      "invalidPhone": "Ce numéro de téléphone n'est pas valide.",
+      "invalidEmail": "Cette adresse email n'est pas valide.",
+      "noChannel": "Un email ou un numéro de téléphone valide est requis.",
+      "tenantAccessDenied": "Ce client est introuvable dans votre agence.",
+      "requestExpired": "Cette demande a expiré.",
+      "alreadySubmitted": "Ces informations ont déjà été soumises.",
+      "smtpNotConfigured": "L'envoi d'email n'est pas configuré.",
+      "whatsappNotConfigured": "L'envoi WhatsApp n'est pas configuré."
+    },
+    "openLink": "Ouvrir le lien"
   },
   "invoices": {
     "title": "Factures & Facturation",

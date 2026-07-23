@@ -659,6 +659,46 @@ export default function Contracts() {
     }
   };
 
+  // Opens the New Contract modal preselecting an already-approved client (used
+  // by the "Continue to contract" button on the Client Information Requests
+  // page) — reuses the same /clients/{id} field mapping as the reservation
+  // client-fetch above so the contract's client section is fully prefilled
+  // without the admin retyping anything.
+  const openCreateFromClient = async (clientId: number) => {
+    await openCreate();
+    try {
+      const { data } = await api.get(`/clients/${clientId}`);
+      setClientData({
+        clientId: data.id,
+        clientFirstName: data.firstName || data.name?.split(' ')[0],
+        clientLastName: data.lastName || data.name?.split(' ').slice(1).join(' '),
+        clientFullName: data.name,
+        clientEmail: data.email,
+        clientPhone: data.phone,
+        clientSecondaryPhone: data.secondaryPhone,
+        clientAddress: data.address,
+        clientCity: data.city,
+        clientCountry: data.country,
+        clientPostalCode: data.postalCode,
+        clientNationality: data.nationality,
+        clientGender: data.gender,
+        clientBirthDate: data.birthDate,
+        clientCin: data.cin,
+        clientPassportNumber: data.passportNumber,
+        clientDriverLicense: data.drivingLicense,
+        clientDriverLicenseIssue: data.drivingLicenseIssue,
+        clientDriverLicenseExpiry: data.drivingLicenseExpiry,
+        emergencyContactName: data.emergencyContactName,
+        emergencyContactPhone: data.emergencyContactPhone,
+        companyName: data.companyName,
+        notes: data.notes,
+      });
+      showToast(t('contracts.fromClient.prefilledNotice', 'Client prefilled from the approved information request.'), 'info');
+    } catch {
+      showToast(t('contracts.prefillLoadFailed'), 'error');
+    }
+  };
+
   // Opens the New Contract modal already filled from a reservation — used when
   // the contract icon is clicked on the Reservations page (source of truth is
   // the read-only /contract-prefill endpoint, then reuses handleSelectReservation
@@ -718,8 +758,12 @@ export default function Contracts() {
 
   useEffect(() => {
     const fromReservationId = searchParams.get('fromReservationId');
+    const fromClientId = searchParams.get('fromClientId');
     if (fromReservationId) {
       openCreateFromReservation(Number(fromReservationId));
+      setSearchParams({}, { replace: true });
+    } else if (fromClientId) {
+      openCreateFromClient(Number(fromClientId));
       setSearchParams({}, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

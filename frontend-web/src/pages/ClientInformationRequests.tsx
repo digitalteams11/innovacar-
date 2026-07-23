@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Copy, XCircle, CheckCircle2, UserPlus, Link2, ClipboardList } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, Copy, XCircle, CheckCircle2, UserPlus, Link2, ClipboardList, Send, Eye, Pencil, CalendarPlus, FileText } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
@@ -27,7 +28,7 @@ interface RequestItem {
   temporaryName: string;
   phone: string;
   email?: string;
-  status: 'SENT' | 'SUBMITTED' | 'APPROVED' | 'EXPIRED' | 'REVOKED';
+  status: 'SENT' | 'OPENED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'REVOKED';
   expiresAt: string;
   submittedAt?: string;
   approvedAt?: string;
@@ -35,12 +36,15 @@ interface RequestItem {
   secureLink?: string;
   submission?: SubmissionView;
   potentialDuplicates?: ClientMatchSummary[];
+  approvedClientId?: number;
 }
 
 const STATUS_STYLES: Record<string, string> = {
   SENT: 'bg-slate-100 text-slate-500',
+  OPENED: 'bg-brand-50 text-brand-600',
   SUBMITTED: 'bg-warning-50 text-warning-600',
   APPROVED: 'bg-success-50 text-success-600',
+  REJECTED: 'bg-danger-50 text-danger-500',
   EXPIRED: 'bg-slate-100 text-slate-400',
   REVOKED: 'bg-danger-50 text-danger-500',
 };
@@ -48,6 +52,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function ClientInformationRequests() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const [items, setItems] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +97,35 @@ export default function ClientInformationRequests() {
       await api.post(`/client-information-requests/${id}/revoke`);
       showToast(t('clientInfoAdmin.revoked', 'Link revoked.'), 'success');
       setSelected(null);
+      load();
+    } catch (err) {
+      const userMessage = (err as { userMessage?: string })?.userMessage;
+      showToast(userMessage || t('clientInfoAdmin.actionFailed', 'Action failed. Please try again.'), 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const reject = async (id: number) => {
+    setBusyId(id);
+    try {
+      await api.post(`/client-information-requests/${id}/reject`);
+      showToast(t('clientInfoAdmin.rejected', 'Request rejected.'), 'success');
+      setSelected(null);
+      load();
+    } catch (err) {
+      const userMessage = (err as { userMessage?: string })?.userMessage;
+      showToast(userMessage || t('clientInfoAdmin.actionFailed', 'Action failed. Please try again.'), 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resend = async (id: number) => {
+    setBusyId(id);
+    try {
+      await api.post(`/client-information-requests/${id}/resend`, {});
+      showToast(t('clientInfoAdmin.linkReady', 'Share this secure link with the client. It expires in 48 hours.'), 'success');
       load();
     } catch (err) {
       const userMessage = (err as { userMessage?: string })?.userMessage;
@@ -215,26 +249,65 @@ export default function ClientInformationRequests() {
                   <UserPlus size={15} /> {t('clientInfoAdmin.createNew', 'Approve & create new client')}
                 </button>
                 <button
-                  onClick={() => revoke(selected.id)}
+                  onClick={() => reject(selected.id)}
                   disabled={busyId === selected.id}
                   className="flex items-center justify-center gap-2 py-2.5 bg-danger-50 text-danger-500 rounded-xl font-semibold text-sm"
                 >
-                  <XCircle size={15} /> {t('clientInfoAdmin.revoke', 'Revoke')}
+                  <XCircle size={15} /> {t('clientInfoAdmin.reject', 'Reject')}
                 </button>
               </div>
             )}
-            {selected.status === 'SENT' && (
-              <button
-                onClick={() => revoke(selected.id)}
-                disabled={busyId === selected.id}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-danger-50 text-danger-500 rounded-xl font-semibold text-sm"
-              >
-                <XCircle size={15} /> {t('clientInfoAdmin.revoke', 'Revoke')}
-              </button>
+            {(selected.status === 'SENT' || selected.status === 'OPENED') && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => resend(selected.id)}
+                  disabled={busyId === selected.id}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
+                >
+                  <Send size={15} /> {t('clientInfoAdmin.resend', 'Resend')}
+                </button>
+                <button
+                  onClick={() => revoke(selected.id)}
+                  disabled={busyId === selected.id}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-danger-50 text-danger-500 rounded-xl font-semibold text-sm"
+                >
+                  <XCircle size={15} /> {t('clientInfoAdmin.revoke', 'Cancel request')}
+                </button>
+              </div>
             )}
             {selected.status === 'APPROVED' && (
-              <div className="flex items-center gap-2 text-sm text-success-600">
-                <CheckCircle2 size={15} /> {t('clientInfoAdmin.approvedNote', 'Approved and linked.')}
+              <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
+                <div className="flex items-center gap-2 text-sm text-success-600">
+                  <CheckCircle2 size={15} /> {t('clientInfoAdmin.approvedNote', 'Approved and linked.')}
+                </div>
+                {selected.approvedClientId && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => navigate(`/clients?viewClientId=${selected.approvedClientId}`)}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/10 text-[#1e293b] dark:text-white rounded-xl font-semibold text-sm"
+                    >
+                      <Eye size={15} /> {t('clientInfoAdmin.viewClient', 'View client')}
+                    </button>
+                    <button
+                      onClick={() => navigate(`/clients?editClientId=${selected.approvedClientId}`)}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/10 text-[#1e293b] dark:text-white rounded-xl font-semibold text-sm"
+                    >
+                      <Pencil size={15} /> {t('clientInfoAdmin.editClient', 'Edit client')}
+                    </button>
+                    <button
+                      onClick={() => navigate(`/reservations?fromClientId=${selected.approvedClientId}`)}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
+                    >
+                      <CalendarPlus size={15} /> {t('clientInfoAdmin.continueToReservation', 'Continue to reservation')}
+                    </button>
+                    <button
+                      onClick={() => navigate(`/contracts?fromClientId=${selected.approvedClientId}`)}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-success-50 text-success-600 rounded-xl font-semibold text-sm"
+                    >
+                      <FileText size={15} /> {t('clientInfoAdmin.continueToContract', 'Continue to contract')}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

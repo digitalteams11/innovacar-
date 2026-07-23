@@ -83,8 +83,56 @@ public class ClientInformationRequest {
     @Column(name = "approved_client_id")
     private Long approvedClientId;
 
+    /** Optional pre-existing client this request was created from/for (prefill + tenant-scoped access check). */
+    @Column(name = "client_id")
+    private Long clientId;
+
     @Column(name = "created_by_user_id")
     private Long createdByUserId;
+
+    /** Comma-separated subset of {EMAIL, WHATSAPP} the admin requested delivery on. */
+    @Column(name = "delivery_channels", length = 50)
+    private String deliveryChannels;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "email_delivery_status", nullable = false, length = 20)
+    @Builder.Default
+    private DeliveryStatus emailDeliveryStatus = DeliveryStatus.NOT_REQUESTED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "whatsapp_delivery_status", nullable = false, length = 20)
+    @Builder.Default
+    private DeliveryStatus whatsappDeliveryStatus = DeliveryStatus.NOT_REQUESTED;
+
+    @Column(name = "email_last_error", length = 255)
+    private String emailLastError;
+
+    @Column(name = "whatsapp_last_error", length = 255)
+    private String whatsappLastError;
+
+    @Column(name = "email_sent_at")
+    private LocalDateTime emailSentAt;
+
+    @Column(name = "whatsapp_sent_at")
+    private LocalDateTime whatsappSentAt;
+
+    @Column(name = "email_last_attempt_at")
+    private LocalDateTime emailLastAttemptAt;
+
+    @Column(name = "whatsapp_last_attempt_at")
+    private LocalDateTime whatsappLastAttemptAt;
+
+    @Column(name = "opened_at")
+    private LocalDateTime openedAt;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    @Column(name = "reminder_not_opened_sent_at")
+    private LocalDateTime reminderNotOpenedSentAt;
+
+    @Column(name = "reminder_expiry_sent_at")
+    private LocalDateTime reminderExpirySentAt;
 
     /**
      * Validated, structured JSON of the client's submission (personal info,

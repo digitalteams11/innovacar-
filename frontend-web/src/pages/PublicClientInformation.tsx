@@ -19,9 +19,9 @@ type DocumentType = 'CIN' | 'PASSPORT' | 'RESIDENCE_PERMIT' | 'OTHER';
 
 const emptyForm = {
   fullName: '', phone: '', secondaryPhone: '', email: '', gender: '', birthDate: '', nationality: '',
-  documentType: 'CIN' as DocumentType, documentNumber: '', documentIssueDate: '', documentExpiryDate: '', documentIssuingCountry: '',
-  address: '', city: '', postalCode: '', country: '',
-  driverLicenseNumber: '', driverLicenseCategory: '', driverLicenseIssueDate: '', driverLicenseExpiryDate: '', driverLicenseCountry: '',
+  documentType: 'CIN' as DocumentType, documentNumber: '',
+  address: '', city: '', postalCode: '', country: 'Morocco',
+  driverLicenseNumber: '',
   companyName: '', notes: '',
   privacyAccepted: false,
 };
@@ -65,7 +65,7 @@ export default function PublicClientInformation() {
 
   const submit = async () => {
     setValidationError(null);
-    if (!form.fullName.trim() || !form.phone.trim() || !form.documentNumber.trim()) {
+    if (!form.fullName.trim() || !form.phone.trim() || !form.nationality.trim() || !form.address.trim() || !form.documentNumber.trim()) {
       setValidationError(t('clientInfo.form.requiredFields', 'Please fill all required fields.'));
       return;
     }
@@ -182,8 +182,20 @@ export default function PublicClientInformation() {
             <Field label={t('clientInfo.form.birthDate', 'Date of birth')}>
               <input type="date" className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.birthDate} onChange={(e) => update('birthDate', e.target.value)} />
             </Field>
-            <Field label={t('clientInfo.form.nationality', 'Nationality')}>
+            <Field label={t('clientInfo.form.gender', 'Gender')}>
+              <select className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.gender} onChange={(e) => update('gender', e.target.value)}>
+                <option value="">{t('clientInfo.form.genderUnspecified', '—')}</option>
+                <option value="MALE">{t('clientInfo.form.genderMale', 'Male')}</option>
+                <option value="FEMALE">{t('clientInfo.form.genderFemale', 'Female')}</option>
+              </select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label={t('clientInfo.form.nationality', 'Nationality')} required>
               <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.nationality} onChange={(e) => update('nationality', e.target.value)} />
+            </Field>
+            <Field label={t('clientInfo.form.companyName', 'Company (optional)')}>
+              <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.companyName} onChange={(e) => update('companyName', e.target.value)} />
             </Field>
           </div>
         </Section>
@@ -194,51 +206,39 @@ export default function PublicClientInformation() {
             <select className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.documentType} onChange={(e) => update('documentType', e.target.value)}>
               <option value="CIN">{t('clientInfo.documentTypes.cin', 'CIN')}</option>
               <option value="PASSPORT">{t('clientInfo.documentTypes.passport', 'Passport')}</option>
-              <option value="RESIDENCE_PERMIT">{t('clientInfo.documentTypes.residencePermit', 'Residence permit')}</option>
-              <option value="OTHER">{t('clientInfo.documentTypes.other', 'Other')}</option>
             </select>
           </Field>
           <Field label={documentNumberLabel()} required>
             <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} />
           </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label={t('clientInfo.form.documentIssueDate', 'Issue date')}>
-              <input type="date" className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.documentIssueDate} onChange={(e) => update('documentIssueDate', e.target.value)} />
-            </Field>
-            <Field label={t('clientInfo.form.documentExpiryDate', 'Expiry date')}>
-              <input type="date" className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.documentExpiryDate} onChange={(e) => update('documentExpiryDate', e.target.value)} />
-            </Field>
-          </div>
+        </Section>
+
+        {/* Driver license */}
+        <Section title={t('clientInfo.sections.license', 'Driving licence')}>
+          <Field label={t('clientInfo.form.licenseNumber', 'Driving licence number')}>
+            <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.driverLicenseNumber} onChange={(e) => update('driverLicenseNumber', e.target.value)} />
+          </Field>
         </Section>
 
         {/* Address */}
         <Section title={t('clientInfo.sections.address', 'Address')}>
-          <Field label={t('clientInfo.form.address', 'Address')}>
+          <Field label={t('clientInfo.form.address', 'Address')} required>
             <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.address} onChange={(e) => update('address', e.target.value)} />
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label={t('clientInfo.form.city', 'City')}>
               <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.city} onChange={(e) => update('city', e.target.value)} />
             </Field>
-            <Field label={t('clientInfo.form.country', 'Country')}>
-              <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.country} onChange={(e) => update('country', e.target.value)} />
+            <Field label={t('clientInfo.form.postalCode', 'Postal code')}>
+              <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} />
             </Field>
           </div>
-        </Section>
-
-        {/* Driver license */}
-        <Section title={t('clientInfo.sections.license', 'Driver license')}>
-          <Field label={t('clientInfo.form.licenseNumber', 'License number')}>
-            <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.driverLicenseNumber} onChange={(e) => update('driverLicenseNumber', e.target.value)} />
+          <Field label={t('clientInfo.form.country', 'Country')}>
+            <input className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.country} onChange={(e) => update('country', e.target.value)} />
           </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label={t('clientInfo.form.licenseIssueDate', 'Issue date')}>
-              <input type="date" className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.driverLicenseIssueDate} onChange={(e) => update('driverLicenseIssueDate', e.target.value)} />
-            </Field>
-            <Field label={t('clientInfo.form.licenseExpiryDate', 'Expiry date')}>
-              <input type="date" className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" value={form.driverLicenseExpiryDate} onChange={(e) => update('driverLicenseExpiryDate', e.target.value)} />
-            </Field>
-          </div>
+          <Field label={t('clientInfo.form.notes', 'Notes (optional)')}>
+            <textarea className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b]" rows={2} value={form.notes} onChange={(e) => update('notes', e.target.value)} />
+          </Field>
         </Section>
 
         {/* Privacy + submit */}

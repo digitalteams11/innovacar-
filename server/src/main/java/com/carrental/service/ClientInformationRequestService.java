@@ -10,6 +10,7 @@ import com.carrental.entity.ClientIdentityDocument;
 import com.carrental.entity.ClientInfoRequestStatus;
 import com.carrental.entity.ClientInformationRequest;
 import com.carrental.entity.Contract;
+import com.carrental.entity.DeliveryStatus;
 import com.carrental.entity.Notification;
 import com.carrental.entity.Tenant;
 import com.carrental.exception.ClientInfoRequestException;
@@ -36,6 +37,7 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * "Client self-fill information" workflow — MVP slice (contract entry point
@@ -54,6 +56,7 @@ public class ClientInformationRequestService {
 
     private static final int DEFAULT_EXPIRY_HOURS = 48;
     private static final int TOKEN_BYTES = 32;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final ClientInformationRequestRepository requestRepository;
     private final ClientRepository clientRepository;
@@ -62,6 +65,8 @@ public class ClientInformationRequestService {
     private final TenantRepository tenantRepository;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final EmailService emailService;
+    private final WhatsAppMessagingService whatsAppMessagingService;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -79,27 +84,225 @@ public class ClientInformationRequestService {
                             "The related contract could not be found."));
         }
 
+        String phone = req.getPhone();
+        String email = req.getEmail();
+        String temporaryName = req.getTemporaryName();
+
+        if (req.getClientId() != null) {
+            Client client = clientRepository.findByIdAndTenantId(req.getClientId(), tenantId)
+                    .orElseThrow(() -> new ClientInfoRequestException("TENANT_ACCESS_DENIED", HttpStatus.FORBIDDEN,
+                            "The selected client could not be found in this agency."));
+            if (!StringUtils.hasText(phone)) phone = client.getPhone();
+            if (!StringUtils.hasText(email)) email = client.getEmail();
+            if (!StringUtils.hasText(temporaryName)) temporaryName = client.getName();
+        }
+
+        String normalizedPhone = null;
+        if (StringUtils.hasText(phone)) {
+            normalizedPhone = normalizeMoroccanPhone(phone);
+            if (normalizedPhone == null) {
+                throw new ClientInfoRequestException("INVALID_PHONE", HttpStatus.BAD_REQUEST,
+                        "This phone number is not a valid Moroccan number.");
+            }
+        }
+        if (StringUtils.hasText(email) && !EMAIL_PATTERN.matcher(email.trim()).matches()) {
+            throw new ClientInfoRequestException("INVALID_EMAIL", HttpStatus.BAD_REQUEST,
+                    "This email address is not valid.");
+        }
+
+        Set<String> channels = resolveDeliveryChannels(req.getDeliveryChannels(), normalizedPhone, email);
+        if (channels.isEmpty()) {
+            throw new ClientInfoRequestException("NO_CHANNEL_AVAILABLE", HttpStatus.BAD_REQUEST,
+                    "At least a valid email or phone number is required to send the form.");
+        }
+
         String rawToken = generateRawToken();
         int hours = req.getExpiresInHours() != null && req.getExpiresInHours() > 0 ? req.getExpiresInHours() : DEFAULT_EXPIRY_HOURS;
+        LocalDateTime expiresAt = LocalDateTime.now().plusHours(hours);
 
         ClientInformationRequest entity = ClientInformationRequest.builder()
                 .tenantId(tenantId)
                 .tokenHash(hash(rawToken))
-                .temporaryName(req.getTemporaryName())
-                .phone(req.getPhone())
-                .email(req.getEmail())
+                .clientId(req.getClientId())
+                .temporaryName(temporaryName)
+                .phone(normalizedPhone)
+                .email(email)
                 .preferredLanguage(StringUtils.hasText(req.getPreferredLanguage()) ? req.getPreferredLanguage() : "fr")
                 .status(ClientInfoRequestStatus.SENT)
-                .expiresAt(LocalDateTime.now().plusHours(hours))
+                .expiresAt(expiresAt)
                 .contractId(req.getContractId())
+                .deliveryChannels(String.join(",", channels))
                 .build();
 
         ClientInformationRequest saved = requestRepository.save(entity);
-        log.info("[CLIENT_INFO] request created id={} tenantId={} contractId={}", saved.getId(), tenantId, saved.getContractId());
+        log.info("[CLIENT_INFO] request created id={} tenantId={} contractId={} channels={}",
+                saved.getId(), tenantId, saved.getContractId(), channels);
+
+        String publicUrl = buildSecureLink(rawToken);
+        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+        String agencyName = tenant != null ? tenant.getName() : null;
+
+        ClientInformationRequestResponse.DeliveryResult emailResult = deliverEmail(saved, channels, publicUrl, agencyName);
+        ClientInformationRequestResponse.DeliveryResult whatsappResult = deliverWhatsapp(saved, channels, publicUrl, agencyName);
+
+        saved.setEmailDeliveryStatus(emailResult.getStatus());
+        saved.setWhatsappDeliveryStatus(whatsappResult.getStatus());
+        requestRepository.save(saved);
 
         ClientInformationRequestResponse response = ClientInformationRequestResponse.from(saved);
-        response.setSecureLink(buildSecureLink(rawToken));
+        response.setSecureLink(publicUrl);
+        response.setPublicUrl(publicUrl);
+        response.setEmailResult(emailResult);
+        response.setWhatsappResult(whatsappResult);
         return response;
+    }
+
+    /** Retries delivery on whichever channels are requested (typically just the one that failed). */
+    @Transactional
+    public ClientInformationRequestResponse resend(Long id, List<String> requestedChannels) {
+        ClientInformationRequest r = fetchInTenant(id);
+        if (r.getStatus() == ClientInfoRequestStatus.APPROVED || r.getStatus() == ClientInfoRequestStatus.REJECTED
+                || r.getStatus() == ClientInfoRequestStatus.REVOKED) {
+            throw new ClientInfoRequestException("CLIENT_INFO_ALREADY_APPROVED", HttpStatus.CONFLICT,
+                    "This request is no longer active and cannot be resent.");
+        }
+        if (r.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ClientInfoRequestException("REQUEST_EXPIRED", HttpStatus.GONE, "This request has expired.");
+        }
+
+        Set<String> channels = resolveDeliveryChannels(requestedChannels, r.getPhone(), r.getEmail());
+        if (channels.isEmpty()) {
+            throw new ClientInfoRequestException("NO_CHANNEL_AVAILABLE", HttpStatus.BAD_REQUEST,
+                    "At least a valid email or phone number is required to resend the form.");
+        }
+
+        // A fresh raw token is generated on every resend — the old link is invalidated,
+        // consistent with "single-purpose, unusable after ..." token rules.
+        String rawToken = generateRawToken();
+        r.setTokenHash(hash(rawToken));
+        String publicUrl = buildSecureLink(rawToken);
+        Tenant tenant = tenantRepository.findById(r.getTenantId()).orElse(null);
+        String agencyName = tenant != null ? tenant.getName() : null;
+
+        ClientInformationRequestResponse.DeliveryResult emailResult = channels.contains("EMAIL")
+                ? deliverEmail(r, channels, publicUrl, agencyName)
+                : ClientInformationRequestResponse.DeliveryResult.builder().attempted(false).sent(false).status(r.getEmailDeliveryStatus()).build();
+        ClientInformationRequestResponse.DeliveryResult whatsappResult = channels.contains("WHATSAPP")
+                ? deliverWhatsapp(r, channels, publicUrl, agencyName)
+                : ClientInformationRequestResponse.DeliveryResult.builder().attempted(false).sent(false).status(r.getWhatsappDeliveryStatus()).build();
+
+        if (channels.contains("EMAIL")) r.setEmailDeliveryStatus(emailResult.getStatus());
+        if (channels.contains("WHATSAPP")) r.setWhatsappDeliveryStatus(whatsappResult.getStatus());
+        if (r.getStatus() == ClientInfoRequestStatus.EXPIRED) r.setStatus(ClientInfoRequestStatus.SENT);
+        ClientInformationRequest saved = requestRepository.save(r);
+
+        ClientInformationRequestResponse response = ClientInformationRequestResponse.from(saved);
+        response.setSecureLink(publicUrl);
+        response.setPublicUrl(publicUrl);
+        response.setEmailResult(emailResult);
+        response.setWhatsappResult(whatsappResult);
+        log.info("[CLIENT_INFO] request resent id={} tenantId={} channels={}", id, r.getTenantId(), channels);
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public ClientInformationRequestResponse deliveryStatus(Long id) {
+        return toDetailResponse(fetchInTenant(id));
+    }
+
+    private ClientInformationRequestResponse.DeliveryResult deliverEmail(ClientInformationRequest r, Set<String> channels,
+                                                                          String publicUrl, String agencyName) {
+        if (!channels.contains("EMAIL")) {
+            return ClientInformationRequestResponse.DeliveryResult.builder()
+                    .attempted(false).sent(false).status(DeliveryStatus.NOT_REQUESTED).build();
+        }
+        r.setEmailLastAttemptAt(LocalDateTime.now());
+        SmtpMailService.SmtpResult result = emailService.sendClientInformationRequestEmail(
+                r.getEmail(), r.getTemporaryName(), agencyName, publicUrl, r.getExpiresAt(), r.getPreferredLanguage());
+        if (result.sent()) {
+            r.setEmailSentAt(LocalDateTime.now());
+            r.setEmailLastError(null);
+            return ClientInformationRequestResponse.DeliveryResult.builder()
+                    .attempted(true).sent(true).status(DeliveryStatus.SENT).message("Email sent successfully").build();
+        }
+        boolean notConfigured = "EMAIL_CONFIGURATION_MISSING".equals(result.errorCode()) || "EMAIL_NOT_CONFIGURED".equals(result.errorCode());
+        r.setEmailLastError(result.errorMessage());
+        return ClientInformationRequestResponse.DeliveryResult.builder()
+                .attempted(true).sent(false)
+                .status(notConfigured ? DeliveryStatus.NOT_CONFIGURED : DeliveryStatus.FAILED)
+                .message(result.errorMessage() != null ? result.errorMessage() : "Email delivery failed")
+                .build();
+    }
+
+    private ClientInformationRequestResponse.DeliveryResult deliverWhatsapp(ClientInformationRequest r, Set<String> channels,
+                                                                             String publicUrl, String agencyName) {
+        if (!channels.contains("WHATSAPP")) {
+            return ClientInformationRequestResponse.DeliveryResult.builder()
+                    .attempted(false).sent(false).status(DeliveryStatus.NOT_REQUESTED).build();
+        }
+        r.setWhatsappLastAttemptAt(LocalDateTime.now());
+        String message = buildWhatsappMessage(r, agencyName, publicUrl);
+        WhatsAppMessagingService.WhatsAppResult result = whatsAppMessagingService.send(r.getPhone(), message);
+        if (result.sent()) {
+            r.setWhatsappSentAt(LocalDateTime.now());
+            r.setWhatsappLastError(null);
+            return ClientInformationRequestResponse.DeliveryResult.builder()
+                    .attempted(true).sent(true).status(DeliveryStatus.SENT).message("WhatsApp message sent successfully").build();
+        }
+        r.setWhatsappLastError(result.errorMessage());
+        return ClientInformationRequestResponse.DeliveryResult.builder()
+                .attempted(true).sent(false)
+                .status(result.configured() ? DeliveryStatus.FAILED : DeliveryStatus.NOT_CONFIGURED)
+                .message(result.errorMessage() != null ? result.errorMessage() : "WhatsApp delivery failed")
+                .build();
+    }
+
+    private String buildWhatsappMessage(ClientInformationRequest r, String agencyName, String publicUrl) {
+        String agency = StringUtils.hasText(agencyName) ? agencyName : "Innovacar";
+        String name = StringUtils.hasText(r.getTemporaryName()) ? r.getTemporaryName() : "";
+        String lang = r.getPreferredLanguage();
+        if ("ar".equals(lang)) {
+            return "مرحباً " + name + ",\n\nتدعوك وكالة " + agency + " لاستكمال معلوماتك من أجل تجهيز ملف الحجز الخاص بك.\n\n"
+                    + "الرابط الآمن:\n" + publicUrl + "\n\nينتهي هذا الرابط خلال 48 ساعة.";
+        }
+        if ("en".equals(lang)) {
+            return "Hello " + name + ",\n\n" + agency + " invites you to complete your information to prepare your rental file.\n\n"
+                    + "Secure link:\n" + publicUrl + "\n\nThis link expires in 48 hours.";
+        }
+        return "Bonjour " + name + ",\n\nL'agence " + agency + " vous invite à compléter vos informations afin de préparer votre dossier de location.\n\n"
+                + "Lien sécurisé :\n" + publicUrl + "\n\nCe lien expire dans 48 heures.";
+    }
+
+    /** Defaults to every channel with a valid destination when the admin didn't explicitly pick one. */
+    private Set<String> resolveDeliveryChannels(List<String> requested, String normalizedPhone, String email) {
+        Set<String> available = new LinkedHashSet<>();
+        if (StringUtils.hasText(email)) available.add("EMAIL");
+        if (StringUtils.hasText(normalizedPhone)) available.add("WHATSAPP");
+
+        if (requested == null || requested.isEmpty()) return available;
+        Set<String> result = new LinkedHashSet<>();
+        for (String c : requested) {
+            String upper = c == null ? "" : c.trim().toUpperCase();
+            if (available.contains(upper)) result.add(upper);
+        }
+        return result;
+    }
+
+    /**
+     * Normalizes a Moroccan phone number to E.164 (+212XXXXXXXXX):
+     * 0658742744 / 212658742744 / +212658742744 all become +212658742744.
+     * Returns null if it doesn't look like a valid 9-digit Moroccan subscriber number.
+     */
+    static String normalizeMoroccanPhone(String raw) {
+        if (!StringUtils.hasText(raw)) return null;
+        String digits = raw.replaceAll("[^0-9]", "");
+        if (digits.startsWith("212")) {
+            digits = digits.substring(3);
+        } else if (digits.startsWith("0")) {
+            digits = digits.substring(1);
+        }
+        if (!digits.matches("[5-7][0-9]{8}")) return null;
+        return "+212" + digits;
     }
 
     @Transactional(readOnly = true)
@@ -138,6 +341,22 @@ public class ClientInformationRequestService {
         r.setRevokedAt(LocalDateTime.now());
         requestRepository.save(r);
         log.info("[CLIENT_INFO] request revoked id={} tenantId={}", id, r.getTenantId());
+    }
+
+    // ── Admin: reject ────────────────────────────────────────────────────────
+
+    @Transactional
+    public ClientInformationRequestResponse reject(Long id) {
+        ClientInformationRequest r = fetchInTenant(id);
+        if (r.getStatus() != ClientInfoRequestStatus.SUBMITTED) {
+            throw new ClientInfoRequestException("CLIENT_INFO_CORRECTION_REQUIRED", HttpStatus.CONFLICT,
+                    "This request has no submission to reject.");
+        }
+        r.setStatus(ClientInfoRequestStatus.REJECTED);
+        r.setRejectedAt(LocalDateTime.now());
+        ClientInformationRequest saved = requestRepository.save(r);
+        log.info("[CLIENT_INFO] request rejected id={} tenantId={}", id, r.getTenantId());
+        return toDetailResponse(saved);
     }
 
     // ── Admin: approve (transactional — spec section 15) ────────────────────
@@ -204,10 +423,6 @@ public class ClientInformationRequestService {
                 .postalCode(s.getPostalCode())
                 .country(s.getCountry())
                 .drivingLicense(s.getDriverLicenseNumber())
-                .drivingLicenseCategory(s.getDriverLicenseCategory())
-                .drivingLicenseIssue(s.getDriverLicenseIssueDate())
-                .drivingLicenseExpiry(s.getDriverLicenseExpiryDate())
-                .drivingLicenseCountry(s.getDriverLicenseCountry())
                 .companyName(s.getCompanyName())
                 .notes(s.getNotes())
                 .build();
@@ -226,9 +441,6 @@ public class ClientInformationRequestService {
                 .clientId(clientId)
                 .documentType(s.getDocumentType())
                 .documentNumber(s.getDocumentNumber())
-                .issuingCountry(s.getDocumentIssuingCountry())
-                .issueDate(s.getDocumentIssueDate())
-                .expiryDate(s.getDocumentExpiryDate())
                 .isPrimary(true)
                 .build();
         identityDocumentRepository.save(doc);
@@ -254,8 +466,6 @@ public class ClientInformationRequestService {
         contract.setClientCountry(s.getCountry());
         contract.setClientPostalCode(s.getPostalCode());
         contract.setClientDriverLicense(s.getDriverLicenseNumber());
-        contract.setClientDriverLicenseIssue(s.getDriverLicenseIssueDate());
-        contract.setClientDriverLicenseExpiry(s.getDriverLicenseExpiryDate());
         if (s.getDocumentType() == com.carrental.entity.DocumentType.CIN) {
             contract.setClientCin(s.getDocumentNumber());
         } else if (s.getDocumentType() == com.carrental.entity.DocumentType.PASSPORT) {
@@ -295,9 +505,14 @@ public class ClientInformationRequestService {
 
     // ── Public: get / submit ─────────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PublicClientInformationView getPublic(String rawToken) {
         ClientInformationRequest r = findValidByRawToken(rawToken, false);
+        if (r.getOpenedAt() == null && (r.getStatus() == ClientInfoRequestStatus.SENT)) {
+            r.setOpenedAt(LocalDateTime.now());
+            r.setStatus(ClientInfoRequestStatus.OPENED);
+            requestRepository.save(r);
+        }
         Tenant tenant = tenantRepository.findById(r.getTenantId()).orElse(null);
         return PublicClientInformationView.builder()
                 .temporaryName(r.getTemporaryName())
@@ -329,7 +544,31 @@ public class ClientInformationRequestService {
                 Notification.NotificationType.INFORMATION,
                 r.getContractId(), r.getTenantId());
 
+        sendSubmissionConfirmation(r, submission);
+
         log.info("[CLIENT_INFO] submission received tenantId={} tokenPrefix={}...", r.getTenantId(), maskToken(rawToken));
+    }
+
+    /** Best-effort confirmation to the client that their submission was received — never blocks the submit call. */
+    private void sendSubmissionConfirmation(ClientInformationRequest r, ClientInformationSubmitRequest submission) {
+        try {
+            if (StringUtils.hasText(submission.getEmail())) {
+                String lang = StringUtils.hasText(r.getPreferredLanguage()) ? r.getPreferredLanguage() : "fr";
+                String subject = switch (lang) {
+                    case "ar" -> "تم استلام معلوماتك";
+                    case "en" -> "Your information was received";
+                    default -> "Vos informations ont bien été reçues";
+                };
+                String body = switch (lang) {
+                    case "ar" -> "شكراً " + submission.getFullName() + "، تم استلام معلوماتك بنجاح وهي الآن قيد المراجعة من طرف الوكالة.";
+                    case "en" -> "Thank you " + submission.getFullName() + ", your information was received successfully and is now under review by the agency.";
+                    default -> "Merci " + submission.getFullName() + ", vos informations ont bien été reçues et sont en cours de vérification par l'agence.";
+                };
+                emailService.sendCustomerSuccessEmail(submission.getEmail(), subject, body);
+            }
+        } catch (Exception e) {
+            log.warn("[CLIENT_INFO] submission confirmation send failed tenantId={} reason={}", r.getTenantId(), e.getMessage());
+        }
     }
 
     /**

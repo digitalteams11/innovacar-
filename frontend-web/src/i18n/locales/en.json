@@ -764,6 +764,9 @@
       "alreadyExists": "Contract already exists for this reservation.",
       "openExistingContract": "Open existing contract"
     },
+    "fromClient": {
+      "prefilledNotice": "Client prefilled from the approved information request."
+    },
     "title": "Contracts & Agreements",
     "subtitle": "Signature, PDF, QR verification, and payment status in one legal workflow",
     "all": "All",
@@ -996,7 +999,7 @@
       "personal": "Personal information",
       "document": "Identity document",
       "address": "Address",
-      "license": "Driver license"
+      "license": "Driving licence"
     },
     "form": {
       "fullName": "Full name",
@@ -1004,20 +1007,23 @@
       "secondaryPhone": "Secondary phone",
       "email": "Email",
       "birthDate": "Date of birth",
+      "gender": "Gender",
+      "genderMale": "Male",
+      "genderFemale": "Female",
+      "genderUnspecified": "—",
       "nationality": "Nationality",
+      "companyName": "Company (optional)",
       "documentType": "Document type",
-      "documentIssueDate": "Issue date",
-      "documentExpiryDate": "Expiry date",
       "cinNumber": "CIN number",
       "passportNumber": "Passport number",
       "residencePermitNumber": "Residence permit number",
       "otherDocumentNumber": "Document number",
       "address": "Address",
       "city": "City",
+      "postalCode": "Postal code",
       "country": "Country",
-      "licenseNumber": "License number",
-      "licenseIssueDate": "Issue date",
-      "licenseExpiryDate": "Expiry date",
+      "notes": "Notes (optional)",
+      "licenseNumber": "Driving licence number",
       "requiredFields": "Please fill all required fields.",
       "invalidEmail": "Please enter a valid email address.",
       "privacyRequired": "Please accept the privacy notice to continue."
@@ -1060,21 +1066,59 @@
     "linkExisting": "Link to selected existing client",
     "createNew": "Approve & create new client",
     "revoke": "Revoke",
+    "reject": "Reject",
+    "rejected": "Request rejected.",
+    "resend": "Resend",
+    "generateAndSend": "Generate and send",
     "approvedNote": "Approved and linked.",
+    "viewClient": "View client",
+    "editClient": "Edit client",
+    "continueToReservation": "Continue to reservation",
+    "continueToContract": "Continue to contract",
     "status": {
       "SENT": "Link sent",
+      "OPENED": "Opened",
       "SUBMITTED": "Submitted",
       "APPROVED": "Approved",
+      "REJECTED": "Rejected",
       "EXPIRED": "Expired",
-      "REVOKED": "Revoked"
+      "REVOKED": "Cancelled"
     },
     "form": {
       "intro": "Enter the minimum information needed to contact the client. They will fill in the rest themselves.",
       "name": "Client name",
       "phone": "Phone number",
-      "email": "Email (optional)",
-      "required": "Please enter at least a name and phone number."
-    }
+      "email": "Email",
+      "whatsapp": "WhatsApp",
+      "required": "Please enter at least a name and phone number.",
+      "nameRequired": "Client name is required.",
+      "destinationRequired": "Enter at least a phone number or an email address.",
+      "channelsIntro": "Choose how to send the secure link to the client.",
+      "emailUnavailable": "Email not available",
+      "phoneUnavailable": "Phone number not available",
+      "selectChannel": "Select at least one delivery channel.",
+      "sending": "Generating secure link and sending…"
+    },
+    "result": {
+      "linkCreated": "Secure link created",
+      "sent": "Sent",
+      "notConfigured": "Not configured",
+      "failedRetry": "Failed — Retry",
+      "retrySuccess": "Message sent successfully.",
+      "retryFailed": "Still could not deliver. Please try again later.",
+      "expiresAt": "Expires on {{date}}"
+    },
+    "errors": {
+      "invalidPhone": "This phone number is not valid.",
+      "invalidEmail": "This email address is not valid.",
+      "noChannel": "At least a valid email or phone number is required.",
+      "tenantAccessDenied": "This client could not be found in your agency.",
+      "requestExpired": "This request has expired.",
+      "alreadySubmitted": "This information has already been submitted.",
+      "smtpNotConfigured": "Email delivery is not configured.",
+      "whatsappNotConfigured": "WhatsApp delivery is not configured."
+    },
+    "openLink": "Open link"
   },
   "invoices": {
     "title": "Invoices & Billing",

@@ -1,8 +1,8 @@
 # Translation Audit
 
-Generated: 2026-07-23T17:56:41.814Z
+Generated: 2026-07-23T21:15:37.640Z
 Scanned source files: 212
-Static translation keys used: 1988
+Static translation keys used: 2018
 
 ## Missing EN Keys (0)
 

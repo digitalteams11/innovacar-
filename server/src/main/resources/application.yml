@@ -278,6 +278,18 @@ app:
     from-email: "${EMAIL_FROM_EMAIL:}"
     from-name: "${EMAIL_FROM_NAME:RentCar}"
 
+  # ── WhatsApp delivery provider ─────────────────────────────────────────────
+  # WhatsApp Cloud API (Meta). Disabled by default — the client-information
+  # request flow falls back to email-only and reports WHATSAPP_NOT_CONFIGURED
+  # when this is off or incomplete. Never logged: access-token.
+  whatsapp:
+    enabled: "${WHATSAPP_ENABLED:false}"
+    graph-base-url: "${WHATSAPP_GRAPH_BASE_URL:}"
+    access-token: "${WHATSAPP_ACCESS_TOKEN:}"
+    phone-number-id: "${WHATSAPP_PHONE_NUMBER_ID:}"
+    template-name: "${WHATSAPP_TEMPLATE_NAME:client_information_request}"
+    template-language: "${WHATSAPP_TEMPLATE_LANGUAGE:fr}"
+
   # ── AI / Gemini ──────────────────────────────────────────────────────────────
   # Backend-only. Used only to seed the AiSettings row the first time it is
   # created — after that, Super Admin → Settings → AI & Automation (stored

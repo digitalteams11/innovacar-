@@ -30,13 +30,13 @@ public class ClientInformationSubmitRequest {
     private String nationality;
 
     // ── Identity document (one selector, one number — spec section 6) ──
+    // Deliberately no issue/expiry dates: the client-facing form only ever
+    // collects the document number itself — dates (if an agency needs them
+    // at all) are captured later through the admin's own Client record.
     @NotNull
     private DocumentType documentType;
     @NotBlank
     private String documentNumber;
-    private LocalDate documentIssueDate;
-    private LocalDate documentExpiryDate;
-    private String documentIssuingCountry;
 
     // ── Address ──────────────────────────────────────────────────────────
     private String address;
@@ -45,11 +45,8 @@ public class ClientInformationSubmitRequest {
     private String country;
 
     // ── Driver license ───────────────────────────────────────────────────
+    // Single field, no dates — same reasoning as the identity document above.
     private String driverLicenseNumber;
-    private String driverLicenseCategory;
-    private LocalDate driverLicenseIssueDate;
-    private LocalDate driverLicenseExpiryDate;
-    private String driverLicenseCountry;
 
     // ── Optional ─────────────────────────────────────────────────────────
     private String companyName;

@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,6 +53,8 @@ class ClientInformationRequestServiceTest {
     @Mock private ContractRepository contractRepository;
     @Mock private TenantRepository tenantRepository;
     @Mock private NotificationService notificationService;
+    @Mock private EmailService emailService;
+    @Mock private WhatsAppMessagingService whatsAppMessagingService;
 
     private ClientInformationRequestService service;
     private Tenant tenant;
@@ -63,8 +66,14 @@ class ClientInformationRequestServiceTest {
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         service = new ClientInformationRequestService(
                 requestRepository, clientRepository, identityDocumentRepository,
-                contractRepository, tenantRepository, notificationService, objectMapper);
+                contractRepository, tenantRepository, notificationService, objectMapper,
+                emailService, whatsAppMessagingService);
         ReflectionTestUtils.setField(service, "frontendUrl", "https://innovacar.app");
+
+        lenient().when(emailService.sendClientInformationRequestEmail(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null));
+        lenient().when(whatsAppMessagingService.send(any(), any()))
+                .thenReturn(new WhatsAppMessagingService.WhatsAppResult(true, true, "WhatsApp Cloud API", null, null));
     }
 
     @AfterEach
@@ -100,7 +109,8 @@ class ClientInformationRequestServiceTest {
         assertThat(response.getStatus()).isEqualTo(ClientInfoRequestStatus.SENT);
 
         ArgumentCaptor<ClientInformationRequest> captor = ArgumentCaptor.forClass(ClientInformationRequest.class);
-        verify(requestRepository).save(captor.capture());
+        // Saved once on creation, once more after recording the delivery outcome.
+        verify(requestRepository, times(2)).save(captor.capture());
         // Only the hash is ever persisted — never the raw token.
         assertThat(captor.getValue().getTokenHash()).hasSize(64).doesNotContain("/#/client-info/");
     }
@@ -301,5 +311,157 @@ class ClientInformationRequestServiceTest {
                 .isInstanceOf(ClientInfoRequestException.class)
                 .extracting(e -> ((ClientInfoRequestException) e).getCode())
                 .isEqualTo("CLIENT_INFO_ALREADY_APPROVED");
+    }
+
+    // ── Delivery scenarios ───────────────────────────────────────────────────
+
+    @Test
+    void moroccanPhoneNumbersAreNormalizedToE164() {
+        assertThat(com.carrental.service.ClientInformationRequestService.normalizeMoroccanPhone("0658742744")).isEqualTo("+212658742744");
+        assertThat(com.carrental.service.ClientInformationRequestService.normalizeMoroccanPhone("212658742744")).isEqualTo("+212658742744");
+        assertThat(com.carrental.service.ClientInformationRequestService.normalizeMoroccanPhone("+212658742744")).isEqualTo("+212658742744");
+        assertThat(com.carrental.service.ClientInformationRequestService.normalizeMoroccanPhone("12345")).isNull();
+    }
+
+    @Test
+    void createRejectsAnInvalidPhoneNumber() {
+        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
+        req.setTemporaryName("Sara");
+        req.setPhone("123");
+
+        assertThatThrownBy(() -> service.create(req))
+                .isInstanceOf(ClientInfoRequestException.class)
+                .extracting(e -> ((ClientInfoRequestException) e).getCode())
+                .isEqualTo("INVALID_PHONE");
+    }
+
+    @Test
+    void createRejectsAnInvalidEmail() {
+        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
+        req.setTemporaryName("Sara");
+        req.setEmail("not-an-email");
+
+        assertThatThrownBy(() -> service.create(req))
+                .isInstanceOf(ClientInfoRequestException.class)
+                .extracting(e -> ((ClientInfoRequestException) e).getCode())
+                .isEqualTo("INVALID_EMAIL");
+    }
+
+    @Test
+    void createRequiresAtLeastOneDeliveryDestination() {
+        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
+        req.setTemporaryName("Sara");
+
+        assertThatThrownBy(() -> service.create(req))
+                .isInstanceOf(ClientInfoRequestException.class)
+                .extracting(e -> ((ClientInfoRequestException) e).getCode())
+                .isEqualTo("NO_CHANNEL_AVAILABLE");
+    }
+
+    @Test
+    void createSendsBothEmailAndWhatsappWhenBothDestinationsArePresent() {
+        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
+        req.setTemporaryName("Sara");
+        req.setPhone("0658742744");
+        req.setEmail("sara@example.com");
+        when(requestRepository.save(any())).thenAnswer(inv -> {
+            ClientInformationRequest r = inv.getArgument(0);
+            r.setId(20L);
+            return r;
+        });
+
+        ClientInformationRequestResponse response = service.create(req);
+
+        assertThat(response.getEmailResult().isSent()).isTrue();
+        assertThat(response.getWhatsappResult().isSent()).isTrue();
+        verify(emailService).sendClientInformationRequestEmail(eq("sara@example.com"), any(), any(), any(), any(), any());
+        verify(whatsAppMessagingService).send(eq("+212658742744"), any());
+    }
+
+    @Test
+    void createReportsPartialSuccessWhenWhatsappFailsButEmailSucceeds() {
+        when(whatsAppMessagingService.send(any(), any()))
+                .thenReturn(new WhatsAppMessagingService.WhatsAppResult(false, true, "WhatsApp Cloud API", "boom", "WHATSAPP_API_SEND_FAILED"));
+        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
+        req.setTemporaryName("Sara");
+        req.setPhone("0658742744");
+        req.setEmail("sara@example.com");
+        when(requestRepository.save(any())).thenAnswer(inv -> {
+            ClientInformationRequest r = inv.getArgument(0);
+            r.setId(21L);
+            return r;
+        });
+
+        ClientInformationRequestResponse response = service.create(req);
+
+        assertThat(response.getEmailResult().isSent()).isTrue();
+        assertThat(response.getWhatsappResult().isSent()).isFalse();
+        // Partial failure never rolls back the request itself.
+        verify(requestRepository, times(2)).save(any());
+    }
+
+    @Test
+    void whatsappNotConfiguredIsReportedDistinctlyFromAFailure() {
+        when(whatsAppMessagingService.send(any(), any()))
+                .thenReturn(WhatsAppMessagingService.WhatsAppResult.notConfigured("WhatsApp Cloud API", "not set up"));
+        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
+        req.setTemporaryName("Sara");
+        req.setPhone("0658742744");
+        when(requestRepository.save(any())).thenAnswer(inv -> {
+            ClientInformationRequest r = inv.getArgument(0);
+            r.setId(22L);
+            return r;
+        });
+
+        ClientInformationRequestResponse response = service.create(req);
+
+        assertThat(response.getWhatsappResult().getStatus()).isEqualTo(com.carrental.entity.DeliveryStatus.NOT_CONFIGURED);
+    }
+
+    @Test
+    void createBlocksCrossTenantClientAccess() {
+        when(clientRepository.findByIdAndTenantId(999L, 1L)).thenReturn(Optional.empty());
+        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
+        req.setClientId(999L);
+        req.setTemporaryName("Sara");
+        req.setPhone("0658742744");
+
+        assertThatThrownBy(() -> service.create(req))
+                .isInstanceOf(ClientInfoRequestException.class)
+                .extracting(e -> ((ClientInfoRequestException) e).getCode())
+                .isEqualTo("TENANT_ACCESS_DENIED");
+    }
+
+    @Test
+    void resendRetriesOnlyTheRequestedChannel() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(30L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
+                .phone("+212658742744").email("sara@example.com")
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        when(requestRepository.findByIdAndTenantId(30L, 1L)).thenReturn(Optional.of(r));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ClientInformationRequestResponse response = service.resend(30L, List.of("WHATSAPP"));
+
+        assertThat(response.getWhatsappResult().isSent()).isTrue();
+        assertThat(response.getEmailResult().isAttempted()).isFalse();
+        verify(emailService, never()).sendClientInformationRequestEmail(any(), any(), any(), any(), any(), any());
+        verify(whatsAppMessagingService).send(eq("+212658742744"), any());
+    }
+
+    @Test
+    void expiredRequestIsRejectedOnResend() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(31L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
+                .phone("+212658742744")
+                .expiresAt(LocalDateTime.now().minusHours(1))
+                .build();
+        when(requestRepository.findByIdAndTenantId(31L, 1L)).thenReturn(Optional.of(r));
+
+        assertThatThrownBy(() -> service.resend(31L, null))
+                .isInstanceOf(ClientInfoRequestException.class)
+                .extracting(e -> ((ClientInfoRequestException) e).getCode())
+                .isEqualTo("REQUEST_EXPIRED");
     }
 }

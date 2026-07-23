@@ -3,6 +3,7 @@ package com.carrental.controller;
 import com.carrental.dto.clientinfo.ApproveClientInformationRequest;
 import com.carrental.dto.clientinfo.ClientInformationRequestResponse;
 import com.carrental.dto.clientinfo.CreateClientInformationRequestRequest;
+import com.carrental.dto.clientinfo.ResendClientInformationRequest;
 import com.carrental.service.ClientInformationRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,10 +47,29 @@ public class ClientInformationRequestController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("@rolePermissionService.has('EDIT_CLIENT')")
+    public ResponseEntity<ClientInformationRequestResponse> reject(@PathVariable Long id) {
+        return ResponseEntity.ok(service.reject(id));
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("@rolePermissionService.has('EDIT_CLIENT')")
     public ResponseEntity<ClientInformationRequestResponse> approve(
             @PathVariable Long id, @Valid @RequestBody ApproveClientInformationRequest req) {
         return ResponseEntity.ok(service.approve(id, req));
+    }
+
+    @PostMapping("/{id}/resend")
+    @PreAuthorize("@rolePermissionService.has('CREATE_CLIENT')")
+    public ResponseEntity<ClientInformationRequestResponse> resend(
+            @PathVariable Long id, @RequestBody(required = false) ResendClientInformationRequest req) {
+        List<String> channels = req != null ? req.getChannels() : null;
+        return ResponseEntity.ok(service.resend(id, channels));
+    }
+
+    @GetMapping("/{id}/delivery-status")
+    public ResponseEntity<ClientInformationRequestResponse> deliveryStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(service.deliveryStatus(id));
     }
 }
