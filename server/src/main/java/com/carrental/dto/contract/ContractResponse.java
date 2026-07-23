@@ -84,8 +84,6 @@ public class ContractResponse {
     private String returnAgent;
     private Integer rentalDays;
     private Integer extraHours;
-    private Integer allowedMileage;
-    private BigDecimal extraMileageCost;
     private BigDecimal deliveryFees;
     private BigDecimal returnFees;
     private BigDecimal lateFees;
@@ -107,12 +105,10 @@ public class ContractResponse {
     private LocalDate paymentDate;
     private String invoiceNumber;
 
-    // Fuel & Mileage
+    // Fuel
     private String fuelType;
     private String fuelLevelStart;
     private String fuelLevelEnd;
-    private Integer mileageStart;
-    private Integer mileageEnd;
 
     // Signatures
     private Boolean clientSigned;
@@ -210,8 +206,6 @@ public class ContractResponse {
                 .returnAgent(contract.getReturnAgent())
                 .rentalDays(contract.getRentalDays())
                 .extraHours(contract.getExtraHours())
-                .allowedMileage(contract.getAllowedMileage())
-                .extraMileageCost(contract.getExtraMileageCost())
                 .deliveryFees(contract.getDeliveryFees())
                 .returnFees(contract.getReturnFees())
                 .lateFees(contract.getLateFees())
@@ -233,8 +227,6 @@ public class ContractResponse {
                 .fuelType(contract.getFuelType())
                 .fuelLevelStart(contract.getFuelLevelStart())
                 .fuelLevelEnd(contract.getFuelLevelEnd())
-                .mileageStart(contract.getMileageStart())
-                .mileageEnd(contract.getMileageEnd())
                 .clientSigned(contract.getClientSignature() != null && !contract.getClientSignature().isEmpty())
                 .ownerSigned(contract.getOwnerSignature() != null && !contract.getOwnerSignature().isEmpty())
                 .employeeSigned(contract.getEmployeeSignature() != null && !contract.getEmployeeSignature().isEmpty())

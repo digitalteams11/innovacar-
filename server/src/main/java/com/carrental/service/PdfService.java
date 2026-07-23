@@ -188,8 +188,6 @@ public class PdfService {
         field(table, "Modele / Type", c.getVehicleModel());
         field(table, "Matricule", c.getVehicleRegistration());
         field(table, "Carburant", value(c.getFuelType(), c.getFuelLevelStart()));
-        field(table, "Kilometrage depart", integer(c.getMileageStart()));
-        field(table, "Kilometrage retour", integer(c.getMileageEnd()));
 
         section(table, "DEPART");
         field(table, "Date", date(valueDate(c.getPickupDate(), c.getStartDate())));
@@ -200,20 +198,16 @@ public class PdfService {
         field(table, "Date", date(valueDate(c.getReturnDate(), c.getEndDate())));
         field(table, "Heure", time(c.getReturnTime()));
         field(table, "Lieu", value(c.getReturnLocation(), c.getReturnAgency()));
+        BigDecimal deliveryAndCollection = sum(c.getDeliveryFees(), c.getReturnFees());
+        if (deliveryAndCollection != null && deliveryAndCollection.signum() > 0) {
+            field(table, "Frais livraison / reprise", money(deliveryAndCollection));
+        }
 
-        section(table, "PROLONGATION");
-        field(table, "Du", "");
-        field(table, "Au", "");
-        field(table, "Lieu de depart", "");
-        field(table, "Lieu de retour", "");
-        field(table, "Frais livraison / reprise", money(sum(c.getDeliveryFees(), c.getReturnFees())));
-
-        section(table, "CHANGEMENT DE VEHICULE");
-        field(table, "Marque", "");
-        field(table, "Type", "");
-        field(table, "Matricule", "");
-        field(table, "Carburant", "");
-        field(table, "Date / Heure / Lieu", "");
+        // PROLONGATION and CHANGEMENT DE VEHICULE are intentionally omitted here:
+        // there is no extension/replacement data model on Contract yet, so these
+        // sections would always render as empty placeholder rows on every single
+        // contract — exactly what a real agency contract must never do. Add them
+        // back once real extension/replacement fields exist to render from.
         return table;
     }
 

@@ -76,9 +76,8 @@ interface ContractDetail {
   paymentMethod: string;
   paymentStatus: string;
 
-  // Fuel & Mileage
+  // Fuel
   fuelLevelStart: string;
-  mileageStart: number;
 
   // Signatures
   clientSigned: boolean;
@@ -1154,7 +1153,6 @@ export default function ContractDetails() {
                 <InfoRow label="Transmission" value={contract.vehicleTransmission} />
                 <InfoRow label="Fuel Type" value={contract.fuelType} />
                 <InfoRow label="Fuel Level" value={contract.fuelLevelStart} />
-                <InfoRow label="Mileage Start" value={contract.mileageStart?.toString()} />
               </div>
             </div>
           )}

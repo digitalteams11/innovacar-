@@ -46,7 +46,6 @@ interface PublicContractData {
   fuelCharges?: number;
   discountAmount?: number;
   fuelLevel?: string;
-  mileageStart?: number;
   clientSigned?: boolean;
   ownerSigned?: boolean;
   termsAccepted?: boolean;

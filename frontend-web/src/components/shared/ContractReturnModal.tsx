@@ -39,7 +39,6 @@ export default function ContractReturnModal({
   const [conditionEndNote, setConditionEndNote] = useState('');
   const [damageEndNote, setDamageEndNote] = useState('');
   const [extraFuelFee, setExtraFuelFee] = useState(0);
-  const [extraMileageFee, setExtraMileageFee] = useState(0);
   const [damageFee, setDamageFee] = useState(0);
 
   const fuelWarning = fuelLevelStart
@@ -58,7 +57,6 @@ export default function ContractReturnModal({
         conditionEndNote: conditionEndNote || null,
         damageEndNote: damageEndNote || null,
         extraFuelFee: extraFuelFee > 0 ? extraFuelFee : null,
-        extraMileageFee: extraMileageFee > 0 ? extraMileageFee : null,
         damageFee: damageFee > 0 ? damageFee : null,
       });
       showToast('Vehicle returned successfully. Contract completed.', 'success');
@@ -130,10 +128,14 @@ export default function ContractReturnModal({
             )}
           </div>
 
-          {/* Mileage */}
+          {/* Mileage — kept here on purpose: this value only updates the vehicle's
+              own fleet-mileage tracker (Vehicle.mileageCurrent) so odometer
+              history keeps working. It is never stored on or shown in the
+              contract/PDF itself — that was removed as a deliberate business
+              decision (Moroccan rental contracts here no longer use mileage). */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-              <Gauge size={12} /> Mileage at Return
+              <Gauge size={12} /> Mileage at Return (fleet record only)
             </label>
             <input
               type="number"
@@ -177,10 +179,9 @@ export default function ContractReturnModal({
           {/* Optional fees */}
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Optional Fees (MAD)</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'Fuel Charge', val: extraFuelFee, set: setExtraFuelFee },
-                { label: 'Mileage Fee', val: extraMileageFee, set: setExtraMileageFee },
                 { label: 'Damage Fee', val: damageFee, set: setDamageFee },
               ].map(f => (
                 <div key={f.label} className="space-y-1">

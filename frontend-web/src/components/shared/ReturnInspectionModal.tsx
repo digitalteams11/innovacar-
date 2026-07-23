@@ -25,7 +25,6 @@ export default function ReturnInspectionModal({
   const [fuelLevel, setFuelLevel] = useState('Full');
   const [interiorCondition, setInteriorCondition] = useState('Clean');
   const [exteriorCondition, setExteriorCondition] = useState('Clean');
-  const [mileageEnd, setMileageEnd] = useState('');
   const [missingItems, setMissingItems] = useState('');
 
   const [damageCost, setDamageCost] = useState(0);
@@ -53,7 +52,6 @@ export default function ReturnInspectionModal({
         otherDeduction: otherCharge,
         returnNotes,
         fuelLevelEnd: fuelLevel,
-        mileageEnd: mileageEnd ? parseInt(mileageEnd) : null,
         interiorCondition,
         exteriorCondition,
         missingItems,
@@ -104,12 +102,6 @@ export default function ReturnInspectionModal({
                   <option>1/4</option>
                   <option>Empty</option>
                 </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-500">Mileage End</label>
-                <input type="number" value={mileageEnd} onChange={(e) => setMileageEnd(e.target.value)}
-                  placeholder="Enter final mileage"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-500">Interior Condition</label>

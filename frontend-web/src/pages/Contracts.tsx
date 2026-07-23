@@ -781,7 +781,6 @@ export default function Contracts() {
         deliveryFees: selectedVehicle.deliveryFees || 0,
         discountAmount: calculateDiscountAmount(),
         fuelLevelStart: 'Full',
-        mileageStart: 0,
         notes,
         additionalDrivers: additionalDrivers.length > 0 ? additionalDrivers.filter(d => d.fullName) : undefined,
         documents: documents.filter((d: any) => d.isPresent).map((d: any) => ({

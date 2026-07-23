@@ -216,12 +216,6 @@ public class Contract {
     @Column(name = "extra_hours")
     private Integer extraHours;
 
-    @Column(name = "allowed_mileage")
-    private Integer allowedMileage;
-
-    @Column(name = "extra_mileage_cost", precision = 10, scale = 2)
-    private BigDecimal extraMileageCost;
-
     @Column(name = "delivery_fees", precision = 10, scale = 2)
     private BigDecimal deliveryFees;
 
@@ -279,7 +273,11 @@ public class Contract {
     @Column(name = "invoice_number", length = 50)
     private String invoiceNumber;
 
-    // ── Fuel & Mileage ───────────────────────────────────────────────────────
+    // ── Fuel ─────────────────────────────────────────────────────────────────
+    // Mileage was deliberately removed from the contract module (V67) — the
+    // Moroccan rental contract this app generates no longer requires or
+    // displays odometer readings. Vehicle.mileageCurrent (fleet tracking) is
+    // untouched and still updated directly from the return-inspection flow.
 
     @Column(name = "fuel_type", length = 20)
     private String fuelType;
@@ -289,12 +287,6 @@ public class Contract {
 
     @Column(name = "fuel_level_end", length = 20)
     private String fuelLevelEnd;
-
-    @Column(name = "mileage_start")
-    private Integer mileageStart;
-
-    @Column(name = "mileage_end")
-    private Integer mileageEnd;
 
     @Column(name = "condition_start_note", columnDefinition = "TEXT")
     private String conditionStartNote;

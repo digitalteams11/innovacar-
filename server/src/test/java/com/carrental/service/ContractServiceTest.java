@@ -219,4 +219,58 @@ class ContractServiceTest {
                 .isEqualTo("/api/public/contracts/60/tok-xyz789/pdf")
                 .isNotEqualTo(contract.getPdfUrl());
     }
+
+    /**
+     * Business decision: mileage was removed entirely from the contract module
+     * (form/PDF/details/DTOs) — this is a compile-time guarantee (the fields
+     * genuinely don't exist on Contract/ContractResponse/PublicContractResponse
+     * any more), but reflection makes the intent explicit and catches anyone
+     * re-adding a mileage field to the Contract entity by mistake later.
+     */
+    @Test
+    void contractEntityHasNoMileageFields() {
+        for (String name : new String[]{"mileageStart", "mileageEnd", "allowedMileage", "extraMileageCost"}) {
+            assertThat(java.util.Arrays.stream(Contract.class.getDeclaredFields()).map(java.lang.reflect.Field::getName))
+                    .as("Contract should not declare a '%s' field — mileage was removed from the contract module", name)
+                    .doesNotContain(name);
+        }
+    }
+
+    /**
+     * The vehicle's own fleet-mileage tracker (Vehicle.mileageCurrent) must be
+     * completely unaffected by the contract-mileage removal — this is the
+     * explicit "do not touch vehicle/maintenance mileage" requirement.
+     */
+    @Test
+    void vehicleEntityStillHasFleetMileageField() {
+        assertThat(java.util.Arrays.stream(Vehicle.class.getDeclaredFields()).map(java.lang.reflect.Field::getName))
+                .as("Vehicle.mileageCurrent must remain — fleet mileage tracking is a separate concern from the contract")
+                .contains("mileageCurrent");
+    }
+
+    /**
+     * Regression test for the return-inspection flow: the odometer reading
+     * captured in the "Vehicle Return Inspection" modal must still update the
+     * vehicle's fleet mileage record, even though the contract itself no
+     * longer stores or exposes mileage at all.
+     */
+    @Test
+    void returnInspectionUpdatesVehicleFleetMileageButNotTheContract() {
+        Contract contract = Contract.builder()
+                .id(70L).contractNumber("CTR-2026-00070").tenant(tenant).vehicle(vehicle)
+                .fuelLevelStart("FULL").status(ContractStatus.ACTIVE)
+                .build();
+        when(contractRepository.findByIdAndTenantId(70L, 1L)).thenReturn(Optional.of(contract));
+        when(vehicleRepository.findByIdAndTenantId(3L, 1L)).thenReturn(Optional.of(vehicle));
+        when(contractRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.carrental.dto.contract.ReturnInspectionRequest req = new com.carrental.dto.contract.ReturnInspectionRequest();
+        req.setFuelLevelEnd("HALF");
+        req.setMileageEnd(15000);
+
+        contractService.processReturnInspection(70L, req);
+
+        assertThat(vehicle.getMileageCurrent()).isEqualTo(15000);
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.COMPLETED);
+    }
 }

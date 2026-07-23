@@ -76,8 +76,6 @@ public class UpdateContractRequest {
     private String returnAgent;
     private Integer rentalDays;
     private Integer extraHours;
-    private Integer allowedMileage;
-    private BigDecimal extraMileageCost;
     private BigDecimal deliveryFees;
     private BigDecimal returnFees;
     private BigDecimal lateFees;
@@ -99,12 +97,10 @@ public class UpdateContractRequest {
     private LocalDate paymentDate;
     private String invoiceNumber;
 
-    // Fuel & Mileage
+    // Fuel
     private String fuelType;
     private String fuelLevelStart;
     private String fuelLevelEnd;
-    private Integer mileageStart;
-    private Integer mileageEnd;
 
     // Related
     private List<AdditionalDriverDto> additionalDrivers;

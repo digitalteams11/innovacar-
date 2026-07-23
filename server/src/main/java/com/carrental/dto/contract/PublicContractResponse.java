@@ -60,8 +60,6 @@ public class PublicContractResponse {
     private String pickupAgency;
     private String returnAgency;
     private Integer rentalDays;
-    private Integer allowedMileage;
-    private BigDecimal extraMileageCost;
     private BigDecimal deliveryFees;
     private BigDecimal returnFees;
     private BigDecimal lateFees;
@@ -80,12 +78,10 @@ public class PublicContractResponse {
     private BigDecimal discountAmount;
     private String paymentMethod;
 
-    // Fuel & Mileage
+    // Fuel
     private String fuelType;
     private String fuelLevelStart;
     private String fuelLevelEnd;
-    private Integer mileageStart;
-    private Integer mileageEnd;
 
     // Signing status
     private Boolean clientSigned;

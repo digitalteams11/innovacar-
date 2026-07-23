@@ -267,8 +267,6 @@ public class ContractService {
                 .fuelType(request.getFuelType())
                 .fuelLevelStart(request.getFuelLevelStart())
                 .fuelLevelEnd(request.getFuelLevelEnd())
-                .mileageStart(request.getMileageStart())
-                .mileageEnd(request.getMileageEnd())
                 .notes(request.getNotes())
                 .tenant(tenant)
                 .termsAccepted(false);
@@ -369,8 +367,6 @@ public class ContractService {
         builder.rentalDays(request.getRentalDays() != null
                 ? request.getRentalDays() : calculatedRentalDays);
         builder.extraHours(request.getExtraHours());
-        builder.allowedMileage(request.getAllowedMileage());
-        builder.extraMileageCost(request.getExtraMileageCost());
         builder.returnFees(request.getReturnFees());
         builder.lateFees(request.getLateFees());
         builder.cleaningFees(request.getCleaningFees());
@@ -1017,8 +1013,6 @@ public class ContractService {
         updateField(request.getReturnAgent(), contract::setReturnAgent);
         if (request.getRentalDays() != null) contract.setRentalDays(request.getRentalDays());
         if (request.getExtraHours() != null) contract.setExtraHours(request.getExtraHours());
-        if (request.getAllowedMileage() != null) contract.setAllowedMileage(request.getAllowedMileage());
-        updateField(request.getExtraMileageCost(), contract::setExtraMileageCost);
         updateField(request.getDeliveryFees(), contract::setDeliveryFees);
         updateField(request.getReturnFees(), contract::setReturnFees);
         updateField(request.getLateFees(), contract::setLateFees);
@@ -1052,8 +1046,6 @@ public class ContractService {
         updateField(request.getFuelType(), contract::setFuelType);
         updateField(request.getFuelLevelStart(), contract::setFuelLevelStart);
         updateField(request.getFuelLevelEnd(), contract::setFuelLevelEnd);
-        if (request.getMileageStart() != null) contract.setMileageStart(request.getMileageStart());
-        if (request.getMileageEnd() != null) contract.setMileageEnd(request.getMileageEnd());
 
         updateField(request.getNotes(), contract::setNotes);
 
@@ -1622,23 +1614,25 @@ public class ContractService {
     }
 
     /**
-     * Process vehicle return: save end fuel/mileage/condition, release vehicle, complete contract.
-     * Returns comparison info (fuel diff, mileage diff) for the frontend to display warnings.
+     * Process vehicle return: save end fuel/condition, release vehicle, complete contract.
+     * Mileage is accepted only to update the vehicle's own fleet-mileage tracker (see
+     * below) — never stored on or exposed from the contract itself. Returns comparison
+     * info (fuel diff) for the frontend to display warnings.
      */
     @Transactional
     public Map<String, Object> processReturnInspection(Long id, com.carrental.dto.contract.ReturnInspectionRequest req) {
         Contract contract = fetchContractInTenant(id);
 
         String fuelStart = contract.getFuelLevelStart();
-        Integer mileStart = contract.getMileageStart();
 
-        // Save end condition on contract
+        // Save end condition on contract. Mileage is deliberately NOT stored on the
+        // contract (removed from the contract module entirely — see V67 migration);
+        // it's only forwarded below to the vehicle's own fleet-mileage tracker, which
+        // is a protected, separate concern from the rental contract/PDF.
         if (req.getFuelLevelEnd() != null) contract.setFuelLevelEnd(req.getFuelLevelEnd());
-        if (req.getMileageEnd() != null) contract.setMileageEnd(req.getMileageEnd());
         if (req.getConditionEndNote() != null) contract.setConditionEndNote(req.getConditionEndNote());
         if (req.getDamageEndNote() != null) contract.setDamageEndNote(req.getDamageEndNote());
         if (req.getExtraFuelFee() != null) contract.setFuelCharges(req.getExtraFuelFee());
-        if (req.getExtraMileageFee() != null) contract.setLateFees(req.getExtraMileageFee());
         if (req.getDamageFee() != null) {
             java.math.BigDecimal existing = contract.getReturnFees() != null ? contract.getReturnFees() : java.math.BigDecimal.ZERO;
             contract.setReturnFees(existing.add(req.getDamageFee()));
@@ -1675,14 +1669,8 @@ public class ContractService {
         result.put("status", saved.getStatus());
         result.put("fuelLevelStart", fuelStart);
         result.put("fuelLevelEnd", req.getFuelLevelEnd());
-        result.put("mileageStart", mileStart);
-        result.put("mileageEnd", req.getMileageEnd());
-        if (mileStart != null && req.getMileageEnd() != null) {
-            result.put("mileageDriven", req.getMileageEnd() - mileStart);
-        }
         result.put("fuelWarning", fuelLevelLower(fuelStart, req.getFuelLevelEnd()));
         result.put("extraFuelFee", req.getExtraFuelFee());
-        result.put("extraMileageFee", req.getExtraMileageFee());
         result.put("damageFee", req.getDamageFee());
         return result;
     }
@@ -1796,8 +1784,6 @@ public class ContractService {
                 .pickupAgency(contract.getPickupAgency())
                 .returnAgency(contract.getReturnAgency())
                 .rentalDays(contract.getRentalDays())
-                .allowedMileage(contract.getAllowedMileage())
-                .extraMileageCost(contract.getExtraMileageCost())
                 .deliveryFees(contract.getDeliveryFees())
                 .returnFees(contract.getReturnFees())
                 .lateFees(contract.getLateFees())
@@ -1816,8 +1802,6 @@ public class ContractService {
                 .fuelType(contract.getFuelType())
                 .fuelLevelStart(contract.getFuelLevelStart())
                 .fuelLevelEnd(contract.getFuelLevelEnd())
-                .mileageStart(contract.getMileageStart())
-                .mileageEnd(contract.getMileageEnd())
                 .clientSigned(contract.getClientSignature() != null && !contract.getClientSignature().isEmpty())
                 .ownerSigned(contract.getOwnerSignature() != null && !contract.getOwnerSignature().isEmpty())
                 .employeeSigned(contract.getEmployeeSignature() != null && !contract.getEmployeeSignature().isEmpty())
@@ -2125,7 +2109,6 @@ public class ContractService {
                 .remainingAmount(totalPrice)
                 .paymentStatus("pending")
                 .fuelLevelStart("Full")
-                .mileageStart(0)
                 .notes(reservation.getNotes())
                 .tenant(tenant)
                 .termsAccepted(false)
