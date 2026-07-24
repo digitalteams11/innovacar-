@@ -66,7 +66,6 @@ public class ClientInformationRequestService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final EmailService emailService;
-    private final WhatsAppMessagingService whatsAppMessagingService;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -110,11 +109,14 @@ public class ClientInformationRequestService {
                     "This email address is not valid.");
         }
 
-        Set<String> channels = resolveDeliveryChannels(req.getDeliveryChannels(), normalizedPhone, email);
-        if (channels.isEmpty()) {
+        if (!StringUtils.hasText(normalizedPhone) && !StringUtils.hasText(email)) {
             throw new ClientInfoRequestException("NO_CHANNEL_AVAILABLE", HttpStatus.BAD_REQUEST,
                     "At least a valid email or phone number is required to send the form.");
         }
+        // Email is the only channel the backend auto-sends; WhatsApp is a manual,
+        // client-side share action (wa.me link) built by the frontend — no
+        // provider, credentials or webhook required on this side.
+        Set<String> channels = resolveDeliveryChannels(req.getDeliveryChannels(), email);
 
         String rawToken = generateRawToken();
         int hours = req.getExpiresInHours() != null && req.getExpiresInHours() > 0 ? req.getExpiresInHours() : DEFAULT_EXPIRY_HOURS;
@@ -143,17 +145,14 @@ public class ClientInformationRequestService {
         String agencyName = tenant != null ? tenant.getName() : null;
 
         ClientInformationRequestResponse.DeliveryResult emailResult = deliverEmail(saved, channels, publicUrl, agencyName);
-        ClientInformationRequestResponse.DeliveryResult whatsappResult = deliverWhatsapp(saved, channels, publicUrl, agencyName);
 
         saved.setEmailDeliveryStatus(emailResult.getStatus());
-        saved.setWhatsappDeliveryStatus(whatsappResult.getStatus());
         requestRepository.save(saved);
 
         ClientInformationRequestResponse response = ClientInformationRequestResponse.from(saved);
         response.setSecureLink(publicUrl);
         response.setPublicUrl(publicUrl);
         response.setEmailResult(emailResult);
-        response.setWhatsappResult(whatsappResult);
         return response;
     }
 
@@ -170,11 +169,11 @@ public class ClientInformationRequestService {
             throw new ClientInfoRequestException("REQUEST_EXPIRED", HttpStatus.GONE, "This request has expired.");
         }
 
-        Set<String> channels = resolveDeliveryChannels(requestedChannels, r.getPhone(), r.getEmail());
-        if (channels.isEmpty()) {
+        if (!StringUtils.hasText(r.getPhone()) && !StringUtils.hasText(r.getEmail())) {
             throw new ClientInfoRequestException("NO_CHANNEL_AVAILABLE", HttpStatus.BAD_REQUEST,
                     "At least a valid email or phone number is required to resend the form.");
         }
+        Set<String> channels = resolveDeliveryChannels(requestedChannels, r.getEmail());
 
         // A fresh raw token is generated on every resend — the old link is invalidated,
         // consistent with "single-purpose, unusable after ..." token rules.
@@ -187,12 +186,8 @@ public class ClientInformationRequestService {
         ClientInformationRequestResponse.DeliveryResult emailResult = channels.contains("EMAIL")
                 ? deliverEmail(r, channels, publicUrl, agencyName)
                 : ClientInformationRequestResponse.DeliveryResult.builder().attempted(false).sent(false).status(r.getEmailDeliveryStatus()).build();
-        ClientInformationRequestResponse.DeliveryResult whatsappResult = channels.contains("WHATSAPP")
-                ? deliverWhatsapp(r, channels, publicUrl, agencyName)
-                : ClientInformationRequestResponse.DeliveryResult.builder().attempted(false).sent(false).status(r.getWhatsappDeliveryStatus()).build();
 
         if (channels.contains("EMAIL")) r.setEmailDeliveryStatus(emailResult.getStatus());
-        if (channels.contains("WHATSAPP")) r.setWhatsappDeliveryStatus(whatsappResult.getStatus());
         if (r.getStatus() == ClientInfoRequestStatus.EXPIRED) r.setStatus(ClientInfoRequestStatus.SENT);
         ClientInformationRequest saved = requestRepository.save(r);
 
@@ -200,7 +195,6 @@ public class ClientInformationRequestService {
         response.setSecureLink(publicUrl);
         response.setPublicUrl(publicUrl);
         response.setEmailResult(emailResult);
-        response.setWhatsappResult(whatsappResult);
         log.info("[CLIENT_INFO] request resent id={} tenantId={} channels={}", id, r.getTenantId(), channels);
         return response;
     }
@@ -234,50 +228,15 @@ public class ClientInformationRequestService {
                 .build();
     }
 
-    private ClientInformationRequestResponse.DeliveryResult deliverWhatsapp(ClientInformationRequest r, Set<String> channels,
-                                                                             String publicUrl, String agencyName) {
-        if (!channels.contains("WHATSAPP")) {
-            return ClientInformationRequestResponse.DeliveryResult.builder()
-                    .attempted(false).sent(false).status(DeliveryStatus.NOT_REQUESTED).build();
-        }
-        r.setWhatsappLastAttemptAt(LocalDateTime.now());
-        String message = buildWhatsappMessage(r, agencyName, publicUrl);
-        WhatsAppMessagingService.WhatsAppResult result = whatsAppMessagingService.send(r.getPhone(), message);
-        if (result.sent()) {
-            r.setWhatsappSentAt(LocalDateTime.now());
-            r.setWhatsappLastError(null);
-            return ClientInformationRequestResponse.DeliveryResult.builder()
-                    .attempted(true).sent(true).status(DeliveryStatus.SENT).message("WhatsApp message sent successfully").build();
-        }
-        r.setWhatsappLastError(result.errorMessage());
-        return ClientInformationRequestResponse.DeliveryResult.builder()
-                .attempted(true).sent(false)
-                .status(result.configured() ? DeliveryStatus.FAILED : DeliveryStatus.NOT_CONFIGURED)
-                .message(result.errorMessage() != null ? result.errorMessage() : "WhatsApp delivery failed")
-                .build();
-    }
-
-    private String buildWhatsappMessage(ClientInformationRequest r, String agencyName, String publicUrl) {
-        String agency = StringUtils.hasText(agencyName) ? agencyName : "Innovacar";
-        String name = StringUtils.hasText(r.getTemporaryName()) ? r.getTemporaryName() : "";
-        String lang = r.getPreferredLanguage();
-        if ("ar".equals(lang)) {
-            return "مرحباً " + name + ",\n\nتدعوك وكالة " + agency + " لاستكمال معلوماتك من أجل تجهيز ملف الحجز الخاص بك.\n\n"
-                    + "الرابط الآمن:\n" + publicUrl + "\n\nينتهي هذا الرابط خلال 48 ساعة.";
-        }
-        if ("en".equals(lang)) {
-            return "Hello " + name + ",\n\n" + agency + " invites you to complete your information to prepare your rental file.\n\n"
-                    + "Secure link:\n" + publicUrl + "\n\nThis link expires in 48 hours.";
-        }
-        return "Bonjour " + name + ",\n\nL'agence " + agency + " vous invite à compléter vos informations afin de préparer votre dossier de location.\n\n"
-                + "Lien sécurisé :\n" + publicUrl + "\n\nCe lien expire dans 48 heures.";
-    }
-
-    /** Defaults to every channel with a valid destination when the admin didn't explicitly pick one. */
-    private Set<String> resolveDeliveryChannels(List<String> requested, String normalizedPhone, String email) {
+    /**
+     * The only backend-attempted channel is email; WhatsApp is a manual,
+     * client-side share action (see the frontend modal) and is never sent
+     * from here. Defaults to EMAIL when the admin didn't explicitly pick a
+     * channel and an email address is available.
+     */
+    private Set<String> resolveDeliveryChannels(List<String> requested, String email) {
         Set<String> available = new LinkedHashSet<>();
         if (StringUtils.hasText(email)) available.add("EMAIL");
-        if (StringUtils.hasText(normalizedPhone)) available.add("WHATSAPP");
 
         if (requested == null || requested.isEmpty()) return available;
         Set<String> result = new LinkedHashSet<>();

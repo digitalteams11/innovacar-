@@ -13,3 +13,13 @@ export function normalizePhoneForWhatsApp(phone: string | null | undefined): str
   if (digits.startsWith('0') && digits.length === 10) return `212${digits.slice(1)}`;
   return digits;
 }
+
+/**
+ * True when a normalized number is a valid Moroccan mobile line reachable on
+ * WhatsApp: country code 212 followed by a 06/07 mobile prefix (6 or 7) and
+ * 8 more digits — 12 digits total. Landlines and malformed input are rejected
+ * so the "Open WhatsApp" button never opens an empty conversation.
+ */
+export function isValidMoroccanWhatsAppPhone(phone: string | null | undefined): boolean {
+  return /^212[67]\d{8}$/.test(normalizePhoneForWhatsApp(phone));
+}

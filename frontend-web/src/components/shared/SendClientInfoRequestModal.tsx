@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, ExternalLink, Loader2, Mail, MessageCircle, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw } from 'lucide-react';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { isValidMoroccanWhatsAppPhone, normalizePhoneForWhatsApp } from '../../lib/phone';
 import Modal from '../Modal';
 
 interface SendClientInfoRequestModalProps {
@@ -35,6 +37,7 @@ export default function SendClientInfoRequestModal({
 }: SendClientInfoRequestModalProps) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
+  const { tenant } = useAuth();
   const isRtl = i18n.dir() === 'rtl';
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -144,6 +147,10 @@ export default function SendClientInfoRequestModal({
         {result ? (
           <DeliveryResultCard
             result={result}
+            clientName={temporaryName}
+            clientPhone={phone}
+            agencyName={tenant?.name}
+            language={i18n.language}
             onCopy={copyLink}
             onOpen={openLink}
             onRetry={retryChannel}
@@ -300,16 +307,111 @@ function ChannelRow({
   );
 }
 
-function DeliveryResultCard({
-  result, onCopy, onOpen, onRetry, retrying, onClose,
+type WhatsAppShareStatus = 'AVAILABLE' | 'OPENED' | 'PHONE_MISSING' | 'INVALID_PHONE';
+
+/** Builds the translated invitation message sent through the manual wa.me share link. */
+function buildWhatsAppMessage(params: {
+  clientName: string; agencyName?: string; secureUrl: string; expiresAt?: string; language: string;
+}): string {
+  const { clientName, agencyName, secureUrl, expiresAt, language } = params;
+  const name = clientName || '';
+  const agency = agencyName || '';
+  const expiresLabel = expiresAt ? new Date(expiresAt).toLocaleString(language) : '';
+  const lang = language?.slice(0, 2);
+
+  if (lang === 'ar') {
+    return `مرحباً ${name}،\n\nتدعوك وكالة ${agency} إلى إكمال معلوماتك من أجل إعداد ملف الكراء.\n\nالرابط الآمن:\n${secureUrl}\n\nتنتهي صلاحية هذا الرابط في ${expiresLabel}.\n\nشكراً.`;
+  }
+  if (lang === 'en') {
+    return `Hello ${name},\n\n${agency} invites you to complete your information so the agency can prepare your rental file.\n\nSecure link:\n${secureUrl}\n\nThis link expires on ${expiresLabel}.\n\nThank you.`;
+  }
+  return `Bonjour ${name},\n\nL'agence ${agency} vous invite à compléter vos informations afin de préparer votre dossier de location.\n\nLien sécurisé :\n${secureUrl}\n\nCe lien expire le ${expiresLabel}.\n\nMerci.`;
+}
+
+/** Manual, client-side WhatsApp share — no Cloud API, no backend provider. Opens
+ * wa.me with the client's number and a prefilled message; the admin still has to
+ * press Send inside WhatsApp, so this never marks the message as delivered. */
+function WhatsAppShareRow({
+  clientName, clientPhone, agencyName, language, secureUrl, expiresAt,
 }: {
-  result: DeliveryResponse; onCopy: () => void; onOpen: () => void;
+  clientName: string; clientPhone: string; agencyName?: string; language: string; secureUrl: string; expiresAt?: string;
+}) {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const [status, setStatus] = useState<WhatsAppShareStatus>(() => (
+    !clientPhone.trim() ? 'PHONE_MISSING' : !isValidMoroccanWhatsAppPhone(clientPhone) ? 'INVALID_PHONE' : 'AVAILABLE'
+  ));
+
+  const disabled = status === 'PHONE_MISSING' || status === 'INVALID_PHONE';
+
+  const handleClick = () => {
+    if (!clientPhone.trim()) { setStatus('PHONE_MISSING'); return; }
+    const normalized = normalizePhoneForWhatsApp(clientPhone);
+    if (!isValidMoroccanWhatsAppPhone(clientPhone)) { setStatus('INVALID_PHONE'); return; }
+
+    const message = buildWhatsAppMessage({ clientName, agencyName, secureUrl, expiresAt, language });
+    const whatsappUrl = `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+    const win = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+
+    if (!win) {
+      navigator.clipboard?.writeText(`${message}`);
+      showToast(t('clientInfoAdmin.result.whatsappBlocked', 'WhatsApp could not be opened. The message was copied.'), 'warning');
+      return;
+    }
+    setStatus('OPENED');
+    showToast(t('clientInfoAdmin.result.whatsappOpened', 'WhatsApp opened'), 'success');
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[var(--border-subtle)]">
+      <div className="flex items-center gap-2 min-w-0">
+        <MessageCircle size={16} className="text-slate-400 shrink-0" />
+        <span className="text-sm font-medium text-[#1e293b] dark:text-white">{t('clientInfoAdmin.form.whatsapp', 'WhatsApp')}</span>
+      </div>
+      {status === 'PHONE_MISSING' ? (
+        <span className="flex items-center gap-1 text-xs font-semibold text-slate-400">
+          <AlertTriangle size={14} /> {t('clientInfoAdmin.result.phoneMissing', 'Client phone number unavailable')}
+        </span>
+      ) : status === 'INVALID_PHONE' ? (
+        <span className="flex items-center gap-1 text-xs font-semibold text-slate-400">
+          <AlertTriangle size={14} /> {t('clientInfoAdmin.result.phoneMissing', 'Client phone number unavailable')}
+        </span>
+      ) : status === 'OPENED' ? (
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-label={t('clientInfoAdmin.result.openWhatsapp', 'Open WhatsApp')}
+          className="min-h-[44px] flex items-center gap-1.5 px-3 text-xs font-semibold text-success-600 hover:text-success-700 transition-colors"
+        >
+          <CheckCircle2 size={14} /> {t('clientInfoAdmin.result.whatsappOpened', 'WhatsApp opened')}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={disabled}
+          aria-label={t('clientInfoAdmin.result.openWhatsapp', 'Open WhatsApp')}
+          className="min-h-[44px] flex items-center gap-1.5 px-4 rounded-lg bg-[#25D366] text-white text-xs font-semibold hover:bg-[#1ea952] active:bg-[#178a43] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <MessageCircle size={14} /> {t('clientInfoAdmin.result.openWhatsapp', 'Open WhatsApp')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DeliveryResultCard({
+  result, clientName, clientPhone, agencyName, language, onCopy, onOpen, onRetry, retrying, onClose,
+}: {
+  result: DeliveryResponse; clientName: string; clientPhone: string; agencyName?: string; language: string;
+  onCopy: () => void; onOpen: () => void;
   onRetry: (channel: 'EMAIL' | 'WHATSAPP') => void; retrying: 'EMAIL' | 'WHATSAPP' | null; onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const expiresAtLabel = result.expiresAt
     ? new Date(result.expiresAt).toLocaleString(i18n.language)
     : null;
+  const secureUrl = result.secureLink || result.publicUrl || '';
 
   return (
     <div className="space-y-4">
@@ -320,8 +422,14 @@ function DeliveryResultCard({
       <div className="space-y-2">
         <ChannelRow icon={<Mail size={16} className="text-slate-400" />} label={t('clientInfoAdmin.form.email', 'Email')}
           result={result.emailResult} channel="EMAIL" onRetry={onRetry} retrying={retrying} />
-        <ChannelRow icon={<MessageCircle size={16} className="text-slate-400" />} label={t('clientInfoAdmin.form.whatsapp', 'WhatsApp')}
-          result={result.whatsappResult} channel="WHATSAPP" onRetry={onRetry} retrying={retrying} />
+        <WhatsAppShareRow
+          clientName={clientName}
+          clientPhone={clientPhone}
+          agencyName={agencyName}
+          language={language}
+          secureUrl={secureUrl}
+          expiresAt={result.expiresAt}
+        />
       </div>
 
       {expiresAtLabel && (
