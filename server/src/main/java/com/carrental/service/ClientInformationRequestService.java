@@ -11,7 +11,6 @@ import com.carrental.entity.ClientInfoRequestStatus;
 import com.carrental.entity.ClientInformationRequest;
 import com.carrental.entity.Contract;
 import com.carrental.entity.DeliveryStatus;
-import com.carrental.entity.Notification;
 import com.carrental.entity.Tenant;
 import com.carrental.exception.ClientInfoRequestException;
 import com.carrental.repository.ClientIdentityDocumentRepository;
@@ -497,11 +496,10 @@ public class ClientInformationRequestService {
         r.setStatus(ClientInfoRequestStatus.SUBMITTED);
         requestRepository.save(r);
 
-        notificationService.createNotification(
+        notificationService.notifyClientInformationSubmitted(
                 "Client information submitted",
                 (StringUtils.hasText(r.getTemporaryName()) ? r.getTemporaryName() : "A client") + " submitted their information for review.",
-                Notification.NotificationType.INFORMATION,
-                r.getContractId(), r.getTenantId());
+                r.getId(), r.getTenantId());
 
         sendSubmissionConfirmation(r, submission);
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Copy, XCircle, CheckCircle2, UserPlus, Link2, ClipboardList, Send, Eye, Pencil, CalendarPlus, FileText } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
@@ -53,6 +53,7 @@ export default function ClientInformationRequests() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [items, setItems] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +85,38 @@ export default function ClientInformationRequests() {
       setDetailLoading(false);
     }
   };
+
+  // Deep-link from a "Client information submitted" notification
+  // (?requestId=45): fetches and opens that request's detail modal directly,
+  // independent of whether the list has finished loading. Runs once — the
+  // requestId param is stripped from the URL right after so a refresh (or
+  // re-render) doesn't re-trigger it.
+  useEffect(() => {
+    const requestId = searchParams.get('requestId');
+    if (!requestId) return;
+    const id = Number(requestId);
+    if (!Number.isFinite(id)) {
+      setSearchParams((prev) => { prev.delete('requestId'); return prev; }, { replace: true });
+      return;
+    }
+    setDetailLoading(true);
+    setSelected({ id } as RequestItem);
+    setLinkExistingId(null);
+    api.get(`/client-information-requests/${id}`)
+      .then(({ data }) => setSelected(data))
+      .catch(() => {
+        setSelected(null);
+        showToast(t('clientInfoAdmin.requestNotFound', 'This request could not be found. It may have been deleted.'), 'error');
+      })
+      .finally(() => {
+        setDetailLoading(false);
+        setSearchParams((prev) => { prev.delete('requestId'); return prev; }, { replace: true });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const statusFilter = searchParams.get('status');
+  const visibleItems = statusFilter ? items.filter((i) => i.status === statusFilter) : items;
 
   const copyLink = (link?: string) => {
     if (!link) return;
@@ -158,15 +191,27 @@ export default function ClientInformationRequests() {
         icon={ClipboardList}
       />
 
+      {statusFilter && (
+        <button
+          onClick={() => setSearchParams((prev) => { prev.delete('status'); return prev; }, { replace: true })}
+          className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-[var(--bg-hover)]"
+          style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          {t('clientInfoAdmin.status.' + statusFilter, statusFilter)} &times;
+        </button>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 size={32} className="animate-spin text-brand-500" /></div>
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <div className="data-surface py-10 text-center text-sm text-slate-400">
-          {t('clientInfoAdmin.empty', 'No client information requests yet.')}
+          {statusFilter
+            ? t('clientInfoAdmin.emptyFiltered', 'No requests match this status.')
+            : t('clientInfoAdmin.empty', 'No client information requests yet.')}
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <button
               key={item.id}
               onClick={() => openDetail(item)}

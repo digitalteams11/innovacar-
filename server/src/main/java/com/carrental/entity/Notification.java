@@ -135,6 +135,8 @@ public class Notification {
         // Legacy
         ACCOUNT_INACTIVE, LOW_USAGE, UPGRADE_SUGGESTION,
         // Support Center
-        SUPPORT_TICKET_CREATED, SUPPORT_TICKET_REPLY, SUPPORT_TICKET_STATUS_CHANGED
+        SUPPORT_TICKET_CREATED, SUPPORT_TICKET_REPLY, SUPPORT_TICKET_STATUS_CHANGED,
+        // Client information requests (public self-fill form)
+        CLIENT_INFORMATION_SUBMITTED
     }
 }

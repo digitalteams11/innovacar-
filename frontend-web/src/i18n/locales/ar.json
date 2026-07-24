@@ -1126,7 +1126,9 @@
       "smtpNotConfigured": "إرسال البريد الإلكتروني غير مُهيأ.",
       "whatsappNotConfigured": "إرسال واتساب غير مُهيأ."
     },
-    "openLink": "فتح الرابط"
+    "openLink": "فتح الرابط",
+    "requestNotFound": "تعذر العثور على هذا الطلب. ربما تم حذفه.",
+    "emptyFiltered": "لا توجد طلبات مطابقة لهذه الحالة."
   },
   "invoices": {
     "title": "الفواتير والفوترة",
@@ -2328,9 +2330,14 @@
       "CONTRACT_CREATED": {
         "title": "تم إنشاء العقد",
         "message": "تم إنشاء العقد {{contractNumber}}."
+      },
+      "CLIENT_INFORMATION_SUBMITTED": {
+        "title": "تم إرسال معلومات العميل"
       }
     },
-    "countLabel": "{{count}} إشعارات"
+    "countLabel": "{{count}} إشعارات",
+    "openError": "تعذر فتح الإشعار",
+    "openRequest": "فتح الطلب"
   },
   "common": {
     "loading": "جارٍ التحميل...",

@@ -176,6 +176,23 @@ public class NotificationService {
                 null, tenantId);
     }
 
+    // Carries the submitted request's own id as both entityId and the
+    // actionUrl target — unlike the legacy 5-arg createNotification(...)
+    // overload, this never falls back to contractId (null for a fresh
+    // client-info request, which is exactly what made the notification
+    // unclickable before this method existed).
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Notification notifyClientInformationSubmitted(String title, String message,
+                                                          Long requestId, Long tenantId) {
+        return createNotification(title, message,
+                Notification.NotificationType.CLIENT_INFORMATION_SUBMITTED,
+                Notification.Severity.INFO,
+                null,
+                "CLIENT_INFORMATION_REQUEST", requestId,
+                requestId != null ? "/client-information-requests?requestId=" + requestId : "/client-information-requests",
+                null, tenantId);
+    }
+
     // ── Queries ────────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)

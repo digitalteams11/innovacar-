@@ -8,6 +8,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import type { AppNotification } from '../../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../../context/ToastContext';
 
 // ── Module icons ───────────────────────────────────────────────────────────────
 
@@ -110,12 +111,34 @@ function getNotificationTypeKey(n: AppNotification): string | null {
   if (type === 'QR_GENERATED' || type === 'CONTRACT_QR_GENERATED' || title === 'qr code generated') return 'QR_GENERATED';
   if (type === 'CONTRACT_SIGNED_AGENCY' || title === 'contract signed by agency') return 'CONTRACT_SIGNED_AGENCY';
   if (type === 'CONTRACT_CREATED' || title === 'contract created') return 'CONTRACT_CREATED';
+  if (type === 'CLIENT_INFORMATION_SUBMITTED' || title === 'client information submitted') return 'CLIENT_INFORMATION_SUBMITTED';
 
   return null;
 }
 
 function extractContractNumber(message?: string): string | null {
   return message?.match(/\b(?:Contract|contract)\s+([A-Z]{2,}-\d{4}-\d{5})\b/)?.[1] || null;
+}
+
+// Resolves where a notification should navigate to, in priority order:
+// 1. actionUrl set by the backend (always the exact request/entity URL).
+// 2. type + entityId, for the one type this app currently deep-links by id.
+// 3. contractId, for older notification shapes that only carried that field.
+// 4. A safe list fallback for legacy CLIENT_INFORMATION_SUBMITTED rows saved
+//    before actionUrl/entityId existed on this notification type — never
+//    leaves the click doing nothing, never guesses a broken route.
+// Returns '' (not null) when nothing usable is found, so callers can just
+// check truthiness instead of a three-way null/undefined/empty check.
+function resolveNotificationUrl(n: AppNotification): string {
+  if (n.actionUrl) return n.actionUrl;
+  if (n.type === 'CLIENT_INFORMATION_SUBMITTED' && n.entityId) {
+    return `/client-information-requests?requestId=${n.entityId}`;
+  }
+  if (n.contractId) return `/contracts/${n.contractId}`;
+  if ((n.title || '').trim().toLowerCase() === 'client information submitted') {
+    return '/client-information-requests?status=SUBMITTED';
+  }
+  return '';
 }
 
 function localizeNotification(n: AppNotification, t: (k: string, opts?: Record<string, unknown>) => string) {
@@ -153,6 +176,12 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
+  // Tracks notification ids with a click currently in flight, so a fast
+  // double-click/double-tap can't fire markAsRead (and its API call) twice —
+  // React state (n.read) only flips after the await below resolves, so
+  // checking n.read alone isn't enough to block the second click.
+  const pendingClicksRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -164,11 +193,21 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleClick = (n: AppNotification) => {
-    if (!n.read) markAsRead(n.id);
-    const url = n.actionUrl || (n.contractId ? `/contracts/${n.contractId}` : null);
-    if (url) navigate(url);
-    setOpen(false);
+  const handleClick = async (n: AppNotification) => {
+    if (pendingClicksRef.current.has(n.id)) return;
+    pendingClicksRef.current.add(n.id);
+    try {
+      if (!n.read) await markAsRead(n.id);
+      // Close the panel before navigating, not after — otherwise the
+      // dropdown briefly re-renders on top of the destination page.
+      setOpen(false);
+      const url = resolveNotificationUrl(n);
+      if (url) navigate(url);
+    } catch {
+      showToast(t('notifications.openError', 'Unable to open notification'), 'error');
+    } finally {
+      pendingClicksRef.current.delete(n.id);
+    }
   };
 
   const readCount = notifications.filter((n) => n.read).length;
@@ -302,7 +341,8 @@ export default function NotificationBell() {
                   >
                     <button
                       onClick={() => handleClick(n)}
-                      className="flex-1 text-start px-4 py-3 transition-all"
+                      aria-label={`${display.title}${!n.read ? ` (${t('notifications.unread')})` : ''}`}
+                      className="flex-1 text-start px-4 py-3 transition-all cursor-pointer"
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
                     >

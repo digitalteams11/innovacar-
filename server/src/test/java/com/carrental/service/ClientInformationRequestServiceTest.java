@@ -54,7 +54,6 @@ class ClientInformationRequestServiceTest {
     @Mock private TenantRepository tenantRepository;
     @Mock private NotificationService notificationService;
     @Mock private EmailService emailService;
-    @Mock private WhatsAppMessagingService whatsAppMessagingService;
 
     private ClientInformationRequestService service;
     private Tenant tenant;
@@ -67,13 +66,11 @@ class ClientInformationRequestServiceTest {
         service = new ClientInformationRequestService(
                 requestRepository, clientRepository, identityDocumentRepository,
                 contractRepository, tenantRepository, notificationService, objectMapper,
-                emailService, whatsAppMessagingService);
+                emailService);
         ReflectionTestUtils.setField(service, "frontendUrl", "https://innovacar.app");
 
         lenient().when(emailService.sendClientInformationRequestEmail(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null));
-        lenient().when(whatsAppMessagingService.send(any(), any()))
-                .thenReturn(new WhatsAppMessagingService.WhatsAppResult(true, true, "WhatsApp Cloud API", null, null));
     }
 
     @AfterEach
@@ -187,6 +184,28 @@ class ClientInformationRequestServiceTest {
                 .isInstanceOf(ClientInfoRequestException.class)
                 .extracting(e -> ((ClientInfoRequestException) e).getCode())
                 .isEqualTo("CLIENT_INFO_ALREADY_SUBMITTED");
+    }
+
+    @Test
+    void submitNotifiesUsingTheRequestsOwnIdNotContractId() {
+        // contractId is intentionally left null — a fresh client-info request
+        // isn't linked to a contract yet, which is exactly what made the
+        // legacy 5-arg notification call produce a dead (contractId-based)
+        // link: entityId/actionUrl both ended up null. The fix must key off
+        // the request's own id instead.
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(60L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
+                .temporaryName("King").expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        when(requestRepository.findByTokenHash(any())).thenReturn(Optional.of(r));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.submit("some-token", validSubmission());
+
+        verify(notificationService).notifyClientInformationSubmitted(
+                eq("Client information submitted"),
+                org.mockito.ArgumentMatchers.contains("King"),
+                eq(60L), eq(1L));
     }
 
     @Test
@@ -359,7 +378,10 @@ class ClientInformationRequestServiceTest {
     }
 
     @Test
-    void createSendsBothEmailAndWhatsappWhenBothDestinationsArePresent() {
+    void createSendsEmailWhenAnEmailDestinationIsPresent() {
+        // WhatsApp delivery is a manual, client-side wa.me share action now
+        // (see SendClientInfoRequestModal.tsx) — the backend only ever
+        // attempts email, so a phone-only request must not require it.
         CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
         req.setTemporaryName("Sara");
         req.setPhone("0658742744");
@@ -373,49 +395,7 @@ class ClientInformationRequestServiceTest {
         ClientInformationRequestResponse response = service.create(req);
 
         assertThat(response.getEmailResult().isSent()).isTrue();
-        assertThat(response.getWhatsappResult().isSent()).isTrue();
         verify(emailService).sendClientInformationRequestEmail(eq("sara@example.com"), any(), any(), any(), any(), any());
-        verify(whatsAppMessagingService).send(eq("+212658742744"), any());
-    }
-
-    @Test
-    void createReportsPartialSuccessWhenWhatsappFailsButEmailSucceeds() {
-        when(whatsAppMessagingService.send(any(), any()))
-                .thenReturn(new WhatsAppMessagingService.WhatsAppResult(false, true, "WhatsApp Cloud API", "boom", "WHATSAPP_API_SEND_FAILED"));
-        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
-        req.setTemporaryName("Sara");
-        req.setPhone("0658742744");
-        req.setEmail("sara@example.com");
-        when(requestRepository.save(any())).thenAnswer(inv -> {
-            ClientInformationRequest r = inv.getArgument(0);
-            r.setId(21L);
-            return r;
-        });
-
-        ClientInformationRequestResponse response = service.create(req);
-
-        assertThat(response.getEmailResult().isSent()).isTrue();
-        assertThat(response.getWhatsappResult().isSent()).isFalse();
-        // Partial failure never rolls back the request itself.
-        verify(requestRepository, times(2)).save(any());
-    }
-
-    @Test
-    void whatsappNotConfiguredIsReportedDistinctlyFromAFailure() {
-        when(whatsAppMessagingService.send(any(), any()))
-                .thenReturn(WhatsAppMessagingService.WhatsAppResult.notConfigured("WhatsApp Cloud API", "not set up"));
-        CreateClientInformationRequestRequest req = new CreateClientInformationRequestRequest();
-        req.setTemporaryName("Sara");
-        req.setPhone("0658742744");
-        when(requestRepository.save(any())).thenAnswer(inv -> {
-            ClientInformationRequest r = inv.getArgument(0);
-            r.setId(22L);
-            return r;
-        });
-
-        ClientInformationRequestResponse response = service.create(req);
-
-        assertThat(response.getWhatsappResult().getStatus()).isEqualTo(com.carrental.entity.DeliveryStatus.NOT_CONFIGURED);
     }
 
     @Test
@@ -433,7 +413,7 @@ class ClientInformationRequestServiceTest {
     }
 
     @Test
-    void resendRetriesOnlyTheRequestedChannel() {
+    void resendOnlyRetriesEmailWhenRequested() {
         ClientInformationRequest r = ClientInformationRequest.builder()
                 .id(30L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
                 .phone("+212658742744").email("sara@example.com")
@@ -442,12 +422,10 @@ class ClientInformationRequestServiceTest {
         when(requestRepository.findByIdAndTenantId(30L, 1L)).thenReturn(Optional.of(r));
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        ClientInformationRequestResponse response = service.resend(30L, List.of("WHATSAPP"));
+        ClientInformationRequestResponse response = service.resend(30L, List.of("EMAIL"));
 
-        assertThat(response.getWhatsappResult().isSent()).isTrue();
-        assertThat(response.getEmailResult().isAttempted()).isFalse();
-        verify(emailService, never()).sendClientInformationRequestEmail(any(), any(), any(), any(), any(), any());
-        verify(whatsAppMessagingService).send(eq("+212658742744"), any());
+        assertThat(response.getEmailResult().isSent()).isTrue();
+        verify(emailService).sendClientInformationRequestEmail(eq("sara@example.com"), any(), any(), any(), any(), any());
     }
 
     @Test

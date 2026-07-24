@@ -204,6 +204,7 @@
   "register": {
     "title": "Créer un compte",
     "subtitle": "Rejoignez votre équipe sur RentCar SaaS",
+    "planPreselected": "Formule sélectionnée : {{plan}} — vous pourrez la vérifier ou la changer après la création de votre compte.",
     "firstName": "Prénom",
     "lastName": "Nom",
     "tenantId": "ID Tenant",
@@ -1133,7 +1134,9 @@
       "smtpNotConfigured": "L'envoi d'email n'est pas configuré.",
       "whatsappNotConfigured": "L'envoi WhatsApp n'est pas configuré."
     },
-    "openLink": "Ouvrir le lien"
+    "openLink": "Ouvrir le lien",
+    "requestNotFound": "Cette demande est introuvable. Elle a peut-être été supprimée.",
+    "emptyFiltered": "Aucune demande ne correspond à ce statut."
   },
   "invoices": {
     "title": "Factures & Facturation",
@@ -2335,9 +2338,14 @@
       "CONTRACT_CREATED": {
         "title": "Contrat cree",
         "message": "Le contrat {{contractNumber}} a ete cree."
+      },
+      "CLIENT_INFORMATION_SUBMITTED": {
+        "title": "Informations client envoyées"
       }
     },
-    "countLabel": "{{count}} notifications"
+    "countLabel": "{{count}} notifications",
+    "openError": "Impossible d’ouvrir la notification",
+    "openRequest": "Ouvrir la demande"
   },
   "common": {
     "loading": "Chargement...",
