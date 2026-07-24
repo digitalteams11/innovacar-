@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { networkInterfaces } from 'os'
@@ -101,6 +102,12 @@ export default defineConfig(({ mode }) => {
     hmr: {
       host: firstLanIPv4() ?? 'localhost',
     },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    css: false,
   },
   }
 })

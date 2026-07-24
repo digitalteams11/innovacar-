@@ -1070,7 +1070,9 @@
       "expired": "Ce lien sécurisé a expiré.",
       "revoked": "Ce lien n'est plus actif.",
       "alreadyApproved": "Cette demande a déjà été traitée.",
-      "alreadySubmitted": "Ce formulaire a déjà été envoyé."
+      "alreadySubmitted": "Ce formulaire a déjà été envoyé.",
+      "network": "Impossible de se connecter au serveur. Veuillez vérifier votre connexion.",
+      "retry": "Réessayer"
     }
   },
   "clientInfoAdmin": {

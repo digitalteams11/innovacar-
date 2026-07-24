@@ -73,6 +73,7 @@ export default function PublicClientInformation() {
 
   const [loading, setLoading] = useState(true);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [view, setView] = useState<PublicView | null>(null);
   const [logoFailed, setLogoFailed] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -93,6 +94,8 @@ export default function PublicClientInformation() {
     i18n.changeLanguage(resolveInitialLanguage());
 
     if (!token) { setErrorCode('CLIENT_INFO_LINK_INVALID'); setLoading(false); return; }
+    setLoading(true);
+    setErrorCode(null);
     api.get(`/public/client-information/${token}`)
       .then(({ data }) => {
         setView(data);
@@ -102,10 +105,18 @@ export default function PublicClientInformation() {
         }
         if (data?.alreadySubmitted) { setSubmitted(true); setWasAlreadySubmitted(true); }
       })
-      .catch((err) => setErrorCode(err?.response?.data?.code || 'CLIENT_INFO_LINK_INVALID'))
+      .catch((err) => {
+        // No `err.response` means the request never reached the server (offline,
+        // DNS failure, timeout, CORS) — that's a recoverable connection problem,
+        // distinct from the server explicitly rejecting the token. Surfacing it
+        // as "link invalid" would send a real client down a dead end instead of
+        // just asking them to retry.
+        setErrorCode(err?.response ? (err.response.data?.code || 'CLIENT_INFO_LINK_INVALID') : 'CLIENT_INFO_NETWORK_ERROR');
+        if (import.meta.env.DEV) console.error('[CLIENT_INFO] failed to load request', err);
+      })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, retryCount]);
 
   // Country change (spec section 4): clear the old city, load the new
   // country's city list, and drop back to select mode so a manual entry
@@ -219,7 +230,12 @@ export default function PublicClientInformation() {
       CLIENT_INFO_LINK_REVOKED: t('clientInfo.errors.revoked', 'This link is no longer active.'),
       CLIENT_INFO_ALREADY_APPROVED: t('clientInfo.errors.alreadyApproved', 'This request has already been processed.'),
       CLIENT_INFO_ALREADY_SUBMITTED: t('clientInfo.errors.alreadySubmitted', 'This form has already been submitted.'),
+      CLIENT_INFO_NETWORK_ERROR: t('clientInfo.errors.network', 'We could not connect to the server. Please check your connection.'),
     };
+    // Only the connection-failure case is actually recoverable by trying
+    // again — a rejected/expired/consumed token will fail identically no
+    // matter how many times the same request is retried.
+    const isRetryable = errorCode === 'CLIENT_INFO_NETWORK_ERROR';
     return (
       <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--bg-page)' }}>
         <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`} robots={ROBOTS_PRIVATE} />
@@ -229,6 +245,16 @@ export default function PublicClientInformation() {
           </div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('clientInfo.errors.title', 'Unable to open this link')}</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{messages[errorCode] || messages.CLIENT_INFO_LINK_INVALID}</p>
+          {isRetryable && (
+            <button
+              type="button"
+              onClick={() => setRetryCount((n) => n + 1)}
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+              style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-contrast, #fff)' }}
+            >
+              {t('clientInfo.errors.retry', 'Retry')}
+            </button>
+          )}
         </div>
       </div>
     );

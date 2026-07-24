@@ -1076,7 +1076,9 @@
       "expired": "This secure link has expired.",
       "revoked": "This link is no longer active.",
       "alreadyApproved": "This request has already been processed.",
-      "alreadySubmitted": "This form has already been submitted."
+      "alreadySubmitted": "This form has already been submitted.",
+      "network": "We could not connect to the server. Please check your connection.",
+      "retry": "Retry"
     }
   },
   "clientInfoAdmin": {
