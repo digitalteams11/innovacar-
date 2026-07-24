@@ -2102,7 +2102,14 @@ export default function Contracts() {
           clientEmail={qrModal.contract.clientEmail} clientPhone={qrModal.contract.clientPhone} />
       )}
 
-      <SendClientInfoRequestModal isOpen={showSendClientInfo} onClose={() => setShowSendClientInfo(false)} />
+      <SendClientInfoRequestModal
+        isOpen={showSendClientInfo}
+        onClose={() => setShowSendClientInfo(false)}
+        clientId={clientData.clientId}
+        initialName={clientData.clientFullName}
+        initialPhone={clientData.clientPhone}
+        initialEmail={clientData.clientEmail}
+      />
 
       {/* Restore Conflict Modal */}
       {restoreConflict.open && restoreConflict.contractId != null && (
