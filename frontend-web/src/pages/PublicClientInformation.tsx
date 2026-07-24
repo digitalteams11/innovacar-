@@ -378,8 +378,8 @@ export default function PublicClientInformation() {
                 value={form.countryCode}
                 onChange={(code) => update('countryCode', code)}
                 options={countryOptions}
-                placeholder={t('clientInfo.form.countryPlaceholder', 'Select country')}
-                searchPlaceholder={t('clientInfo.form.countrySearchPlaceholder', 'Search country...')}
+                placeholder={t('clientInfo.form.countryPlaceholder', 'Select a country')}
+                searchPlaceholder={t('clientInfo.form.countrySearchPlaceholder', 'Search countries')}
                 emptyMessage={t('clientInfo.form.countryEmpty', 'No country found')}
               />
             </Field>
@@ -409,11 +409,12 @@ export default function PublicClientInformation() {
                     value={form.city}
                     onChange={(city) => update('city', city)}
                     options={cityOptionsForSelect}
-                    placeholder={t('clientInfo.form.cityPlaceholder', 'Select city')}
-                    searchPlaceholder={t('clientInfo.form.citySearchPlaceholder', 'Search city...')}
+                    disabled={!form.countryCode}
+                    placeholder={t('clientInfo.form.cityPlaceholder', 'Select a city')}
+                    searchPlaceholder={t('clientInfo.form.citySearchPlaceholder', 'Search cities')}
                     emptyMessage={cityStatus === 'error'
                       ? t('clientInfo.errors.title', 'Unable to open this link')
-                      : t('clientInfo.form.cityEmpty', 'No city found')}
+                      : t('clientInfo.form.cityEmpty', 'City not found')}
                     status={cityStatus}
                     onRetry={() => setCityReloadKey((k) => k + 1)}
                     retryLabel={t('clientInfo.form.cityRetry', 'Retry')}
@@ -425,17 +426,29 @@ export default function PublicClientInformation() {
                     style={{ color: 'var(--brand-primary)' }}
                     onClick={() => setCityManualMode(true)}
                   >
-                    {t('clientInfo.form.cityManualPrompt', 'City not found? Enter it manually.')}
+                    {t('clientInfo.form.cityManualPrompt', 'Enter city manually')}
                   </button>
                 </div>
               )}
             </Field>
           </div>
           <Field label={t('clientInfo.form.address', 'Address')} required>
-            <input className="form-input" value={form.address} onChange={(e) => update('address', e.target.value)} />
+            <textarea
+              className="form-input"
+              rows={3}
+              placeholder={t('clientInfo.form.addressPlaceholder', 'Street, district and additional address details')}
+              value={form.address}
+              onChange={(e) => update('address', e.target.value)}
+            />
           </Field>
           <Field label={t('clientInfo.form.notes', 'Notes')}>
-            <textarea className="form-input" rows={2} value={form.notes} onChange={(e) => update('notes', e.target.value)} />
+            <textarea
+              className="form-input"
+              rows={3}
+              placeholder={t('clientInfo.form.notesPlaceholder', 'Additional notes (optional)')}
+              value={form.notes}
+              onChange={(e) => update('notes', e.target.value)}
+            />
           </Field>
         </Section>
 
