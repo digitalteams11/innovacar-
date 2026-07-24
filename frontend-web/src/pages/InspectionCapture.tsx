@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Camera, CheckCircle2, Loader2, RotateCcw, ShieldCheck, Upload } from 'lucide-react';
 import { API_ORIGIN } from '../lib/api';
+import { PUBLIC_APP_URL } from '../lib/publicUrl';
 import api from '../api/axios';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
@@ -89,7 +90,7 @@ export default function InspectionCapture() {
       <SeoHead
         title="Vehicle Inspection"
         description="Secure vehicle inspection capture link."
-        canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'}
+        canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`}
         robots={ROBOTS_PRIVATE}
       />
       <div className="mx-auto max-w-md space-y-4">

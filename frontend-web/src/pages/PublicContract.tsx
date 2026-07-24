@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { API_ORIGIN } from '../lib/api';
+import { PUBLIC_APP_URL } from '../lib/publicUrl';
 import api from '../api/axios';
 
 const resolveAsset = (url?: string | null) => {
@@ -220,7 +221,7 @@ export default function PublicContract() {
         <SeoHead
           title="Contract Signing"
           description="Secure contract signing link."
-          canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'}
+          canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`}
           robots={ROBOTS_PRIVATE}
         />
         <div className="text-center space-y-4 max-w-sm">
@@ -284,7 +285,7 @@ export default function PublicContract() {
       <SeoHead
         title="Contract Signing"
         description="Secure contract signing link."
-        canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'}
+        canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`}
         robots={ROBOTS_PRIVATE}
       />
       {/* Header */}

@@ -8,14 +8,15 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "build": "npm run generate:sitemap && tsc -b && vite build && npm run prerender:marketing && npm run verify:seo",
+    "build": "npm run verify:public-url && npm run generate:sitemap && tsc -b && vite build && npm run prerender:marketing && npm run verify:seo",
     "lint": "eslint .",
     "preview": "vite preview",
     "i18n:audit": "node scripts/i18n-audit.mjs",
     "theme:audit": "node scripts/theme-audit.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "prerender:marketing": "node scripts/prerender-marketing.mjs",
-    "verify:seo": "node scripts/verify-seo-dist.mjs"
+    "verify:seo": "node scripts/verify-seo-dist.mjs",
+    "verify:public-url": "node scripts/verify-public-url.mjs"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",

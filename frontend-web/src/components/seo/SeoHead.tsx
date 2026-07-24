@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { PUBLIC_APP_URL } from '../../lib/publicUrl';
 
 /**
  * Every tag this component can write is tagged with data-seo-managed="1" and
@@ -26,7 +27,7 @@ const SITE_NAME = 'Innovacar';
 // designed (public/og/innovacar-og.jpg) — no image-generation tooling was
 // available to produce one here. Falling back to the real logo rather than
 // a path that would 404 on every share.
-const DEFAULT_OG_IMAGE = 'https://innovacar.app/brand/innovacar-logo.png';
+const DEFAULT_OG_IMAGE = `${PUBLIC_APP_URL}/brand/innovacar-logo.png`;
 
 function setMeta(attr: 'name' | 'property', key: string, content: string) {
   const el = document.createElement('meta');

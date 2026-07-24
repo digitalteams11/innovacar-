@@ -97,6 +97,12 @@ for (const page of MARKETING_PAGES) {
   } else if (!html.includes(`href="https://innovacar.app${page.urlPath}"`)) {
     fail(`dist/${page.file} canonical does not point to https://innovacar.app${page.urlPath}.`);
   }
+  const ogUrlMatches = html.match(/<meta\s+property="og:url"[^>]*>/g) || [];
+  if (ogUrlMatches.length !== 1) {
+    fail(`dist/${page.file} has ${ogUrlMatches.length} og:url tags — expected exactly 1.`);
+  } else if (!ogUrlMatches[0].includes(`content="https://innovacar.app${page.urlPath}"`)) {
+    fail(`dist/${page.file} og:url does not point to https://innovacar.app${page.urlPath}.`);
+  }
   const rootMatch = html.match(/<div id="root">([\s\S]*)<\/body>/);
   if (!rootMatch || rootMatch[1].trim().length < 200) {
     fail(`dist/${page.file} has little or no static content inside #root — prerender may have failed silently.`);

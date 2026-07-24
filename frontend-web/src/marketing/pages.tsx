@@ -57,13 +57,32 @@ function envBool(key: string): boolean {
   return v === true || v === 'true' || v === '1';
 }
 
-const INNOVAX_URL = envStr('VITE_INNOVAX_WEBSITE_URL');
+// Public marketing links come from env vars an operator fills in later (the
+// real Innovax website, the desktop installer) — never trust them blindly.
+// A leftover Vercel preview URL (or any non-production host) used as a
+// placeholder must never ship into the production bundle; treat it exactly
+// like "not configured yet" instead of rendering it.
+const UNSAFE_HOST_PATTERN = /(^|\.)vercel\.app$|localhost|127\.0\.0\.1|^192\.168\./i;
+function envSafeUrl(key: string): string {
+  const value = envStr(key);
+  if (!value) return '';
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:') return '';
+    if (UNSAFE_HOST_PATTERN.test(parsed.hostname)) return '';
+    return value;
+  } catch {
+    return '';
+  }
+}
+
+const INNOVAX_URL = envSafeUrl('VITE_INNOVAX_WEBSITE_URL');
 const COMPANY_NAME = envStr('VITE_COMPANY_NAME') || 'Innovax Technologies';
 const TRIAL_DAYS = envStr('VITE_TRIAL_DURATION_DAYS');
 const TRIAL_PROMO_ENABLED = envBool('VITE_TRIAL_PROMO_ENABLED');
 const TRIAL_LABEL_OVERRIDE = envStr('VITE_TRIAL_LABEL');
 const DESKTOP_AVAILABLE = envBool('VITE_DESKTOP_AVAILABLE');
-const DESKTOP_URL = envStr('VITE_DESKTOP_DOWNLOAD_URL');
+const DESKTOP_URL = envSafeUrl('VITE_DESKTOP_DOWNLOAD_URL');
 const DESKTOP_PLATFORM = envStr('VITE_DESKTOP_PLATFORM') || 'Windows';
 const CONTACT_EMAIL = envStr('VITE_CONTACT_EMAIL');
 const CONTACT_WHATSAPP_DIGITS = envStr('VITE_CONTACT_WHATSAPP').replace(/[^\d]/g, '');
@@ -80,7 +99,14 @@ function isBrowser(): boolean {
  * import.meta.env substitution nor `window`.
  */
 function apiBase(): string {
-  const configured = envStr('VITE_API_URL');
+  // Same non-production-host guard as src/lib/api.ts — a *.vercel.app value
+  // left over in VITE_API_URL must fall back to the real API origin, never
+  // get used (and inlined into this bundle) as-is. Deliberately not routed
+  // through envSafeUrl() here: that helper requires https: and rejects
+  // localhost/192.168.*, but VITE_API_URL is documented to legitimately be
+  // an http:// LAN address for local dev — only the vercel.app case is unsafe.
+  const rawConfigured = envStr('VITE_API_URL');
+  const configured = rawConfigured && !/vercel\.app/i.test(rawConfigured) ? rawConfigured : '';
   if (configured) {
     const trimmed = configured.replace(/\/+$/, '');
     return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;

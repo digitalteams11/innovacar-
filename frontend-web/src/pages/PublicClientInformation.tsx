@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock } from 'lucide-react';
 import api from '../api/axios';
 import { resolveMediaUrl } from '../utils/mediaUrl';
+import { PUBLIC_APP_URL } from '../lib/publicUrl';
 import ThemeToggle from '../components/ThemeToggle';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
@@ -221,7 +222,7 @@ export default function PublicClientInformation() {
     };
     return (
       <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--bg-page)' }}>
-        <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'} robots={ROBOTS_PRIVATE} />
+        <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`} robots={ROBOTS_PRIVATE} />
         <div className="text-center space-y-4 max-w-sm">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto" style={{ background: 'var(--bg-hover)' }}>
             <AlertCircle size={28} style={{ color: 'var(--danger)' }} />
@@ -236,7 +237,7 @@ export default function PublicClientInformation() {
   if (submitted) {
     return (
       <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--bg-page)' }}>
-        <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'} robots={ROBOTS_PRIVATE} />
+        <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`} robots={ROBOTS_PRIVATE} />
         <div className="text-center space-y-4 max-w-sm">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto" style={{ background: 'rgba(16,185,129,0.12)' }}>
             <CheckCircle2 size={28} style={{ color: 'var(--success)' }} />
@@ -258,7 +259,7 @@ export default function PublicClientInformation() {
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen pb-28 sm:pb-10 animate-fade" style={{ background: 'var(--bg-page)' }}>
-      <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'} robots={ROBOTS_PRIVATE} />
+      <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`} robots={ROBOTS_PRIVATE} />
 
       {/* Header — logo/name, page title, language selector, theme toggle */}
       <div className="sticky top-0 z-10 backdrop-blur-xl" style={{ background: 'var(--glass-bg)', borderBottom: '1px solid var(--border-subtle)' }}>

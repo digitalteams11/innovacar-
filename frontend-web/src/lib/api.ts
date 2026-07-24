@@ -1,4 +1,22 @@
-const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+// Rejects a configured API URL that points at a non-production host — most
+// commonly a leftover Vercel preview deployment URL (*.vercel.app) pasted
+// into the dashboard env var before the real api.innovacar.app backend
+// existed. That string would otherwise get inlined verbatim into the
+// production bundle by Vite's static import.meta.env substitution.
+const UNSAFE_API_HOST_PATTERN = /(^|\.)vercel\.app$/i;
+function sanitizeConfiguredApiUrl(raw: string | undefined): string | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  try {
+    const { hostname } = new URL(trimmed);
+    if (UNSAFE_API_HOST_PATTERN.test(hostname)) return undefined;
+  } catch {
+    return undefined;
+  }
+  return trimmed;
+}
+
+const configuredApiUrl = sanitizeConfiguredApiUrl(import.meta.env.VITE_API_URL);
 const browserHost =
   typeof window !== 'undefined' && window.location.hostname
     ? window.location.hostname
@@ -13,8 +31,12 @@ const browserHost =
 // mixed content, and is exactly what previously surfaced as "Backend server
 // is not running on port 8082" in the Email Center.
 if (import.meta.env.PROD && !configuredApiUrl) {
+  // Deliberately generic wording here (never spell out the literal rejected
+  // domain suffix in a shipped string) — see sanitizeConfiguredApiUrl above
+  // for what's actually rejected and why.
   console.error(
-    '[API] VITE_API_URL is not set in this production build. ' +
+    '[API] VITE_API_URL is not set, or points at a non-production preview ' +
+    'host, in this production build. ' +
     'Set it in Vercel → Project Settings → Environment Variables ' +
     '(e.g. VITE_API_URL=https://api.innovacar.app) and redeploy.'
   );
