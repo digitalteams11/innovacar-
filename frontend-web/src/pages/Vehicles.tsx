@@ -24,6 +24,7 @@ interface Vehicle {
   prixJour: number;
   fuel: string;
   transmission: string;
+  seatCount?: number | null;
   imageUrl: string;
 }
 
@@ -92,6 +93,7 @@ export default function Vehicles() {
     prixJour: '',
     fuel: 'Essence',
     transmission: 'Manual',
+    seatCount: '',
     imageUrl: '',
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -279,7 +281,7 @@ export default function Vehicles() {
     }
     setEditingId(null);
     setFieldErrors({});
-    setForm({ marque: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: 'Essence', transmission: 'Manual', imageUrl: '' });
+    setForm({ marque: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: 'Essence', transmission: 'Manual', seatCount: '', imageUrl: '' });
     setImagePreview(null);
     setIsModalOpen(true);
   };
@@ -295,6 +297,7 @@ export default function Vehicles() {
       prixJour: vehicle.prixJour ? String(vehicle.prixJour) : '',
       fuel: vehicle.fuel || 'Essence',
       transmission: vehicle.transmission || 'Manual',
+      seatCount: vehicle.seatCount != null ? String(vehicle.seatCount) : '',
       imageUrl: vehicle.imageUrl || '',
     });
     setImagePreview(vehicle.imageUrl || null);
@@ -316,6 +319,12 @@ export default function Vehicles() {
     if (!form.marque.trim()) errors.marque = t('vehicles.validation.brandRequired');
     if (!form.plate.trim()) errors.plate = t('vehicles.validation.plateRequired');
     if (!form.prixJour.trim()) errors.prixJour = t('vehicles.validation.dailyPriceRequired');
+    if (form.seatCount.trim()) {
+      const seats = Number(form.seatCount);
+      if (!Number.isInteger(seats) || seats < 1 || seats > 100) {
+        errors.seatCount = t('vehicles.validation.seatCountInvalid');
+      }
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -347,6 +356,7 @@ export default function Vehicles() {
         plate: form.plate.trim(),
         fuel: form.fuel,
         transmission: form.transmission,
+        seatCount: form.seatCount.trim() ? Number(form.seatCount) : null,
         imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
       };
       if (editingId) {
@@ -646,16 +656,18 @@ export default function Vehicles() {
                   </div>
 
                   <div
-                    className="grid grid-cols-3 gap-3 py-3 mb-4 transition-colors"
+                    className={`grid ${vehicle.seatCount ? 'grid-cols-3' : 'grid-cols-2'} gap-3 py-3 mb-4 transition-colors`}
                     style={{
                       borderTop: '1px solid var(--border-subtle)',
                       borderBottom: '1px solid var(--border-subtle)',
                     }}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>5 {t('vehicles.seats')}</span>
-                    </div>
+                    {!!vehicle.seatCount && (
+                      <div className="flex flex-col items-center gap-1">
+                        <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
+                        <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.seatCount} {t('vehicles.seats')}</span>
+                      </div>
+                    )}
                     <div className="flex flex-col items-center gap-1">
                       <Fuel size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
                       <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateFuelType(vehicle.fuel || 'Diesel')}</span>
@@ -794,6 +806,25 @@ export default function Vehicles() {
                 <option value="Manual">{t('vehicles.manual')}</option>
                 <option value="Automatic">{t('vehicles.automatic')}</option>
               </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.seatCount')}</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={100}
+                step={1}
+                placeholder={t('vehicles.seatCountPlaceholder')}
+                value={form.seatCount}
+                onChange={(e) => updateFormField('seatCount', e.target.value)}
+                aria-invalid={Boolean(fieldErrors.seatCount)}
+                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('seatCount'), color: 'var(--text-primary)' }}
+              />
+              {fieldError('seatCount')}
             </div>
           </div>
           <div className="pt-2">

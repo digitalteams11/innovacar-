@@ -120,6 +120,7 @@ public class VehicleService {
                 .plate(request.getPlate())
                 .fuel(request.getFuel())
                 .transmission(request.getTransmission())
+                .seatCount(request.getSeatCount())
                 .imageUrl(request.getImageUrl())
                 .gpsDeviceId(request.getGpsDeviceId())
                 .gpsImei(request.getGpsImei())
@@ -165,6 +166,9 @@ public class VehicleService {
         }
         if (request.getTransmission() != null) {
             vehicle.setTransmission(request.getTransmission());
+        }
+        if (request.getSeatCount() != null) {
+            vehicle.setSeatCount(request.getSeatCount());
         }
         if (request.getImageUrl() != null) {
             vehicle.setImageUrl(request.getImageUrl());

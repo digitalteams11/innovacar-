@@ -118,6 +118,7 @@ public class VehicleExportService {
                 .pricePerDay(v.getPrixJour())
                 .fuel(v.getFuel())
                 .transmission(v.getTransmission())
+                .seats(v.getSeatCount())
                 .mileage(v.getMileageCurrent())
                 .branch(v.getBranch() != null ? v.getBranch().getName() : null)
                 .nextMaintenanceDate(nextMaintenance)

@@ -54,7 +54,7 @@ public class VehiclePdfExporter {
         document.add(meta);
         document.add(Chunk.NEWLINE);
 
-        String[] headers = {"ID", "Brand", "Model", "Category", "Plate", "Status", "Price/Day", "Fuel", "Transmission", "Mileage", "Branch", "Next Maint."};
+        String[] headers = {"ID", "Brand", "Model", "Category", "Plate", "Status", "Price/Day", "Fuel", "Transmission", "Seats", "Mileage", "Branch", "Next Maint."};
         PdfPTable table = new PdfPTable(headers.length);
         table.setWidthPercentage(100);
         table.setHeaderRows(1);
@@ -77,6 +77,7 @@ public class VehiclePdfExporter {
             addCell(table, r.getPricePerDay() != null ? r.getPricePerDay().toPlainString() : "");
             addCell(table, r.getFuel());
             addCell(table, r.getTransmission());
+            addCell(table, r.getSeats() != null ? String.valueOf(r.getSeats()) : "");
             addCell(table, r.getMileage() != null ? String.valueOf(r.getMileage()) : "");
             addCell(table, r.getBranch());
             addCell(table, r.getNextMaintenanceDate() != null ? r.getNextMaintenanceDate().format(dateFmt) : "");

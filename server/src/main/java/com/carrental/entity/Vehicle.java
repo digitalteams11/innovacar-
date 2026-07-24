@@ -101,6 +101,10 @@ public class Vehicle {
     @Column(length = 30)
     private String color;
 
+    /** Number of seats — entered manually by the agency, never inferred/defaulted. Null until an admin sets it. */
+    @Column(name = "seat_count")
+    private Integer seatCount;
+
     /** Image URL */
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;

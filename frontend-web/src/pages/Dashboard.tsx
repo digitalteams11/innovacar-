@@ -1075,6 +1075,15 @@ export default function Dashboard() {
     );
   }
 
+  /* ── initial loading state ────────────────────────────────────────
+     Full-screen loader replaces the page entirely instead of floating on
+     top of it — `stats` is still null on first mount, so rendering the
+     section functions below at this point would show every card at its
+     zero/empty fallback value for a moment before real data lands. */
+  if (loading && !stats) {
+    return <PremiumLoader fullScreen />;
+  }
+
   /* ══════════════════════════════════════════════════════════════ */
   /*  SECTION RENDER FUNCTIONS                                       */
   /* ══════════════════════════════════════════════════════════════ */
@@ -1743,8 +1752,6 @@ export default function Dashboard() {
   /* ══════════════════════════════════════════════════════════════ */
   return (
     <div className="space-y-5 pb-6">
-      {loading && <PremiumLoader />}
-
       {/* ══ PAGE HEADER ══════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}

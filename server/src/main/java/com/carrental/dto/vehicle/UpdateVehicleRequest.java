@@ -34,6 +34,11 @@ public class UpdateVehicleRequest {
     @Size(max = 20)
     private String transmission;
 
+    /** Number of seats — optional, entered manually by the agency. Never defaulted. */
+    @Min(value = 1, message = "Number of seats must be at least 1")
+    @Max(value = 100, message = "Number of seats must not exceed 100")
+    private Integer seatCount;
+
     @Size(max = 50000000, message = "Image data too large")
     private String imageUrl;
 

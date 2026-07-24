@@ -24,6 +24,8 @@ public class VehicleResponse {
     private String        plate;
     private String        fuel;
     private String        transmission;
+    /** Manually entered by the agency — null means unspecified, never defaulted (e.g. to 5). */
+    private Integer       seatCount;
     private String        imageUrl;
     private Long          tenantId;
 
@@ -49,6 +51,7 @@ public class VehicleResponse {
                 .plate(v.getPlate() != null ? v.getPlate() : "")
                 .fuel(v.getFuel() != null ? v.getFuel() : "")
                 .transmission(v.getTransmission() != null ? v.getTransmission() : "")
+                .seatCount(v.getSeatCount())
                 .imageUrl(v.getImageUrl() != null ? v.getImageUrl() : "")
                 .tenantId(v.getTenant() == null ? null : v.getTenant().getId())
                 .gpsDeviceId(v.getGpsDeviceId())
