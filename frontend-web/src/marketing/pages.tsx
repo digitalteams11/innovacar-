@@ -48,28 +48,39 @@ export interface MarketingPageMeta {
 type EnvBag = Record<string, string | boolean | undefined>;
 const ENV: EnvBag = ((import.meta as unknown as { env?: EnvBag })?.env) ?? {};
 
+// Blanket guard applied to EVERY env value this file reads, not just the
+// ones that are obviously URLs (VITE_CONTACT_EMAIL, VITE_TRIAL_LABEL, etc.
+// are free text an operator fills in, and any of them could just as easily
+// have a leftover Vercel preview URL pasted into it as VITE_*_URL/DOWNLOAD
+// fields do). Only vercel.app is stripped here — NOT localhost/192.168.*,
+// since VITE_API_URL is documented to legitimately be a LAN address for
+// local dev and is also read through this same function (see apiBase()
+// below). A rejected value renders as unconfigured/empty rather than
+// shipping the literal string into the production bundle.
+const UNSAFE_VALUE_PATTERN = /vercel\.app/i;
 function envStr(key: string): string {
   const v = ENV[key];
-  return typeof v === 'string' ? v.trim() : '';
+  if (typeof v !== 'string') return '';
+  const trimmed = v.trim();
+  return UNSAFE_VALUE_PATTERN.test(trimmed) ? '' : trimmed;
 }
 function envBool(key: string): boolean {
   const v = ENV[key];
   return v === true || v === 'true' || v === '1';
 }
 
-// Public marketing links come from env vars an operator fills in later (the
-// real Innovax website, the desktop installer) — never trust them blindly.
-// A leftover Vercel preview URL (or any non-production host) used as a
-// placeholder must never ship into the production bundle; treat it exactly
-// like "not configured yet" instead of rendering it.
-const UNSAFE_HOST_PATTERN = /(^|\.)vercel\.app$|localhost|127\.0\.0\.1|^192\.168\./i;
+// Public marketing links (the real Innovax website, the desktop installer)
+// must additionally be a real https:// URL that isn't a LAN/loopback
+// address — unlike VITE_API_URL, there's no legitimate reason for either of
+// these to ever be a local/internal host.
+const UNSAFE_PUBLIC_HOST_PATTERN = /localhost|127\.0\.0\.1|^192\.168\./i;
 function envSafeUrl(key: string): string {
   const value = envStr(key);
   if (!value) return '';
   try {
     const parsed = new URL(value);
     if (parsed.protocol !== 'https:') return '';
-    if (UNSAFE_HOST_PATTERN.test(parsed.hostname)) return '';
+    if (UNSAFE_PUBLIC_HOST_PATTERN.test(parsed.hostname)) return '';
     return value;
   } catch {
     return '';
@@ -99,14 +110,12 @@ function isBrowser(): boolean {
  * import.meta.env substitution nor `window`.
  */
 function apiBase(): string {
-  // Same non-production-host guard as src/lib/api.ts — a *.vercel.app value
-  // left over in VITE_API_URL must fall back to the real API origin, never
-  // get used (and inlined into this bundle) as-is. Deliberately not routed
-  // through envSafeUrl() here: that helper requires https: and rejects
-  // localhost/192.168.*, but VITE_API_URL is documented to legitimately be
-  // an http:// LAN address for local dev — only the vercel.app case is unsafe.
-  const rawConfigured = envStr('VITE_API_URL');
-  const configured = rawConfigured && !/vercel\.app/i.test(rawConfigured) ? rawConfigured : '';
+  // envStr() already strips a vercel.app value out of VITE_API_URL (see
+  // above) — deliberately not routed through envSafeUrl() on top of that:
+  // that helper requires https: and rejects localhost/192.168.*, but
+  // VITE_API_URL is documented to legitimately be an http:// LAN address
+  // for local dev.
+  const configured = envStr('VITE_API_URL');
   if (configured) {
     const trimmed = configured.replace(/\/+$/, '');
     return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;

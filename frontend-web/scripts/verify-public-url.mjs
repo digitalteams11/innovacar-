@@ -44,6 +44,33 @@ for (const { raw, expected, label } of cases) {
   }
 }
 
+// Blanket guard from src/marketing/pages.tsx's envStr() — applied to EVERY
+// landing-page env var (contact email, trial label, company name, ...), not
+// just the ones that are obviously URLs. A freeform field is just as capable
+// of carrying a pasted-in vercel.app URL as a *_URL field is.
+const UNSAFE_VALUE_PATTERN = /vercel\.app/i;
+function envStrGuard(raw) {
+  if (typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  return UNSAFE_VALUE_PATTERN.test(trimmed) ? '' : trimmed;
+}
+
+const envStrCases = [
+  { raw: 'contact@innovacar.app', expected: 'contact@innovacar.app', label: 'a normal contact email passes through' },
+  { raw: 'contact@my-preview.vercel.app', expected: '', label: 'a vercel.app email domain is rejected' },
+  { raw: 'https://foo-git-main.vercel.app', expected: '', label: 'a vercel.app value in ANY field (not just a *_URL one) is rejected' },
+  { raw: '30', expected: '30', label: 'an unrelated freeform value passes through unchanged' },
+  { raw: undefined, expected: '', label: 'a missing env var resolves to empty' },
+];
+
+for (const { raw, expected, label } of envStrCases) {
+  const actual = envStrGuard(raw);
+  if (actual !== expected) {
+    failures++;
+    console.error(`  ✗ ${label}: expected "${expected}", got "${actual}" (input: ${JSON.stringify(raw)})`);
+  }
+}
+
 if (failures > 0) {
   console.error(`\n[verify-public-url] ${failures} check(s) failed.\n`);
   process.exit(1);
