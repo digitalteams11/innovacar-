@@ -1025,12 +1025,22 @@
       "otherDocumentNumber": "رقم الوثيقة",
       "address": "العنوان",
       "city": "المدينة",
-      "postalCode": "الرمز البريدي",
+      "cityPlaceholder": "اختر المدينة",
+      "citySearchPlaceholder": "البحث عن مدينة...",
+      "cityEmpty": "لم يتم العثور على مدينة",
+      "cityRetry": "إعادة المحاولة",
+      "cityManualPrompt": "لم تجد مدينتك؟ أدخلها يدوياً.",
+      "cityManualBack": "الاختيار من القائمة",
+      "cityManualPlaceholder": "أدخل اسم المدينة",
       "country": "البلد",
+      "countryPlaceholder": "اختر البلد",
+      "countrySearchPlaceholder": "البحث عن بلد...",
+      "countryEmpty": "لم يتم العثور على بلد",
       "notes": "ملاحظات (اختياري)",
       "licenseNumber": "رقم رخصة السياقة",
       "requiredFields": "يرجى ملء جميع الحقول المطلوبة.",
       "invalidEmail": "يرجى إدخال بريد إلكتروني صحيح.",
+      "invalidPhone": "يرجى إدخال رقم هاتف صحيح.",
       "privacyRequired": "يرجى قبول إشعار الخصوصية للمتابعة."
     },
     "documentTypes": {
@@ -1057,6 +1067,7 @@
   "clientInfoAdmin": {
     "title": "طلبات معلومات العميل",
     "subtitle": "راجع واعتمد استمارات العملاء قبل ربطها بعقد.",
+    "submittedAt": "تاريخ الإرسال",
     "sendToClient": "إرسال الاستمارة إلى العميل",
     "generateLink": "إنشاء رابط آمن",
     "linkReady": "شارك هذا الرابط الآمن مع العميل. تنتهي صلاحيته خلال 48 ساعة.",
@@ -1109,7 +1120,7 @@
       "sent": "تم الإرسال",
       "notConfigured": "غير مُهيأ",
       "failedRetry": "فشل — إعادة المحاولة",
-      "retrySuccess": "تم إرسال الرسالة بنجاح.",
+      "retrySuccess": "تم إرسال الرسالة",
       "retryFailed": "لا يزال التسليم غير ممكن. يرجى المحاولة لاحقًا.",
       "openWhatsapp": "فتح واتساب",
       "whatsappOpened": "تم فتح واتساب",
@@ -1669,7 +1680,14 @@
     "clientProfile": "تم فتح ملف العميل بنجاح!",
     "bookingStarted": "تم بدء الحجز بنجاح!",
     "transactionOptions": "تم فتح خيارات المعاملة بنجاح!",
-    "receiptOpened": "تم فتح الإيصال بنجاح!"
+    "receiptOpened": "تم فتح الإيصال بنجاح!",
+    "saved": "تم الحفظ",
+    "emailSent": "تم إرسال البريد الإلكتروني",
+    "linkCopied": "تم نسخ الرابط",
+    "changesSaved": "تم حفظ التغييرات",
+    "unableToSaveChanges": "تعذر حفظ التغييرات",
+    "retry": "إعادة المحاولة",
+    "copied": "تم النسخ"
   },
   "superAdmin": {
     "nav": {
@@ -3421,5 +3439,10 @@
     "customize": "تخصيص",
     "savePreferences": "حفظ التفضيلات",
     "learnMore": "سياسة ملفات تعريف الارتباط"
+  },
+  "session": {
+    "expiredTitle": "انتهت الجلسة",
+    "expiredMessage": "انتهت جلستك. سجل الدخول من جديد للمتابعة.",
+    "signInAgain": "تسجيل الدخول من جديد"
   }
 }

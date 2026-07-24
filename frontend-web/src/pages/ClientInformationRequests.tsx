@@ -18,9 +18,15 @@ interface ClientMatchSummary {
 interface SubmissionView {
   fullName: string;
   phone: string;
+  secondaryPhone?: string;
   email?: string;
+  nationality?: string;
   documentType?: string;
   documentNumber?: string;
+  driverLicenseNumber?: string;
+  address?: string;
+  city?: string;
+  country?: string;
 }
 
 interface RequestItem {
@@ -249,9 +255,23 @@ export default function ClientInformationRequests() {
               <div className="rounded-xl border border-[var(--border-subtle)] p-3 space-y-1.5 text-sm">
                 <p><strong>{t('clientInfo.form.fullName', 'Full name')}:</strong> {selected.submission.fullName}</p>
                 <p><strong>{t('clientInfo.form.phone', 'Primary phone')}:</strong> {selected.submission.phone}</p>
+                {selected.submission.secondaryPhone && <p><strong>{t('clientInfo.form.secondaryPhone', 'Secondary phone')}:</strong> {selected.submission.secondaryPhone}</p>}
                 {selected.submission.email && <p><strong>{t('clientInfo.form.email', 'Email')}:</strong> {selected.submission.email}</p>}
+                {selected.submission.nationality && <p><strong>{t('clientInfo.form.nationality', 'Nationality')}:</strong> {selected.submission.nationality}</p>}
                 {selected.submission.documentNumber && (
                   <p><strong>{t('clientInfo.sections.document', 'Identity document')}:</strong> {selected.submission.documentType} {selected.submission.documentNumber}</p>
+                )}
+                {selected.submission.driverLicenseNumber && (
+                  <p><strong>{t('clientInfo.form.licenseNumber', 'Driving licence number')}:</strong> {selected.submission.driverLicenseNumber}</p>
+                )}
+                {(selected.submission.address || selected.submission.city || selected.submission.country) && (
+                  <p>
+                    <strong>{t('clientInfo.sections.address', 'Address')}:</strong>{' '}
+                    {[selected.submission.address, selected.submission.city, selected.submission.country].filter(Boolean).join(', ')}
+                  </p>
+                )}
+                {selected.submittedAt && (
+                  <p><strong>{t('clientInfoAdmin.submittedAt', 'Submitted on')}:</strong> {new Date(selected.submittedAt).toLocaleString()}</p>
                 )}
               </div>
             )}

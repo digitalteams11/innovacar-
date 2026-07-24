@@ -1032,12 +1032,22 @@
       "otherDocumentNumber": "Document number",
       "address": "Address",
       "city": "City",
-      "postalCode": "Postal code",
+      "cityPlaceholder": "Select city",
+      "citySearchPlaceholder": "Search city...",
+      "cityEmpty": "No city found",
+      "cityRetry": "Retry",
+      "cityManualPrompt": "City not found? Enter it manually.",
+      "cityManualBack": "Choose from list instead",
+      "cityManualPlaceholder": "Enter city name",
       "country": "Country",
+      "countryPlaceholder": "Select country",
+      "countrySearchPlaceholder": "Search country...",
+      "countryEmpty": "No country found",
       "notes": "Notes",
       "licenseNumber": "Driving licence number",
       "requiredFields": "Please fill all required fields.",
       "invalidEmail": "Please enter a valid email address.",
+      "invalidPhone": "Please enter a valid phone number.",
       "privacyRequired": "Please accept the privacy notice to continue."
     },
     "documentTypes": {
@@ -1064,6 +1074,7 @@
   "clientInfoAdmin": {
     "title": "Client Information Requests",
     "subtitle": "Review and approve client self-fill submissions before they are linked to a contract.",
+    "submittedAt": "Submitted on",
     "sendToClient": "Send form to client",
     "generateLink": "Generate secure link",
     "linkReady": "Share this secure link with the client. It expires in 48 hours.",
@@ -1116,7 +1127,7 @@
       "sent": "Sent",
       "notConfigured": "Not configured",
       "failedRetry": "Failed — Retry",
-      "retrySuccess": "Message sent successfully.",
+      "retrySuccess": "Message sent",
       "retryFailed": "Still could not deliver. Please try again later.",
       "expiresAt": "Expires on {{date}}",
       "openWhatsapp": "Open WhatsApp",
@@ -1676,7 +1687,14 @@
     "clientProfile": "Client profile opened",
     "bookingStarted": "Booking started",
     "transactionOptions": "Transaction options opened",
-    "receiptOpened": "Receipt opened"
+    "receiptOpened": "Receipt opened",
+    "saved": "Saved",
+    "emailSent": "Email sent",
+    "linkCopied": "Link copied",
+    "changesSaved": "Changes saved",
+    "unableToSaveChanges": "Unable to save changes",
+    "retry": "Retry",
+    "copied": "Copied"
   },
   "superAdmin": {
     "nav": {
@@ -3393,5 +3411,10 @@
     "customize": "Customize",
     "savePreferences": "Save preferences",
     "learnMore": "Cookie Policy"
+  },
+  "session": {
+    "expiredTitle": "Session expired",
+    "expiredMessage": "Your session has ended. Sign in again to continue.",
+    "signInAgain": "Sign in again"
   }
 }

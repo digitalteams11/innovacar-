@@ -378,7 +378,6 @@ public class ClientInformationRequestService {
                 .nationality(s.getNationality())
                 .address(s.getAddress())
                 .city(s.getCity())
-                .postalCode(s.getPostalCode())
                 .country(s.getCountry())
                 .drivingLicense(s.getDriverLicenseNumber())
                 .companyName(s.getCompanyName())
@@ -422,7 +421,6 @@ public class ClientInformationRequestService {
         contract.setClientAddress(s.getAddress());
         contract.setClientCity(s.getCity());
         contract.setClientCountry(s.getCountry());
-        contract.setClientPostalCode(s.getPostalCode());
         contract.setClientDriverLicense(s.getDriverLicenseNumber());
         if (s.getDocumentType() == com.carrental.entity.DocumentType.CIN) {
             contract.setClientCin(s.getDocumentNumber());

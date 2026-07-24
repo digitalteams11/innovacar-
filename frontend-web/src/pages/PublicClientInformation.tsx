@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock } from 'lucide-react';
@@ -7,6 +7,10 @@ import { resolveMediaUrl } from '../utils/mediaUrl';
 import ThemeToggle from '../components/ThemeToggle';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PRIVATE } from '../components/seo/robotsPresets';
+import SearchableSelect from '../components/shared/SearchableSelect';
+import { COUNTRIES, countryLabel, findCountry } from '../data/countries';
+import { hasCityDataset, loadCitiesForCountry } from '../data/cities';
+import { normalizePhone, isValidPhone } from '../utils/phone';
 
 interface PublicView {
   temporaryName?: string;
@@ -15,9 +19,10 @@ interface PublicView {
   agencyLogo?: string;
   expiresAt?: string;
   alreadySubmitted?: boolean;
+  defaultCountryCode?: string;
 }
 
-type DocumentType = 'CIN' | 'PASSPORT' | 'RESIDENCE_PERMIT' | 'OTHER';
+type DocumentType = 'CIN' | 'PASSPORT';
 
 const SUPPORTED_LANGUAGES = ['ar', 'fr', 'en'] as const;
 type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
@@ -49,10 +54,12 @@ function resolveInitialLanguage(storedPreference?: string | null): SupportedLang
   return 'fr';
 }
 
+const DEFAULT_COUNTRY_CODE = 'MA';
+
 const emptyForm = {
   fullName: '', phone: '', secondaryPhone: '', email: '', gender: '', birthDate: '', nationality: '',
   documentType: 'CIN' as DocumentType, documentNumber: '',
-  address: '', city: '', postalCode: '', country: 'Morocco',
+  address: '', city: '', countryCode: DEFAULT_COUNTRY_CODE,
   driverLicenseNumber: '',
   companyName: '', notes: '',
   privacyAccepted: false,
@@ -73,6 +80,11 @@ export default function PublicClientInformation() {
   const [wasAlreadySubmitted, setWasAlreadySubmitted] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [cityStatus, setCityStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [cityManualMode, setCityManualMode] = useState(false);
+  const [cityReloadKey, setCityReloadKey] = useState(0);
+
   useEffect(() => {
     // Resolves a usable language immediately (URL/browser/French) so the
     // page never renders in the wrong language for the instant before the
@@ -84,6 +96,9 @@ export default function PublicClientInformation() {
       .then(({ data }) => {
         setView(data);
         i18n.changeLanguage(resolveInitialLanguage(data?.preferredLanguage));
+        if (data?.defaultCountryCode && findCountry(data.defaultCountryCode)) {
+          setForm((prev) => ({ ...prev, countryCode: data.defaultCountryCode }));
+        }
         if (data?.alreadySubmitted) { setSubmitted(true); setWasAlreadySubmitted(true); }
       })
       .catch((err) => setErrorCode(err?.response?.data?.code || 'CLIENT_INFO_LINK_INVALID'))
@@ -91,22 +106,52 @@ export default function PublicClientInformation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // Country change (spec section 4): clear the old city, load the new
+  // country's city list, and drop back to select mode so a manual entry
+  // typed for the previous country isn't silently kept for the new one.
+  useEffect(() => {
+    let cancelled = false;
+    setCityStatus('loading');
+    setCityManualMode(false);
+    setForm((prev) => ({ ...prev, city: '' }));
+    loadCitiesForCountry(form.countryCode)
+      .then((list) => {
+        if (cancelled) return;
+        setCityOptions(list);
+        setCityStatus('ready');
+        if (list.length === 0) setCityManualMode(true);
+      })
+      .catch(() => { if (!cancelled) setCityStatus('error'); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.countryCode, cityReloadKey]);
+
   const update = (field: keyof typeof emptyForm, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  const documentNumberLabel = () => {
-    switch (form.documentType) {
-      case 'CIN': return t('clientInfo.form.cinNumber', 'Numéro de CIN');
-      case 'PASSPORT': return t('clientInfo.form.passportNumber', 'Numéro de passeport');
-      case 'RESIDENCE_PERMIT': return t('clientInfo.form.residencePermitNumber', 'Numéro de carte de séjour');
-      default: return t('clientInfo.form.otherDocumentNumber', 'Numéro du document');
-    }
-  };
+  const countryOptions = useMemo(
+    () => COUNTRIES.map((c) => ({ value: c.code, label: countryLabel(c, i18n.language) })),
+    [i18n.language],
+  );
+  const cityOptionsForSelect = useMemo(() => cityOptions.map((c) => ({ value: c, label: c })), [cityOptions]);
+
+  const documentNumberLabel = () => (
+    form.documentType === 'PASSPORT'
+      ? t('clientInfo.form.passportNumber', 'Passport number')
+      : t('clientInfo.form.cinNumber', 'CIN number')
+  );
 
   const submit = async () => {
     setValidationError(null);
-    if (!form.fullName.trim() || !form.phone.trim() || !form.nationality.trim() || !form.address.trim() || !form.documentNumber.trim()) {
+    if (
+      !form.fullName.trim() || !form.phone.trim() || !form.nationality.trim()
+      || !form.documentNumber.trim() || !form.countryCode.trim() || !form.city.trim() || !form.address.trim()
+    ) {
       setValidationError(t('clientInfo.form.requiredFields', 'Please fill all required fields.'));
+      return;
+    }
+    if (!isValidPhone(form.phone)) {
+      setValidationError(t('clientInfo.form.invalidPhone', 'Please enter a valid phone number.'));
       return;
     }
     if (form.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) {
@@ -117,9 +162,29 @@ export default function PublicClientInformation() {
       setValidationError(t('clientInfo.form.privacyRequired', 'Please accept the privacy notice to continue.'));
       return;
     }
+    const country = findCountry(form.countryCode);
+    const payload = {
+      fullName: form.fullName.trim(),
+      phone: normalizePhone(form.phone, form.countryCode),
+      secondaryPhone: form.secondaryPhone.trim() ? normalizePhone(form.secondaryPhone, form.countryCode) : null,
+      email: form.email.trim() || null,
+      gender: form.gender || null,
+      birthDate: form.birthDate || null,
+      nationality: form.nationality.trim(),
+      documentType: form.documentType,
+      documentNumber: form.documentNumber.trim(),
+      address: form.address.trim(),
+      city: form.city.trim(),
+      countryCode: form.countryCode,
+      country: country ? country.en : form.countryCode,
+      driverLicenseNumber: form.driverLicenseNumber.trim() || null,
+      companyName: form.companyName.trim() || null,
+      notes: form.notes.trim() || null,
+      privacyAccepted: form.privacyAccepted,
+    };
     setSubmitting(true);
     try {
-      await api.post(`/public/client-information/${token}/submit`, form);
+      await api.post(`/public/client-information/${token}/submit`, payload);
       setSubmitted(true);
     } catch (err) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
@@ -192,7 +257,7 @@ export default function PublicClientInformation() {
   }
 
   return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen pb-10 animate-fade" style={{ background: 'var(--bg-page)' }}>
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen pb-28 sm:pb-10 animate-fade" style={{ background: 'var(--bg-page)' }}>
       <SeoHead title={t('clientInfo.pageTitle', 'Client Information Form')} description="Secure client information form." canonical={typeof window !== 'undefined' ? window.location.href : 'https://innovacar.app/'} robots={ROBOTS_PRIVATE} />
 
       {/* Header — logo/name, page title, language selector, theme toggle */}
@@ -285,15 +350,17 @@ export default function PublicClientInformation() {
 
         {/* Identity document */}
         <Section title={t('clientInfo.sections.document', 'Identity document')}>
-          <Field label={t('clientInfo.form.documentType', 'Document type')} required>
-            <select className="form-input" value={form.documentType} onChange={(e) => update('documentType', e.target.value)}>
-              <option value="CIN">{t('clientInfo.documentTypes.cin', 'CIN')}</option>
-              <option value="PASSPORT">{t('clientInfo.documentTypes.passport', 'Passport')}</option>
-            </select>
-          </Field>
-          <Field label={documentNumberLabel()} required>
-            <input dir="ltr" className="form-input text-start" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} />
-          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label={t('clientInfo.form.documentType', 'Document type')} required>
+              <select className="form-input" value={form.documentType} onChange={(e) => update('documentType', e.target.value)}>
+                <option value="CIN">{t('clientInfo.documentTypes.cin', 'CIN')}</option>
+                <option value="PASSPORT">{t('clientInfo.documentTypes.passport', 'Passport')}</option>
+              </select>
+            </Field>
+            <Field label={documentNumberLabel()} required>
+              <input dir="ltr" className="form-input text-start" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} />
+            </Field>
+          </div>
         </Section>
 
         {/* Driving licence */}
@@ -305,19 +372,67 @@ export default function PublicClientInformation() {
 
         {/* Address */}
         <Section title={t('clientInfo.sections.address', 'Address')}>
-          <Field label={t('clientInfo.form.address', 'Address')} required>
-            <input className="form-input" value={form.address} onChange={(e) => update('address', e.target.value)} />
-          </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label={t('clientInfo.form.city', 'City')}>
-              <input className="form-input" value={form.city} onChange={(e) => update('city', e.target.value)} />
+            <Field label={t('clientInfo.form.country', 'Country')} required>
+              <SearchableSelect
+                value={form.countryCode}
+                onChange={(code) => update('countryCode', code)}
+                options={countryOptions}
+                placeholder={t('clientInfo.form.countryPlaceholder', 'Select country')}
+                searchPlaceholder={t('clientInfo.form.countrySearchPlaceholder', 'Search country...')}
+                emptyMessage={t('clientInfo.form.countryEmpty', 'No country found')}
+              />
             </Field>
-            <Field label={t('clientInfo.form.postalCode', 'Postal code')}>
-              <input dir="ltr" className="form-input text-start" value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} />
+            <Field label={t('clientInfo.form.city', 'City')} required>
+              {cityManualMode ? (
+                <div className="space-y-1.5">
+                  <input
+                    className="form-input"
+                    value={form.city}
+                    placeholder={t('clientInfo.form.cityManualPlaceholder', 'Enter city name')}
+                    onChange={(e) => update('city', e.target.value)}
+                  />
+                  {hasCityDataset(form.countryCode) && (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold"
+                      style={{ color: 'var(--brand-primary)' }}
+                      onClick={() => setCityManualMode(false)}
+                    >
+                      {t('clientInfo.form.cityManualBack', 'Choose from list instead')}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <SearchableSelect
+                    value={form.city}
+                    onChange={(city) => update('city', city)}
+                    options={cityOptionsForSelect}
+                    placeholder={t('clientInfo.form.cityPlaceholder', 'Select city')}
+                    searchPlaceholder={t('clientInfo.form.citySearchPlaceholder', 'Search city...')}
+                    emptyMessage={cityStatus === 'error'
+                      ? t('clientInfo.errors.title', 'Unable to open this link')
+                      : t('clientInfo.form.cityEmpty', 'No city found')}
+                    status={cityStatus}
+                    onRetry={() => setCityReloadKey((k) => k + 1)}
+                    retryLabel={t('clientInfo.form.cityRetry', 'Retry')}
+                    loading={cityStatus === 'loading'}
+                  />
+                  <button
+                    type="button"
+                    className="text-xs font-semibold"
+                    style={{ color: 'var(--brand-primary)' }}
+                    onClick={() => setCityManualMode(true)}
+                  >
+                    {t('clientInfo.form.cityManualPrompt', 'City not found? Enter it manually.')}
+                  </button>
+                </div>
+              )}
             </Field>
           </div>
-          <Field label={t('clientInfo.form.country', 'Country')}>
-            <input className="form-input" value={form.country} onChange={(e) => update('country', e.target.value)} />
+          <Field label={t('clientInfo.form.address', 'Address')} required>
+            <input className="form-input" value={form.address} onChange={(e) => update('address', e.target.value)} />
           </Field>
           <Field label={t('clientInfo.form.notes', 'Notes')}>
             <textarea className="form-input" rows={2} value={form.notes} onChange={(e) => update('notes', e.target.value)} />
@@ -349,13 +464,27 @@ export default function PublicClientInformation() {
             type="button"
             onClick={submit}
             disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
+            className="hidden sm:flex w-full items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
             style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #ffffff)' }}
           >
             {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
             {submitting ? t('clientInfo.submitting', 'Submitting...') : t('clientInfo.submit', 'Submit information')}
           </button>
         </Section>
+      </div>
+
+      {/* Sticky mobile submit (spec section 9) */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-20 p-3 backdrop-blur-xl" style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--border-subtle)' }}>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
+          style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #ffffff)' }}
+        >
+          {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+          {submitting ? t('clientInfo.submitting', 'Submitting...') : t('clientInfo.submit', 'Submit information')}
+        </button>
       </div>
     </div>
   );

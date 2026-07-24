@@ -1032,12 +1032,22 @@
       "otherDocumentNumber": "Numéro du document",
       "address": "Adresse",
       "city": "Ville",
-      "postalCode": "Code postal",
+      "cityPlaceholder": "Sélectionner une ville",
+      "citySearchPlaceholder": "Rechercher une ville...",
+      "cityEmpty": "Aucune ville trouvée",
+      "cityRetry": "Réessayer",
+      "cityManualPrompt": "Ville introuvable ? Saisissez-la manuellement.",
+      "cityManualBack": "Choisir dans la liste",
+      "cityManualPlaceholder": "Saisir le nom de la ville",
       "country": "Pays",
+      "countryPlaceholder": "Sélectionner un pays",
+      "countrySearchPlaceholder": "Rechercher un pays...",
+      "countryEmpty": "Aucun pays trouvé",
       "notes": "Remarques (optionnel)",
       "licenseNumber": "Numéro de permis de conduire",
       "requiredFields": "Veuillez remplir tous les champs obligatoires.",
       "invalidEmail": "Veuillez saisir une adresse email valide.",
+      "invalidPhone": "Veuillez saisir un numéro de téléphone valide.",
       "privacyRequired": "Veuillez accepter la notice de confidentialité pour continuer."
     },
     "documentTypes": {
@@ -1064,6 +1074,7 @@
   "clientInfoAdmin": {
     "title": "Demandes d'informations client",
     "subtitle": "Vérifiez et approuvez les soumissions des clients avant de les lier à un contrat.",
+    "submittedAt": "Envoyé le",
     "sendToClient": "Envoyer le formulaire au client",
     "generateLink": "Générer le lien sécurisé",
     "linkReady": "Partagez ce lien sécurisé avec le client. Il expire dans 48 heures.",
@@ -1116,7 +1127,7 @@
       "sent": "Envoyé",
       "notConfigured": "Non configuré",
       "failedRetry": "Échec — Réessayer",
-      "retrySuccess": "Message envoyé avec succès.",
+      "retrySuccess": "Message envoyé",
       "retryFailed": "Toujours impossible à livrer. Veuillez réessayer plus tard.",
       "openWhatsapp": "Ouvrir WhatsApp",
       "whatsappOpened": "WhatsApp ouvert",
@@ -1676,7 +1687,14 @@
     "clientProfile": "Profil client ouvert avec succès !",
     "bookingStarted": "Réservation lancée avec succès !",
     "transactionOptions": "Options de transaction ouvertes avec succès !",
-    "receiptOpened": "Reçu ouvert avec succès !"
+    "receiptOpened": "Reçu ouvert avec succès !",
+    "saved": "Enregistré",
+    "emailSent": "E-mail envoyé",
+    "linkCopied": "Lien copié",
+    "changesSaved": "Modifications enregistrées",
+    "unableToSaveChanges": "Impossible d'enregistrer les modifications",
+    "retry": "Réessayer",
+    "copied": "Copié"
   },
   "superAdmin": {
     "nav": {
@@ -3393,5 +3411,10 @@
     "customize": "Personnaliser",
     "savePreferences": "Enregistrer les préférences",
     "learnMore": "Politique de cookies"
+  },
+  "session": {
+    "expiredTitle": "Session expirée",
+    "expiredMessage": "Votre session a pris fin. Reconnectez-vous pour continuer.",
+    "signInAgain": "Se reconnecter"
   }
 }

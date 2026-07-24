@@ -39,10 +39,17 @@ public class ClientInformationSubmitRequest {
     private String documentNumber;
 
     // ── Address ──────────────────────────────────────────────────────────
+    // No postal code: dropped from the public form entirely (spec section 2)
+    // — Client.postalCode/Contract.clientPostalCode stay nullable and unused
+    // for submissions coming through this flow.
     private String address;
     private String city;
-    private String postalCode;
     private String country;
+    // ISO 3166-1 alpha-2 code from the country selector. Stored only in the
+    // request's raw submission_payload JSON for now — Client/Contract have
+    // no dedicated country-code column, so approval still maps `country`
+    // (the name) onto the existing free-text column.
+    private String countryCode;
 
     // ── Driver license ───────────────────────────────────────────────────
     // Single field, no dates — same reasoning as the identity document above.
