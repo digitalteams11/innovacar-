@@ -258,6 +258,55 @@ class ClientInformationRequestServiceTest {
     }
 
     @Test
+    void approvingWithCreateNewPropagatesAddressFieldsWithoutPostalCode() {
+        // The public form's Address section is countryCode/country/city/address/notes
+        // only (no postal code) — verifies the submission payload's address fields
+        // reach both the created Client and the linked Contract on approval.
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(20L).tenantId(1L).status(ClientInfoRequestStatus.SUBMITTED)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .contractId(60L)
+                .submissionPayload("""
+                        {"fullName":"Sara Client","phone":"+212600000000","documentType":"CIN",
+                         "documentNumber":"AB123456","privacyAccepted":true,
+                         "countryCode":"MA","country":"Morocco","city":"Rabat",
+                         "address":"Hay Riad, Rabat","notes":null}""")
+                .build();
+        when(requestRepository.findByIdAndTenantId(20L, 1L)).thenReturn(Optional.of(r));
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
+        ArgumentCaptor<Client> clientCaptor = ArgumentCaptor.forClass(Client.class);
+        when(clientRepository.save(clientCaptor.capture())).thenAnswer(inv -> {
+            Client c = inv.getArgument(0);
+            c.setId(78L);
+            return c;
+        });
+        Contract contract = Contract.builder().id(60L).tenant(tenant).build();
+        when(contractRepository.findByIdAndTenantId(60L, 1L)).thenReturn(Optional.of(contract));
+        when(contractRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ApproveClientInformationRequest approveReq = new ApproveClientInformationRequest();
+        approveReq.setAction(ApproveClientInformationRequest.Action.CREATE_NEW);
+
+        service.approve(20L, approveReq);
+
+        assertThat(clientCaptor.getValue().getCity()).isEqualTo("Rabat");
+        assertThat(clientCaptor.getValue().getCountry()).isEqualTo("Morocco");
+        assertThat(clientCaptor.getValue().getAddress()).isEqualTo("Hay Riad, Rabat");
+        assertThat(contract.getClientCity()).isEqualTo("Rabat");
+        assertThat(contract.getClientCountry()).isEqualTo("Morocco");
+        assertThat(contract.getClientAddress()).isEqualTo("Hay Riad, Rabat");
+    }
+
+    @Test
+    void submitRequestHasNoPostalCodeField() {
+        // The DTO must not even have a postalCode field — the public form should
+        // be structurally unable to send one, not just choose not to.
+        assertThatThrownBy(() -> ClientInformationSubmitRequest.class.getDeclaredField("postalCode"))
+                .isInstanceOf(NoSuchFieldException.class);
+    }
+
+    @Test
     void approvingWithLinkExistingDoesNotCreateANewClient() {
         ClientInformationRequest r = ClientInformationRequest.builder()
                 .id(11L).tenantId(1L).status(ClientInfoRequestStatus.SUBMITTED)
