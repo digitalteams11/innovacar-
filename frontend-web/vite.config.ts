@@ -42,26 +42,46 @@ function googleSiteVerificationPlugin(token: string | undefined): Plugin {
   }
 }
 
-// Fails the build immediately, with the exact variable name, if ANY VITE_*
-// env var Vercel (or a local .env file) injects contains a Vercel preview
+// Only these VITE_* keys are read by application code as public, user-facing
+// URLs (see src/lib/publicUrl.ts, src/lib/api.ts, src/marketing/pages.tsx).
+// Keep this list in sync with those files — do not widen it back to "every
+// VITE_* key": when Vercel's "Automatically expose System Environment
+// Variables" setting is on, it injects VITE_VERCEL_URL, VITE_VERCEL_BRANCH_URL
+// and VITE_VERCEL_PROJECT_PRODUCTION_URL into every build, and those
+// legitimately contain a *.vercel.app host (that's the deployment's own
+// preview/branch hostname, by design) even for a Production build. Scanning
+// every VITE_* key treated those platform-injected variables as a leaked
+// preview URL and failed builds that were otherwise fine.
+const PUBLIC_URL_ENV_KEYS = [
+  'VITE_PUBLIC_APP_URL',
+  'VITE_API_URL',
+  'VITE_INNOVAX_WEBSITE_URL',
+  'VITE_DESKTOP_DOWNLOAD_URL',
+]
+
+// Fails the build immediately, with the exact variable name, if one of the
+// application-controlled public URL env vars above contains a Vercel preview
 // deployment host. This is the actual root-cause guard: source-level
 // sanitizers (src/lib/publicUrl.ts, src/lib/api.ts, src/marketing/pages.tsx)
-// only cover the specific fields that code reads — but Vite inlines EVERY
-// VITE_* var into the bundle whether or not any of our code even uses it,
-// and a leftover *.vercel.app value in the Vercel dashboard (not something
-// visible from this repo — env vars aren't committed to git) will keep
-// leaking into a *different* chunk every time until the dashboard value
+// only cover the specific fields that code reads — but Vite inlines whichever
+// of these vars is set into the bundle whether or not any of our code even
+// uses it, and a leftover *.vercel.app value in the Vercel dashboard (not
+// something visible from this repo — env vars aren't committed to git) will
+// keep leaking into a *different* chunk every time until the dashboard value
 // itself is fixed. Running this here, at config-eval time, means the build
 // fails with "VITE_FOO contains a vercel.app value" instead of the opaque
 // "assets/pages-xxxxx.js contains forbidden URL pattern" scripts/
 // verify-seo-dist.mjs reports several build steps later.
 function assertNoVercelPreviewUrls(env: Record<string, string>, isProduction: boolean) {
   if (!isProduction) return
-  const offenders = Object.entries(env).filter(([, value]) => /vercel\.app/i.test(value))
+  const offenders = PUBLIC_URL_ENV_KEYS.filter((key) => {
+    const value = env[key]
+    return typeof value === 'string' && /vercel\.app/i.test(value)
+  })
   if (offenders.length === 0) return
-  const names = offenders.map(([key]) => key).join(', ')
+  const names = offenders.join(', ')
   throw new Error(
-    `[vite.config] Refusing to build: the following env var(s) contain a Vercel preview ` +
+    `[vite.config] Refusing to build: the following application public URL env var(s) contain a Vercel preview ` +
     `deployment URL, which must never ship in the production bundle: ${names}. ` +
     `Fix the value in Vercel → Project Settings → Environment Variables (Production) — ` +
     `it must point at the real https://innovacar.app domain, not a preview deployment.`

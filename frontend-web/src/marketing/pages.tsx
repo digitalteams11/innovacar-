@@ -44,9 +44,34 @@ export interface MarketingPageMeta {
 // optional-chained with a safe fallback; the live client re-renders over the
 // static HTML immediately after mount with the real values (same tradeoff
 // already accepted for meta tags in that script).
+//
+// Each key below is read through its own literal `import.meta.env.VITE_*`
+// expression (matching src/lib/api.ts / src/lib/publicUrl.ts) rather than
+// grabbing the whole `import.meta.env` object once and indexing into it
+// dynamically. Vite only replaces a *specific* `import.meta.env.KEY`
+// expression with that key's value — grabbing the bare object instead makes
+// Vite inline the full resolved env, including every other VITE_*-prefixed
+// variable present at build time. That previously shipped Vercel's
+// auto-injected system vars (VITE_VERCEL_URL, VITE_VERCEL_BRANCH_URL,
+// VITE_VERCEL_PROJECT_PRODUCTION_URL — which legitimately contain a
+// *.vercel.app host) into this bundle even though this file never reads
+// those keys.
 // ─────────────────────────────────────────────────────────────────────────
 type EnvBag = Record<string, string | boolean | undefined>;
-const ENV: EnvBag = ((import.meta as unknown as { env?: EnvBag })?.env) ?? {};
+const ENV: EnvBag = {
+  VITE_INNOVAX_WEBSITE_URL: import.meta.env?.VITE_INNOVAX_WEBSITE_URL,
+  VITE_COMPANY_NAME: import.meta.env?.VITE_COMPANY_NAME,
+  VITE_TRIAL_DURATION_DAYS: import.meta.env?.VITE_TRIAL_DURATION_DAYS,
+  VITE_TRIAL_PROMO_ENABLED: import.meta.env?.VITE_TRIAL_PROMO_ENABLED,
+  VITE_TRIAL_LABEL: import.meta.env?.VITE_TRIAL_LABEL,
+  VITE_DESKTOP_AVAILABLE: import.meta.env?.VITE_DESKTOP_AVAILABLE,
+  VITE_DESKTOP_DOWNLOAD_URL: import.meta.env?.VITE_DESKTOP_DOWNLOAD_URL,
+  VITE_DESKTOP_PLATFORM: import.meta.env?.VITE_DESKTOP_PLATFORM,
+  VITE_CONTACT_EMAIL: import.meta.env?.VITE_CONTACT_EMAIL,
+  VITE_CONTACT_WHATSAPP: import.meta.env?.VITE_CONTACT_WHATSAPP,
+  VITE_API_URL: import.meta.env?.VITE_API_URL,
+  PROD: import.meta.env?.PROD,
+};
 
 // Blanket guard applied to EVERY env value this file reads, not just the
 // ones that are obviously URLs (VITE_CONTACT_EMAIL, VITE_TRIAL_LABEL, etc.
