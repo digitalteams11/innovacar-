@@ -326,6 +326,14 @@
     padding-inline-end: 2.25rem;
   }
 
+  /* Select-style controls (native <select> and the SearchableSelect button
+     trigger) need a taller minimum than plain text inputs — 44px reads as
+     cramped for a tap target that also carries a chevron. */
+  select.form-input,
+  button.form-input {
+    min-height: 48px;
+  }
+
   [dir='rtl'] select.form-input {
     background-position: left 0.75rem center;
   }
