@@ -665,7 +665,7 @@ export default function Vehicles() {
                     {!!vehicle.seatCount && (
                       <div className="flex flex-col items-center gap-1">
                         <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                        <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.seatCount} {t('vehicles.seats')}</span>
+                        <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{t('vehicles.seats', { count: vehicle.seatCount })}</span>
                       </div>
                     )}
                     <div className="flex flex-col items-center gap-1">

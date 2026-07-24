@@ -252,5 +252,118 @@ class VehicleServiceTest {
         assertThat(response.getStatut()).isEqualTo(VehicleStatus.AVAILABLE);
         assertThat(response.getCategory()).isEmpty();
         assertThat(response.getGpsEnabled()).isFalse();
+        // Seat count must never get a fake fallback (e.g. 5) — null stays null.
+        assertThat(response.getSeatCount()).isNull();
+    }
+
+    // ── seatCount ────────────────────────────────────────────────────────────
+    // Manual, admin-entered only — never inferred, never defaulted to 5.
+
+    @Test
+    void createVehicle_withTwoSeats_persistsExactValue() {
+        CreateVehicleRequest req = new CreateVehicleRequest();
+        req.setMarque("Fiat 500");
+        req.setPrixJour(new BigDecimal("35.00"));
+        req.setPlate("A-2");
+        req.setSeatCount(2);
+
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VehicleResponse response = vehicleService.createVehicle(req);
+
+        assertThat(response.getSeatCount()).isEqualTo(2);
+        verify(vehicleRepository).save(argThat(v -> Integer.valueOf(2).equals(v.getSeatCount())));
+    }
+
+    @Test
+    void createVehicle_withFiveSeats_persistsExactValue() {
+        CreateVehicleRequest req = new CreateVehicleRequest();
+        req.setMarque("Dacia Logan");
+        req.setPrixJour(new BigDecimal("45.00"));
+        req.setPlate("A-5");
+        req.setSeatCount(5);
+
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VehicleResponse response = vehicleService.createVehicle(req);
+
+        assertThat(response.getSeatCount()).isEqualTo(5);
+    }
+
+    @Test
+    void createVehicle_withSevenSeats_persistsExactValue() {
+        CreateVehicleRequest req = new CreateVehicleRequest();
+        req.setMarque("Renault Grand Scenic");
+        req.setPrixJour(new BigDecimal("65.00"));
+        req.setPlate("A-7");
+        req.setSeatCount(7);
+
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VehicleResponse response = vehicleService.createVehicle(req);
+
+        assertThat(response.getSeatCount()).isEqualTo(7);
+    }
+
+    @Test
+    void createVehicle_withoutSeatCount_staysNull_neverDefaultsToFive() {
+        CreateVehicleRequest req = new CreateVehicleRequest();
+        req.setMarque("Hyundai i10");
+        req.setPrixJour(new BigDecimal("30.00"));
+        req.setPlate("A-0");
+        // seatCount intentionally omitted
+
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VehicleResponse response = vehicleService.createVehicle(req);
+
+        assertThat(response.getSeatCount()).isNull();
+        verify(vehicleRepository).save(argThat(v -> v.getSeatCount() == null));
+    }
+
+    @Test
+    void updateVehicle_setsSeatCount_whenProvided() {
+        UpdateVehicleRequest req = new UpdateVehicleRequest();
+        req.setSeatCount(4);
+
+        when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
+                .thenReturn(Optional.of(availableVehicle));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VehicleResponse response = vehicleService.updateVehicle(VEHICLE_ID, req);
+
+        assertThat(response.getSeatCount()).isEqualTo(4);
+    }
+
+    @Test
+    void updateVehicle_leavesSeatCountUnchanged_whenOmitted() {
+        availableVehicle.setSeatCount(6);
+        UpdateVehicleRequest req = new UpdateVehicleRequest();
+        req.setStatut(VehicleStatus.MAINTENANCE); // unrelated field changes, seatCount omitted
+
+        when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
+                .thenReturn(Optional.of(availableVehicle));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VehicleResponse response = vehicleService.updateVehicle(VEHICLE_ID, req);
+
+        assertThat(response.getSeatCount()).isEqualTo(6);
+    }
+
+    @Test
+    void existingVehiclesWithNullSeatCount_remainNull_afterUnrelatedRead() {
+        Vehicle legacy = Vehicle.builder()
+                .id(500L).marque("Legacy Vehicle").prixJour(new BigDecimal("50.00"))
+                .statut(VehicleStatus.AVAILABLE).tenant(tenant).build();
+
+        when(vehicleRepository.findByIdAndTenantId(500L, TENANT_ID)).thenReturn(Optional.of(legacy));
+
+        VehicleResponse response = vehicleService.getVehicleById(500L);
+
+        assertThat(response.getSeatCount()).isNull();
     }
 }
