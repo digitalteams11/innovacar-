@@ -224,7 +224,7 @@ export default function SuperAdminEmailCenter() {
     setTestLoading(true); setTestErrorCode(null);
     try {
       const res = await superAdminApi.sendSmtpTestEmail(testEmailAddr.trim());
-      if (res.data?.success) { showToast('Test email sent successfully!', 'success'); setTestErrorCode(null); }
+      if (res.data?.success) { showToast('Email sent', 'success'); setTestErrorCode(null); }
       else { setTestErrorCode(res.data?.errorCode ?? null); showToast(res.data?.message || 'Test failed', 'error'); }
       await fetchAll();
     } catch (err: any) {

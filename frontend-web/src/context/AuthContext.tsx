@@ -83,6 +83,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   loading: boolean;
+  sessionExpired: boolean;
+  signInAgain: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -117,7 +119,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+
+  // Single controlled entry point for the "session expired" flow — shows one
+  // modal no matter how many requests failed with 401 at once, and remembers
+  // the route the user was on so "Sign in again" can return them to it.
+  const triggerSessionExpired = useCallback(() => {
+    const isPublicSigningPage = window.location.hash.startsWith('#/contract-sign') || window.location.hash.startsWith('#/inspection');
+    if (isPublicSigningPage || window.location.hash.startsWith('#/login')) return;
+    const currentRoute = window.location.hash.replace(/^#/, '') || '/dashboard';
+    sessionStorage.setItem('postLoginRedirect', currentRoute);
+    setSessionExpired(prev => prev || true);
+  }, []);
+
+  const signInAgain = useCallback(() => {
+    setSessionExpired(false);
+    window.location.href = '/#/login';
+  }, []);
 
   const fetchTenantBranding = useCallback(async () => {
     try {
@@ -174,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (err?.response?.status === 401) {
             clearStorage();
             setUser(null);
-            window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'error', message: 'Session expired. Please login again.' } }));
+            triggerSessionExpired();
           }
         })
         .finally(() => {
@@ -196,10 +215,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearStorage();
       setUser(null);
       // NEVER redirect to login from public contract signing pages
-      const isPublicSigningPage = window.location.hash.startsWith('#/contract-sign') || window.location.hash.startsWith('#/inspection');
-      if (!isPublicSigningPage && window.location.pathname !== '/login' && !window.location.hash.startsWith('#/login')) {
-        window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'error', message: 'Session expired. Please login again.' } }));
-        window.location.href = '/#/login';
+      if (window.location.pathname !== '/login') {
+        triggerSessionExpired();
       }
     };
 
@@ -523,6 +540,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       isSuperAdmin,
       loading,
+      sessionExpired,
+      signInAgain,
     }}>
       {children}
     </AuthContext.Provider>

@@ -49,7 +49,7 @@ export default function SuperAdminTicketDetail() {
       await superAdminApi.sendTicketMessage(Number(id), { message: reply });
       setReply('');
       await fetchTicket();
-      showToast('Reply sent successfully', 'success');
+      showToast('Reply sent', 'success');
     } catch (err) {
       console.error(err);
       showToast('Unable to send this reply.', 'error');
@@ -85,7 +85,7 @@ export default function SuperAdminTicketDetail() {
     try {
       const res = await superAdminApi.resendTicketEmail(Number(id));
       const status = (res.data as { emailStatus?: string })?.emailStatus;
-      showToast(status === 'SENT' ? 'Email resent successfully' : 'Resend attempted — delivery still failing', status === 'SENT' ? 'success' : 'warning');
+      showToast(status === 'SENT' ? 'Email resent' : 'Delivery still failing', status === 'SENT' ? 'success' : 'warning');
       await fetchTicket();
     } catch (err) {
       console.error(err);

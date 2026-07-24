@@ -118,7 +118,7 @@ export default function SendClientInfoRequestModal({
       } : data);
       const channelResult = channel === 'EMAIL' ? data.emailResult : data.whatsappResult;
       if (channelResult?.sent) {
-        showToast(t('clientInfoAdmin.result.retrySuccess', 'Message sent successfully.'), 'success');
+        showToast(t('clientInfoAdmin.result.retrySuccess', 'Message sent'), 'success');
       } else {
         showToast(t('clientInfoAdmin.result.retryFailed', 'Still could not deliver. Please try again later.'), 'warning');
       }

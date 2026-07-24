@@ -20,7 +20,7 @@ import {
   Printer, Download, QrCode, Shield,
   AlertCircle, Loader2, CreditCard,
   ClipboardCheck, Users, History, RefreshCw,
-  MailPlus, Send, MessageCircle, Copy, Pencil
+  MailPlus, Send, MessageCircle, Copy, Pencil, Check
 } from 'lucide-react';
 
 interface ContractDetail {
@@ -525,9 +525,11 @@ export default function ContractDetails() {
     window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  const handleCopySigningLink = async () => {
+  // Success feedback is icon-only (button flips to a check mark) — a toast
+  // is redundant for an action whose result is already obvious in context.
+  const handleCopySigningLink = async (): Promise<boolean> => {
     const url = await ensureSigningUrl();
-    if (!url) return;
+    if (!url) return false;
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(url);
@@ -542,9 +544,10 @@ export default function ContractDetails() {
         document.execCommand('copy');
         document.body.removeChild(textArea);
       }
-      showToast(t('contracts.linkCopied') || 'Link copied to clipboard', 'success');
+      return true;
     } catch {
       showToast(t('contracts.copyFailed') || 'Unable to copy link. Please try again later.', 'error');
+      return false;
     }
   };
 
@@ -1502,9 +1505,17 @@ function InspectionStatusCard({ title, inspection }: { title: string; inspection
  * never a gate on the others.
  */
 function ContractShareActions({ onWhatsApp, onCopyLink, onShowQr, busy, t }: {
-  onWhatsApp: () => void; onCopyLink: () => void; onShowQr: () => void; busy: boolean;
+  onWhatsApp: () => void; onCopyLink: () => Promise<boolean>; onShowQr: () => void; busy: boolean;
   t: (key: string) => string;
 }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopyClick = async () => {
+    const ok = await onCopyLink();
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    }
+  };
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -1515,11 +1526,12 @@ function ContractShareActions({ onWhatsApp, onCopyLink, onShowQr, busy, t }: {
         <MessageCircle size={14} /> {t('contractEmail.shareWhatsapp')}
       </button>
       <button
-        onClick={onCopyLink}
+        onClick={handleCopyClick}
         disabled={busy}
         className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-slate-100 dark:bg-white/5 text-[#1e293b] dark:text-white rounded-xl text-xs font-semibold hover:bg-slate-200 dark:hover:bg-white/10 transition-all disabled:opacity-50"
       >
-        <Copy size={14} /> {t('contractEmail.copyLink')}
+        {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+        {copied ? t('toast.copied') : t('contractEmail.copyLink')}
       </button>
       <button
         onClick={onShowQr}

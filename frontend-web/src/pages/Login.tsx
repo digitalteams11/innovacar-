@@ -223,6 +223,16 @@ export default function Login() {
   };
 
   const navigateByRole = (role: string) => {
+    // Session-expired flow stashes the route the user was on so "Sign in
+    // again" lands them back where they left off instead of the dashboard.
+    const savedRedirect = sessionStorage.getItem('postLoginRedirect');
+    if (savedRedirect) {
+      sessionStorage.removeItem('postLoginRedirect');
+      if (savedRedirect.startsWith('/') && !savedRedirect.startsWith('//')) {
+        navigate(savedRedirect);
+        return;
+      }
+    }
     if (role === 'SUPER_ADMIN') navigate('/super-admin/dashboard');
     else if (role === 'EMPLOYEE') navigate('/employee/dashboard');
     else if (role === 'ACCOUNTANT') navigate('/payments');
