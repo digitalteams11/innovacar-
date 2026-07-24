@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import SeoHead from '../components/seo/SeoHead';
@@ -129,9 +129,27 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register, googleLogin } = useAuth();
   const { showToast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const [searchParams] = useSearchParams();
+
+  // Preserve the landing page's selected language and (optional) preselected
+  // plan/campaign so the "Start free trial" CTA carries context through to
+  // signup instead of dropping it. The plan code is only stored for the
+  // post-signup upgrade/checkout flow to pick up — it does not itself
+  // create a subscription (every new agency starts on the same free trial).
+  const preselectedPlan = searchParams.get('plan');
+  const referral = searchParams.get('ref');
+  useEffect(() => {
+    const lang = searchParams.get('lang');
+    if (lang && ['fr', 'en', 'ar'].includes(lang) && lang !== i18n.language) {
+      i18n.changeLanguage(lang);
+    }
+    if (preselectedPlan) localStorage.setItem('im_selected_plan', preselectedPlan);
+    if (referral) localStorage.setItem('im_referral', referral);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -251,6 +269,15 @@ export default function Register() {
               <h1 className="text-xl font-bold mb-1.5" style={{ color: 'var(--text-primary)' }}>{t('register.title', 'Create Account')}</h1>
               <p className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>{t('register.subtitle', 'Join your team on RentCar SaaS')}</p>
             </div>
+
+            {preselectedPlan && (
+              <div
+                className="rounded-xl mb-6 text-sm font-medium px-4 py-3 text-center"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--brand-primary, #10b981) 10%, transparent)', color: 'var(--text-primary)' }}
+              >
+                {t('register.planPreselected', 'Selected plan: {{plan}} — you can review or change it after creating your account.', { plan: preselectedPlan })}
+              </div>
+            )}
 
             {/* Error */}
             {error && (

@@ -181,6 +181,7 @@
   "register": {
     "title": "إنشاء حساب",
     "subtitle": "انضم إلى فريقك على RentCar SaaS",
+    "planPreselected": "الباقة المختارة: {{plan}} — يمكنك مراجعتها أو تغييرها بعد إنشاء حسابك.",
     "firstName": "الاسم الأول",
     "lastName": "اسم العائلة",
     "tenantId": "معرف المستأجر",
