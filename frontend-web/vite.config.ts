@@ -42,9 +42,36 @@ function googleSiteVerificationPlugin(token: string | undefined): Plugin {
   }
 }
 
+// Fails the build immediately, with the exact variable name, if ANY VITE_*
+// env var Vercel (or a local .env file) injects contains a Vercel preview
+// deployment host. This is the actual root-cause guard: source-level
+// sanitizers (src/lib/publicUrl.ts, src/lib/api.ts, src/marketing/pages.tsx)
+// only cover the specific fields that code reads — but Vite inlines EVERY
+// VITE_* var into the bundle whether or not any of our code even uses it,
+// and a leftover *.vercel.app value in the Vercel dashboard (not something
+// visible from this repo — env vars aren't committed to git) will keep
+// leaking into a *different* chunk every time until the dashboard value
+// itself is fixed. Running this here, at config-eval time, means the build
+// fails with "VITE_FOO contains a vercel.app value" instead of the opaque
+// "assets/pages-xxxxx.js contains forbidden URL pattern" scripts/
+// verify-seo-dist.mjs reports several build steps later.
+function assertNoVercelPreviewUrls(env: Record<string, string>, isProduction: boolean) {
+  if (!isProduction) return
+  const offenders = Object.entries(env).filter(([, value]) => /vercel\.app/i.test(value))
+  if (offenders.length === 0) return
+  const names = offenders.map(([key]) => key).join(', ')
+  throw new Error(
+    `[vite.config] Refusing to build: the following env var(s) contain a Vercel preview ` +
+    `deployment URL, which must never ship in the production bundle: ${names}. ` +
+    `Fix the value in Vercel → Project Settings → Environment Variables (Production) — ` +
+    `it must point at the real https://innovacar.app domain, not a preview deployment.`
+  )
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
+  assertNoVercelPreviewUrls(env, mode === 'production')
   return {
   plugins: [react(), googleSiteVerificationPlugin(env.VITE_GOOGLE_SITE_VERIFICATION)],
   server: {

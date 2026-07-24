@@ -219,13 +219,38 @@ function walk(dir, out = []) {
   }
   return out;
 }
+// Expands outward from a raw substring match to the enclosing quoted/
+// templated string (or a reasonable char window if no quote boundary is
+// found nearby, e.g. inside a already-concatenated template literal) so a
+// build failure prints the actual leaked URL, not just the 4-8 char needle
+// that matched it.
+const STRING_BOUNDARY = new Set(["'", '"', '`', '\n']);
+function extractMatch(content, index, needleLength) {
+  let start = index;
+  while (start > 0 && !STRING_BOUNDARY.has(content[start - 1]) && index - start < 300) start--;
+  let end = index + needleLength;
+  while (end < content.length && !STRING_BOUNDARY.has(content[end]) && end - (index + needleLength) < 300) end++;
+  return content.slice(start, end);
+}
+function contextWindow(content, index, needleLength) {
+  const start = Math.max(0, index - 150);
+  const end = Math.min(content.length, index + needleLength + 150);
+  return content.slice(start, end);
+}
 if (existsSync(DIST)) {
   const files = walk(DIST);
   for (const file of files) {
     const content = readFileSync(file, 'utf8');
     for (const needle of FORBIDDEN_URL_PATTERNS) {
-      if (content.includes(needle)) {
-        fail(`${path.relative(DIST, file)} contains forbidden URL pattern "${needle}".`);
+      const matchIndex = content.indexOf(needle);
+      if (matchIndex !== -1) {
+        const relFile = path.relative(DIST, file);
+        const exactMatch = extractMatch(content, matchIndex, needle.length);
+        const context = contextWindow(content, matchIndex, needle.length);
+        fail(`${relFile} contains forbidden URL pattern "${needle}".`);
+        console.error(`\n  File:\n    dist/${relFile.split(path.sep).join('/')}\n`);
+        console.error(`  Match:\n    ${exactMatch}\n`);
+        console.error(`  Context (150 chars before/after):\n    ...${context}...\n`);
       }
     }
     if (/\.html$/.test(file)) {
