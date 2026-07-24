@@ -95,6 +95,21 @@
     --transition-fast: calc(150ms * var(--motion-speed)) cubic-bezier(0.16, 1, 0.3, 1);
     --transition-base: calc(250ms * var(--motion-speed)) cubic-bezier(0.16, 1, 0.3, 1);
     --transition-slow: calc(400ms * var(--motion-speed)) cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Spec-named semantic aliases — same tokens above, exposed under the
+       generic names used across mobile-UI/accessibility work so new
+       components don't need to know the legacy --bg- and --text- prefixed
+       names. Kept as aliases (not replacements) so nothing already
+       consuming the original variables can regress. */
+    --background: var(--bg-page);
+    --surface: var(--bg-card);
+    --surface-elevated: var(--bg-page-raised);
+    --border: var(--border-subtle);
+    --input-bg: var(--bg-input);
+    --input-border: var(--border-medium);
+    --nav-active: var(--brand-primary);
+    --nav-inactive: var(--text-muted);
+    --focus-ring: var(--brand-primary);
   }
 
   /* Dark Mode Overrides */
@@ -199,7 +214,7 @@
 
   /* Focus States */
   *:focus-visible {
-    outline: 2px solid #477d91;
+    outline: 2px solid var(--focus-ring, #477d91);
     outline-offset: 2px;
     border-radius: 12px;
   }

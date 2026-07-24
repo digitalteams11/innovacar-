@@ -36,13 +36,14 @@ export default function BottomNavigation({ items, isActive, moreLabel, onMoreCli
             key={item.to}
             to={item.to}
             aria-current={active ? 'page' : undefined}
+            aria-label={item.label}
             className={cn(
-              'relative min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px]',
-              active ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)]',
+              'relative min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px] rounded-xl transition-colors',
+              active ? 'font-semibold text-[var(--nav-active)] bg-[var(--nav-active)]/10' : 'text-[var(--nav-inactive)]',
             )}
           >
-            {active && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-[var(--brand-primary)]" />}
-            <item.icon size={20} />
+            {active && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-[var(--nav-active)]" />}
+            <item.icon size={20} strokeWidth={active ? 2.4 : 2} />
             <span className="max-w-[68px] truncate">{item.label}</span>
           </Link>
         );
@@ -50,7 +51,8 @@ export default function BottomNavigation({ items, isActive, moreLabel, onMoreCli
       <button
         type="button"
         onClick={onMoreClick}
-        className="min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px] text-[var(--text-muted)]"
+        aria-label={moreLabel}
+        className="min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px] text-[var(--nav-inactive)] rounded-xl transition-colors hover:bg-[var(--bg-hover)]"
       >
         <MoreHorizontal size={20} />
         {moreLabel}

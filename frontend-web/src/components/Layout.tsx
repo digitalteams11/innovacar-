@@ -253,6 +253,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => navigate('/settings?tab=billing')}
               className="hidden md:flex h-9 items-center px-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
               title={t('layout.manageSubscription', 'Manage subscription')}
+              aria-label={t('layout.manageSubscription', 'Manage subscription')}
             >
               <SubscriptionBadge
                 planCode={planCode || user?.planCode}
@@ -266,6 +267,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => window.dispatchEvent(new CustomEvent('open-help-center'))}
               className="h-9 w-9 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
               title={t('guidance.help')}
+              aria-label={t('guidance.help')}
             >
               <HelpCircle size={18} />
             </button>

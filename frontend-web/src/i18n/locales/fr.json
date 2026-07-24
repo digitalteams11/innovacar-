@@ -995,11 +995,20 @@
     "createNew": "Creer le client \"{{name}}\""
   },
   "clientInfo": {
-    "header": { "subtitle": "Formulaire d'informations client" },
-    "intro": "Veuillez compléter vos informations afin que l'agence prépare votre dossier de location. Vos informations seront vérifiées par l'agence avant validation.",
+    "pageTitle": "Formulaire d'informations client",
+    "header": {
+      "subtitle": "Formulaire d'informations client"
+    },
+    "intro": "Veuillez compléter vos informations afin que l'agence puisse préparer votre dossier de location. L'agence vérifiera les informations avant validation.",
+    "secureLink": "Lien sécurisé",
+    "expiresOn": "Expire le {{date}}",
+    "loadingPage": "Chargement de votre formulaire...",
+    "submitting": "Envoi en cours...",
+    "language": "Langue",
     "sections": {
       "personal": "Informations personnelles",
       "document": "Pièce d'identité",
+      "review": "Vérification et envoi",
       "address": "Adresse",
       "license": "Permis de conduire"
     },
@@ -1039,16 +1048,16 @@
     "privacyNotice": "Je confirme que ces informations sont exactes et j'accepte que l'agence les traite, y compris mes pièces d'identité, pour préparer mon dossier de location.",
     "submit": "Envoyer les informations",
     "confirmation": {
-      "title": "Informations envoyées",
+      "title": "Vos informations ont été envoyées avec succès.",
       "body": "Merci. L'agence va vérifier vos informations avant validation."
     },
     "errors": {
       "title": "Impossible d'ouvrir ce lien",
       "invalid": "Ce lien n'est pas valide.",
-      "expired": "Ce lien a expiré. Veuillez demander un nouveau lien à l'agence.",
+      "expired": "Ce lien sécurisé a expiré.",
       "revoked": "Ce lien n'est plus actif.",
       "alreadyApproved": "Cette demande a déjà été traitée.",
-      "alreadySubmitted": "Ces informations ont déjà été envoyées."
+      "alreadySubmitted": "Ce formulaire a déjà été envoyé."
     }
   },
   "clientInfoAdmin": {
@@ -1108,6 +1117,10 @@
       "failedRetry": "Échec — Réessayer",
       "retrySuccess": "Message envoyé avec succès.",
       "retryFailed": "Toujours impossible à livrer. Veuillez réessayer plus tard.",
+      "openWhatsapp": "Ouvrir WhatsApp",
+      "whatsappOpened": "WhatsApp ouvert",
+      "whatsappBlocked": "Impossible d'ouvrir WhatsApp. Le message a été copié.",
+      "phoneMissing": "Numéro de téléphone du client indisponible",
       "expiresAt": "Expire le {{date}}"
     },
     "errors": {

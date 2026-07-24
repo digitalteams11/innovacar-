@@ -995,13 +995,22 @@
     "createNew": "Create new client \"{{name}}\""
   },
   "clientInfo": {
-    "header": { "subtitle": "Client information form" },
+    "pageTitle": "Client Information Form",
+    "header": {
+      "subtitle": "Client Information Form"
+    },
     "intro": "Please complete your information so the agency can prepare your rental file. The agency will review the information before approval.",
+    "secureLink": "Secure link",
+    "expiresOn": "Expires on {{date}}",
+    "loadingPage": "Loading your form...",
+    "submitting": "Submitting...",
+    "language": "Language",
     "sections": {
       "personal": "Personal information",
       "document": "Identity document",
+      "license": "Driving licence",
       "address": "Address",
-      "license": "Driving licence"
+      "review": "Review and submit"
     },
     "form": {
       "fullName": "Full name",
@@ -1014,7 +1023,7 @@
       "genderFemale": "Female",
       "genderUnspecified": "—",
       "nationality": "Nationality",
-      "companyName": "Company (optional)",
+      "companyName": "Company",
       "documentType": "Document type",
       "cinNumber": "CIN number",
       "passportNumber": "Passport number",
@@ -1024,7 +1033,7 @@
       "city": "City",
       "postalCode": "Postal code",
       "country": "Country",
-      "notes": "Notes (optional)",
+      "notes": "Notes",
       "licenseNumber": "Driving licence number",
       "requiredFields": "Please fill all required fields.",
       "invalidEmail": "Please enter a valid email address.",
@@ -1039,16 +1048,16 @@
     "privacyNotice": "I confirm this information is accurate and I agree that the agency may process it, including my identity documents, to prepare my rental file.",
     "submit": "Submit information",
     "confirmation": {
-      "title": "Information submitted",
+      "title": "Your information has been submitted successfully.",
       "body": "Thank you. The agency will review your information before approval."
     },
     "errors": {
       "title": "Unable to open this link",
       "invalid": "This link is invalid.",
-      "expired": "This link has expired. Please ask the agency for a new one.",
+      "expired": "This secure link has expired.",
       "revoked": "This link is no longer active.",
       "alreadyApproved": "This request has already been processed.",
-      "alreadySubmitted": "This information has already been submitted."
+      "alreadySubmitted": "This form has already been submitted."
     }
   },
   "clientInfoAdmin": {
@@ -1108,7 +1117,11 @@
       "failedRetry": "Failed — Retry",
       "retrySuccess": "Message sent successfully.",
       "retryFailed": "Still could not deliver. Please try again later.",
-      "expiresAt": "Expires on {{date}}"
+      "expiresAt": "Expires on {{date}}",
+      "openWhatsapp": "Open WhatsApp",
+      "whatsappOpened": "WhatsApp opened",
+      "whatsappBlocked": "WhatsApp could not be opened. The message was copied.",
+      "phoneMissing": "Client phone number unavailable"
     },
     "errors": {
       "invalidPhone": "This phone number is not valid.",
