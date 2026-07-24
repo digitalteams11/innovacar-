@@ -53,3 +53,5 @@ Thumbs.db
 
 # Separate nested repository, not part of this application
 codex-opener/
+
+.vercel
