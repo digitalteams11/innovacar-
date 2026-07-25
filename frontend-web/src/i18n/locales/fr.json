@@ -2908,6 +2908,8 @@
     "noAgencySignature": "Aucune signature d’agence configurée.",
     "setInSettings": "Configurez-la dans les Paramètres",
     "agencySignatureApplied": "Signature de l agence appliquee",
+    "notSignedYet": "Pas encore signé.",
+    "signatureUnavailable": "Image de signature indisponible.",
     "agencyRepresentative": "Representant de l agence",
     "viewSignedPdf": "Voir le PDF signe",
     "contractEmail": "Email du contrat",
@@ -3048,7 +3050,8 @@
     },
     "noEmailSentYet": "Aucun e-mail envoyé pour le moment",
     "emailSent": "E-mail envoyé",
-    "lastSentOn": "Dernier envoi"
+    "lastSentOn": "Dernier envoi",
+    "awaitingSignaturesForEmail": "Les deux signatures sont requises avant que le contrat signé puisse être envoyé par email."
   },
   "operations": {
     "title": "Centre des opérations",

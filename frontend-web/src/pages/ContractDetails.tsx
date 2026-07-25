@@ -830,8 +830,10 @@ export default function ContractDetails() {
                       <CheckCircle2 size={18} className="text-success-500 shrink-0 mt-0.5 sm:mt-0" />
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm font-semibold text-success-700">{t('contractDetails.agencySignatureApplied')}</p>
-                        {contract.ownerSignature && (
-                          <img src={contract.ownerSignature} alt={t('contractDetails.agencySignatureAlt')} className="h-12 sm:h-16 mt-2 bg-white rounded-lg border border-success-200 p-1" />
+                        {contract.ownerSignature ? (
+                          <img src={contract.ownerSignature} alt={t('contractDetails.agencySignatureAlt')} className="h-12 sm:h-16 mt-2 signature-paper rounded-lg border border-success-200 p-1" />
+                        ) : (
+                          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>{t('contractDetails.signatureUnavailable', 'Signature image unavailable.')}</p>
                         )}
                       </div>
                     </div>
@@ -847,30 +849,42 @@ export default function ContractDetails() {
                 )}
               </div>
 
-              {/* Signature Previews */}
-              {(contract.ownerSigned || contract.clientSigned) && (
-                <div className="card-premium space-y-4 p-3 sm:p-5">
+              {/* Signature Previews — always rendered (not gated on either
+                  side being signed): each side independently shows the
+                  actual signature when both the "signed" flag and the image
+                  data are present, or a plain "Not signed yet" note otherwise
+                  (also covers the data-inconsistency edge case of signed=true
+                  with no stored image) — never silently absent. */}
+              <div className="card-premium space-y-4 p-3 sm:p-5">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.signatures')}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {contract.ownerSigned && contract.ownerSignature && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold text-slate-500">{t('contractDetails.agencyRepresentative')}</p>
-                        <div className="p-2 bg-white rounded-xl border border-slate-200 flex items-end gap-3">
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-slate-500">{t('contractDetails.agencyRepresentative')}</p>
+                      {contract.ownerSigned && contract.ownerSignature ? (
+                        <div className="p-2 signature-paper rounded-xl border border-slate-200 flex items-end gap-3">
                           <img src={contract.ownerSignature} alt={t('contractDetails.agencySignatureAlt')} className="h-16 sm:h-20 flex-1 object-contain" />
                           {tenant?.agencyStampUrl && (
                             <img src={resolveMediaUrl(tenant.agencyStampUrl) || undefined} alt={t('contractDetails.agencyStampAlt')} className="h-14 sm:h-16 w-14 sm:w-16 object-contain opacity-80" />
                           )}
                         </div>
-                      </div>
-                    )}
-                    {contract.clientSigned && contract.clientSignature && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold text-slate-500">{t('contractDetails.tabs.client')}</p>
-                        <div className="p-2 bg-white rounded-xl border border-slate-200">
+                      ) : (
+                        <div className="p-3 rounded-xl border text-xs" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
+                          {t('contractDetails.notSignedYet', 'Not signed yet.')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-slate-500">{t('contractDetails.tabs.client')}</p>
+                      {contract.clientSigned && contract.clientSignature ? (
+                        <div className="p-2 signature-paper rounded-xl border border-slate-200">
                           <img src={contract.clientSignature} alt={t('contractDetails.clientSignatureAlt')} className="h-16 sm:h-20 w-full object-contain" />
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="p-3 rounded-xl border text-xs" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
+                          {t('contractDetails.notSignedYet', 'Not signed yet.')}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   {contract.pdfUrl && (
                     <button
@@ -883,8 +897,7 @@ export default function ContractDetails() {
                       {t('contractDetails.viewSignedPdf')}
                     </button>
                   )}
-                </div>
-              )}
+              </div>
 
               {/* Client Email Status */}
               <div className="card-premium space-y-3 p-3 sm:p-5">
@@ -949,6 +962,22 @@ export default function ContractDetails() {
                         </button>
                       </div>
                     </div>
+                    {!(contract.ownerSigned && contract.clientSigned) && (
+                      // The backend only sends the *signed* contract PDF by
+                      // email — it can't send one that doesn't exist yet.
+                      // Surfacing that here, before the user clicks, is what
+                      // actually fixes "resend does nothing": previously the
+                      // button stayed enabled and looked normal, and the only
+                      // signal a click failed was a transient toast easy to
+                      // miss. The button itself stays enabled/clickable per
+                      // spec — this is informational, not a second disabled
+                      // state — so a real permission/email-validity failure
+                      // still surfaces through the actual click attempt.
+                      <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                        <AlertCircle size={12} className="shrink-0" />
+                        {t('contractEmail.awaitingSignaturesForEmail', 'Both signatures are required before the signed contract can be emailed.')}
+                      </p>
+                    )}
                     <ContractShareActions
                       onWhatsApp={handleShareWhatsApp}
                       onCopyLink={handleCopySigningLink}

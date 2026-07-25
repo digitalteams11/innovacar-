@@ -2914,6 +2914,8 @@
     "noAgencySignature": "No agency signature configured.",
     "setInSettings": "Set it in Settings",
     "agencySignatureApplied": "Agency Signature Applied",
+    "notSignedYet": "Not signed yet.",
+    "signatureUnavailable": "Signature image unavailable.",
     "agencyRepresentative": "Agency Representative",
     "viewSignedPdf": "View Signed PDF",
     "contractEmail": "Contract Email",
@@ -3054,7 +3056,8 @@
     },
     "noEmailSentYet": "No email sent yet",
     "emailSent": "Email sent",
-    "lastSentOn": "Last sent"
+    "lastSentOn": "Last sent",
+    "awaitingSignaturesForEmail": "Both signatures are required before the signed contract can be emailed."
   },
   "operations": {
     "title": "Operations Center",

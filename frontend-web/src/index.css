@@ -883,6 +883,18 @@
   background-color: var(--bg-hover) !important;
 }
 
+/* Signature "paper" surface — a signature is drawn in dark ink and must sit
+   on a light surface in BOTH themes, exactly like real ink on paper. Using
+   plain `bg-white` for this (as ContractDetails.tsx used to) got swept up by
+   the `.dark .bg-white` override below — same as every other white card
+   going dark-mode-aware — which turned the paper itself dark, so a dark
+   navy signature stroke landed on a near-black background and became
+   unreadable. This class is defined outside the `.dark` cascade so it can
+   never be re-darkened by that (or any future) generic override. */
+.signature-paper {
+  background-color: #ffffff !important;
+}
+
 /* ============================================
    DARK MODE — COMPONENT OVERRIDES
    Hardcoded Tailwind color classes and inline
@@ -934,8 +946,10 @@
 /* Hover states */
 .dark .hover\:bg-slate-50:hover,
 .dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-slate-200:hover,
 .dark .hover\:bg-gray-50:hover,
-.dark .hover\:bg-gray-100:hover {
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-gray-200:hover {
   background-color: var(--bg-hover) !important;
 }
 .dark .hover\:text-\[\#1e293b\]:hover,

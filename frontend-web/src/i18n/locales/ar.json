@@ -2913,6 +2913,8 @@
     "noAgencySignature": "لم يتم تكوين توقيع الوكالة.",
     "setInSettings": "قم بتعيينه في الإعدادات",
     "agencySignatureApplied": "تم تطبيق توقيع الوكالة",
+    "notSignedYet": "لم يتم التوقيع بعد.",
+    "signatureUnavailable": "صورة التوقيع غير متوفرة.",
     "agencyRepresentative": "ممثل الوكالة",
     "viewSignedPdf": "عرض PDF الموقع",
     "contractEmail": "البريد الإلكتروني للعقد",
@@ -3053,7 +3055,8 @@
     },
     "noEmailSentYet": "لم يُرسل أي بريد إلكتروني بعد",
     "emailSent": "تم إرسال البريد الإلكتروني",
-    "lastSentOn": "آخر إرسال"
+    "lastSentOn": "آخر إرسال",
+    "awaitingSignaturesForEmail": "يلزم توقيع الطرفين قبل إمكانية إرسال العقد الموقّع بالبريد الإلكتروني."
   },
   "operations": {
     "title": "مركز العمليات",
