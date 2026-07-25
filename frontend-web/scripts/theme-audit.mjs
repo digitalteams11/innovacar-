@@ -1,8 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
 const root = process.cwd();
 const sourceRoot = path.join(root, 'src');
+
+// Custom (non-default-Tailwind) color families this app defines its own
+// scale for. Referencing an undefined shade of one of these (e.g.
+// text-success-700 back when the scale only went up to 600) isn't a
+// Tailwind build error — it silently emits no CSS rule, so the element
+// inherits whatever ambient color the theme happens to provide. That's
+// exactly how "Agency Signature Applied" / "PAID" / "REMAINING" went
+// unreadable in dark mode: undefined shade -> no color set -> near-white
+// ambient dark-mode text landed on a still-light pastel card.
+const require = createRequire(import.meta.url);
+const tailwindConfig = require(path.join(root, 'tailwind.config.cjs'));
+const customFamilies = ['success', 'danger', 'warning', 'brand'];
+const definedShades = Object.fromEntries(
+  customFamilies.map((family) => [family, new Set(Object.keys(tailwindConfig.theme.extend.colors[family] ?? {}))]),
+);
+const undefinedShadePattern = new RegExp(`\\b(?:text|bg|border|ring)-(${customFamilies.join('|')})-(\\d{2,3})\\b`, 'g');
 
 const files = [];
 const walk = directory => {
@@ -136,6 +153,15 @@ for (const file of files) {
   for (const match of source.matchAll(lowOpacityPattern)) {
     findings.push({ file: relPath, line: lineOf(source, match.index), kind: 'low-opacity-text', classes: match[0] });
   }
+
+  // 5. success/danger/warning/brand shade referenced in source but not
+  // defined in tailwind.config.cjs — see comment at the top of this file.
+  for (const match of source.matchAll(undefinedShadePattern)) {
+    const [full, family, shade] = match;
+    if (!definedShades[family].has(shade)) {
+      findings.push({ file: relPath, line: lineOf(source, match.index), kind: 'undefined-theme-shade', classes: full });
+    }
+  }
 }
 
 const dedupSeen = new Set();
@@ -146,7 +172,7 @@ const deduped = findings.filter(item => {
   return true;
 });
 
-const hardFailureKinds = new Set(['light-bg+light-text', 'dark:text-light-without-dark:bg', 'bg-text-same-shade']);
+const hardFailureKinds = new Set(['light-bg+light-text', 'dark:text-light-without-dark:bg', 'bg-text-same-shade', 'undefined-theme-shade']);
 const hardFailures = deduped.filter(item => hardFailureKinds.has(item.kind));
 const warnings = deduped.filter(item => !hardFailureKinds.has(item.kind));
 

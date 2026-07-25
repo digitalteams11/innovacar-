@@ -949,6 +949,57 @@
 .dark .bg-violet-50 { background-color: rgba(139,92,246,0.12) !important; }
 .dark .text-violet-700 { color: #c4b5fd !important; }
 
+/* success/danger/warning/brand — same "light pastel surface" pattern as the
+   emerald/amber/rose/blue/sky/violet block above. These are the app's own
+   semantic color families (signature-status cards, paid/remaining balance
+   cards, terms-accepted card, security-deposit badges, etc.) and were never
+   wired into dark mode at all: the pastel *-50/*-100 background stayed
+   paper-white and dark-mode's ambient near-white text then landed on top of
+   it unreadable. Darkened tinted background + a lighter in-family shade for
+   text/border, exactly like the pattern already used above. */
+.dark .bg-success-50 { background-color: rgba(16,185,129,0.12) !important; }
+.dark .bg-success-100 { background-color: rgba(16,185,129,0.18) !important; }
+.dark .text-success-400,
+.dark .text-success-500,
+.dark .text-success-600,
+.dark .text-success-700 { color: #6ee7b7 !important; }
+.dark .border-success-100,
+.dark .border-success-200,
+.dark .border-success-300,
+.dark .border-success-400 { border-color: rgba(16,185,129,0.35) !important; }
+.dark .ring-success-100 { --tw-ring-color: rgba(16,185,129,0.35) !important; }
+
+.dark .bg-danger-50 { background-color: rgba(239,68,68,0.12) !important; }
+.dark .bg-danger-100 { background-color: rgba(239,68,68,0.18) !important; }
+.dark .text-danger-400,
+.dark .text-danger-500,
+.dark .text-danger-600,
+.dark .text-danger-700 { color: #fca5a5 !important; }
+.dark .border-danger-100,
+.dark .border-danger-200,
+.dark .border-danger-300,
+.dark .border-danger-400 { border-color: rgba(239,68,68,0.35) !important; }
+.dark .ring-danger-300,
+.dark .ring-danger-500 { --tw-ring-color: rgba(239,68,68,0.4) !important; }
+
+.dark .bg-warning-50 { background-color: rgba(245,158,11,0.12) !important; }
+.dark .bg-warning-100 { background-color: rgba(245,158,11,0.18) !important; }
+.dark .text-warning-400,
+.dark .text-warning-500,
+.dark .text-warning-600,
+.dark .text-warning-700,
+.dark .text-warning-800 { color: #fcd34d !important; }
+.dark .border-warning-100,
+.dark .border-warning-200,
+.dark .border-warning-300 { border-color: rgba(245,158,11,0.35) !important; }
+/* Same pastel-badge fix for the plain (non-prefixed) amber classes used
+   alongside `warning-*` for the same kind of card — bg-amber-50/text-amber-700
+   were already mapped above, only the border shade was missing. */
+.dark .border-amber-100 { border-color: rgba(245,158,11,0.35) !important; }
+
+.dark .bg-brand-100 { background-color: var(--bg-active) !important; }
+.dark .ring-brand-100 { --tw-ring-color: var(--border-medium) !important; }
+
 /* ============================================
    RTL IMPROVEMENTS
    ============================================ */

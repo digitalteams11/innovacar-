@@ -29,23 +29,52 @@ module.exports = {
           500: '#b8954e',
           600: '#9a7a3d',
         },
+        // Full 50-900 scales (previously only 50/100/500/600 were defined).
+        // Code across the app references shades like text-success-700,
+        // text-success-400, border-danger-300, text-warning-800, etc. —
+        // Tailwind silently emits no rule at all for an undefined shade, so
+        // those elements rendered with no color set and inherited whatever
+        // ambient text color the theme provided (near-white in dark mode),
+        // producing invisible text on the light pastel card it sat on (e.g.
+        // "Agency Signature Applied", "PAID"/"REMAINING" balance labels on
+        // the contract details page). Values below match the standard
+        // Tailwind emerald/red/amber scales these shorthand names stand in
+        // for, keeping the existing 50/100/500/600 anchors unchanged.
         success: {
           50: '#ecfdf5',
           100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
           500: '#10b981',
           600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
         },
         warning: {
           50: '#fffbeb',
           100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
           500: '#f59e0b',
           600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
         },
         danger: {
           50: '#fef2f2',
           100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
           500: '#ef4444',
           600: '#dc2626',
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
         },
         electric: {
           50: '#eff6ff',

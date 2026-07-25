@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "build": "npm run verify:public-url && npm run generate:sitemap && tsc -b && vite build && npm run prerender:marketing && npm run verify:seo",
+    "build": "npm run verify:public-url && npm run theme:audit && npm run generate:sitemap && tsc -b && vite build && npm run prerender:marketing && npm run verify:seo",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
