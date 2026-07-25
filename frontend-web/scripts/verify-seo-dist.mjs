@@ -66,6 +66,35 @@ if (!indexHtml) {
   for (const needle of FORBIDDEN_STRINGS) {
     if (indexHtml.includes(needle)) fail(`dist/index.html contains forbidden string "${needle}".`);
   }
+
+  // ── hash-route anti-flash guard (see scripts/prerender-marketing.mjs) ──
+  // This is a HashRouter SPA: dist/index.html is served for both the real
+  // marketing homepage AND every authenticated hash route on refresh
+  // (a URL fragment is never sent to the server). The prerender step bakes
+  // real landing-page markup into #root for SEO — if that markup isn't
+  // wrapped and guarded, a refresh on e.g. #/dashboard would briefly paint
+  // the marketing homepage before React mounts and takes over. This is the
+  // exact production bug the startup-flash fix addresses; keep it fixed.
+  if (!indexHtml.includes('id="marketing-prerender-root"')) {
+    fail('dist/index.html\'s prerendered marketing body is not wrapped in #marketing-prerender-root — a hash-route refresh (e.g. #/dashboard) would flash the landing page before React mounts.');
+  }
+  if (!indexHtml.includes('id="app-boot-shell"')) {
+    fail('dist/index.html is missing the #app-boot-shell fallback shown instead of the marketing body on a hash-route refresh.');
+  }
+  if (!/<script\s+src="\/route-bootstrap\.js"/.test(indexHtml)) {
+    fail('dist/index.html is missing the synchronous <script src="/route-bootstrap.js"> that sets data-app-route before first paint.');
+  }
+  if (!/html\[data-app-route="true"\]\s*#marketing-prerender-root\s*\{\s*display:\s*none/.test(indexHtml)) {
+    fail('dist/index.html is missing the CSS rule that hides #marketing-prerender-root when data-app-route="true".');
+  }
+  // route-bootstrap.js itself must exist and actually set the attribute —
+  // guards against the script content silently regressing/being emptied.
+  const routeBootstrapJs = readIfExists('route-bootstrap.js');
+  if (!routeBootstrapJs) {
+    fail('dist/route-bootstrap.js is missing — public/route-bootstrap.js should be copied verbatim into dist/ by Vite.');
+  } else if (!routeBootstrapJs.includes('data-app-route')) {
+    fail('dist/route-bootstrap.js does not set the data-app-route attribute.');
+  }
 }
 
 // ── prerendered marketing pages (see scripts/prerender-marketing.mjs) ──────

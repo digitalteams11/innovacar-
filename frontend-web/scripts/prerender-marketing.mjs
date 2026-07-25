@@ -34,6 +34,23 @@ const { MARKETING_PAGES } = await import(`${pathToFileURL(tmpFile).href}?t=${Dat
 
 const template = readFileSync(TEMPLATE_PATH, 'utf8');
 
+// Static (non-React) neutral placeholder shown instead of the marketing body
+// when route-bootstrap.js detects a "#/..." hash-route refresh (see the CSS
+// in index.html's <head>). Kept intentionally tiny and framework-free — it
+// only has to survive the few hundred ms before main.tsx mounts the real
+// app, which immediately replaces all of #root's children regardless of
+// which of these two static branches was visible. Uses the same CSS custom
+// properties the real app's theme system defines (already resolved before
+// paint by theme-bootstrap.js) so it never itself flashes the wrong theme.
+const APP_BOOT_SHELL_HTML = `<div id="app-boot-shell" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:var(--bg-page,#f4f8fb);min-height:100dvh">
+  <div style="text-align:center">
+    <div style="margin:0 auto;width:64px;height:64px;border-radius:16px;background:#ffffff;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.15)">
+      <img src="/brand/innovacar-logo.png" alt="" style="width:100%;height:100%;object-fit:contain;padding:4px" />
+    </div>
+    <p style="margin:14px 0 0;font-family:Inter,system-ui,sans-serif;font-weight:700;font-size:14px;color:var(--text-primary,#0f172a)">InnovaCar</p>
+  </div>
+</div>`;
+
 // The Organization JSON-LD already in the shell (see index.html) is generic
 // site-wide info — keep it. Only the homepage additionally gets a
 // SoftwareApplication block describing the real product, no invented
@@ -102,10 +119,26 @@ for (const [routePath, { meta, Component }] of Object.entries(MARKETING_PAGES)) 
     );
   }
 
-  // Static content for first paint / crawlers. React re-renders over this on
-  // hydration-equivalent client mount (main.tsx); a brief content replace on
-  // load is acceptable for this MVP, real content is already visible without JS.
-  html = html.replace(/<div id="root"><\/div>/, `<div id="root">${bodyHtml}</div>`);
+  // Static content for first paint / crawlers. React replaces this on client
+  // mount (main.tsx uses createRoot, not hydrateRoot, so this is a plain
+  // replace, not a hydration match).
+  //
+  // dist/index.html — the routePath === '/' output — is not exclusive to the
+  // marketing homepage: this is a HashRouter SPA, so a URL fragment
+  // ("#/dashboard", "#/contracts", ...) is never sent to the server, and
+  // every authenticated route is served this exact same file on refresh.
+  // Baking the marketing body straight into #root unconditionally would
+  // briefly paint the landing page before main.tsx's module script loads and
+  // decides which app to mount — the "wrong page flashes on refresh" bug.
+  // route-bootstrap.js (loaded synchronously in <head>, before this markup is
+  // even parsed) sets data-app-route="true" on <html> the instant it sees a
+  // "#/..." fragment, and the matching CSS in <head> hides #marketing-prerender-root
+  // / shows #app-boot-shell for that case — so a hash-route refresh paints
+  // the neutral shell instead, never the landing page.
+  const rootMarkup = routePath === '/'
+    ? `<div id="marketing-prerender-root">${bodyHtml}</div>${APP_BOOT_SHELL_HTML}`
+    : bodyHtml;
+  html = html.replace(/<div id="root"><\/div>/, `<div id="root">${rootMarkup}</div>`);
 
   const outPath = routePath === '/'
     ? path.join(DIST, 'index.html')

@@ -411,16 +411,43 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-function App() {
-  const [showSplash, setShowSplash] = useState(true);
-  useEffect(() => {
-    // Hard cap on the splash screen itself — independent of auth/branding/theme
-    // startup, none of which this timer waits on. See AuthContext's own bootstrap
-    // watchdog for why "loading" can never hang the login page behind this either.
-    const timer = window.setTimeout(() => setShowSplash(false), 1400);
-    return () => window.clearTimeout(timer);
-  }, []);
+// ── App bootstrap gate ───────────────────────────────────────────────────────
+// The splash screen used to hide behind a flat setTimeout(1400ms) regardless
+// of whether the session check had actually finished — a fixed delay that
+// both outlived a fast bootstrap (needless wait) and could resolve before a
+// slow one (AuthContext's own 6s watchdog caps the worst case), briefly
+// exposing whatever the route guards render next. This gates on the real
+// signal instead: AuthContext.loading, which is true for exactly as long as
+// session restoration (`GET /me`) is actually in flight, and never again
+// after that for the rest of the tab session. While it's true, AppRoutes is
+// not mounted at all — not hidden behind an overlay — so there is nothing
+// for a route guard or lazy chunk to race and expose for one frame.
+function AppShell() {
+  const { loading: authLoading } = useAuth();
 
+  return (
+    <>
+      {authLoading && <SplashScreen />}
+      {/* ThemeProvider wraps ALL routes (public + protected) — Login's
+          Google-button theming (useTheme()) needs it too, and it only talks
+          to the backend when isAuthenticated, so it's safe/inert on public
+          routes. Always mounted (even during the splash) so the resolved
+          theme/CSS vars are ready the instant route content does mount —
+          see ThemeContext's synchronous initial state + useLayoutEffect. */}
+      <ThemeProvider>
+        {!authLoading && (
+          <BackendHealthGate>
+            <AppRoutes />
+          </BackendHealthGate>
+        )}
+        <CookieConsentBanner />
+        <SessionExpiredModal />
+      </ThemeProvider>
+    </>
+  );
+}
+
+function App() {
   // Re-arms the one-shot auto-reload guards so a later, unrelated stale-module/
   // chunk error still gets one reload attempt instead of being permanently
   // disabled for the rest of the tab session. Deliberately delayed (not cleared
@@ -446,18 +473,7 @@ function App() {
       <NotificationSoundProvider>
         <NotificationProvider>
           <ToastProvider>
-            {showSplash && <SplashScreen />}
-            {/* ThemeProvider wraps ALL routes (public + protected) — Login's
-                Google-button theming (useTheme()) needs it too, and it only
-                talks to the backend when isAuthenticated, so it's safe/inert
-                on public routes. */}
-            <ThemeProvider>
-              <BackendHealthGate>
-                <AppRoutes />
-              </BackendHealthGate>
-              <CookieConsentBanner />
-              <SessionExpiredModal />
-            </ThemeProvider>
+            <AppShell />
           </ToastProvider>
         </NotificationProvider>
       </NotificationSoundProvider>

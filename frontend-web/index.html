@@ -22,6 +22,23 @@
       to run synchronously before first paint).
     -->
     <script src="/theme-bootstrap.js"></script>
+    <!--
+      Anti-flash: marks the document as an app route (any "#/..." URL) before
+      first paint — see public/route-bootstrap.js for the full rationale.
+      Combined with the <style> block below, this keeps a prerendered
+      marketing-page body (baked into dist/index.html for / — see
+      scripts/prerender-marketing.mjs) from ever being painted when the same
+      file is served for an authenticated hash route on refresh. Must load
+      synchronously, right after theme-bootstrap.js and before anything else.
+    -->
+    <script src="/route-bootstrap.js"></script>
+    <style>
+      /* Paired with route-bootstrap.js. #marketing-prerender-root only
+         exists in the build's prerendered dist/index.html (see
+         scripts/prerender-marketing.mjs); harmless no-op selector otherwise. */
+      html[data-app-route="true"] #marketing-prerender-root { display: none !important; }
+      html[data-app-route="true"] #app-boot-shell { display: flex !important; }
+    </style>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Innovacar" />
@@ -70,6 +87,9 @@
     </script>
   </head>
   <body>
+    <noscript>
+      InnovaCar requires JavaScript to run. Please enable JavaScript in your browser to continue.
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
