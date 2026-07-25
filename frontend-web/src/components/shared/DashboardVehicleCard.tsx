@@ -156,39 +156,48 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
         </div>
       )}
 
-      {/* Quick actions */}
+      {/* Quick actions — semantic mobile-action tokens (not raw hex) so every
+          button keeps AA-level text contrast in both themes; min-h-10
+          (40px) satisfies the 40-44px touch-target requirement, and each
+          button is allowed to grow to fill a 2-up row on 320px screens
+          instead of shrink-wrapping into an unreadably narrow pill. */}
       <div className="flex gap-2 flex-wrap pt-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
         <button onClick={() => navigate(`/vehicles`)}
-          className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all hover:opacity-80"
-          style={{ background: 'var(--bg-card-hover)', color: 'var(--text-secondary)' }}>
-          <Eye size={11} /> {t('common.view')}
+          aria-label={t('common.view')}
+          className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          style={{ background: 'var(--mobile-action-neutral-bg)', color: 'var(--mobile-action-neutral-text)', borderColor: 'transparent' }}>
+          <Eye size={14} /> {t('common.view')}
         </button>
         {v.statut === 'AVAILABLE' && (
           <>
             <button onClick={() => navigate('/reservations')}
-              className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all hover:opacity-80"
-              style={{ background: 'rgba(16,185,129,0.1)', color: 'rgb(16,185,129)' }}>
-              <Calendar size={11} /> {t('common.reserve')}
+              aria-label={t('common.reserve')}
+              className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              style={{ background: 'var(--mobile-action-success-bg)', color: 'var(--mobile-action-success-text)', borderColor: 'transparent' }}>
+              <Calendar size={14} /> {t('common.reserve')}
             </button>
             <button onClick={() => navigate('/contracts')}
-              className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all hover:opacity-80"
-              style={{ background: 'rgba(59,130,246,0.1)', color: 'rgb(59,130,246)' }}>
-              <FileText size={11} /> {t('common.contract')}
+              aria-label={t('common.contract')}
+              className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              style={{ background: 'var(--mobile-action-primary-bg)', color: 'var(--mobile-action-primary-text)', borderColor: 'transparent' }}>
+              <FileText size={14} /> {t('common.contract')}
             </button>
           </>
         )}
         {(v.statut === 'RENTED' || v.statut === 'ACTIVE') && onReturn && v.activeContractId && (
           <button onClick={() => onReturn(v.activeContractId!)}
-            className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all hover:opacity-80"
-            style={{ background: 'rgba(245,158,11,0.1)', color: 'rgb(245,158,11)' }}>
-            <Plus size={11} /> {t('common.return')}
+            aria-label={t('common.return')}
+            className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            style={{ background: 'var(--mobile-action-warning-bg)', color: 'var(--mobile-action-warning-text)', borderColor: 'transparent' }}>
+            <Plus size={14} /> {t('common.return')}
           </button>
         )}
         {v.statut !== 'IN_MAINTENANCE' && v.statut !== 'MAINTENANCE' && (
           <button onClick={() => navigate('/maintenance')}
-            className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all hover:opacity-80"
-            style={{ background: 'rgba(239,68,68,0.1)', color: 'rgb(239,68,68)' }}>
-            <Wrench size={11} /> {t('common.maintenance')}
+            aria-label={t('common.maintenance')}
+            className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            style={{ background: 'var(--mobile-action-danger-bg)', color: 'var(--mobile-action-danger-text)', borderColor: 'transparent' }}>
+            <Wrench size={14} /> {t('common.maintenance')}
           </button>
         )}
       </div>

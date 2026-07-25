@@ -39,12 +39,15 @@ export default function BottomNavigation({ items, isActive, moreLabel, onMoreCli
             aria-label={item.label}
             className={cn(
               'relative min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px] rounded-xl transition-colors',
-              active ? 'font-semibold text-[var(--nav-active)] bg-[var(--nav-active)]/10' : 'text-[var(--nav-inactive)]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]',
+              active
+                ? 'font-bold text-[var(--mobile-nav-active)] bg-[var(--mobile-nav-active-bg)]'
+                : 'text-[var(--mobile-nav-inactive)] hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)]',
             )}
           >
-            {active && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-[var(--nav-active)]" />}
-            <item.icon size={20} strokeWidth={active ? 2.4 : 2} />
-            <span className="max-w-[68px] truncate">{item.label}</span>
+            {active && <span className="absolute top-0 w-6 h-0.5 rounded-full bg-[var(--mobile-nav-active)]" />}
+            <item.icon size={20} strokeWidth={active ? 2.6 : 2} />
+            <span className={cn('max-w-[68px] truncate', active && 'font-bold')}>{item.label}</span>
           </Link>
         );
       })}
@@ -52,7 +55,7 @@ export default function BottomNavigation({ items, isActive, moreLabel, onMoreCli
         type="button"
         onClick={onMoreClick}
         aria-label={moreLabel}
-        className="min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px] text-[var(--nav-inactive)] rounded-xl transition-colors hover:bg-[var(--bg-hover)]"
+        className="min-w-[54px] min-h-[54px] flex flex-col items-center justify-center gap-1 text-[10px] text-[var(--mobile-nav-inactive)] rounded-xl transition-colors hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
         <MoreHorizontal size={20} />
         {moreLabel}

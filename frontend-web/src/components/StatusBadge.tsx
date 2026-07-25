@@ -1,11 +1,11 @@
 import { cn } from '../lib/utils';
 import { type LucideIcon } from 'lucide-react';
 
-export type StatusVariant = 
-  | 'success' | 'warning' | 'danger' | 'info' 
+export type StatusVariant =
+  | 'success' | 'warning' | 'danger' | 'info'
   | 'neutral' | 'gold' | 'blue' | 'purple'
   | 'available' | 'rented' | 'maintenance' | 'pending' | 'confirmed' | 'cancelled'
-  | 'paid' | 'unpaid' | 'overdue';
+  | 'paid' | 'unpaid' | 'overdue' | 'outOfService';
 
 interface StatusBadgeProps {
   variant: StatusVariant;
@@ -16,24 +16,30 @@ interface StatusBadgeProps {
   dot?: boolean;
 }
 
+// "600 in light / 300 in dark" — a fixed -500 shade reads as low-contrast
+// green-on-teal / blue-on-navy once the surface goes dark (production
+// screenshot showed near-invisible status badges), so every variant needs
+// an explicit dark: shift rather than relying on the same mid-tone in both
+// themes.
 const variantStyles: Record<StatusVariant, string> = {
-  success: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  available: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  paid: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  confirmed: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  warning: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  danger: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-  cancelled: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-  overdue: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-  info: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  blue: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  neutral: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-  gold: 'bg-accent-400/10 text-accent-500 border-accent-400/20',
-  purple: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  rented: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  maintenance: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-  unpaid: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  success: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/25',
+  available: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/25',
+  paid: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/25',
+  confirmed: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/25',
+  warning: 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/25',
+  pending: 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/25',
+  danger: 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/25',
+  cancelled: 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/25',
+  overdue: 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/25',
+  info: 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/25',
+  blue: 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/25',
+  neutral: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25',
+  gold: 'bg-accent-400/15 text-accent-600 dark:text-accent-300 border-accent-400/25',
+  purple: 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/25',
+  rented: 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/25',
+  maintenance: 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/25',
+  unpaid: 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/25',
+  outOfService: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25',
 };
 
 const dotColors: Record<StatusVariant, string> = {
@@ -54,6 +60,7 @@ const dotColors: Record<StatusVariant, string> = {
   rented: 'bg-blue-500',
   maintenance: 'bg-rose-500',
   unpaid: 'bg-amber-500',
+  outOfService: 'bg-slate-500',
 };
 
 const sizeStyles = {

@@ -218,14 +218,16 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen(!open)}
         aria-label={t('notifications.title')}
-        className="relative rounded-2xl border border-transparent p-2.5 transition-all hover:border-[var(--border-subtle)]"
-        style={{ color: 'var(--text-muted)' }}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className="relative min-h-11 min-w-11 flex items-center justify-center rounded-2xl border border-transparent transition-all hover:border-[var(--border-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+        style={{ color: 'var(--mobile-icon-muted)' }}
         onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)';
+          (e.currentTarget as HTMLElement).style.color = 'var(--mobile-icon)';
           (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)';
         }}
         onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)';
+          (e.currentTarget as HTMLElement).style.color = 'var(--mobile-icon-muted)';
           (e.currentTarget as HTMLElement).style.background = 'transparent';
         }}
       >

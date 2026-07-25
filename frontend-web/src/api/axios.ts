@@ -390,9 +390,6 @@ api.interceptors.response.use(
   }
 );
 
-// Offline detection
-window.addEventListener('offline', notifyNetworkFailure);
-
 /**
  * Extracts the best available user-facing message from a caught API error.
  * Prefers the errorCode-translated message the response interceptor already

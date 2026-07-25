@@ -118,7 +118,7 @@ public class EmailRecipientSearchService {
         return EmailRecipientDto.builder()
                 .id(t.getId())
                 .type("AGENCY")
-                .displayName(t.getName())
+                .displayName(StringUtils.hasText(t.getName()) ? t.getName() : t.getEmail())
                 .email(t.getEmail().trim().toLowerCase(Locale.ROOT))
                 .role(null)
                 .agencyId(t.getId())

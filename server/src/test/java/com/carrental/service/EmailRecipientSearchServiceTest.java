@@ -147,4 +147,24 @@ class EmailRecipientSearchServiceTest {
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).getEmail()).isEqualTo("verified@acme.test");
     }
+
+    @Test
+    void agencyWithNullName_doesNotThrowAndFallsBackToEmailAsDisplayName() {
+        // Regression test: a legacy/blank Tenant.name used to NPE inside the
+        // combined-list sort (Comparator.comparing(..., CASE_INSENSITIVE_ORDER))
+        // because displayName was set directly from t.getName() with no
+        // fallback — this surfaced in production as an uncaught 500 on
+        // GET /api/super-admin/email-recipients (the Email Center's
+        // recipient combobox).
+        service = newService();
+        when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
+                Tenant.builder().id(1L).name(null).email("noname@co.test").status("ACTIVE").build()
+        ));
+        when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(Page.empty());
+
+        var result = service.search("", "AGENCY", null, null, null, false, 0, 20);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).getDisplayName()).isEqualTo("noname@co.test");
+    }
 }

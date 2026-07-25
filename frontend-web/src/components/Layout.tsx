@@ -265,7 +265,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <NotificationBell />
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('open-help-center'))}
-              className="h-9 w-9 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+              className="h-11 w-11 rounded-lg flex items-center justify-center text-[var(--mobile-icon-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--mobile-icon)] active:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
               title={t('guidance.help')}
               aria-label={t('guidance.help')}
             >
@@ -275,7 +275,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="page-canvas flex-1 w-full p-3 sm:p-4 lg:p-6 pb-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+32px)] lg:pb-6">
+        {/* Bottom padding reserves space for BOTH the bottom nav and the
+            floating assistant button (56px + its own 16px gap above the
+            nav) so the last row of content — e.g. a vehicle card's action
+            buttons — is never left sitting under the fixed FAB when
+            scrolled all the way down. */}
+        <main className="page-canvas flex-1 w-full p-3 sm:p-4 lg:p-6 pb-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+88px)] lg:pb-6">
           <AnnouncementBanner />
           <div key={location.pathname} className="animate-fade">{children}</div>
         </main>

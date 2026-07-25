@@ -4,8 +4,11 @@
     "underDevelopment": "القسم قيد التطوير",
     "underDevelopmentDesc": "هذه الوحدة قيد الإنشاء حالياً من فريقنا.",
     "serviceUnavailable": "الخدمة غير متوفرة مؤقتًا",
-    "serviceUnavailableDesc": "تعذّر الوصول إلى خادم RentCar حاليًا. ستتم إعادة المحاولة تلقائيًا كل 10 ثوانٍ.",
-    "retryNow": "إعادة المحاولة الآن"
+    "serviceUnavailableDesc": "تعذّر الوصول إلى خادم RentCar حاليًا. ستتم إعادة المحاولة تلقائيًا.",
+    "retryNow": "إعادة المحاولة الآن",
+    "reconnecting": "جارٍ إعادة الاتصال…",
+    "offline": "أنت غير متصل بالإنترنت",
+    "offlineDesc": "تحقق من اتصالك بالإنترنت. ستتم إعادة الاتصال تلقائيًا."
   },
   "nav": {
     "dashboard": "لوحة التحكم",
@@ -131,6 +134,7 @@
     "adminTools": "أدوات الإدارة",
     "logout": "تسجيل الخروج",
     "innovacarDashboard": "لوحة تحكم Innovacar",
+    "userMenu": "قائمة الحساب",
     "needHelp": "هل تحتاج مساعدة؟",
     "helpText": "فريقنا متواجد على مدار الساعة لمساعدتك.",
     "contactUs": "تواصل معنا",

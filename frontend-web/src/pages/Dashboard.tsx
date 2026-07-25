@@ -203,24 +203,24 @@ function TopStat({
 function VStatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
   const cfg: Record<string, { label: string; cls: string }> = {
-    AVAILABLE:      { label: t('common.available'),   cls: 'bg-emerald-500/10 text-emerald-500' },
-    RENTED:         { label: t('common.rented'),      cls: 'bg-blue-500/10 text-blue-500' },
-    RESERVED:       { label: t('common.reserved'),    cls: 'bg-amber-500/10 text-amber-500' },
-    MAINTENANCE:    { label: t('common.maintenance'), cls: 'bg-red-500/10 text-red-500' },
-    IN_MAINTENANCE: { label: t('common.maintenance'), cls: 'bg-red-500/10 text-red-500' },
-    OUT_OF_SERVICE: { label: t('common.outOfService'),cls: 'bg-gray-500/10 text-gray-400' },
-    SOLD:           { label: t('common.sold'),        cls: 'bg-gray-500/10 text-gray-400' },
-    ARCHIVED:       { label: t('common.archived'),    cls: 'bg-gray-500/10 text-gray-400' },
+    AVAILABLE:      { label: t('common.available'),   cls: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/25' },
+    RENTED:         { label: t('common.rented'),      cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/25' },
+    RESERVED:       { label: t('common.reserved'),    cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/25' },
+    MAINTENANCE:    { label: t('common.maintenance'), cls: 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/25' },
+    IN_MAINTENANCE: { label: t('common.maintenance'), cls: 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/25' },
+    OUT_OF_SERVICE: { label: t('common.outOfService'),cls: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25' },
+    SOLD:           { label: t('common.sold'),        cls: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25' },
+    ARCHIVED:       { label: t('common.archived'),    cls: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25' },
   };
-  const c = cfg[status] ?? { label: status, cls: 'bg-gray-500/10 text-gray-400' };
-  return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.cls}`}>{c.label}</span>;
+  const c = cfg[status] ?? { label: status, cls: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25' };
+  return <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.cls}`}>{c.label}</span>;
 }
 
 /* ─── AlertIcon ──────────────────────────────────────────────────── */
 function AlertIcon({ severity }: { severity: string }) {
-  if (severity === 'danger')  return <XCircle   size={15} className="text-rose-500 shrink-0" />;
-  if (severity === 'warning') return <AlertTriangle size={15} className="text-amber-500 shrink-0" />;
-  return <Info size={15} className="text-blue-500 shrink-0" />;
+  if (severity === 'danger')  return <XCircle   size={15} className="text-rose-600 dark:text-rose-300 shrink-0" />;
+  if (severity === 'warning') return <AlertTriangle size={15} className="text-amber-600 dark:text-amber-300 shrink-0" />;
+  return <Info size={15} className="text-blue-600 dark:text-blue-300 shrink-0" />;
 }
 
 /* ─── Avatar ─────────────────────────────────────────────────────── */
@@ -918,8 +918,10 @@ export default function Dashboard() {
           setVehicles(vArr);
           // Cast is safe: VehicleResponse has marque/plate/statut/prixJour/fuel/imageUrl/category
           fallbackFleetVehicles = vArr as unknown as VehicleCardData[];
-          console.log('[VEHICLES_PAGE_DATA_DEBUG] endpoint=GET /api/vehicles count=' + vArr.length +
-            ' firstVehicle=' + (vArr[0] ? JSON.stringify({ id: vArr[0].id, marque: vArr[0].marque, statut: vArr[0].statut }) : 'none'));
+          if (import.meta.env.DEV) {
+            console.log('[VEHICLES_PAGE_DATA_DEBUG] endpoint=GET /api/vehicles count=' + vArr.length +
+              ' firstVehicle=' + (vArr[0] ? JSON.stringify({ id: vArr[0].id, marque: vArr[0].marque, statut: vArr[0].statut }) : 'none'));
+          }
         } else setVehicles([]);
 
         // ── dashboard stats + fleet vehicle cards ─────────────────────────────
@@ -930,9 +932,11 @@ export default function Dashboard() {
           setStatsError(false);
           const rawVehicles = (raw?.vehicles ?? (raw?.data as Record<string, unknown>)?.vehicles) as VehicleCardData[];
           const dashboardFleet = Array.isArray(rawVehicles) ? rawVehicles : [];
-          console.log('[DASHBOARD_FLEET_DATA_DEBUG] endpoint=GET /api/dashboard count=' + dashboardFleet.length +
-            ' firstVehicle=' + (dashboardFleet[0] ? JSON.stringify({ id: dashboardFleet[0].id, marque: dashboardFleet[0].marque, statut: dashboardFleet[0].statut }) : 'none') +
-            ' filtersApplied=deleted=false_by_@SQLRestriction');
+          if (import.meta.env.DEV) {
+            console.log('[DASHBOARD_FLEET_DATA_DEBUG] endpoint=GET /api/dashboard count=' + dashboardFleet.length +
+              ' firstVehicle=' + (dashboardFleet[0] ? JSON.stringify({ id: dashboardFleet[0].id, marque: dashboardFleet[0].marque, statut: dashboardFleet[0].statut }) : 'none') +
+              ' filtersApplied=deleted=false_by_@SQLRestriction');
+          }
           // Use dashboard vehicles if returned; fall back to /api/vehicles data if not
           setFleetVehicles(dashboardFleet.length > 0 ? dashboardFleet : fallbackFleetVehicles);
           const rawAlerts = (raw?.alerts ?? (raw?.data as Record<string, unknown>)?.alerts) as Record<string, unknown>[];
@@ -942,7 +946,9 @@ export default function Dashboard() {
           setStatsError(true);
           // Dashboard endpoint failed — still show fleet vehicles from /api/vehicles
           if (fallbackFleetVehicles.length > 0) {
-            console.log('[DASHBOARD_FLEET_DATA_DEBUG] endpoint=GET /api/dashboard FAILED — using fallback from /api/vehicles count=' + fallbackFleetVehicles.length);
+            if (import.meta.env.DEV) {
+              console.log('[DASHBOARD_FLEET_DATA_DEBUG] endpoint=GET /api/dashboard FAILED — using fallback from /api/vehicles count=' + fallbackFleetVehicles.length);
+            }
             setFleetVehicles(fallbackFleetVehicles);
           }
         }
@@ -1152,7 +1158,7 @@ export default function Dashboard() {
           <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
             {t('dashboard.alerts', 'Alerts')}
           </h2>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border" style={{ background: 'var(--mobile-action-danger-bg)', color: 'var(--mobile-action-danger-text)', borderColor: 'var(--mobile-alert-danger-border)' }}>
             {dashboardAlerts.length}
           </span>
         </div>
@@ -1166,17 +1172,17 @@ export default function Dashboard() {
               className="flex items-start gap-3 p-3 rounded-xl border"
               style={{
                 backgroundColor: 'var(--bg-card)',
-                borderColor: alert.severity === 'danger' ? 'rgba(239,68,68,0.3)'
-                  : alert.severity === 'warning' ? 'rgba(245,158,11,0.3)' : 'rgba(59,130,246,0.3)',
+                borderColor: alert.severity === 'danger' ? 'var(--mobile-alert-danger-border)'
+                  : alert.severity === 'warning' ? 'var(--mobile-alert-warning-border)' : 'var(--mobile-alert-info-border)',
                 backdropFilter: 'blur(12px)',
               }}
             >
               <AlertIcon severity={String(alert.severity ?? '')} />
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-bold leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                <p className="text-[11px] font-bold leading-tight truncate" style={{ color: 'var(--mobile-text-primary)' }}>
                   {String(alert.title ?? '')}
                 </p>
-                <p className="text-[10px] mt-0.5 leading-snug" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-[10px] mt-0.5 leading-snug" style={{ color: 'var(--mobile-text-secondary)' }}>
                   {String(alert.message ?? '')}
                 </p>
               </div>
@@ -1205,9 +1211,10 @@ export default function Dashboard() {
           ))}
         </div>
         <button onClick={() => navigate('/vehicles')}
-          className="text-[11px] font-semibold hover:underline flex items-center gap-1"
-          style={{ color: 'var(--brand-primary)' }}>
-          {t('dashboard.viewAll', 'View All')} <ArrowRight size={12} />
+          aria-label={t('dashboard.viewAll', 'View All')}
+          className="inline-flex items-center gap-1 min-h-11 -my-2.5 px-2.5 -mx-2.5 rounded-lg text-[11px] font-bold hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+          style={{ color: 'var(--mobile-link)' }}>
+          {t('dashboard.viewAll', 'View All')} <ArrowRight size={12} className="rtl:rotate-180" />
         </button>
       </div>
 
@@ -1240,9 +1247,9 @@ export default function Dashboard() {
           {fleetVehicles.length > 8 && (
             <div className="mt-3 text-center">
               <button onClick={() => navigate('/vehicles')}
-                className="text-[11px] font-semibold hover:underline flex items-center gap-1 mx-auto"
-                style={{ color: 'var(--brand-primary)' }}>
-                {t('dashboard.seeAllVehicles', 'See all vehicles')} ({fleetVehicles.length}) <ArrowRight size={12} />
+                className="inline-flex items-center gap-1 min-h-11 px-3 mx-auto rounded-lg text-[11px] font-bold hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+                style={{ color: 'var(--mobile-link)' }}>
+                {t('dashboard.seeAllVehicles', 'See all vehicles')} ({fleetVehicles.length}) <ArrowRight size={12} className="rtl:rotate-180" />
               </button>
             </div>
           )}
@@ -1370,7 +1377,9 @@ export default function Dashboard() {
         <DCard delay={280}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dashboard.contractsSummary')}</h3>
-            <button onClick={() => navigate('/contracts')} className="text-[11px] font-semibold hover:underline" style={{ color: 'var(--brand-primary)' }}>
+            <button onClick={() => navigate('/contracts')}
+              className="min-h-11 -my-2.5 px-2.5 -mx-2.5 rounded-lg text-[11px] font-bold hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+              style={{ color: 'var(--mobile-link)' }}>
               {t('dashboard.viewAll')}
             </button>
           </div>
@@ -1444,7 +1453,9 @@ export default function Dashboard() {
       <DCard delay={400} noPad>
         <div className="p-5 pb-3 flex items-center justify-between">
           <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dashboard.vehicleAvailability')}</h3>
-          <button onClick={() => navigate('/vehicles')} className="text-[11px] font-semibold hover:underline" style={{ color: 'var(--brand-primary)' }}>{t('dashboard.viewAll')}</button>
+          <button onClick={() => navigate('/vehicles')}
+            className="min-h-11 -my-2.5 px-2.5 -mx-2.5 rounded-lg text-[11px] font-bold hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+            style={{ color: 'var(--mobile-link)' }}>{t('dashboard.viewAll')}</button>
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
           {vehicles.slice(0, 5).map(v => (
@@ -1468,8 +1479,10 @@ export default function Dashboard() {
         </div>
         {vehicles.length > 5 && (
           <div className="p-3 border-t text-center" style={{ borderColor: 'var(--border-subtle)' }}>
-            <button onClick={() => navigate('/vehicles')} className="text-[11px] font-medium flex items-center gap-1 mx-auto hover:gap-2 transition-all" style={{ color: 'var(--brand-primary)' }}>
-              {t('dashboard.seeAll')} <ArrowRight size={12} />
+            <button onClick={() => navigate('/vehicles')}
+              className="inline-flex items-center gap-1 min-h-11 px-3 mx-auto rounded-lg text-[11px] font-bold hover:gap-2 hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-all"
+              style={{ color: 'var(--mobile-link)' }}>
+              {t('dashboard.seeAll')} <ArrowRight size={12} className="rtl:rotate-180" />
             </button>
           </div>
         )}
@@ -1479,7 +1492,9 @@ export default function Dashboard() {
       <DCard delay={460} noPad>
         <div className="p-5 pb-3 flex items-center justify-between">
           <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dashboard.recentClients')}</h3>
-          <button onClick={() => navigate('/clients')} className="text-[11px] font-semibold hover:underline" style={{ color: 'var(--brand-primary)' }}>{t('dashboard.viewAll')}</button>
+          <button onClick={() => navigate('/clients')}
+            className="min-h-11 -my-2.5 px-2.5 -mx-2.5 rounded-lg text-[11px] font-bold hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+            style={{ color: 'var(--mobile-link)' }}>{t('dashboard.viewAll')}</button>
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
           {clients.slice(0, 5).map(c => {
@@ -1508,8 +1523,10 @@ export default function Dashboard() {
         </div>
         {clients.length > 5 && (
           <div className="p-3 border-t text-center" style={{ borderColor: 'var(--border-subtle)' }}>
-            <button onClick={() => navigate('/clients')} className="text-[11px] font-medium flex items-center gap-1 mx-auto hover:gap-2 transition-all" style={{ color: 'var(--brand-primary)' }}>
-              {t('dashboard.seeAll')} <ArrowRight size={12} />
+            <button onClick={() => navigate('/clients')}
+              className="inline-flex items-center gap-1 min-h-11 px-3 mx-auto rounded-lg text-[11px] font-bold hover:gap-2 hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-all"
+              style={{ color: 'var(--mobile-link)' }}>
+              {t('dashboard.seeAll')} <ArrowRight size={12} className="rtl:rotate-180" />
             </button>
           </div>
         )}
@@ -1519,7 +1536,9 @@ export default function Dashboard() {
       <DCard delay={520} noPad>
         <div className="p-5 pb-3 flex items-center justify-between">
           <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dashboard.maintenanceAlerts')}</h3>
-          <button onClick={() => navigate('/maintenance')} className="text-[11px] font-semibold hover:underline" style={{ color: 'var(--brand-primary)' }}>{t('dashboard.viewAll')}</button>
+          <button onClick={() => navigate('/maintenance')}
+            className="min-h-11 -my-2.5 px-2.5 -mx-2.5 rounded-lg text-[11px] font-bold hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+            style={{ color: 'var(--mobile-link)' }}>{t('dashboard.viewAll')}</button>
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
           {maintenance.slice(0, 5).map(m => {

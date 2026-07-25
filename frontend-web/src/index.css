@@ -110,6 +110,40 @@
     --nav-active: var(--brand-primary);
     --nav-inactive: var(--text-muted);
     --focus-ring: var(--brand-primary);
+
+    /* Mobile dashboard tokens — deliberately NOT aliased to --brand-primary.
+       White-label agencies can set an arbitrary (sometimes dark/navy) brand
+       color via ThemeContext; a critical-legibility element like the active
+       bottom-nav item or the "View all" link must never inherit a color a
+       tenant admin picked without knowing it would sit on a dark background,
+       so these use fixed, contrast-checked values instead. Light values here,
+       overridden for dark mode below. */
+    --mobile-bg: var(--bg-page);
+    --mobile-surface: var(--bg-card-solid);
+    --mobile-surface-elevated: var(--bg-page-raised);
+    --mobile-border: var(--border-subtle);
+    --mobile-text-primary: var(--text-primary);
+    --mobile-text-secondary: var(--text-secondary);
+    --mobile-text-muted: var(--text-muted);
+    --mobile-icon: var(--text-secondary);
+    --mobile-icon-muted: var(--text-muted);
+    --mobile-link: #059669;
+    --mobile-nav-active: #059669;
+    --mobile-nav-active-bg: rgba(5, 150, 105, 0.12);
+    --mobile-nav-inactive: #64748b;
+    --mobile-action-neutral-bg: rgba(100, 116, 139, 0.14);
+    --mobile-action-neutral-text: #475569;
+    --mobile-action-success-bg: rgba(5, 150, 105, 0.14);
+    --mobile-action-success-text: #059669;
+    --mobile-action-primary-bg: rgba(37, 99, 235, 0.14);
+    --mobile-action-primary-text: #2563eb;
+    --mobile-action-danger-bg: rgba(220, 38, 38, 0.14);
+    --mobile-action-danger-text: #dc2626;
+    --mobile-action-warning-bg: rgba(217, 119, 6, 0.14);
+    --mobile-action-warning-text: #d97706;
+    --mobile-alert-danger-border: rgba(225, 29, 72, 0.35);
+    --mobile-alert-warning-border: rgba(217, 119, 6, 0.35);
+    --mobile-alert-info-border: rgba(37, 99, 235, 0.35);
   }
 
   /* Dark Mode Overrides */
@@ -137,7 +171,39 @@
     --shadow-glass: var(--shadow-card);
 
     --glass-bg: rgba(15, 23, 42, calc(.5 + var(--glass-opacity) * .34));
-    --glass-border: rgba(255, 255, 255, calc(.08 + var(--glass-intensity) * .09));
+    /* Header/nav borders need to stay visibly separated from the page behind
+       them in dark mode — the light-mode formula (opacity .08–.17) reads as
+       nearly invisible against --bg-page/-card-solid's near-black tones, so
+       dark mode gets a brighter floor. */
+    --glass-border: rgba(255, 255, 255, calc(.16 + var(--glass-intensity) * .12));
+
+    /* Mobile dashboard tokens — dark mode. Lightened/brightened versions of
+       the light-mode values above so text/icons/badges keep AA-level
+       contrast against the near-black --mobile-bg / --mobile-surface, the
+       same "600 in light, 300/400 in dark" shift already used by the
+       vehicle-card status badges. */
+    --mobile-text-primary: #f8fafc;
+    --mobile-text-secondary: #cbd5e1;
+    --mobile-text-muted: #a8b3c4;
+    --mobile-icon: #cbd5e1;
+    --mobile-icon-muted: #a8b3c4;
+    --mobile-link: #34d399;
+    --mobile-nav-active: #34d399;
+    --mobile-nav-active-bg: rgba(52, 211, 153, 0.18);
+    --mobile-nav-inactive: #a8b3c4;
+    --mobile-action-neutral-bg: rgba(148, 163, 184, 0.16);
+    --mobile-action-neutral-text: #cbd5e1;
+    --mobile-action-success-bg: rgba(52, 211, 153, 0.18);
+    --mobile-action-success-text: #34d399;
+    --mobile-action-primary-bg: rgba(96, 165, 250, 0.18);
+    --mobile-action-primary-text: #60a5fa;
+    --mobile-action-danger-bg: rgba(251, 113, 133, 0.18);
+    --mobile-action-danger-text: #fb7185;
+    --mobile-action-warning-bg: rgba(251, 191, 36, 0.18);
+    --mobile-action-warning-text: #fbbf24;
+    --mobile-alert-danger-border: rgba(251, 113, 133, 0.4);
+    --mobile-alert-warning-border: rgba(251, 191, 36, 0.4);
+    --mobile-alert-info-border: rgba(96, 165, 250, 0.4);
   }
 
   html {

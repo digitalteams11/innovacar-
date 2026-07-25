@@ -168,7 +168,8 @@ export default function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex items-center gap-2 p-1 rounded-xl hover:bg-[var(--bg-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/40"
+        aria-label={t('layout.userMenu', 'Account menu')}
+        className="flex items-center gap-2 min-h-11 min-w-11 p-1.5 rounded-xl hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
         <Avatar src={avatarSrc} displayName={displayName} sizeClass="w-8 h-8" textSizeClass="text-[10px]" />
         <span className="hidden xl:block text-start max-w-[120px]">

@@ -4,8 +4,11 @@
     "underDevelopment": "Section en développement",
     "underDevelopmentDesc": "Ce module est actuellement en cours de construction par notre équipe.",
     "serviceUnavailable": "Service temporairement indisponible",
-    "serviceUnavailableDesc": "Impossible de joindre le serveur RentCar pour le moment. Nouvelle tentative automatique toutes les 10 secondes.",
-    "retryNow": "Réessayer maintenant"
+    "serviceUnavailableDesc": "Impossible de joindre le serveur RentCar pour le moment. Nouvelle tentative automatique en cours.",
+    "retryNow": "Réessayer maintenant",
+    "reconnecting": "Reconnexion…",
+    "offline": "Vous êtes hors ligne",
+    "offlineDesc": "Vérifiez votre connexion internet. La reconnexion se fera automatiquement."
   },
   "vehicleSelector": {
     "availableCount": "{{count}} vehicules disponibles",
@@ -154,6 +157,7 @@
     "adminTools": "Outils d'administration",
     "logout": "Déconnexion",
     "innovacarDashboard": "Tableau de bord Innovacar",
+    "userMenu": "Menu du compte",
     "needHelp": "Besoin d'aide ?",
     "helpText": "Notre équipe est disponible 24/7 pour vous aider.",
     "contactUs": "Nous contacter",

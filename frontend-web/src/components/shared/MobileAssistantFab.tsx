@@ -66,9 +66,10 @@ export default function MobileAssistantFab() {
           aria-label={t('assistant.openMenu')}
           aria-expanded={menuOpen}
           aria-controls="mobile-assistant-menu"
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#0f766e] to-[#10b981] text-white shadow-elevated transition-transform motion-safe:hover:scale-105 motion-safe:active:scale-95"
+          className="flex h-12 w-12 min-[380px]:h-14 min-[380px]:w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#0f766e] to-[#10b981] text-white shadow-elevated transition-transform motion-safe:hover:scale-105 motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
         >
-          <Sparkles size={24} />
+          <Sparkles size={20} className="min-[380px]:hidden" />
+          <Sparkles size={24} className="hidden min-[380px]:block" />
         </button>
       </div>
 

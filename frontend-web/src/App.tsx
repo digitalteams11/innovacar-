@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, ServerOff } from 'lucide-react';
+import { RefreshCw, ServerOff, WifiOff } from 'lucide-react';
 
 import { checkHealth } from './lib/api';
 import { useAuth } from './context/AuthContext';
@@ -272,23 +272,41 @@ function AppRoutes() {
   );
 }
 
-// â”€â”€ Backend reachability gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Backend reachability gate
 // This is the ONLY thing allowed to block the whole app behind a full-screen
-// message. It only fires when /api/health itself can't be reached at all
-// (server down / connection refused) â€” any other endpoint failing is a
-// per-component concern (empty state, inline error), never a global one.
+// message, and only after several consecutive failures of the dedicated core
+// health endpoint (/api/health) -- a single transient blip (e.g.
+// ERR_NETWORK_CHANGED during a wifi/cell handoff) must never blank the app.
+// Any other endpoint failing (notifications, SSE, charts, email, dashboard
+// widgets) is a per-component concern (empty state, inline error), never a
+// global one -- see api/axios.ts, which deliberately never touches this gate.
+//
+// Failure policy: 1st failure is silent (still retries after a short delay);
+// 2nd shows a small non-blocking "Reconnecting..." banner; only the 3rd+
+// consecutive failure shows the full overlay. Retries back off exponentially
+// (capped) so a genuinely-down backend isn't hammered forever. The app tree
+// stays mounted underneath the overlay the whole time, so any dashboard/
+// vehicle data already loaded is never discarded -- it's simply hidden behind
+// the overlay until the connection recovers, then revealed as-is.
+
+const HEALTH_RETRY_BASE_DELAY_MS = 2000;
+const HEALTH_RETRY_MAX_DELAY_MS = 30000;
+const HEALTH_STEADY_POLL_MS = 10000;
+const HEALTH_DOWN_THRESHOLD = 3;
+
+type HealthStatus = 'ok' | 'reconnecting' | 'down';
 
 function MaintenanceScreen({ onRetryNow }: { onRetryNow: () => void }) {
   const { t } = useTranslation();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f7f7f4] px-4 dark:bg-[#101418]">
+    <div className="fixed inset-0 z-[10000] flex min-h-screen items-center justify-center bg-[#f7f7f4]/95 px-4 backdrop-blur-sm dark:bg-[#101418]/95">
       <div className="w-full max-w-md rounded-2xl border border-rose-100 bg-white p-8 text-center shadow-soft dark:border-white/10 dark:bg-[#1a2332]">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600 dark:bg-rose-500/10">
           <ServerOff size={22} />
         </div>
         <h1 className="text-xl font-bold text-[#1e293b] dark:text-white">{t('app.serviceUnavailable', 'Service temporarily unavailable')}</h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
-          {t('app.serviceUnavailableDesc', "We can't reach the RentCar server right now. We'll keep retrying automatically every 10 seconds.")}
+          {t('app.serviceUnavailableDesc', "We can't reach the RentCar server right now. We'll keep retrying automatically.")}
         </p>
         <button
           type="button"
@@ -302,29 +320,95 @@ function MaintenanceScreen({ onRetryNow }: { onRetryNow: () => void }) {
   );
 }
 
-function BackendHealthGate({ children }: { children: React.ReactNode }) {
-  const [backendUp, setBackendUp] = useState(true);
-  const [checked, setChecked] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+function ReconnectingBanner() {
+  const { t } = useTranslation();
+  return (
+    <div className="fixed inset-x-0 top-0 z-[10000] flex items-center justify-center gap-2 bg-amber-500 py-1.5 text-xs font-semibold text-white shadow-md">
+      <RefreshCw size={13} className="animate-spin" /> {t('app.reconnecting', 'Reconnecting…')}
+    </div>
+  );
+}
+
+function OfflineBanner() {
+  const { t } = useTranslation();
+  return (
+    <div className="fixed inset-x-0 top-0 z-[10000] flex items-center justify-center gap-2 bg-slate-700 py-1.5 text-xs font-semibold text-white shadow-md">
+      <WifiOff size={13} /> {t('app.offline', "You're offline")}
+    </div>
+  );
+}
+
+export function BackendHealthGate({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<HealthStatus>('ok');
+  const [browserOffline, setBrowserOffline] = useState(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
+  const consecutiveFailuresRef = useRef(0);
+  const timeoutRef = useRef<number | null>(null);
+  const checkInFlightRef = useRef(false);
+
+  const scheduleNext = (delay: number) => {
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = window.setTimeout(() => { void runCheck(); }, delay);
+  };
 
   const runCheck = async () => {
+    // Guards against overlapping checks: the "Retry now" button and the
+    // scheduled timer could otherwise both be in flight at once.
+    if (checkInFlightRef.current) return;
+    checkInFlightRef.current = true;
     const up = await checkHealth();
-    setBackendUp(up);
-    setChecked(true);
+    checkInFlightRef.current = false;
+
+    if (up) {
+      consecutiveFailuresRef.current = 0;
+      setStatus('ok');
+      scheduleNext(HEALTH_STEADY_POLL_MS);
+      return;
+    }
+
+    consecutiveFailuresRef.current += 1;
+    const failures = consecutiveFailuresRef.current;
+    setStatus(failures >= HEALTH_DOWN_THRESHOLD ? 'down' : failures >= 2 ? 'reconnecting' : 'ok');
+    const delay = Math.min(HEALTH_RETRY_BASE_DELAY_MS * 2 ** (failures - 1), HEALTH_RETRY_MAX_DELAY_MS);
+    scheduleNext(delay);
+  };
+
+  const retryNow = () => {
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    void runCheck();
   };
 
   useEffect(() => {
-    runCheck();
-    intervalRef.current = window.setInterval(runCheck, 10000);
+    void runCheck();
     return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Avoid flashing the maintenance screen during the very first check.
-  if (!checked) return <>{children}</>;
-  if (!backendUp) return <MaintenanceScreen onRetryNow={runCheck} />;
-  return <>{children}</>;
+  // A network transition (e.g. ERR_NETWORK_CHANGED, wifi/cell handoff) or the
+  // browser regaining connectivity should trigger an immediate recheck rather
+  // than waiting out whatever backoff delay is currently scheduled.
+  useEffect(() => {
+    const handleOnline = () => { setBrowserOffline(false); retryNow(); };
+    const handleOffline = () => setBrowserOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <>
+      {browserOffline ? <OfflineBanner /> : status === 'reconnecting' ? <ReconnectingBanner /> : null}
+      {status === 'down' && !browserOffline && <MaintenanceScreen onRetryNow={retryNow} />}
+      {children}
+    </>
+  );
 }
 
 function App() {
