@@ -85,13 +85,60 @@ interface ThemeContextType {
 }
 
 const STORAGE_KEY = 'rentcar_appearance';
-// Dedicated canonical key for just the light/dark/system preference (as
-// opposed to STORAGE_KEY above, which holds the whole white-label Appearance
-// Studio blob — presets, brand colors, glass effects, etc). Kept in sync
-// with `appearance.mode` on every change and is the value the CSP-safe
-// external bootstrap script (public/theme-bootstrap.js) reads before React
-// mounts, so the anti-flash script never has to parse the larger blob.
-const THEME_PREFERENCE_KEY = 'innovacar.theme.preference';
+// Single canonical key for just the light/dark/system preference (as opposed
+// to STORAGE_KEY above, which holds the whole white-label Appearance Studio
+// blob — presets, brand colors, glass effects, etc). Kept in sync with
+// `appearance.mode` on every change and is the value the CSP-safe external
+// bootstrap script (public/theme-bootstrap.js) reads before React mounts, so
+// the anti-flash script never has to parse the larger blob.
+const THEME_PREFERENCE_KEY = 'innovacar-theme';
+// Superseded key names — migrated into THEME_PREFERENCE_KEY once (see
+// migrateLegacyThemeKeys()) and then removed, so only one key is ever
+// authoritative going forward. Order matters: earlier entries win when more
+// than one happens to be present on a device.
+const LEGACY_PREFERENCE_KEYS = ['innovacar.theme.preference', 'theme', 'darkMode', 'selectedTheme', 'colorMode', 'app-theme'];
+
+function themeDebugLog(...args: unknown[]) {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug('[theme]', ...args);
+  }
+}
+
+// Runs once, before the first read of THEME_PREFERENCE_KEY: if the canonical
+// key is already set, it wins outright (an explicit choice already migrated
+// or made on this device must never be clobbered by an older key). Otherwise
+// the newest usable legacy value — checked in LEGACY_PREFERENCE_KEYS order,
+// falling back to STORAGE_KEY's `mode` field last since that blob is the
+// oldest of all of them — is adopted and written to the canonical key, and
+// every legacy key is removed so there is exactly one theme key on this
+// device from this point on.
+export function migrateLegacyThemeKeys(): void {
+  try {
+    if (localStorage.getItem(THEME_PREFERENCE_KEY)) {
+      for (const key of LEGACY_PREFERENCE_KEYS) localStorage.removeItem(key);
+      return;
+    }
+    let migrated: ThemeMode | null = null;
+    for (const key of LEGACY_PREFERENCE_KEYS) {
+      const raw = localStorage.getItem(key);
+      if (raw) { migrated = normalizeThemePreference(raw); break; }
+    }
+    if (!migrated) {
+      try {
+        const blob = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if (blob && typeof blob === 'object' && blob.mode) migrated = normalizeThemePreference(blob.mode);
+      } catch { /* corrupt blob — no legacy value to migrate */ }
+    }
+    if (migrated) {
+      localStorage.setItem(THEME_PREFERENCE_KEY, migrated);
+      themeDebugLog('migrated legacy theme key ->', migrated);
+    }
+    for (const key of LEGACY_PREFERENCE_KEYS) localStorage.removeItem(key);
+  } catch {
+    /* storage unavailable — nothing to migrate, nothing to break */
+  }
+}
 
 function readThemePreferenceKey(): ThemeMode | null {
   try {
@@ -333,13 +380,19 @@ function readableTextOn(bgHex: string): { text: string; muted: string } {
 }
 
 function loadAppearance(): AppearanceSettings {
-  // The dedicated innovacar.theme.preference key (written on every mode
-  // change, see the layout effect below) is authoritative for `mode` when
-  // present — it's what the CSP-safe bootstrap script also reads, so the
-  // very first React render must resolve to the exact same value the
-  // pre-paint script already applied to <html>, never a stale value from
-  // the larger appearance blob.
+  // Must run before the very first read of THEME_PREFERENCE_KEY below — see
+  // migrateLegacyThemeKeys() for why: it makes sure exactly one key is ever
+  // authoritative, adopting the newest legacy value (if any) on a device
+  // that hasn't been migrated yet.
+  migrateLegacyThemeKeys();
+
+  // The canonical innovacar-theme key (written on every mode change, see the
+  // layout effect below) is authoritative for `mode` when present — it's
+  // what the CSP-safe bootstrap script also reads, so the very first React
+  // render must resolve to the exact same value the pre-paint script already
+  // applied to <html>, never a stale value from the larger appearance blob.
   const dedicatedKeyMode = readThemePreferenceKey();
+  themeDebugLog('loadAppearance: canonical key ->', dedicatedKeyMode, 'system ->', systemTheme());
 
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -467,17 +520,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     // A local explicit change this session always wins — never let a sync
     // (even a first-time one) clobber a choice the user just made.
-    if (hasUserChangedThemeRef.current) return;
+    if (hasUserChangedThemeRef.current) {
+      themeDebugLog('sync-once effect: skipped, user changed theme this session');
+      return;
+    }
     let syncedUserId: string | null = null;
     try {
       syncedUserId = localStorage.getItem(THEME_SYNCED_USER_KEY);
     } catch { /* private browsing / storage disabled — fall through and re-sync */ }
-    if (syncedUserId === String(user.id)) return;
+    if (syncedUserId === String(user.id)) {
+      themeDebugLog('sync-once effect: already synced for user', user.id, '- skipped');
+      return;
+    }
     try {
       localStorage.setItem(THEME_SYNCED_USER_KEY, String(user.id));
     } catch { /* non-fatal — worst case this sync-once check runs again next reload */ }
     if (user.themeMode) {
       const normalizedRemoteMode = normalizeThemePreference(user.themeMode);
+      themeDebugLog('sync-once effect: backend themeMode ->', user.themeMode, 'local mode ->', appearance.mode, 'applying ->', normalizedRemoteMode !== appearance.mode);
       if (normalizedRemoteMode !== appearance.mode) {
         setAppearance((current) => ({ ...current, mode: normalizedRemoteMode }));
       }
@@ -589,6 +649,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--font-ui', `'${appearance.fontFamily}', Inter, system-ui, sans-serif`);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appearance));
     writeThemePreferenceKey(appearance.mode);
+    themeDebugLog('applied: preference ->', appearance.mode, 'resolved ->', resolvedTheme, 'dark class ->', resolvedTheme === 'dark');
   }, [appearance, resolvedTheme, branding]);
 
   useEffect(() => {
@@ -604,6 +665,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = useCallback((mode: ThemeMode) => {
     const normalizedMode = normalizeThemePreference(mode);
+    themeDebugLog('setTheme: explicit user choice ->', normalizedMode, '(source: setTheme call)');
     hasUserChangedThemeRef.current = true;
     setAppearance((current) => ({ ...current, mode: normalizedMode }));
     if (!isAuthenticated) return;
@@ -613,6 +675,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         if (saved?.themeMode) updateCurrentUser({ themeMode: saved.themeMode });
       })
       .catch((err: any) => {
+        // The UI already applied the choice above and never waits on this —
+        // a failed backend save must not revert what's on screen, only warn
+        // that it may not follow the user to another device.
+        themeDebugLog('setTheme: backend save failed, local UI unaffected', err);
         showToast(err?.userMessage || 'Unable to save preferences. Changes may not persist after refresh.', 'error');
       });
   }, [isAuthenticated, showToast, updateCurrentUser]);

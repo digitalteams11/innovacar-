@@ -17,7 +17,12 @@
 (function () {
   'use strict';
   try {
-    var PREFERENCE_KEY = 'innovacar.theme.preference';
+    var PREFERENCE_KEY = 'innovacar-theme';
+    // Superseded key names — see migrateLegacyThemeKeys() in ThemeContext.tsx,
+    // which performs the actual one-time migration/cleanup once React mounts.
+    // This script runs before that, so a device that hasn't been migrated
+    // yet still needs to check these directly for a flash-free first paint.
+    var LEGACY_KEYS = ['innovacar.theme.preference', 'theme', 'darkMode', 'selectedTheme', 'colorMode', 'app-theme'];
     var LEGACY_STORAGE_KEY = 'rentcar_appearance';
     var mode = 'light';
 
@@ -32,20 +37,27 @@
     }
 
     try {
-      // The dedicated preference key is authoritative when present — it's
+      // The canonical preference key is authoritative when present — it's
       // written on every mode change (see ThemeContext.tsx) and is the only
       // thing this script needs to read for the common case.
-      var dedicated = normalize(window.localStorage.getItem(PREFERENCE_KEY));
-      if (dedicated) {
-        mode = dedicated;
+      var fromKey = normalize(window.localStorage.getItem(PREFERENCE_KEY));
+      if (fromKey) {
+        mode = fromKey;
       } else {
-        // Fallback for a device that hasn't been migrated to the dedicated
-        // key yet (existing users' larger Appearance Studio blob).
-        var raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-        if (raw) {
-          var parsed = JSON.parse(raw);
-          var legacy = normalize(parsed && parsed.mode);
-          if (legacy) mode = legacy;
+        // Not migrated yet on this device — check legacy keys directly
+        // (newest-first) so the very first paint still gets it right.
+        for (var i = 0; i < LEGACY_KEYS.length && !fromKey; i++) {
+          fromKey = normalize(window.localStorage.getItem(LEGACY_KEYS[i]));
+        }
+        if (fromKey) {
+          mode = fromKey;
+        } else {
+          var raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            var legacy = normalize(parsed && parsed.mode);
+            if (legacy) mode = legacy;
+          }
         }
       }
     } catch (e) {
