@@ -1,6 +1,7 @@
 package com.carrental.service;
 
 import com.carrental.dto.AuthResponse;
+import com.carrental.entity.AuthProvider;
 import com.carrental.entity.Role;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
@@ -19,8 +20,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Google OAuth 2.0 authentication service.
@@ -73,19 +76,27 @@ public class GoogleOAuthService {
         // Check if user already exists by Google ID
         Optional<User> existingByGoogle = userRepository.findByGoogleId(userInfo.sub);
         if (existingByGoogle.isPresent()) {
-            return authenticateExistingUser(existingByGoogle.get());
+            return authenticateExistingUser(existingByGoogle.get(), userInfo);
         }
 
         // Check if user exists by email (link Google account) — never creates a
-        // duplicate account for an email that already has one.
+        // duplicate account for an email that already has one. Role, tenant,
+        // password, subscription and block/suspension state are all left
+        // untouched — only the Google identity and email-verified flag change.
         Optional<User> existingByEmail = userRepository.findByEmail(normalizedEmail);
         if (existingByEmail.isPresent()) {
             User user = existingByEmail.get();
             user.setGoogleId(userInfo.sub);
             user.setEmailVerified(true);
+            user.setAuthProvider(user.getAuthProvider() == AuthProvider.GOOGLE
+                    ? AuthProvider.GOOGLE
+                    : AuthProvider.LOCAL_AND_GOOGLE);
+            if (!StringUtils.hasText(user.getAvatarUrl()) && StringUtils.hasText(userInfo.picture)) {
+                user.setAvatarUrl(userInfo.picture);
+            }
             userRepository.save(user);
             log.info("Linked Google account to existing user: {}", user.getEmail());
-            return authenticateExistingUser(user);
+            return authenticateExistingUser(user, userInfo);
         }
 
         // Create new tenant + admin user for Google signup
@@ -95,7 +106,7 @@ public class GoogleOAuthService {
     /** Rejects blocked/suspended/locked accounts before ever issuing a token — the
      *  password-login path enforces these through Spring Security's AuthenticationManager;
      *  Google OAuth bypasses that manager entirely, so it must check explicitly instead. */
-    private AuthResponse authenticateExistingUser(User user) {
+    private AuthResponse authenticateExistingUser(User user, GoogleUserInfo userInfo) {
         if (!user.isEnabled()) {
             throw new GoogleAuthException("Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
         }
@@ -109,6 +120,11 @@ public class GoogleOAuthService {
         if (tenant.isAccountBlocked()) {
             throw new GoogleAuthException("Your agency account is suspended. Please contact support.", "ACCOUNT_SUSPENDED");
         }
+        user.setLastLoginAt(LocalDateTime.now());
+        if (!StringUtils.hasText(user.getAvatarUrl()) && StringUtils.hasText(userInfo.picture)) {
+            user.setAvatarUrl(userInfo.picture);
+        }
+        userRepository.save(user);
         return buildAuthResponseOrChallenge(user);
     }
 
@@ -130,6 +146,9 @@ public class GoogleOAuthService {
                 .tenant(tenant)
                 .emailVerified(true)
                 .googleId(info.sub)
+                .authProvider(AuthProvider.GOOGLE)
+                .avatarUrl(info.picture)
+                .lastLoginAt(LocalDateTime.now())
                 .failedLoginAttempts(0)
                 .build());
 
@@ -182,10 +201,14 @@ public class GoogleOAuthService {
                 .build();
     }
 
+    // Google issues ID tokens with either form depending on token version/endpoint.
+    private static final Set<String> VALID_GOOGLE_ISSUERS = Set.of("accounts.google.com", "https://accounts.google.com");
+
     /**
      * Verifies a Google ID token by calling Google's tokeninfo endpoint.
      * In production, consider using the Google API Client Library for verification.
      */
+
     private GoogleUserInfo verifyGoogleToken(String idToken) {
         try {
             Map<String, Object> response = webClient.get()
@@ -195,6 +218,16 @@ public class GoogleOAuthService {
                     .block();
 
             if (response == null) return null;
+
+            // Validate issuer — the tokeninfo endpoint itself only proves the
+            // token is *some* validly-signed Google-issued token; without this
+            // check a token from an unrelated Google product/flow with a
+            // coincidentally-matching audience would still pass.
+            String iss = (String) response.get("iss");
+            if (!VALID_GOOGLE_ISSUERS.contains(iss)) {
+                log.warn("Google token issuer mismatch: got {}", iss);
+                return null;
+            }
 
             // Validate audience — authenticate() already guarantees googleClientId
             // is non-blank before this method is ever called, so this always

@@ -75,12 +75,18 @@ class GoogleOAuthServiceTest {
     }
 
     private Map<String, Object> googleResponse(String aud, boolean emailVerified) {
+        return googleResponse(aud, emailVerified, "https://accounts.google.com");
+    }
+
+    private Map<String, Object> googleResponse(String aud, boolean emailVerified, String iss) {
         return Map.of(
+                "iss", iss,
                 "aud", aud,
                 "sub", "google-sub-123",
                 "email", "USER@Example.com",
                 "name", "Test User",
                 "given_name", "Test",
+                "picture", "https://lh3.googleusercontent.com/a/photo.jpg",
                 "email_verified", emailVerified
         );
     }
@@ -108,6 +114,16 @@ class GoogleOAuthServiceTest {
                 .isInstanceOf(GoogleAuthException.class)
                 .satisfies(ex -> assertThat(((GoogleAuthException) ex).getErrorCode()).isEqualTo("GOOGLE_AUTH_NOT_CONFIGURED"));
         verifyNoInteractions(webClient, userRepository);
+    }
+
+    @Test
+    void wrongIssuer_isRejected() {
+        stubGoogleResponse(googleResponse("real-client-id.apps.googleusercontent.com", true, "https://not-google.example.com"));
+
+        assertThatThrownBy(() -> service.authenticate("token"))
+                .isInstanceOf(GoogleAuthException.class)
+                .satisfies(ex -> assertThat(((GoogleAuthException) ex).getErrorCode()).isEqualTo("GOOGLE_TOKEN_INVALID"));
+        verifyNoInteractions(userRepository);
     }
 
     @Test
@@ -159,6 +175,34 @@ class GoogleOAuthServiceTest {
         verify(userRepository, never()).save(argThat(u -> !u.getEmail().equals("user@example.com")));
         assertThat(user.getGoogleId()).isEqualTo("google-sub-123");
         assertThat(user.getEmailVerified()).isTrue();
+        assertThat(user.getAuthProvider()).isEqualTo(com.carrental.entity.AuthProvider.LOCAL_AND_GOOGLE);
+        assertThat(user.getAvatarUrl()).isEqualTo("https://lh3.googleusercontent.com/a/photo.jpg");
+        assertThat(user.getLastLoginAt()).isNotNull();
+    }
+
+    @Test
+    void linkingPreservesRoleTenantAndExistingAvatar() {
+        stubGoogleResponse(googleResponse("real-client-id.apps.googleusercontent.com", true));
+        Tenant tenant = activeTenant();
+        User user = existingUser(tenant);
+        user.setRole(com.carrental.entity.Role.EMPLOYEE);
+        user.setAvatarUrl("https://innovacar.app/uploads/avatars/1/custom.jpg");
+        when(userRepository.findByGoogleId("google-sub-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(jwtTokenProvider.generateRefreshToken(user)).thenReturn("refresh-token");
+        when(sessionService.createSession(eq(1L), any(), any(), any(), anyLong()))
+                .thenReturn(com.carrental.entity.UserSession.builder().id(99L).build());
+        when(jwtTokenProvider.generateToken(user, 99L)).thenReturn("access-token");
+        when(jwtTokenProvider.getRefreshExpirationMs()).thenReturn(604800000L);
+        when(jwtTokenProvider.getAccessExpirationMs()).thenReturn(86400000L);
+
+        var response = service.authenticate("token");
+
+        assertThat(response.getRole()).isEqualTo(com.carrental.entity.Role.EMPLOYEE);
+        assertThat(response.getTenantId()).isEqualTo(10L);
+        // A user's own uploaded avatar must never be overwritten by Google's photo.
+        assertThat(user.getAvatarUrl()).isEqualTo("https://innovacar.app/uploads/avatars/1/custom.jpg");
     }
 
     @Test
@@ -209,5 +253,10 @@ class GoogleOAuthServiceTest {
         assertThat(response.getTenantId()).isEqualTo(20L);
         verify(tenantRepository).save(any(Tenant.class));
         verify(emailService).sendWelcomeEmail(eq("user@example.com"), any());
+        verify(userRepository).save(argThat(u ->
+                u.getAuthProvider() == com.carrental.entity.AuthProvider.GOOGLE
+                && "https://lh3.googleusercontent.com/a/photo.jpg".equals(u.getAvatarUrl())
+                && u.getLastLoginAt() != null
+        ));
     }
 }

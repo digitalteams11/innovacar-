@@ -55,6 +55,12 @@ public class User implements UserDetails {
     @Column(name = "google_id", length = 128)
     private String googleId;
 
+    /** How this user can authenticate — LOCAL, GOOGLE, or LOCAL_AND_GOOGLE. See AuthProvider. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", length = 20, nullable = false)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
     @Column(name = "failed_login_attempts")
     private Integer failedLoginAttempts;
 
@@ -166,6 +172,7 @@ public class User implements UserDetails {
         if (emailOtpEnabled == null) emailOtpEnabled = false;
         if (passwordChangedAt == null) passwordChangedAt = createdAt;
         if (language == null) language = "en";
+        if (authProvider == null) authProvider = AuthProvider.LOCAL;
         if (themeMode == null) themeMode = "light";
     }
 
