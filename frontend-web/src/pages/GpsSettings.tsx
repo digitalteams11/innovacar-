@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import api from '../api/axios';
 import Modal from '../components/Modal';
@@ -58,29 +59,24 @@ interface TestResult {
 
 const IOPGPS_BASE_URL = 'https://open.iopgps.com';
 
-const PROVIDERS = [
-  { value: 'IOPGPS', label: 'IOPGPS', description: 'Professional fleet tracking platform' },
-  { value: 'TRACCAR', label: 'Traccar', description: 'Open source GPS tracking system' },
-  { value: 'WIALON', label: 'Wialon', description: 'Gurtam unified fleet management' },
-  { value: 'GPSWOX', label: 'GPSWOX', description: 'White-label GPS tracking software' },
-  { value: 'CUSTOM', label: 'Custom API', description: 'Your own GPS provider endpoint' },
-];
+const PROVIDERS = ['IOPGPS', 'TRACCAR', 'WIALON', 'GPSWOX', 'CUSTOM'] as const;
 
-const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; label: string }> = {
-  CONNECTED: { color: 'text-emerald-600', bg: 'bg-emerald-50', icon: Wifi, label: 'Connected' },
-  CONFIGURED: { color: 'text-blue-600', bg: 'bg-blue-50', icon: Shield, label: 'Configured (not tested)' },
-  DISCONNECTED: { color: 'text-slate-500', bg: 'bg-slate-50', icon: WifiOff, label: 'Disconnected' },
-  FAILED: { color: 'text-rose-600', bg: 'bg-rose-50', icon: XCircle, label: 'Failed' },
-  DISABLED: { color: 'text-amber-600', bg: 'bg-amber-50', icon: PowerOff, label: 'Disabled' },
+const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any }> = {
+  CONNECTED: { color: 'text-emerald-600', bg: 'bg-emerald-50', icon: Wifi },
+  CONFIGURED: { color: 'text-blue-600', bg: 'bg-blue-50', icon: Shield },
+  DISCONNECTED: { color: 'text-slate-500', bg: 'bg-slate-50', icon: WifiOff },
+  FAILED: { color: 'text-rose-600', bg: 'bg-rose-50', icon: XCircle },
+  DISABLED: { color: 'text-amber-600', bg: 'bg-amber-50', icon: PowerOff },
   // Legacy values from before this status vocabulary existed — kept so old
   // rows don't render as an unrecognized/blank state.
-  ERROR: { color: 'text-rose-600', bg: 'bg-rose-50', icon: XCircle, label: 'Error' },
-  PENDING: { color: 'text-amber-600', bg: 'bg-amber-50', icon: Clock, label: 'Pending' },
+  ERROR: { color: 'text-rose-600', bg: 'bg-rose-50', icon: XCircle },
+  PENDING: { color: 'text-amber-600', bg: 'bg-amber-50', icon: Clock },
 };
 
 export default function GpsSettingsPage() {
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [settings, setSettings] = useState<GpsSettingsData>({
     provider: '',
@@ -182,7 +178,7 @@ export default function GpsSettingsPage() {
       if (err?.response?.status === 404) {
         setOriginalSettings(null);
       } else {
-        setLoadError('Unable to load GPS information. Please try again later.');
+        setLoadError(t('gps.toasts.loadFailed'));
       }
     } finally {
       setLoading(false);
@@ -210,7 +206,7 @@ export default function GpsSettingsPage() {
 
   const handleTestConnection = async () => {
     if (!settings.provider) {
-      showToast('Please select a GPS provider first', 'warning');
+      showToast(t('gps.toasts.selectProviderFirst'), 'warning');
       return;
     }
 
@@ -240,19 +236,19 @@ export default function GpsSettingsPage() {
         const { data } = await api.post('/gps/settings/test');
         result = data;
       } else {
-        showToast('Please enter API credentials to test', 'warning');
+        showToast(t('gps.toasts.enterCredentialsToTest'), 'warning');
         setTesting(false);
         return;
       }
 
       setTestResult(result);
       if (result.success) {
-        showToast(`Connected successfully! ${result.devicesFound ?? 0} devices found.`, 'success');
+        showToast(t('gps.toasts.connectedSuccessfully', { count: result.devicesFound ?? 0 }), 'success');
       } else {
-        showToast('Unable to connect to the GPS provider. Please verify the configuration.', 'error');
+        showToast(t('gps.toasts.connectionVerifyConfig'), 'error');
       }
     } catch (err: any) {
-      const msg = 'Unable to connect to the GPS provider. Please try again later.';
+      const msg = t('gps.toasts.connectionRetryLater');
       setTestResult({ success: false, message: msg, provider: settings.provider, devicesFound: 0, responseTime: '', errorCode: 'ERROR' });
       showToast(msg, 'error');
     } finally {
@@ -263,7 +259,7 @@ export default function GpsSettingsPage() {
 
   const handleSave = async () => {
     if (!settings.provider) {
-      showToast('Provider is required', 'warning');
+      showToast(t('gps.toasts.providerRequired'), 'warning');
       return;
     }
 
@@ -333,13 +329,13 @@ export default function GpsSettingsPage() {
       setOriginalSettings({ ...mapped });
       setHasChanges(false);
       setShowSaveModal(false);
-      showToast('GPS settings saved successfully', 'success');
+      showToast(t('gps.toasts.settingsSavedSuccess'), 'success');
       fetchVehicles();
 
       // Redirect to GPS Tracking after save
       setTimeout(() => navigate('/gps-tracking'), 1500);
     } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.userMessage || 'Unable to save GPS information. Please try again later.', 'error');
+      showToast(err?.response?.data?.message || err?.userMessage || t('gps.toasts.saveFailed'), 'error');
     } finally {
       setSaving(false);
     }
@@ -350,15 +346,15 @@ export default function GpsSettingsPage() {
     try {
       const { data } = await api.post('/gps/settings/sync');
       if (data.success) {
-        showToast(`Synced ${data.devicesSynced} devices (${data.devicesUpdated} updated)`, 'success');
+        showToast(t('gps.toasts.syncedDevices', { synced: data.devicesSynced, updated: data.devicesUpdated }), 'success');
         setDevices(data.devices || []);
         fetchVehicles();
         fetchSettings();
       } else {
-        showToast(data.message || 'Unable to synchronize GPS devices. Please try again later.', 'error');
+        showToast(data.message || t('gps.toasts.syncFailed'), 'error');
       }
     } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.userMessage || 'Unable to synchronize GPS devices. Please try again later.', 'error');
+      showToast(err?.response?.data?.message || err?.userMessage || t('gps.toasts.syncFailed'), 'error');
     } finally {
       setSyncing(false);
     }
@@ -381,9 +377,9 @@ export default function GpsSettingsPage() {
       setShowDeleteModal(false);
       setDevices([]);
       setVehicles([]);
-      showToast('GPS settings removed', 'success');
+      showToast(t('gps.toasts.settingsRemoved'), 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.userMessage || 'Unable to remove GPS settings. Please try again later.', 'error');
+      showToast(err?.response?.data?.message || err?.userMessage || t('gps.toasts.removeFailed'), 'error');
     }
   };
 
@@ -395,9 +391,9 @@ export default function GpsSettingsPage() {
       setSettings((prev) => ({ ...prev, enabled: false, connectionStatus: result.connectionStatus || 'DISABLED' }));
       setOriginalSettings((prev) => prev ? { ...prev, enabled: false, connectionStatus: result.connectionStatus || 'DISABLED' } : prev);
       setShowDeactivateModal(false);
-      showToast(data?.message || 'GPS integration deactivated successfully.', 'success');
+      showToast(data?.message || t('gps.toasts.deactivatedSuccess'), 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.userMessage || 'Unable to deactivate GPS integration. Please try again later.', 'error');
+      showToast(err?.response?.data?.message || err?.userMessage || t('gps.toasts.deactivateFailed'), 'error');
     } finally {
       setDeactivating(false);
     }
@@ -425,9 +421,9 @@ export default function GpsSettingsPage() {
       } : prev);
       setShowDeleteCredentialsModal(false);
       setDevices([]);
-      showToast(data?.message || 'GPS credentials deleted successfully.', 'success');
+      showToast(data?.message || t('gps.toasts.credentialsDeletedSuccess'), 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || err?.userMessage || 'Unable to delete GPS credentials. Please try again later.', 'error');
+      showToast(err?.response?.data?.message || err?.userMessage || t('gps.toasts.credentialsDeleteFailed'), 'error');
     } finally {
       setDeletingCredentials(false);
     }
@@ -461,9 +457,9 @@ export default function GpsSettingsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">GPS Integration Settings</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('gps.integrationSettings')}</h1>
           <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">
-            Configure your GPS provider credentials and manage fleet tracking
+            {t('gps.settingsSubtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -472,7 +468,7 @@ export default function GpsSettingsPage() {
             className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-50 text-brand-700 rounded-xl text-sm font-medium hover:bg-brand-100 transition-all"
           >
             <BookOpen size={16} />
-            Open Guide
+            {t('gps.openGuide')}
           </button>
           {settings.hasCredentials && (
             <button
@@ -480,7 +476,7 @@ export default function GpsSettingsPage() {
               className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 text-rose-600 bg-rose-50 rounded-xl text-sm font-medium hover:bg-rose-100 transition-all"
             >
               <Trash2 size={16} />
-              Remove Integration
+              {t('gps.removeIntegrationAction')}
             </button>
           )}
         </div>
@@ -493,16 +489,16 @@ export default function GpsSettingsPage() {
             <BookOpen size={18} className="text-brand-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[#1e293b]">How to connect your GPS platform</p>
+            <p className="text-sm font-bold text-[#1e293b]">{t('gps.connectGuideTitle')}</p>
             <p className="text-xs text-slate-500 mt-1">
-              New to GPS integration? Follow our step-by-step guide to link your provider account and start tracking your fleet.
+              {t('gps.connectGuideDesc')}
             </p>
           </div>
           <button
             onClick={() => setGuideOpen(true)}
             className="shrink-0 px-3 py-1.5 bg-white border border-brand-200 text-brand-700 rounded-lg text-xs font-semibold hover:bg-brand-50 transition-all"
           >
-            View steps
+            {t('gps.viewSteps')}
           </button>
         </div>
       </div>
@@ -516,14 +512,14 @@ export default function GpsSettingsPage() {
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-bold text-[#1e293b] flex items-center gap-1.5">
-                Connection Status
+                {t('gps.connectionStatusHeading')}
                 <GpsFieldHelp fieldKey="testConnection" provider={settings.provider} />
               </h3>
-              <p className="text-sm text-slate-400">{statusConfig.label}</p>
+              <p className="text-sm text-slate-400">{t(`gps.connectionStatusValues.${settings.connectionStatus}`, settings.connectionStatus)}</p>
             </div>
           </div>
           <div className={`px-4 py-1.5 rounded-full text-xs font-semibold ${statusConfig.bg} ${statusConfig.color}`}>
-            {settings.connectionStatus}
+            {t(`gps.connectionStatusValues.${settings.connectionStatus}`, settings.connectionStatus)}
           </div>
         </div>
 
@@ -531,14 +527,14 @@ export default function GpsSettingsPage() {
           <div className="bg-[#f5f5f0] rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-400 mb-1">
               <Server size={14} />
-              <span className="text-xs font-medium">Provider</span>
+              <span className="text-xs font-medium">{t('gps.provider')}</span>
             </div>
-            <p className="text-sm font-bold text-[#1e293b]">{settings.provider || 'Not set'}</p>
+            <p className="text-sm font-bold text-[#1e293b]">{settings.provider || t('gps.notSet')}</p>
           </div>
           <div className="bg-[#f5f5f0] rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-400 mb-1">
               <Radio size={14} />
-              <span className="text-xs font-medium">Active Devices</span>
+              <span className="text-xs font-medium">{t('gps.activeDevices')}</span>
               <GpsFieldHelp fieldKey="activeDevices" />
             </div>
             <p className="text-sm font-bold text-[#1e293b]">{settings.activeDevices}</p>
@@ -546,34 +542,34 @@ export default function GpsSettingsPage() {
           <div className="bg-[#f5f5f0] rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-400 mb-1">
               <Clock size={14} />
-              <span className="text-xs font-medium">Last Sync</span>
+              <span className="text-xs font-medium">{t('gps.lastSync')}</span>
               <GpsFieldHelp fieldKey="lastSync" />
             </div>
             <p className="text-sm font-bold text-[#1e293b]">
               {settings.lastSyncAt
                 ? new Date(settings.lastSyncAt).toLocaleString()
-                : 'Never'}
+                : t('gps.never')}
             </p>
           </div>
           <div className="bg-[#f5f5f0] rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-400 mb-1">
               <Activity size={14} />
-              <span className="text-xs font-medium">Last Tested</span>
+              <span className="text-xs font-medium">{t('gps.lastTested')}</span>
             </div>
             <p className="text-sm font-bold text-[#1e293b]">
               {settings.lastTestedAt
                 ? new Date(settings.lastTestedAt).toLocaleString()
-                : 'Never'}
+                : t('gps.never')}
             </p>
           </div>
           <div className="bg-[#f5f5f0] rounded-xl p-4">
             <div className="flex items-center gap-2 text-slate-400 mb-1">
               <Shield size={14} />
-              <span className="text-xs font-medium">Credentials</span>
+              <span className="text-xs font-medium">{t('gps.credentials')}</span>
               <GpsFieldHelp fieldKey="credentials" />
             </div>
             <p className="text-sm font-bold text-[#1e293b]">
-              {settings.hasCredentials ? 'Stored' : 'Not stored'}
+              {settings.hasCredentials ? t('gps.stored') : t('gps.notStored')}
             </p>
           </div>
         </div>
@@ -582,7 +578,7 @@ export default function GpsSettingsPage() {
           <div className="mt-4 bg-rose-50 border border-rose-100 rounded-xl p-4 flex items-start gap-3">
             <AlertTriangle size={18} className="text-rose-500 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-rose-700">Last Error</p>
+              <p className="text-sm font-semibold text-rose-700">{t('gps.lastError')}</p>
               <p className="text-sm text-rose-600 mt-0.5">{settings.lastError}</p>
             </div>
           </div>
@@ -597,22 +593,22 @@ export default function GpsSettingsPage() {
           </div>
           <div>
             <h3 className="text-base font-bold text-[#1e293b] flex items-center gap-1.5">
-              GPS Provider
+              {t('gps.providerHeading')}
               <GpsFieldHelp fieldKey="provider" />
             </h3>
-            <p className="text-sm text-slate-400 font-normal">Select your tracking platform</p>
+            <p className="text-sm text-slate-400 font-normal">{t('gps.selectPlatform')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {PROVIDERS.map((p) => {
-            const selected = settings.provider === p.value;
+            const selected = settings.provider === p;
             return (
               <button
-                key={p.value}
+                key={p}
                 onClick={() => {
-                  handleChange('provider', p.value);
-                  if (p.value === 'IOPGPS') handleChange('baseUrl', IOPGPS_BASE_URL);
+                  handleChange('provider', p);
+                  if (p === 'IOPGPS') handleChange('baseUrl', IOPGPS_BASE_URL);
                 }}
                 className={`relative p-4 rounded-xl border-2 text-left transition-all ${
                   selected
@@ -626,9 +622,9 @@ export default function GpsSettingsPage() {
                   </div>
                 )}
                 <p className={`text-sm font-bold ${selected ? 'text-brand-700' : 'text-[#1e293b]'}`}>
-                  {p.label}
+                  {t(`gps.providerNames.${p}`)}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">{p.description}</p>
+                <p className="text-xs text-slate-400 mt-1">{t(`gps.providerDescriptions.${p}`)}</p>
               </button>
             );
           })}
@@ -642,15 +638,15 @@ export default function GpsSettingsPage() {
             <Key size={20} className="text-accent-500" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#1e293b]">API Credentials</h3>
-            <p className="text-sm text-slate-400 font-normal">Your credentials are encrypted at rest</p>
+            <h3 className="text-base font-bold text-[#1e293b]">{t('gps.apiCredentials')}</h3>
+            <p className="text-sm text-slate-400 font-normal">{t('gps.credentialsEncrypted')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-              {settings.provider === 'IOPGPS' ? 'IOPGPS Account Name' : 'APP ID / Account ID'}
+              {settings.provider === 'IOPGPS' ? t('gps.iopgpsAccountName') : t('gps.appIdAccountId')}
               <GpsFieldHelp fieldKey="appId" provider={settings.provider} />
             </label>
             <div className="relative">
@@ -659,23 +655,23 @@ export default function GpsSettingsPage() {
                 type="text"
                 value={settings.appId}
                 onChange={(e) => handleChange('appId', e.target.value)}
-                placeholder={settings.provider === 'IOPGPS' ? 'exact account name' : 'your-app-id'}
+                placeholder={settings.provider === 'IOPGPS' ? t('gps.accountNamePlaceholder') : t('gps.appIdPlaceholder')}
                 className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
             </div>
             {settings.provider === 'IOPGPS' && (
               <p className="text-xs text-slate-400 mt-1.5">
-                Use the exact account name linked to the API key generated in IOPGPS &gt; System Configuration &gt; API Key Request.
+                {t('gps.iopgpsAccountNameHelp')}
               </p>
             )}
           </div>
 
           <div>
             <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-              API Key
+              {t('gps.apiKeyLabel')}
               <GpsFieldHelp fieldKey="apiKey" provider={settings.provider} />
               {settings.hasCredentials && !settings.apiKey && (
-                <span className="ms-1 text-xs text-emerald-600 font-medium">• Stored securely</span>
+                <span className="ms-1 text-xs text-emerald-600 font-medium">• {t('gps.storedSecurely')}</span>
               )}
             </label>
             <div className="relative">
@@ -684,7 +680,7 @@ export default function GpsSettingsPage() {
                 type={showApiKey ? 'text' : 'password'}
                 value={settings.apiKey}
                 onChange={(e) => handleChange('apiKey', e.target.value)}
-                placeholder={settings.hasCredentials ? '••••••••••••••••' : 'Enter your API key'}
+                placeholder={settings.hasCredentials ? '••••••••••••••••' : t('gps.apiKeyPlaceholder')}
                 className="w-full ps-11 pe-12 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
               <button
@@ -696,8 +692,8 @@ export default function GpsSettingsPage() {
             </div>
             <p className="text-xs text-slate-400 mt-1.5">
               {settings.hasCredentials
-                ? 'Leave blank to keep existing key. Enter new value to replace.'
-                : 'Your API key will be encrypted before storage'}
+                ? t('gps.apiKeyKeepExisting')
+                : t('gps.apiKeyWillBeEncrypted')}
             </p>
           </div>
 
@@ -705,9 +701,9 @@ export default function GpsSettingsPage() {
           {settings.provider === 'TRACCAR' && (
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-                Password
+                {t('gps.passwordLabel')}
                 {settings.hasPassword && !settings.password && (
-                  <span className="ms-1 text-xs text-emerald-600 font-medium">• Stored securely</span>
+                  <span className="ms-1 text-xs text-emerald-600 font-medium">• {t('gps.storedSecurely')}</span>
                 )}
               </label>
               <div className="relative">
@@ -716,7 +712,7 @@ export default function GpsSettingsPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={settings.password}
                   onChange={(e) => handleChange('password', e.target.value)}
-                  placeholder={settings.hasPassword ? '••••••••••••••••' : 'Traccar password'}
+                  placeholder={settings.hasPassword ? '••••••••••••••••' : t('gps.traccarPasswordPlaceholder')}
                   className="w-full ps-11 pe-12 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
                 <button
@@ -728,8 +724,8 @@ export default function GpsSettingsPage() {
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
                 {settings.hasPassword
-                  ? 'Leave blank to keep existing password. Enter new value to replace.'
-                  : 'Used for Traccar Basic Auth. Encrypted before storage.'}
+                  ? t('gps.passwordKeepExisting')
+                  : t('gps.passwordEncryptedHint')}
               </p>
             </div>
           )}
@@ -738,32 +734,32 @@ export default function GpsSettingsPage() {
           {settings.provider === 'CUSTOM' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-2">Auth Header Name</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('gps.authHeaderName')}</label>
                 <div className="relative">
                   <Shield size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={settings.authHeaderName}
                     onChange={(e) => handleChange('authHeaderName', e.target.value)}
-                    placeholder="Authorization"
+                    placeholder={t('gps.authHeaderNamePlaceholder')}
                     className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                   />
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5">HTTP header name sent to your API (default: Authorization)</p>
+                <p className="text-xs text-slate-400 mt-1.5">{t('gps.authHeaderNameHelp')}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-2">Auth Prefix</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('gps.authPrefix')}</label>
                 <div className="relative">
                   <Shield size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={settings.authPrefix}
                     onChange={(e) => handleChange('authPrefix', e.target.value)}
-                    placeholder="Bearer"
+                    placeholder={t('gps.authPrefixPlaceholder')}
                     className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                   />
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5">Prefix before the API key value (default: Bearer)</p>
+                <p className="text-xs text-slate-400 mt-1.5">{t('gps.authPrefixHelp')}</p>
               </div>
             </>
           )}
@@ -771,7 +767,7 @@ export default function GpsSettingsPage() {
           {settings.provider === 'CUSTOM' ? (
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-                Base URL
+                {t('gps.baseUrl')}
                 <GpsFieldHelp fieldKey="baseUrl" provider={settings.provider} />
               </label>
               <div className="relative">
@@ -788,7 +784,7 @@ export default function GpsSettingsPage() {
           ) : settings.provider === 'IOPGPS' && (
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-                API Host
+                {t('gps.apiHost')}
               </label>
               <div className="relative">
                 <Globe size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -800,14 +796,14 @@ export default function GpsSettingsPage() {
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
-                RentCar always connects to the official IOPGPS API host. This value cannot be changed.
+                {t('gps.iopgpsApiHostHint')}
               </p>
             </div>
           )}
 
           <div>
             <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-              Device Group ID
+              {t('gps.deviceGroupId')}
               <GpsFieldHelp fieldKey="deviceGroupId" provider={settings.provider} />
             </label>
             <div className="relative">
@@ -816,7 +812,7 @@ export default function GpsSettingsPage() {
                 type="text"
                 value={settings.deviceGroupId}
                 onChange={(e) => handleChange('deviceGroupId', e.target.value)}
-                placeholder="Optional group filter"
+                placeholder={t('gps.optionalGroupFilter')}
                 className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
               />
             </div>
@@ -824,7 +820,7 @@ export default function GpsSettingsPage() {
 
           <div className="md:col-span-2">
             <label className="flex items-center gap-1.5 text-sm font-medium text-[#1e293b] mb-2">
-              Webhook URL <span className="text-slate-400 font-normal">(optional)</span>
+              {t('gps.webhookUrl')} <span className="text-slate-400 font-normal">({t('common.optional')})</span>
               <GpsFieldHelp fieldKey="webhookUrl" provider={settings.provider} />
             </label>
             <div className="relative">
@@ -848,8 +844,8 @@ export default function GpsSettingsPage() {
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${settings.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#1e293b]">Enable GPS Tracking</p>
-              <p className="text-xs text-slate-400">Activate live tracking for your fleet</p>
+              <p className="text-sm font-semibold text-[#1e293b]">{t('gps.enableTracking')}</p>
+              <p className="text-xs text-slate-400">{t('gps.enableTrackingDesc')}</p>
             </div>
           </div>
         </div>
@@ -865,7 +861,7 @@ export default function GpsSettingsPage() {
           )}
           <div className="flex-1">
             <p className={`text-sm font-semibold ${testResult.success ? 'text-emerald-700' : 'text-rose-700'}`}>
-              {testResult.success ? 'Connection Successful' : 'Connection Failed'}
+              {testResult.success ? t('gps.connectionSuccessful') : t('gps.connectionFailedTitle')}
             </p>
             <p className={`text-sm mt-0.5 ${testResult.success ? 'text-emerald-600' : 'text-rose-600'}`}>
               {testResult.message}
@@ -873,7 +869,7 @@ export default function GpsSettingsPage() {
             {testResult.success && (
               <div className="flex gap-4 mt-2">
                 <span className="text-xs text-emerald-600 font-medium">
-                  {testResult.devicesFound ?? 0} devices found
+                  {t('gps.devicesFoundCount', { count: testResult.devicesFound ?? 0 })}
                 </span>
                 {testResult.responseTime && (
                   <span className="text-xs text-emerald-600 font-medium">
@@ -900,7 +896,7 @@ export default function GpsSettingsPage() {
           className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl font-medium text-sm hover:bg-[#f5f5f0] hover:border-brand-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
         >
           {testing ? <Loader2 size={16} className="animate-spin" /> : <Activity size={16} />}
-          Test Connection
+          {t('gps.testConnection')}
         </button>
 
         {settings.hasCredentials && (
@@ -910,7 +906,7 @@ export default function GpsSettingsPage() {
             className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-[#e8e6e1] text-[#1e293b] rounded-xl font-medium text-sm hover:bg-[#f5f5f0] hover:border-brand-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
           >
             {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            Sync Devices
+            {t('gps.syncDevices')}
           </button>
         )}
 
@@ -920,7 +916,7 @@ export default function GpsSettingsPage() {
             className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-amber-200 text-amber-700 rounded-xl font-medium text-sm hover:bg-amber-50 transition-all w-full sm:w-auto"
           >
             <PowerOff size={16} />
-            Deactivate GPS
+            {t('gps.deactivateGps')}
           </button>
         )}
 
@@ -930,7 +926,7 @@ export default function GpsSettingsPage() {
             className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white border border-rose-200 text-rose-600 rounded-xl font-medium text-sm hover:bg-rose-50 transition-all w-full sm:w-auto"
           >
             <Trash2 size={16} />
-            Delete Credentials
+            {t('gps.deleteCredentialsAction')}
           </button>
         )}
 
@@ -943,7 +939,7 @@ export default function GpsSettingsPage() {
             className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50 w-full sm:w-auto"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Save Configuration
+            {t('gps.saveConfigurationAction')}
           </button>
         )}
       </div>
@@ -956,19 +952,19 @@ export default function GpsSettingsPage() {
               <Navigation size={20} className="text-brand-500" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1e293b]">Geofence &amp; Notifications</h3>
-              <p className="text-sm text-slate-400 font-normal">Define your city zone and configure automatic alerts</p>
+              <h3 className="text-base font-bold text-[#1e293b]">{t('gps.geofenceNotifications')}</h3>
+              <p className="text-sm text-slate-400 font-normal">{t('gps.cityZoneDesc')}</p>
             </div>
           </div>
 
           {/* City center coordinates */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <MapPin size={13} /> City center coordinates
+              <MapPin size={13} /> {t('gps.cityCenterCoordinates')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">Latitude</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">{t('gps.latitude')}</label>
                 <input
                   type="number"
                   step="0.000001"
@@ -979,7 +975,7 @@ export default function GpsSettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">Longitude</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">{t('gps.longitude')}</label>
                 <input
                   type="number"
                   step="0.000001"
@@ -995,11 +991,11 @@ export default function GpsSettingsPage() {
           {/* Zone & timing thresholds */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <Globe size={13} /> Zone &amp; timing thresholds
+              <Globe size={13} /> {t('gps.zoneTimingThresholds')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">Zone radius (km)</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">{t('gps.zoneRadiusKm')}</label>
                 <input
                   type="number"
                   min="1"
@@ -1009,7 +1005,7 @@ export default function GpsSettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">Movement threshold (m)</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">{t('gps.movementThresholdM')}</label>
                 <input
                   type="number"
                   min="10"
@@ -1019,7 +1015,7 @@ export default function GpsSettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">Offline timeout (min)</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">{t('gps.offlineTimeoutMin')}</label>
                 <input
                   type="number"
                   min="5"
@@ -1029,7 +1025,7 @@ export default function GpsSettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">Polling interval (sec)</label>
+                <label className="block text-sm font-medium text-[#1e293b] mb-1.5">{t('gps.pollingIntervalSec')}</label>
                 <input
                   type="number"
                   min="15"
@@ -1044,13 +1040,13 @@ export default function GpsSettingsPage() {
           {/* Alert toggles */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <Bell size={13} /> Alert notifications
+              <Bell size={13} /> {t('gps.alertNotifications')}
             </p>
             <div className="space-y-3">
               {([
-                { field: 'notifyMovement' as const, label: 'Movement alerts', desc: 'Alert when a vehicle starts or stops moving' },
-                { field: 'notifyGeofence' as const, label: 'Geofence alerts', desc: 'Alert when a vehicle leaves or re-enters the city zone' },
-                { field: 'notifyOffline' as const, label: 'Offline alerts', desc: 'Alert when a vehicle goes offline beyond the timeout' },
+                { field: 'notifyMovement' as const, label: t('gps.movementAlerts'), desc: t('gps.movementAlertsDesc') },
+                { field: 'notifyGeofence' as const, label: t('gps.geofenceAlerts'), desc: t('gps.geofenceAlertsDesc') },
+                { field: 'notifyOffline' as const, label: t('gps.offlineAlerts'), desc: t('gps.offlineAlertsDesc') },
               ]).map(({ field, label, desc }) => (
                 <div key={field} className="flex items-center justify-between py-2 border-b border-[#e8e6e1]/40 last:border-0">
                   <div>
@@ -1079,10 +1075,10 @@ export default function GpsSettingsPage() {
             </div>
             <div>
               <h3 className="text-base font-bold text-[#1e293b] flex items-center gap-1.5">
-                Device Mapping
+                {t('gps.deviceMappingHeading')}
                 <GpsFieldHelp fieldKey="deviceMapping" />
               </h3>
-              <p className="text-sm text-slate-400 font-normal">Link GPS devices found on your provider to your vehicles</p>
+              <p className="text-sm text-slate-400 font-normal">{t('gps.deviceMappingDesc')}</p>
             </div>
           </div>
           <GpsDeviceMappingTable devices={devices} vehicles={vehicles} onLinked={handleDeviceLinked} />
@@ -1092,31 +1088,31 @@ export default function GpsSettingsPage() {
       <GpsConnectGuideModal isOpen={guideOpen} onClose={() => setGuideOpen(false)} provider={settings.provider} />
 
       {/* Save Confirmation Modal */}
-      <Modal isOpen={showSaveModal} onClose={() => setShowSaveModal(false)} title="Save GPS Configuration" maxWidth="max-w-md">
+      <Modal isOpen={showSaveModal} onClose={() => setShowSaveModal(false)} title={t('gps.saveConfiguration')} maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 bg-brand-50 rounded-xl">
             <Shield size={20} className="text-brand-500" />
             <p className="text-sm text-brand-700">
-              Your API credentials will be encrypted using AES-256 GCM before storage.
+              {t('gps.credentialsEncryptionNotice')}
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Provider</span>
+              <span className="text-slate-500">{t('gps.provider')}</span>
               <span className="font-semibold text-[#1e293b]">{settings.provider}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">APP ID</span>
+              <span className="text-slate-500">{t('gps.appId')}</span>
               <span className="font-semibold text-[#1e293b]">{settings.appId || '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Base URL</span>
+              <span className="text-slate-500">{t('gps.baseUrl')}</span>
               <span className="font-semibold text-[#1e293b]">{settings.baseUrl || '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Status</span>
-              <span className="font-semibold text-[#1e293b]">{settings.enabled ? 'Enabled' : 'Disabled'}</span>
+              <span className="text-slate-500">{t('gps.status')}</span>
+              <span className="font-semibold text-[#1e293b]">{settings.enabled ? t('gps.enabledLabel') : t('gps.disabledLabel')}</span>
             </div>
           </div>
 
@@ -1125,55 +1121,55 @@ export default function GpsSettingsPage() {
               onClick={() => setShowSaveModal(false)}
               className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
               className="flex-1 px-4 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600 transition-all disabled:opacity-50"
             >
-              {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Confirm & Save'}
+              {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('gps.confirmAndSave')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Remove GPS Integration" maxWidth="max-w-md">
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={t('gps.removeIntegration')} maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl">
             <AlertTriangle size={20} className="text-rose-500" />
             <p className="text-sm text-rose-700">
-              This will permanently remove all GPS credentials and tracking configuration for your agency.
+              {t('gps.removeIntegrationWarning')}
             </p>
           </div>
           <p className="text-sm text-slate-500">
-            Your vehicle data will remain, but live tracking will be disabled. This action cannot be undone.
+            {t('gps.removeIntegrationNote')}
           </p>
           <div className="flex gap-3 pt-2">
             <button
               onClick={() => setShowDeleteModal(false)}
               className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleDelete}
               className="flex-1 px-4 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-medium hover:bg-rose-600 transition-all"
             >
-              Remove Integration
+              {t('gps.removeIntegrationAction')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Deactivate Confirmation Modal */}
-      <Modal isOpen={showDeactivateModal} onClose={() => setShowDeactivateModal(false)} title="Deactivate GPS Integration" maxWidth="max-w-md">
+      <Modal isOpen={showDeactivateModal} onClose={() => setShowDeactivateModal(false)} title={t('gps.deactivateIntegration')} maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
             <PowerOff size={20} className="text-amber-500" />
             <p className="text-sm text-amber-700">
-              Live tracking and device sync will stop. Your stored credentials are kept, so you can reactivate later without re-entering your API key.
+              {t('gps.deactivateWarning')}
             </p>
           </div>
           <div className="flex gap-3 pt-2">
@@ -1181,44 +1177,44 @@ export default function GpsSettingsPage() {
               onClick={() => setShowDeactivateModal(false)}
               className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleDeactivate}
               disabled={deactivating}
               className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium hover:bg-amber-600 transition-all disabled:opacity-50"
             >
-              {deactivating ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Deactivate'}
+              {deactivating ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('gps.deactivateAction')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Delete Credentials Confirmation Modal */}
-      <Modal isOpen={showDeleteCredentialsModal} onClose={() => setShowDeleteCredentialsModal(false)} title="Delete GPS Credentials" maxWidth="max-w-md">
+      <Modal isOpen={showDeleteCredentialsModal} onClose={() => setShowDeleteCredentialsModal(false)} title={t('gps.deleteCredentials')} maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl">
             <AlertTriangle size={20} className="text-rose-500" />
             <p className="text-sm text-rose-700">
-              Deleting credentials will disconnect this agency from the GPS provider. Existing vehicle GPS history will be kept. Continue?
+              {t('gps.deleteCredentialsWarning')}
             </p>
           </div>
           <p className="text-sm text-slate-500">
-            Provider and Base URL are kept so you can reconnect later without looking them up again.
+            {t('gps.deleteCredentialsNote')}
           </p>
           <div className="flex gap-3 pt-2">
             <button
               onClick={() => setShowDeleteCredentialsModal(false)}
               className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleDeleteCredentials}
               disabled={deletingCredentials}
               className="flex-1 px-4 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-medium hover:bg-rose-600 transition-all disabled:opacity-50"
             >
-              {deletingCredentials ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Delete Credentials'}
+              {deletingCredentials ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('gps.deleteCredentialsAction')}
             </button>
           </div>
         </div>
