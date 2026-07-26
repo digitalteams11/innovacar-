@@ -558,7 +558,7 @@
     },
     "roles": {
       "ADMIN": "Administrateur",
-      "MANAGER": "Manager",
+      "MANAGER": "Gérant",
       "AGENT": "Agent / comptoir",
       "ACCOUNTANT": "Comptable",
       "FLEET_MANAGER": "Responsable flotte",
@@ -788,7 +788,7 @@
   "superAdmin": {
     "nav": {
       "platform": "Vue d'ensemble",
-      "business": "Business",
+      "business": "Entreprise",
       "operations": "Opérations",
       "system": "Système",
       "overview": "Vue d'ensemble",
@@ -797,7 +797,7 @@
       "gps": "Centre GPS",
       "users": "Utilisateurs",
       "payments": "Paiements",
-      "support": "Support",
+      "support": "Assistance",
       "analytics": "Analytiques",
       "notifications": "Notifications",
       "security": "Sécurité",

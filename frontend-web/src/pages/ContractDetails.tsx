@@ -165,27 +165,27 @@ export default function ContractDetails() {
     switch (code) {
       case 'EMAIL_TO_ADDRESS_MISSING':
       case 'CLIENT_EMAIL_MISSING':
-        return 'Client email is missing';
+        return t('contractDetails.emailErrors.clientEmailMissing');
       case 'EMAIL_CONFIGURATION_MISSING':
-        return 'Email provider is not configured';
+        return t('contractDetails.emailErrors.providerNotConfigured');
       case 'EMAIL_API_UNAUTHORIZED':
-        return 'Email provider credentials are invalid';
+        return t('contractDetails.emailErrors.credentialsInvalid');
       case 'EMAIL_SENDER_NOT_VERIFIED':
-        return 'The sender address is not verified';
+        return t('contractDetails.emailErrors.senderNotVerified');
       case 'EMAIL_API_INVALID_PAYLOAD':
-        return 'The email request is invalid';
+        return t('contractDetails.emailErrors.invalidRequest');
       case 'EMAIL_API_PROVIDER_UNAVAILABLE':
-        return 'ZeptoMail is temporarily unavailable';
+        return t('contractDetails.emailErrors.providerUnavailable');
       case 'EMAIL_API_TIMEOUT':
-        return 'Email delivery timed out';
+        return t('contractDetails.emailErrors.deliveryTimedOut');
       case 'EMAIL_API_RATE_LIMITED':
-        return 'Email provider is rate-limiting requests';
+        return t('contractDetails.emailErrors.rateLimited');
       case 'EMAIL_API_ENDPOINT_INVALID':
-        return 'Email provider endpoint could not be reached';
+        return t('contractDetails.emailErrors.endpointInvalid');
       case 'EMAIL_API_NETWORK_ERROR':
-        return 'Network error while sending email';
+        return t('contractDetails.emailErrors.networkError');
       default:
-        return code || 'Send failed';
+        return code || t('contractDetails.emailErrors.sendFailed');
     }
   };
 
@@ -212,7 +212,7 @@ export default function ContractDetails() {
       }
     } catch (err: any) {
       const status = err?.response?.status;
-      showToast(status === 404 ? 'Contract not found or removed.' : 'Unable to load contract information. Please try again later.', 'error');
+      showToast(status === 404 ? t('contractDetails.toasts.contractNotFoundOrRemoved') : t('contractDetails.toasts.loadFailed'), 'error');
     } finally {
       setLoading(false);
     }
@@ -227,7 +227,7 @@ export default function ContractDetails() {
       const detail = (e as CustomEvent).detail as { contractId?: number | string };
       if (detail?.contractId && String(detail.contractId) === String(id)) {
         fetchContract();
-        showToast('Contract signed by client', 'success');
+        showToast(t('contractDetails.toasts.contractSignedByClient'), 'success');
       }
     };
     window.addEventListener('contract:updated', handleContractUpdated);
@@ -285,10 +285,10 @@ export default function ContractDetails() {
     if (!contract) return;
     setIsSubmitting(true);
     try {
-      showToast('Generating PDF...', 'info');
+      showToast(t('contractDetails.toasts.generatingPdf'), 'info');
       const response = await api.get(`/contracts/${contract.id}/pdf`, { responseType: 'blob' });
       if (!response.data || response.data.size === 0) {
-        showToast('PDF file is empty. Please try again.', 'error');
+        showToast(t('contractDetails.toasts.pdfEmpty'), 'error');
         return;
       }
       const blob = new Blob([response.data], { type: 'application/pdf' });
@@ -300,9 +300,9 @@ export default function ContractDetails() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      showToast('PDF downloaded successfully', 'success');
+      showToast(t('contractDetails.toasts.pdfDownloaded'), 'success');
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Unable to download PDF. Please try again later.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.pdfDownloadFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -319,7 +319,7 @@ export default function ContractDetails() {
         method: 'POST',
         currentAgencySettings: true,
       });
-      showToast('Regenerating PDF from current agency settings...', 'info');
+      showToast(t('contractDetails.toasts.regeneratingPdf'), 'info');
       const response = await api.post(`/contracts/${contract.id}/pdf/regenerate`);
       const refreshed = response.data?.data;
       if (refreshed?.pdfUrl) {
@@ -327,9 +327,9 @@ export default function ContractDetails() {
       } else {
         applyContractEnvelope(response.data, refreshed);
       }
-      showToast('PDF regenerated. It now reflects the agency\'s current logo, name, and settings.', 'success');
+      showToast(t('contractDetails.toasts.pdfRegenerated'), 'success');
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Unable to regenerate PDF. Please try again later.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.pdfRegenerateFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -341,16 +341,16 @@ export default function ContractDetails() {
     try {
       const response = await api.get(`/contracts/${contract.id}/pdf`, { responseType: 'blob' });
       if (!response.data || response.data.size === 0) {
-        showToast('PDF file is empty. Please try again.', 'error');
+        showToast(t('contractDetails.toasts.pdfEmpty'), 'error');
         return;
       }
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-      showToast('Contract PDF opened for printing', 'success');
+      showToast(t('contractDetails.toasts.pdfOpenedForPrint'), 'success');
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Unable to open contract PDF. Please try again later.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.pdfOpenFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -361,7 +361,7 @@ export default function ContractDetails() {
     if (contract.ownerSigned) {
       await fetchContract();
       setShowOwnerSign(false);
-      showToast('Agency signature already applied.', 'info');
+      showToast(t('contractDetails.toasts.agencySignatureAppliedInfo'), 'info');
       return;
     }
     setIsSubmitting(true);
@@ -376,7 +376,7 @@ export default function ContractDetails() {
         userAgent: navigator.userAgent,
       });
       if (data?.success === false) {
-        showToast(data.message || 'Unable to save signature. Please try again later.', 'error');
+        showToast(data.message || t('contractDetails.toasts.signatureSaveFailed'), 'error');
         return;
       }
       applyContractEnvelope(data, {
@@ -386,15 +386,15 @@ export default function ContractDetails() {
       });
       await fetchContract();
       setShowOwnerSign(false);
-      showToast(data?.message || 'Contract signed successfully', 'success');
+      showToast(data?.message || t('contractDetails.toasts.contractSigned'), 'success');
     } catch (err: any) {
       if (err?.response?.status === 409 && contract.ownerSigned) {
         await fetchContract();
         setShowOwnerSign(false);
-        showToast('Agency signature already applied.', 'info');
+        showToast(t('contractDetails.toasts.agencySignatureAppliedInfo'), 'info');
         return;
       }
-      showToast((err as any).userMessage || 'Unable to apply signature. Please check contract permissions.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.signatureApplyFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -403,11 +403,11 @@ export default function ContractDetails() {
   const handleAutoAgencySign = async () => {
     if (contract?.ownerSigned) {
       await fetchContract();
-      showToast('Agency signature already applied.', 'info');
+      showToast(t('contractDetails.toasts.agencySignatureAppliedInfo'), 'info');
       return;
     }
     if (!contract || !tenant?.agencySignature) {
-      showToast('No agency signature configured. Please set it in Settings > Agency.', 'warning');
+      showToast(t('contractDetails.toasts.noAgencySignatureWarning'), 'warning');
       setShowOwnerSign(true);
       return;
     }
@@ -423,7 +423,7 @@ export default function ContractDetails() {
         userAgent: navigator.userAgent,
       });
       if (data?.success === false) {
-        showToast(data.message || 'Unable to apply signature. Please try again later.', 'error');
+        showToast(data.message || t('contractDetails.toasts.signatureApplyFailed'), 'error');
         return;
       }
       applyContractEnvelope(data, {
@@ -432,14 +432,14 @@ export default function ContractDetails() {
         status: contract.clientSigned ? 'ACTIVE' : 'PENDING_SIGNATURE',
       });
       await fetchContract();
-      showToast(data?.message || 'Contract signed successfully', 'success');
+      showToast(data?.message || t('contractDetails.toasts.contractSigned'), 'success');
     } catch (err: any) {
       if (err?.response?.status === 409 && contract.ownerSigned) {
         await fetchContract();
-        showToast('Agency signature already applied.', 'info');
+        showToast(t('contractDetails.toasts.agencySignatureAppliedInfo'), 'info');
         return;
       }
-      showToast((err as any).userMessage || 'Unable to apply signature. Please check contract permissions.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.signatureApplyFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -448,14 +448,14 @@ export default function ContractDetails() {
   const handleGenerateQR = async () => {
     if (!contract || isSubmitting) return;
     if (!contract.ownerSigned) {
-      showToast('Agency must sign the contract before generating a QR code', 'warning');
+      showToast(t('contractDetails.toasts.signBeforeQr'), 'warning');
       return;
     }
     setIsSubmitting(true);
     try {
       const { data } = await api.get(`/contracts/${contract.id}/qr`);
       if (data?.success === false) {
-        showToast(data.message || 'Unable to generate QR code. Please try again later.', 'error');
+        showToast(data.message || t('contractDetails.toasts.qrGenerateFailed'), 'error');
         return;
       }
       const qrData = data?.data || data;
@@ -464,14 +464,14 @@ export default function ContractDetails() {
         publicSigningUrl: qrData?.signingUrl || qrData?.publicSigningUrl || contract.publicSigningUrl,
       });
       setShowQRModal(true);
-      showToast(data?.message || 'QR code generated successfully', 'success');
+      showToast(data?.message || t('contractDetails.toasts.qrGenerated'), 'success');
     } catch (err: any) {
       if (err?.response?.status === 409 && contract.qrToken && contract.publicSigningUrl) {
         setShowQRModal(true);
-        showToast('Existing QR code loaded.', 'info');
+        showToast(t('contractDetails.toasts.qrExistingLoaded'), 'info');
         return;
       }
-      showToast((err as any).userMessage || 'Unable to generate QR code. Please try again later.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.qrGenerateFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -485,14 +485,14 @@ export default function ContractDetails() {
     if (!contract) return null;
     if (contract.qrToken && contract.publicSigningUrl) return contract.publicSigningUrl;
     if (!contract.ownerSigned) {
-      showToast('Agency must sign the contract before sharing the signing link', 'warning');
+      showToast(t('contractDetails.toasts.signBeforeShare'), 'warning');
       return null;
     }
     setGeneratingShareLink(true);
     try {
       const { data } = await api.get(`/contracts/${contract.id}/qr`);
       if (data?.success === false) {
-        showToast(data.message || 'Unable to generate signing link. Please try again later.', 'error');
+        showToast(data.message || t('contractDetails.toasts.signingLinkFailed'), 'error');
         return null;
       }
       const qrData = data?.data || data;
@@ -503,7 +503,7 @@ export default function ContractDetails() {
       if (err?.response?.status === 409 && contract.qrToken && contract.publicSigningUrl) {
         return contract.publicSigningUrl;
       }
-      showToast((err as any).userMessage || 'Unable to generate signing link. Please try again later.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.signingLinkFailed'), 'error');
       return null;
     } finally {
       setGeneratingShareLink(false);
@@ -546,7 +546,7 @@ export default function ContractDetails() {
       }
       return true;
     } catch {
-      showToast(t('contracts.copyFailed') || 'Unable to copy link. Please try again later.', 'error');
+      showToast(t('contracts.copyFailed') || t('contractDetails.toasts.copyLinkFailed'), 'error');
       return false;
     }
   };
@@ -563,7 +563,7 @@ export default function ContractDetails() {
     try {
       await api.patch(`/clients/${contract.clientId}/email`, { email });
     } catch (err: any) {
-      showToast(err?.response?.data?.message || t('contractEmail.invalid') || 'Unable to save email', 'error');
+      showToast(err?.response?.data?.message || t('contractEmail.invalid') || t('contractDetails.toasts.emailSaveFailed'), 'error');
       setSavingClientEmail(false);
       throw err;
     }
@@ -601,10 +601,10 @@ export default function ContractDetails() {
     setIsSubmitting(true);
     try {
       await api.post(`/contracts/${contract.id}/finalize`);
-      showToast('Contract finalized successfully', 'success');
+      showToast(t('contractDetails.toasts.contractFinalized'), 'success');
       fetchContract();
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Unable to finalize contract. Please try again later.', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.finalizeFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -622,10 +622,10 @@ export default function ContractDetails() {
       setInspectionQr(data);
       await fetchInspections(contract.id);
       showToast(type === 'BEFORE_DELIVERY'
-        ? 'Before-delivery inspection QR generated'
-        : 'After-return inspection QR generated', 'success');
+        ? t('contractDetails.toasts.beforeDeliveryQrGenerated')
+        : t('contractDetails.toasts.afterReturnQrGenerated'), 'success');
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Unable to start vehicle inspection', 'error');
+      showToast((err as any).userMessage || t('contractDetails.toasts.inspectionStartFailed'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -673,9 +673,9 @@ export default function ContractDetails() {
       : contract.status;
   const canFinalize = bothSigned && contract.status !== 'ACTIVE' && contract.status !== 'COMPLETED';
   const statusLabel = (status?: string) =>
-    status ? t(`contracts.statusLabel.${status}`, { defaultValue: status.replace('_', ' ') }) : 'N/A';
+    status ? t(`contracts.statusLabel.${status}`, { defaultValue: status.replace('_', ' ') }) : t('common.notAvailable');
   const paymentStatusLabel = (status?: string) =>
-    status ? t(`subscription.statuses.${status}`, { defaultValue: status.replace('_', ' ') }) : 'N/A';
+    status ? t(`subscription.statuses.${status}`, { defaultValue: status.replace('_', ' ') }) : t('common.notAvailable');
 
   const detailTabs = [
     { key: 'overview', label: t('contractDetails.tabs.overview'), icon: FileText },
@@ -733,7 +733,7 @@ export default function ContractDetails() {
             </button>
           )}
           <button
-            onClick={contract.ownerSigned ? handleGenerateQR : () => showToast('Agency must sign first before generating QR', 'warning')}
+            onClick={contract.ownerSigned ? handleGenerateQR : () => showToast(t('contractDetails.toasts.signBeforeQrShort'), 'warning')}
             disabled={isSubmitting}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all disabled:opacity-50 whitespace-nowrap ${
               contract.ownerSigned
@@ -809,20 +809,20 @@ export default function ContractDetails() {
                         <button onClick={handleAutoAgencySign} disabled={isSubmitting}
                           className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                           {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Shield size={18} />}
-                          Apply Agency Signature
+                          {t('contractDetails.applyAgencySignature')}
                         </button>
                       ) : (
                         <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-700">
-                          No agency signature configured. <button onClick={() => navigate('/settings')} className="font-semibold underline">Set it in Settings</button> or draw below.
+                          {t('contractDetails.noAgencySignature')} <button onClick={() => navigate('/settings')} className="font-semibold underline">{t('contractDetails.setInSettings')}</button> {t('contractDetails.orDrawBelowSuffix')}
                         </div>
                       )}
                       {!showOwnerSign ? (
                         <button onClick={() => setShowOwnerSign(true)}
                           className="w-full py-3 bg-brand-50 text-brand-500 rounded-xl font-semibold text-sm hover:bg-brand-100 transition-all">
-                          {tenant?.agencySignature ? 'Draw Custom Signature Instead' : 'Sign as Owner'}
+                          {tenant?.agencySignature ? t('contractDetails.drawCustomSignature') : t('contractDetails.signAsOwner')}
                         </button>
                       ) : (
-                        <SignaturePad onSave={handleOwnerSign} label="Owner Signature" autoSaveKey={`owner_${contract.id}`} />
+                        <SignaturePad onSave={handleOwnerSign} label={t('contractDetails.ownerSignatureLabel')} autoSaveKey={`owner_${contract.id}`} />
                       )}
                     </div>
                   ) : (
@@ -844,7 +844,7 @@ export default function ContractDetails() {
                   <button onClick={handleFinalize} disabled={isSubmitting}
                     className="w-full py-3 bg-success-500 text-white rounded-xl font-semibold text-sm hover:bg-success-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                    Finalize Contract
+                    {t('contractDetails.finalizeContract')}
                   </button>
                 )}
               </div>
@@ -947,7 +947,7 @@ export default function ContractDetails() {
                               showToast(data?.message || t('contractEmail.emailSent'), data?.success ? 'success' : 'error');
                               fetchEmailStatus(contract.id);
                             } catch (err: any) {
-                              showToast(err?.response?.data?.message || 'Unable to send email', 'error');
+                              showToast(err?.response?.data?.message || t('contractDetails.toasts.sendEmailFailed'), 'error');
                             } finally {
                               setSendingEmail(false);
                             }
@@ -1023,7 +1023,7 @@ export default function ContractDetails() {
               {contract.deposit && (
                 <div className="card-premium space-y-4 p-3 sm:p-5">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Security Deposit</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.securityDeposit')}</h3>
                     <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
                       contract.deposit.status === 'RETURNED' || contract.deposit.status === 'PARTIALLY_RETURNED'
                         ? 'bg-success-100 text-success-600'
@@ -1033,21 +1033,21 @@ export default function ContractDetails() {
                         ? 'bg-brand-100 text-brand-600'
                         : 'bg-slate-100 text-slate-600'
                     }`}>
-                      {contract.deposit.status}
+                      {t(`contractDetails.depositStatusValues.${contract.deposit.status}`, contract.deposit.status)}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-[10px] text-slate-400 uppercase font-bold">Type</p>
-                      <p className="text-sm font-bold text-[#1e293b]">{contract.deposit.depositType || 'Cash'}</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">{t('contractDetails.type')}</p>
+                      <p className="text-sm font-bold text-[#1e293b]">{contract.deposit.depositType || t('contractDetails.cash')}</p>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-[10px] text-slate-400 uppercase font-bold">Amount</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">{t('contractDetails.amount')}</p>
                       <p className="text-sm font-bold text-brand-600">{contract.deposit.amount} MAD</p>
                     </div>
                     {contract.deposit.reference && (
                       <div className="p-3 bg-slate-50 rounded-xl">
-                        <p className="text-[10px] text-slate-400 uppercase font-bold">Reference</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-bold">{t('contractDetails.reference')}</p>
                         <p className="text-sm font-bold text-[#1e293b]">{contract.deposit.reference}</p>
                       </div>
                     )}
@@ -1058,49 +1058,49 @@ export default function ContractDetails() {
                       className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 transition-all flex items-center justify-center gap-2"
                     >
                       <Shield size={18} />
-                      Process Vehicle Return
+                      {t('contractDetails.processReturn')}
                     </button>
                   )}
                   {(contract.deposit.status === 'RETURNED' || contract.deposit.status === 'PARTIALLY_RETURNED' || contract.deposit.status === 'DEDUCTED') && (
                     <div className="space-y-2 p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs font-bold text-slate-500 uppercase">Return Summary</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase">{t('contractDetails.returnSummary')}</p>
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Deposit</span>
+                        <span className="text-slate-500">{t('contractDetails.depositLabel')}</span>
                         <span className="font-medium">{contract.deposit.amount} MAD</span>
                       </div>
                       {(contract.deposit.damageDeduction || 0) > 0 && (
                         <div className="flex justify-between text-sm text-danger-600">
-                          <span>Damage</span>
+                          <span>{t('contractDetails.damage')}</span>
                           <span className="font-medium">- {contract.deposit.damageDeduction} MAD</span>
                         </div>
                       )}
                       {(contract.deposit.cleaningDeduction || 0) > 0 && (
                         <div className="flex justify-between text-sm text-danger-600">
-                          <span>Cleaning</span>
+                          <span>{t('contractDetails.cleaning')}</span>
                           <span className="font-medium">- {contract.deposit.cleaningDeduction} MAD</span>
                         </div>
                       )}
                       {(contract.deposit.lateFeeDeduction || 0) > 0 && (
                         <div className="flex justify-between text-sm text-danger-600">
-                          <span>Late Fee</span>
+                          <span>{t('contractDetails.lateFee')}</span>
                           <span className="font-medium">- {contract.deposit.lateFeeDeduction} MAD</span>
                         </div>
                       )}
                       {(contract.deposit.fuelDeduction || 0) > 0 && (
                         <div className="flex justify-between text-sm text-danger-600">
-                          <span>Fuel</span>
+                          <span>{t('contractDetails.fuel')}</span>
                           <span className="font-medium">- {contract.deposit.fuelDeduction} MAD</span>
                         </div>
                       )}
                       {(contract.deposit.otherDeduction || 0) > 0 && (
                         <div className="flex justify-between text-sm text-danger-600">
-                          <span>Other</span>
+                          <span>{t('contractDetails.other')}</span>
                           <span className="font-medium">- {contract.deposit.otherDeduction} MAD</span>
                         </div>
                       )}
                       <div className="h-px bg-slate-200" />
                       <div className="flex justify-between text-sm font-bold">
-                        <span className="text-slate-700">Returned</span>
+                        <span className="text-slate-700">{t('contractDetails.returned')}</span>
                         <span className={contract.deposit.returnedAmount && contract.deposit.returnedAmount > 0 ? 'text-success-600' : 'text-slate-400'}>
                           {contract.deposit.returnedAmount || 0} MAD
                         </span>
@@ -1116,16 +1116,16 @@ export default function ContractDetails() {
                   <div className="flex items-center gap-2 text-brand-500">
                     <User size={13} className="sm:hidden" />
                     <User size={14} className="hidden sm:block" />
-                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Client</span>
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">{t('contractDetails.tabs.client')}</span>
                   </div>
-                  <p className="text-base sm:text-lg font-bold text-[#1e293b] truncate">{contract.clientFullName || 'N/A'}</p>
+                  <p className="text-base sm:text-lg font-bold text-[#1e293b] truncate">{contract.clientFullName || t('common.notAvailable')}</p>
                   <p className="text-[10px] sm:text-xs text-slate-400 truncate">{contract.clientPhone} • {contract.clientEmail}</p>
                 </div>
                 <div className="card-premium p-4 sm:p-5 space-y-1.5 sm:space-y-2">
                   <div className="flex items-center gap-2 text-brand-500">
                     <Car size={13} className="sm:hidden" />
                     <Car size={14} className="hidden sm:block" />
-                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Vehicle</span>
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">{t('contractDetails.tabs.vehicle')}</span>
                   </div>
                   <p className="text-base sm:text-lg font-bold text-[#1e293b] truncate">{contract.vehicleBrand} {contract.vehicleModel}</p>
                   <p className="text-[10px] sm:text-xs text-slate-400 truncate">{contract.vehicleRegistration} • {contract.vehicleCategory}</p>
@@ -1134,7 +1134,7 @@ export default function ContractDetails() {
                   <div className="flex items-center gap-2 text-brand-500">
                     <Calendar size={13} className="sm:hidden" />
                     <Calendar size={14} className="hidden sm:block" />
-                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Period</span>
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">{t('contractDetails.period')}</span>
                   </div>
                   <p className="text-xs sm:text-sm font-bold text-[#1e293b]">
                     {new Date(contract.startDate).toLocaleDateString()} — {new Date(contract.endDate).toLocaleDateString()}
@@ -1145,7 +1145,7 @@ export default function ContractDetails() {
                   <div className="flex items-center gap-2 text-brand-500">
                     <CreditCard size={13} className="sm:hidden" />
                     <CreditCard size={14} className="hidden sm:block" />
-                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Payment</span>
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">{t('contractDetails.tabs.payment')}</span>
                   </div>
                   <p className="text-base sm:text-lg font-bold text-[#1e293b]">{contract.totalPrice || 0} MAD</p>
                   <p className="text-[10px] sm:text-xs text-slate-400 capitalize">{contract.paymentMethod} • {contract.paymentStatus}</p>
@@ -1156,35 +1156,35 @@ export default function ContractDetails() {
 
           {activeTab === 'client' && (
             <div className="card-premium p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Client Information</h3>
+              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.clientInfo')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <InfoRow label="Full Name" value={contract.clientFullName} />
-                <InfoRow label="Nationality" value={contract.clientNationality} />
-                <InfoRow label="Gender" value={contract.clientGender} />
-                <InfoRow label="Birth Date" value={contract.clientBirthDate ? new Date(contract.clientBirthDate).toLocaleDateString() : ''} />
-                <InfoRow label="CIN / ID" value={contract.clientCin} />
-                <InfoRow label="Passport" value={contract.clientPassportNumber} />
-                <InfoRow label="Driver License" value={contract.clientDriverLicense} />
-                <InfoRow label="Phone" value={contract.clientPhone} />
-                <InfoRow label="Email" value={contract.clientEmail} />
-                <InfoRow label="Address" value={`${contract.clientAddress}, ${contract.clientCity}, ${contract.clientCountry}`} />
-                <InfoRow label="Emergency Contact" value={`${contract.emergencyContactName} ${contract.emergencyContactPhone}`} />
+                <InfoRow label={t('contractDetails.fields.fullName')} value={contract.clientFullName} />
+                <InfoRow label={t('contractDetails.fields.nationality')} value={contract.clientNationality} />
+                <InfoRow label={t('contractDetails.fields.gender')} value={contract.clientGender} />
+                <InfoRow label={t('contractDetails.fields.birthDate')} value={contract.clientBirthDate ? new Date(contract.clientBirthDate).toLocaleDateString() : ''} />
+                <InfoRow label={t('contractDetails.fields.cinId')} value={contract.clientCin} />
+                <InfoRow label={t('contractDetails.fields.passport')} value={contract.clientPassportNumber} />
+                <InfoRow label={t('contractDetails.fields.driverLicense')} value={contract.clientDriverLicense} />
+                <InfoRow label={t('contractDetails.fields.phone')} value={contract.clientPhone} />
+                <InfoRow label={t('contractDetails.fields.email')} value={contract.clientEmail} />
+                <InfoRow label={t('contractDetails.fields.address')} value={`${contract.clientAddress}, ${contract.clientCity}, ${contract.clientCountry}`} />
+                <InfoRow label={t('contractDetails.fields.emergencyContact')} value={`${contract.emergencyContactName} ${contract.emergencyContactPhone}`} />
               </div>
             </div>
           )}
 
           {activeTab === 'vehicle' && (
             <div className="card-premium p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Vehicle Information</h3>
+              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.vehicleInfo')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <InfoRow label="Brand / Model" value={`${contract.vehicleBrand} ${contract.vehicleModel}`} />
-                <InfoRow label="Category" value={contract.vehicleCategory} />
-                <InfoRow label="Year" value={contract.vehicleYear?.toString()} />
-                <InfoRow label="Color" value={contract.vehicleColor} />
-                <InfoRow label="Registration" value={contract.vehicleRegistration} />
-                <InfoRow label="Transmission" value={contract.vehicleTransmission} />
-                <InfoRow label="Fuel Type" value={contract.fuelType} />
-                <InfoRow label="Fuel Level" value={contract.fuelLevelStart} />
+                <InfoRow label={t('contractDetails.fields.brandModel')} value={`${contract.vehicleBrand} ${contract.vehicleModel}`} />
+                <InfoRow label={t('contractDetails.fields.category')} value={contract.vehicleCategory} />
+                <InfoRow label={t('contractDetails.fields.year')} value={contract.vehicleYear?.toString()} />
+                <InfoRow label={t('contractDetails.fields.color')} value={contract.vehicleColor} />
+                <InfoRow label={t('contractDetails.fields.registration')} value={contract.vehicleRegistration} />
+                <InfoRow label={t('contractDetails.fields.transmission')} value={contract.vehicleTransmission} />
+                <InfoRow label={t('contractDetails.fields.fuelType')} value={contract.fuelType} />
+                <InfoRow label={t('contractDetails.fields.fuelLevel')} value={contract.fuelLevelStart} />
               </div>
             </div>
           )}
@@ -1193,55 +1193,44 @@ export default function ContractDetails() {
             <div className="card-premium p-4 sm:p-6 space-y-5 sm:space-y-6">
               {/* ── Rental Payment ─────────────────────────────────────────── */}
               <div>
-                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">Rental Payment</h3>
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">{t('contractDetails.rentalPayment')}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <InfoRow label="Total Price" value={`${(contract.totalPrice || 0).toLocaleString()} MAD`} />
-                  <InfoRow label="Daily Price" value={`${(contract.dailyPrice || 0).toLocaleString()} MAD`} />
-                  <InfoRow label="Paid Amount" value={`${(contract.paidAmount || 0).toLocaleString()} MAD`} />
-                  <InfoRow label="Remaining" value={`${(contract.remainingAmount || 0).toLocaleString()} MAD`} />
-                  <InfoRow label="Payment Method" value={contract.paymentMethod} />
-                  <InfoRow label="Payment Status" value={contract.paymentStatus} />
+                  <InfoRow label={t('contractDetails.fields.totalPrice')} value={`${(contract.totalPrice || 0).toLocaleString()} MAD`} />
+                  <InfoRow label={t('contractDetails.fields.dailyPrice')} value={`${(contract.dailyPrice || 0).toLocaleString()} MAD`} />
+                  <InfoRow label={t('contractDetails.fields.paidAmount')} value={`${(contract.paidAmount || 0).toLocaleString()} MAD`} />
+                  <InfoRow label={t('contractDetails.remaining')} value={`${(contract.remainingAmount || 0).toLocaleString()} MAD`} />
+                  <InfoRow label={t('contractDetails.fields.paymentMethod')} value={contract.paymentMethod} />
+                  <InfoRow label={t('contractDetails.fields.paymentStatus')} value={contract.paymentStatus} />
                 </div>
               </div>
               {/* ── Deposit / Guarantee (Caution) ────────────────────────────── */}
               <div className="border-t border-[var(--border-subtle)] pt-4">
                 <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
-                  Deposit / Guarantee (Caution)
+                  {t('contractDetails.depositGuaranteeCaution')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <InfoRow
-                    label="Deposit Required"
+                    label={t('contractDetails.fields.depositRequired')}
                     value={`${(contract.depositAmount || 0).toLocaleString()} ${contract.depositCurrency || 'MAD'}`}
                   />
                   <InfoRow
-                    label="Deposit Status"
-                    value={(() => {
-                      const statusMap: Record<string, string> = {
-                        NOT_REQUIRED: 'Not Required',
-                        PENDING: 'Pending',
-                        RECEIVED: 'Received',
-                        HELD: 'Held',
-                        PARTIALLY_RETURNED: 'Partially Returned',
-                        RETURNED: 'Returned',
-                        KEPT: 'Kept by Agency',
-                        DEDUCTED: 'Deducted',
-                        CANCELLED: 'Cancelled',
-                      };
-                      return statusMap[contract.depositStatus] || contract.depositStatus || 'Not Required';
-                    })()}
+                    label={t('contractDetails.fields.depositStatus')}
+                    value={t(`contractDetails.depositStatusValues.${contract.depositStatus}`, {
+                      defaultValue: contract.depositStatus || t('contractDetails.depositStatusValues.NOT_REQUIRED'),
+                    })}
                   />
                   {contract.deposit && (
                     <>
-                      <InfoRow label="Deposit Held" value={`${(contract.deposit.amount || 0).toLocaleString()} MAD`} />
+                      <InfoRow label={t('contractDetails.fields.depositHeld')} value={`${(contract.deposit.amount || 0).toLocaleString()} MAD`} />
                       {contract.deposit.returnedAmount != null && (
-                        <InfoRow label="Deposit Returned" value={`${(contract.deposit.returnedAmount || 0).toLocaleString()} MAD`} />
+                        <InfoRow label={t('contractDetails.fields.depositReturned')} value={`${(contract.deposit.returnedAmount || 0).toLocaleString()} MAD`} />
                       )}
                     </>
                   )}
                 </div>
                 {contract.depositAmount > 0 && (
                   <p className="text-[11px] text-slate-400 mt-2">
-                    The deposit/guarantee is separate from the rental price and is refundable according to the contract terms.
+                    {t('contractDetails.depositSeparateNote')}
                   </p>
                 )}
               </div>
@@ -1252,27 +1241,27 @@ export default function ContractDetails() {
             <div className="card-premium p-4 sm:p-6 space-y-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Vehicle Inspection Media</h3>
-                  <p className="mt-1 text-xs text-slate-400">Proof before delivery and after return, linked to this contract.</p>
+                  <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.inspectionMedia')}</h3>
+                  <p className="mt-1 text-xs text-slate-400">{t('contractDetails.inspectionMediaDesc')}</p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <button onClick={() => handleStartInspection('BEFORE_DELIVERY')} disabled={isSubmitting}
                     className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
-                    Before Delivery QR
+                    {t('contractDetails.beforeDeliveryQr')}
                   </button>
                   <button onClick={() => handleStartInspection('AFTER_RETURN')} disabled={isSubmitting}
                     className="rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-[var(--brand-primary-foreground)] hover:opacity-90 disabled:opacity-50">
-                    After Return QR
+                    {t('contractDetails.afterReturnQr')}
                   </button>
                   <button onClick={() => contract && fetchInspections(contract.id)} disabled={isSubmitting}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
-                    Refresh media
+                    {t('contractDetails.refreshMedia')}
                   </button>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InspectionStatusCard title="Before Delivery" inspection={inspections.find((item) => item.type === 'BEFORE_DELIVERY')} />
-                <InspectionStatusCard title="After Return" inspection={inspections.find((item) => item.type === 'AFTER_RETURN')} />
+                <InspectionStatusCard title={t('contractDetails.beforeDelivery')} inspection={inspections.find((item) => item.type === 'BEFORE_DELIVERY')} />
+                <InspectionStatusCard title={t('contractDetails.afterReturn')} inspection={inspections.find((item) => item.type === 'AFTER_RETURN')} />
               </div>
               <InspectionGallery
                 inspections={inspections}
@@ -1280,20 +1269,20 @@ export default function ContractDetails() {
               />
               {contract.vehicleCondition && (
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Legacy Damage Markers</h4>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.legacyDamageMarkers')}</h4>
                   <VehicleInspection
                     value={[
-                      { id: 'front', label: 'Front', damaged: contract.vehicleCondition.frontDamage || false, notes: '' },
-                      { id: 'rear', label: 'Rear', damaged: contract.vehicleCondition.rearDamage || false, notes: '' },
-                      { id: 'leftSide', label: 'Left Side', damaged: contract.vehicleCondition.leftSideDamage || false, notes: '' },
-                      { id: 'rightSide', label: 'Right Side', damaged: contract.vehicleCondition.rightSideDamage || false, notes: '' },
-                      { id: 'windshield', label: 'Windshield', damaged: contract.vehicleCondition.windshieldDamage || false, notes: '' },
-                      { id: 'interior', label: 'Interior', damaged: contract.vehicleCondition.interiorDamage || false, notes: '' },
-                      { id: 'roof', label: 'Roof', damaged: contract.vehicleCondition.roofDamage || false, notes: '' },
-                      { id: 'bumperFront', label: 'Front Bumper', damaged: contract.vehicleCondition.bumperFrontDamage || false, notes: '' },
-                      { id: 'bumperRear', label: 'Rear Bumper', damaged: contract.vehicleCondition.bumperRearDamage || false, notes: '' },
-                      { id: 'hood', label: 'Hood', damaged: contract.vehicleCondition.hoodDamage || false, notes: '' },
-                      { id: 'trunk', label: 'Trunk', damaged: contract.vehicleCondition.trunkDamage || false, notes: '' },
+                      { id: 'front', label: t('contractDetails.zones.front'), damaged: contract.vehicleCondition.frontDamage || false, notes: '' },
+                      { id: 'rear', label: t('contractDetails.zones.rear'), damaged: contract.vehicleCondition.rearDamage || false, notes: '' },
+                      { id: 'leftSide', label: t('contractDetails.zones.leftSide'), damaged: contract.vehicleCondition.leftSideDamage || false, notes: '' },
+                      { id: 'rightSide', label: t('contractDetails.zones.rightSide'), damaged: contract.vehicleCondition.rightSideDamage || false, notes: '' },
+                      { id: 'windshield', label: t('contractDetails.zones.windshield'), damaged: contract.vehicleCondition.windshieldDamage || false, notes: '' },
+                      { id: 'interior', label: t('contractDetails.zones.interior'), damaged: contract.vehicleCondition.interiorDamage || false, notes: '' },
+                      { id: 'roof', label: t('contractDetails.zones.roof'), damaged: contract.vehicleCondition.roofDamage || false, notes: '' },
+                      { id: 'bumperFront', label: t('contractDetails.zones.frontBumper'), damaged: contract.vehicleCondition.bumperFrontDamage || false, notes: '' },
+                      { id: 'bumperRear', label: t('contractDetails.zones.rearBumper'), damaged: contract.vehicleCondition.bumperRearDamage || false, notes: '' },
+                      { id: 'hood', label: t('contractDetails.zones.hood'), damaged: contract.vehicleCondition.hoodDamage || false, notes: '' },
+                      { id: 'trunk', label: t('contractDetails.zones.trunk'), damaged: contract.vehicleCondition.trunkDamage || false, notes: '' },
                     ]}
                     onChange={() => {}}
                     readOnly
@@ -1305,7 +1294,7 @@ export default function ContractDetails() {
 
           {activeTab === 'documents' && (
             <div className="card-premium p-4 sm:p-6 space-y-3 sm:space-y-4">
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Document Checklist</h3>
+              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.documentChecklist')}</h3>
               {contract.documents && contract.documents.length > 0 ? (
                 <div className="space-y-2">
                   {contract.documents.map((doc: any) => (
@@ -1316,36 +1305,36 @@ export default function ContractDetails() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-400 text-center py-8">No documents recorded</p>
+                <p className="text-sm text-slate-400 text-center py-8">{t('contractDetails.noDocumentsRecorded')}</p>
               )}
             </div>
           )}
 
           {activeTab === 'drivers' && (
             <div className="card-premium p-4 sm:p-6 space-y-3 sm:space-y-4">
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Additional Drivers</h3>
+              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.additionalDrivers')}</h3>
               {contract.additionalDrivers && contract.additionalDrivers.length > 0 ? (
                 <div className="space-y-3">
                   {contract.additionalDrivers.map((driver: any) => (
                     <div key={driver.id} className="p-4 bg-slate-50 rounded-2xl">
                       <p className="font-bold text-[#1e293b]">{driver.fullName}</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-400">
-                        {driver.driverLicenseNumber && <span>License: {driver.driverLicenseNumber}</span>}
-                        {driver.phone && <span>Phone: {driver.phone}</span>}
-                        {driver.nationality && <span>Nationality: {driver.nationality}</span>}
+                        {driver.driverLicenseNumber && <span>{t('contractDetails.licenseShort')}: {driver.driverLicenseNumber}</span>}
+                        {driver.phone && <span>{t('contractDetails.fields.phone')}: {driver.phone}</span>}
+                        {driver.nationality && <span>{t('contractDetails.fields.nationality')}: {driver.nationality}</span>}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-400 text-center py-8">No additional drivers</p>
+                <p className="text-sm text-slate-400 text-center py-8">{t('contractDetails.noAdditionalDriversFound')}</p>
               )}
             </div>
           )}
 
           {activeTab === 'activity' && (
             <div className="card-premium p-4 sm:p-6 space-y-3 sm:space-y-4">
-              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">Activity Log</h3>
+              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.activityLog')}</h3>
               {contract.auditLogs && contract.auditLogs.length > 0 ? (
                 <div className="space-y-3">
                   {contract.auditLogs.map((log: any) => (
@@ -1360,7 +1349,7 @@ export default function ContractDetails() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-400 text-center py-8">No activity recorded</p>
+                <p className="text-sm text-slate-400 text-center py-8">{t('contractDetails.noActivityRecorded')}</p>
               )}
             </div>
           )}
@@ -1450,8 +1439,8 @@ export default function ContractDetails() {
           <div className="card-premium p-3 sm:p-5 space-y-2">
             <h4 className="text-sm font-bold text-[#1e293b]">{t('contractDetails.metadata')}</h4>
             <div className="text-xs text-slate-400 space-y-1">
-              <p>{t('contractDetails.created')}: {contract.createdAt ? new Date(contract.createdAt).toLocaleString() : 'N/A'}</p>
-              <p>{t('contractDetails.updated')}: {contract.updatedAt ? new Date(contract.updatedAt).toLocaleString() : 'N/A'}</p>
+              <p>{t('contractDetails.created')}: {contract.createdAt ? new Date(contract.createdAt).toLocaleString() : t('common.notAvailable')}</p>
+              <p>{t('contractDetails.updated')}: {contract.updatedAt ? new Date(contract.updatedAt).toLocaleString() : t('common.notAvailable')}</p>
             </div>
           </div>
         </div>
@@ -1481,11 +1470,11 @@ export default function ContractDetails() {
           depositId={contract.deposit.id!}
           depositAmount={contract.deposit.amount || 0}
           contractId={contract.id}
-          onSuccess={() => { fetchContract(); showToast('Return processed successfully', 'success'); }}
+          onSuccess={() => { fetchContract(); showToast(t('contractDetails.toasts.returnProcessed'), 'success'); }}
         />
       )}
 
-      <Modal isOpen={!!inspectionQr} onClose={() => setInspectionQr(null)} title="Vehicle Inspection QR" maxWidth="md">
+      <Modal isOpen={!!inspectionQr} onClose={() => setInspectionQr(null)} title={t('contractDetails.inspectionQr')} maxWidth="md">
         {inspectionQr && (
           <div className="space-y-4 text-center">
             <div className="mx-auto w-fit rounded-3xl bg-white p-5 shadow-sm">
@@ -1493,10 +1482,10 @@ export default function ContractDetails() {
             </div>
             <div>
               <p className="text-sm font-bold text-slate-800">
-                {inspectionQr.type === 'BEFORE_DELIVERY' ? 'Before Delivery' : 'After Return'} Inspection
+                {t('contractDetails.inspectionTypeLabel', { type: inspectionQr.type === 'BEFORE_DELIVERY' ? t('contractDetails.beforeDelivery') : t('contractDetails.afterReturn') })}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Scan with a phone to open the camera checklist. Expires {new Date(inspectionQr.tokenExpiresAt).toLocaleString()}.
+                {t('contractDetails.scanToOpenChecklist', { date: new Date(inspectionQr.tokenExpiresAt).toLocaleString() })}
               </p>
             </div>
             <input readOnly value={inspectionQr.captureUrl || ''} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500" />
@@ -1512,18 +1501,19 @@ function CameraIcon() {
 }
 
 function InspectionStatusCard({ title, inspection }: { title: string; inspection?: any }) {
+  const { t } = useTranslation();
   const photoCount = (inspection?.media || []).filter((item: any) => item.type === 'PHOTO').length;
   const requiredPhotoCount = 13;
   const completed = inspection?.status === 'COMPLETED' || photoCount >= requiredPhotoCount;
-  const displayStatus = photoCount === 0 ? (inspection ? inspection.status : 'Pending') : completed ? 'COMPLETED' : 'IN_PROGRESS';
+  const displayStatusKey = photoCount === 0 ? (inspection ? inspection.status : 'PENDING') : completed ? 'COMPLETED' : 'IN_PROGRESS';
   return (
     <div className={`rounded-2xl border p-4 ${completed ? 'border-emerald-100 bg-emerald-50' : 'border-amber-100 bg-amber-50'}`}>
       <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</p>
       <p className={`mt-1 text-lg font-black ${completed ? 'text-emerald-700' : 'text-amber-700'}`}>
-        {displayStatus.replace('_', ' ')}
+        {t(`contractDetails.inspectionStatus.${displayStatusKey}`, displayStatusKey.replace('_', ' '))}
       </p>
-      {inspection && <p className="mt-1 text-xs text-slate-500">{photoCount}/{requiredPhotoCount} photos uploaded</p>}
-      {inspection?.mediaExpiresAt && <p className="mt-1 text-xs text-slate-500">Media expires {new Date(inspection.mediaExpiresAt).toLocaleDateString()}</p>}
+      {inspection && <p className="mt-1 text-xs text-slate-500">{t('contractDetails.photosUploadedCount', { count: photoCount, required: requiredPhotoCount })}</p>}
+      {inspection?.mediaExpiresAt && <p className="mt-1 text-xs text-slate-500">{t('contractDetails.mediaExpires', { date: new Date(inspection.mediaExpiresAt).toLocaleDateString() })}</p>}
     </div>
   );
 }

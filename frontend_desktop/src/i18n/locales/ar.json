@@ -1331,7 +1331,7 @@
     "saveChanges": "حفظ التغييرات",
     "saving": "جارٍ الحفظ...",
     "optional": "اختياري",
-    "notAvailable": "N/A",
+    "notAvailable": "غير متاح",
     "remove": "إزالة"
   },
   "branches": {
