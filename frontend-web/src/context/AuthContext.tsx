@@ -75,7 +75,7 @@ interface AuthContextType {
   verifyEmailOtp2FA: (challengeToken: string, code: string, trustDevice?: boolean) => Promise<User>;
   logout: () => Promise<void>;
   register: (data: any) => Promise<User>;
-  googleLogin: (idToken: string) => Promise<any>;
+  exchangeOAuth2Code: (code: string) => Promise<any>;
   refreshAccessToken: () => Promise<boolean>;
   updateProfile: (profile: Partial<UserProfile>) => void;
   updateCurrentUser: (updatedUser: Partial<User>) => void;
@@ -407,8 +407,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return setAuthData(data);
   };
 
-  const googleLogin = async (idToken: string) => {
-    const { data } = await api.post('/auth/google', { idToken });
+  // Second leg of the server-side Google OAuth2 flow: trades the single-use
+  // exchange code OAuth2LoginSuccessHandler redirected back with (see
+  // server/.../security/oauth2/OAuth2ExchangeCodeStore) for the real JWT
+  // pair — identical response shape/handling to password login.
+  const exchangeOAuth2Code = async (code: string) => {
+    const { data } = await api.post('/auth/oauth2/exchange', { code });
     const payload = (data && data.success !== undefined && data.data) ? data.data : data;
     // 2FA challenge — return payload without storing tokens (same as email login path)
     if (payload?.twoFactorRequired) return payload;
@@ -532,7 +536,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyEmailOtp2FA,
       logout,
       register,
-      googleLogin,
+      exchangeOAuth2Code,
       refreshAccessToken,
       updateProfile,
       updateCurrentUser,

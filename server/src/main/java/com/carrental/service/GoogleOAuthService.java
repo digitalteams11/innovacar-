@@ -12,22 +12,28 @@ import com.carrental.repository.UserRepository;
 import com.carrental.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 
 /**
- * Google OAuth 2.0 authentication service.
- * Verifies Google ID tokens and creates/links user accounts.
+ * Resolves a verified Google identity (subject/email/profile claims) into an
+ * Innovacar account — links to or creates a {@link User}, then issues the
+ * exact same JWT pair {@link com.carrental.service.AuthService} issues for
+ * password login. No duplicated authentication logic: this is the single
+ * place OAuth login and password login converge on the same token issuance.
+ *
+ * <p>Token verification itself is NOT this class's job — it's handled
+ * upstream by Spring Security's OIDC login machinery (see
+ * {@code com.carrental.security.oauth2.CustomOidcUserService}), which
+ * validates the ID token's signature, issuer and audience against Google's
+ * published JWKS before this service ever runs. This class only receives
+ * already-trusted claims and performs Innovacar's own business rules
+ * (account linking/creation, blocked/suspended checks, 2FA).
  */
 @Slf4j
 @Service
@@ -42,41 +48,38 @@ public class GoogleOAuthService {
     private final EmailService emailService;
     private final TwoFactorService twoFactorService;
 
-    @Value("${app.google.client-id:}")
-    private String googleClientId;
-
-    private final WebClient webClient = WebClient.builder()
-            .baseUrl("https://oauth2.googleapis.com")
-            .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-            .build();
-
     /**
-     * Authenticates a user via Google OAuth ID token.
-     * If the user doesn't exist, creates a new tenant + admin account.
+     * Resolves an already-verified Google identity into an authenticated
+     * Innovacar session. If a user already exists (matched by Google
+     * subject, then by email), logs them in and links the Google identity
+     * if it wasn't already. Otherwise creates a new tenant + account with
+     * the default {@link Role#ADMIN} (agency owner) role.
+     *
+     * @param sub           Google's stable subject identifier ({@code sub} claim) — the durable Google account ID.
+     * @param email         the account email Google returned.
+     * @param emailVerified Google's own {@code email_verified} claim.
+     * @param name          full display name, may be null.
+     * @param givenName     first name, may be null.
+     * @param picture       avatar URL, may be null.
      */
-    public AuthResponse authenticate(String idToken) {
-        if (!StringUtils.hasText(googleClientId)) {
-            // Fail closed, not open — verifyGoogleToken() below only enforces the
-            // audience check when googleClientId is non-blank, which previously
-            // meant an unconfigured client-id silently accepted a valid ID token
-            // issued to ANY Google OAuth client, not just this app's.
-            throw new GoogleAuthException("Google sign-in is not configured on this server.", "GOOGLE_AUTH_NOT_CONFIGURED");
-        }
-
-        GoogleUserInfo userInfo = verifyGoogleToken(idToken);
-        if (userInfo == null || userInfo.email == null) {
+    public AuthResponse authenticateGoogleUser(String sub, String email, boolean emailVerified,
+                                                String name, String givenName, String picture) {
+        if (!StringUtils.hasText(sub)) {
             throw new GoogleAuthException("Your Google sign-in could not be verified. Please try again.", "GOOGLE_TOKEN_INVALID");
         }
-        if (!userInfo.emailVerified) {
+        if (!StringUtils.hasText(email)) {
+            throw new GoogleAuthException("Your Google account has no email address on file.", "GOOGLE_EMAIL_MISSING");
+        }
+        if (!emailVerified) {
             throw new GoogleAuthException("Your Google account's email address is not verified.", "GOOGLE_EMAIL_NOT_VERIFIED");
         }
 
-        String normalizedEmail = userInfo.email.trim().toLowerCase(java.util.Locale.ROOT);
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
 
         // Check if user already exists by Google ID
-        Optional<User> existingByGoogle = userRepository.findByGoogleId(userInfo.sub);
+        Optional<User> existingByGoogle = userRepository.findByGoogleId(sub);
         if (existingByGoogle.isPresent()) {
-            return authenticateExistingUser(existingByGoogle.get(), userInfo);
+            return authenticateExistingUser(existingByGoogle.get(), picture);
         }
 
         // Check if user exists by email (link Google account) — never creates a
@@ -86,27 +89,34 @@ public class GoogleOAuthService {
         Optional<User> existingByEmail = userRepository.findByEmail(normalizedEmail);
         if (existingByEmail.isPresent()) {
             User user = existingByEmail.get();
-            user.setGoogleId(userInfo.sub);
+            // Provider mismatch: this email already belongs to a different Google
+            // account (a different `sub`) than the one signing in right now —
+            // never silently re-link a second Google identity onto an account.
+            if (StringUtils.hasText(user.getGoogleId()) && !user.getGoogleId().equals(sub)) {
+                throw new GoogleAuthException(
+                        "This email is already linked to a different Google account.", "PROVIDER_MISMATCH");
+            }
+            user.setGoogleId(sub);
             user.setEmailVerified(true);
             user.setAuthProvider(user.getAuthProvider() == AuthProvider.GOOGLE
                     ? AuthProvider.GOOGLE
                     : AuthProvider.LOCAL_AND_GOOGLE);
-            if (!StringUtils.hasText(user.getAvatarUrl()) && StringUtils.hasText(userInfo.picture)) {
-                user.setAvatarUrl(userInfo.picture);
+            if (!StringUtils.hasText(user.getAvatarUrl()) && StringUtils.hasText(picture)) {
+                user.setAvatarUrl(picture);
             }
             userRepository.save(user);
             log.info("Linked Google account to existing user: {}", user.getEmail());
-            return authenticateExistingUser(user, userInfo);
+            return authenticateExistingUser(user, picture);
         }
 
-        // Create new tenant + admin user for Google signup
-        return createUserFromGoogle(userInfo, normalizedEmail);
+        // Create new tenant + owner user for Google signup
+        return createUserFromGoogle(sub, normalizedEmail, name, givenName, picture);
     }
 
     /** Rejects blocked/suspended/locked accounts before ever issuing a token — the
      *  password-login path enforces these through Spring Security's AuthenticationManager;
      *  Google OAuth bypasses that manager entirely, so it must check explicitly instead. */
-    private AuthResponse authenticateExistingUser(User user, GoogleUserInfo userInfo) {
+    private AuthResponse authenticateExistingUser(User user, String picture) {
         if (!user.isEnabled()) {
             throw new GoogleAuthException("Your account has been blocked. Please contact support.", "ACCOUNT_BLOCKED");
         }
@@ -121,16 +131,18 @@ public class GoogleOAuthService {
             throw new GoogleAuthException("Your agency account is suspended. Please contact support.", "ACCOUNT_SUSPENDED");
         }
         user.setLastLoginAt(LocalDateTime.now());
-        if (!StringUtils.hasText(user.getAvatarUrl()) && StringUtils.hasText(userInfo.picture)) {
-            user.setAvatarUrl(userInfo.picture);
+        // Never overwrite a user's own custom avatar with Google's photo — only
+        // fill it in when the account has no avatar of its own yet.
+        if (!StringUtils.hasText(user.getAvatarUrl()) && StringUtils.hasText(picture)) {
+            user.setAvatarUrl(picture);
         }
         userRepository.save(user);
         return buildAuthResponseOrChallenge(user);
     }
 
-    private AuthResponse createUserFromGoogle(GoogleUserInfo info, String normalizedEmail) {
+    private AuthResponse createUserFromGoogle(String sub, String normalizedEmail, String name, String givenName, String picture) {
         // Create tenant
-        String tenantName = info.name != null ? info.name + "'s Agency" : "New Agency";
+        String tenantName = StringUtils.hasText(name) ? name + "'s Agency" : "New Agency";
         Tenant tenant = tenantRepository.save(Tenant.builder()
                 .name(tenantName)
                 .email(normalizedEmail)
@@ -138,16 +150,18 @@ public class GoogleOAuthService {
                 .subscriptionEndDate(LocalDate.now().plusYears(1))
                 .build());
 
-        // Create user
+        // Create user — default role is ADMIN (agency owner) unless business
+        // logic elsewhere reassigns it; Google OAuth never creates EMPLOYEE/
+        // ACCOUNTANT/etc. accounts, only the owning admin of a brand-new agency.
         User user = userRepository.save(User.builder()
                 .email(normalizedEmail)
                 .password("GOOGLE_OAUTH_" + System.currentTimeMillis()) // Random placeholder — not used
                 .role(Role.ADMIN)
                 .tenant(tenant)
                 .emailVerified(true)
-                .googleId(info.sub)
+                .googleId(sub)
                 .authProvider(AuthProvider.GOOGLE)
-                .avatarUrl(info.picture)
+                .avatarUrl(picture)
                 .lastLoginAt(LocalDateTime.now())
                 .failedLoginAttempts(0)
                 .build());
@@ -155,7 +169,7 @@ public class GoogleOAuthService {
         log.info("Created new user via Google OAuth [id={}] '{}' for tenant [id={}]",
                 user.getId(), user.getEmail(), tenant.getId());
 
-        emailService.sendWelcomeEmail(user.getEmail(), info.givenName);
+        emailService.sendWelcomeEmail(user.getEmail(), givenName);
 
         return buildAuthResponse(user);
     }
@@ -199,70 +213,5 @@ public class GoogleOAuthService {
                 .tenantName(user.getTenant().getName())
                 .emailVerified(user.getEmailVerified())
                 .build();
-    }
-
-    // Google issues ID tokens with either form depending on token version/endpoint.
-    private static final Set<String> VALID_GOOGLE_ISSUERS = Set.of("accounts.google.com", "https://accounts.google.com");
-
-    /**
-     * Verifies a Google ID token by calling Google's tokeninfo endpoint.
-     * In production, consider using the Google API Client Library for verification.
-     */
-
-    private GoogleUserInfo verifyGoogleToken(String idToken) {
-        try {
-            Map<String, Object> response = webClient.get()
-                    .uri("/tokeninfo?id_token={token}", idToken)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
-
-            if (response == null) return null;
-
-            // Validate issuer — the tokeninfo endpoint itself only proves the
-            // token is *some* validly-signed Google-issued token; without this
-            // check a token from an unrelated Google product/flow with a
-            // coincidentally-matching audience would still pass.
-            String iss = (String) response.get("iss");
-            if (!VALID_GOOGLE_ISSUERS.contains(iss)) {
-                log.warn("Google token issuer mismatch: got {}", iss);
-                return null;
-            }
-
-            // Validate audience — authenticate() already guarantees googleClientId
-            // is non-blank before this method is ever called, so this always
-            // actually enforces (never silently skipped).
-            String aud = (String) response.get("aud");
-            if (!googleClientId.equals(aud)) {
-                log.warn("Google token audience mismatch: expected {}, got {}", googleClientId, aud);
-                return null;
-            }
-
-            GoogleUserInfo info = new GoogleUserInfo();
-            info.sub = (String) response.get("sub");
-            info.email = (String) response.get("email");
-            info.name = (String) response.get("name");
-            info.givenName = (String) response.get("given_name");
-            info.familyName = (String) response.get("family_name");
-            info.picture = (String) response.get("picture");
-            info.emailVerified = Boolean.TRUE.equals(response.get("email_verified"));
-
-            return info;
-        } catch (Exception e) {
-            log.error("Failed to verify Google token: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    // ── Inner DTO ───────────────────────────────────────────────────────────
-
-    private static class GoogleUserInfo {
-        String sub;
-        String email;
-        String name;
-        String givenName;
-        String familyName;
-        String picture;
-        boolean emailVerified;
     }
 }

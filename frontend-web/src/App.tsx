@@ -428,10 +428,10 @@ function AppShell() {
   return (
     <>
       {authLoading && <SplashScreen />}
-      {/* ThemeProvider wraps ALL routes (public + protected) — Login's
-          Google-button theming (useTheme()) needs it too, and it only talks
-          to the backend when isAuthenticated, so it's safe/inert on public
-          routes. Always mounted (even during the splash) so the resolved
+      {/* ThemeProvider wraps ALL routes (public + protected) — public pages
+          (Login, Register, landing) need the resolved theme/CSS vars too,
+          and it only talks to the backend when isAuthenticated, so it's
+          safe/inert on public routes. Always mounted (even during the splash) so the resolved
           theme/CSS vars are ready the instant route content does mount —
           see ThemeContext's synchronous initial state + useLayoutEffect. */}
       <ThemeProvider>

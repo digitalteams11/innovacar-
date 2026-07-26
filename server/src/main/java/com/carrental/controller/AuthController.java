@@ -5,8 +5,8 @@ import com.carrental.entity.User;
 import com.carrental.exception.TokenRefreshException;
 import com.carrental.exception.TwoFactorVerificationException;
 import com.carrental.security.AuthCookieService;
+import com.carrental.security.oauth2.OAuth2ExchangeCodeStore;
 import com.carrental.service.AuthService;
-import com.carrental.service.GoogleOAuthService;
 import com.carrental.service.TwoFactorService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,7 +27,8 @@ import org.springframework.web.bind.annotation.*;
  * POST /api/auth/register        – Register user under existing tenant
  * POST /api/auth/refresh         – Refresh access token
  * POST /api/auth/logout          – Revoke refresh token
- * POST /api/auth/google          – Google OAuth login/signup
+ * GET  /oauth2/authorization/google – Google OAuth2 login/signup (Spring Security, not this controller)
+ * POST /api/auth/oauth2/exchange – Trade a Google OAuth2 single-use code for a JWT pair
  * POST /api/auth/forgot-password – Request password reset email
  * POST /api/auth/reset-password  – Confirm password reset
  * POST /api/auth/verify-email    – Verify email address
@@ -41,7 +42,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService        authService;
-    private final GoogleOAuthService googleOAuthService;
+    private final OAuth2ExchangeCodeStore oAuth2ExchangeCodeStore;
     private final AuthCookieService  authCookieService;
     private final TwoFactorService   twoFactorService;
 
@@ -214,14 +215,24 @@ public class AuthController {
                 .build());
     }
 
-    // ── Google OAuth ─────────────────────────────────────────────────────────
+    // ── Google OAuth2 (server-side Authorization Code flow) ───────────────────
+    // The actual login happens via GET /oauth2/authorization/google (Spring
+    // Security's own filter chain — see SecurityConfig's .oauth2Login(...) and
+    // com.carrental.security.oauth2.*), which redirects the browser through
+    // Google and back, then to the frontend with a single-use exchange code.
+    // This endpoint is the frontend's second leg: trade that code for the
+    // real JWT pair, exactly like every other login endpoint here.
 
-    @PostMapping("/google")
-    public ResponseEntity<ApiResponse<AuthResponse>> googleAuth(
-            @Valid @RequestBody GoogleAuthRequest request,
+    @PostMapping("/oauth2/exchange")
+    public ResponseEntity<ApiResponse<AuthResponse>> exchangeOAuth2Code(
+            @Valid @RequestBody OAuth2ExchangeRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
-        AuthResponse response = googleOAuthService.authenticate(request.getIdToken());
+        AuthResponse response = oAuth2ExchangeCodeStore.consume(request.getCode());
+        if (response == null) {
+            throw new com.carrental.exception.GoogleAuthException(
+                    "This sign-in link has expired. Please try again.", "OAUTH2_EXPIRED_AUTHORIZATION");
+        }
         return authResponse(response, HttpStatus.OK, httpRequest, httpResponse, "Google login successful");
     }
 

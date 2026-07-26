@@ -1,5 +1,9 @@
 package com.carrental.security;
 
+import com.carrental.security.oauth2.CookieOAuth2AuthorizationRequestRepository;
+import com.carrental.security.oauth2.CustomOidcUserService;
+import com.carrental.security.oauth2.OAuth2LoginFailureHandler;
+import com.carrental.security.oauth2.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -41,6 +45,10 @@ public class SecurityConfig {
     private final SubscriptionFilter      subscriptionFilter;
     private final UserDetailsServiceImpl  userDetailsService;
     private final org.springframework.core.env.Environment environment;
+    private final CookieOAuth2AuthorizationRequestRepository oAuth2AuthorizationRequestRepository;
+    private final CustomOidcUserService   customOidcUserService;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
 
     @Value("${app.cors.allowed-origins:https://innovacar.app,https://www.innovacar.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
     private String allowedOrigins;
@@ -85,8 +93,11 @@ public class SecurityConfig {
             // meant to be framed/embedded, so the policy here is
             // deliberately restrictive — the real, permissive CSP that
             // reflects what the frontend actually loads (Google Fonts,
-            // Google Identity, map tiles, etc.) lives in vercel.json for
-            // the frontend origin, not here.
+            // map tiles, etc.) lives in vercel.json for the frontend
+            // origin, not here. The Google OAuth2 login itself is a plain
+            // top-level browser redirect/callback (/oauth2/authorization/google
+            // → accounts.google.com → /login/oauth2/code/google), never an
+            // embedded frame or fetch, so it needs no CSP allowance here.
             .headers(headers -> headers
                 .httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
@@ -135,7 +146,12 @@ public class SecurityConfig {
                         "/public/branding",
                         "/error",
                         "/api/client-errors",
-                        "/api/client-errors/**").permitAll()
+                        "/api/client-errors/**",
+                        // Google OAuth2 Authorization Code flow — the initial
+                        // redirect-to-Google and Google's callback. Neither can
+                        // require a JWT: the browser hits these unauthenticated.
+                        "/oauth2/**",
+                        "/login/oauth2/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/webhooks/**").permitAll()
@@ -152,6 +168,21 @@ public class SecurityConfig {
             .addFilterAfter(subscriptionFilter,
                             JwtAuthenticationFilter.class)
 
+            // Google OAuth2 Authorization Code login (/oauth2/authorization/google
+            // -> Google consent -> /login/oauth2/code/google). The state/PKCE
+            // handoff between those two requests uses a cookie-based repository
+            // (not HttpSession — this API is fully stateless), the OIDC user
+            // service resolves/links/creates the Innovacar account and issues the
+            // same JWT pair password login does, and the success/failure handlers
+            // redirect back to the frontend with either a single-use exchange
+            // code or a friendly error code. See com.carrental.security.oauth2.*.
+            .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(authorization -> authorization
+                    .authorizationRequestRepository(oAuth2AuthorizationRequestRepository))
+                .userInfoEndpoint(userInfo -> userInfo
+                    .oidcUserService(customOidcUserService))
+                .successHandler(oAuth2LoginSuccessHandler)
+                .failureHandler(oAuth2LoginFailureHandler))
 
             .authenticationProvider(authenticationProvider());
 

@@ -93,6 +93,26 @@ spring:
     resources:
       add-mappings: false
 
+  security:
+    oauth2:
+      client:
+        registration:
+          # Server-side Google Authorization Code login. Spring generates
+          # /oauth2/authorization/google (redirect-to-Google) and
+          # /login/oauth2/code/google (Google's callback) automatically from
+          # this registration — the latter MUST be registered verbatim as an
+          # "Authorized redirect URI" in Google Cloud Console:
+          #   https://api.innovacar.app/login/oauth2/code/google
+          # scope includes "openid" so Spring treats this as OIDC (not plain
+          # OAuth2) — the ID token's signature, issuer and audience are all
+          # verified by Spring Security itself against Google's published
+          # JWKS before CustomOidcUserService ever sees it, replacing the
+          # hand-rolled tokeninfo verification the previous ID-token flow did.
+          google:
+            client-id: "${GOOGLE_CLIENT_ID:}"
+            client-secret: "${GOOGLE_CLIENT_SECRET:}"
+            scope: openid,email,profile
+
 server:
   address: 0.0.0.0
   # Railway assigns a dynamic port via $PORT and expects the app to bind to it.
@@ -177,13 +197,11 @@ app:
   cors:
     allowed-origins: "${CORS_ALLOWED_ORIGINS:https://innovacar.app,https://www.innovacar.app}"
 
-  # ── Google OAuth ─────────────────────────────────────────────────────────────
-  # Must match the frontend's VITE_GOOGLE_CLIENT_ID exactly (same OAuth client),
-  # and is what GoogleOAuthService validates every ID token's "aud" claim
-  # against. Get one at https://console.cloud.google.com/apis/credentials —
-  # set GOOGLE_CLIENT_ID in Railway Variables. Previously this was a hardcoded
-  # "" with no env var placeholder at all, so setting GOOGLE_CLIENT_ID on
-  # Railway had zero effect and audience validation silently never ran.
+  # ── Google OAuth (legacy) ────────────────────────────────────────────────────
+  # No longer used for verification — the server-side OAuth2 login flow
+  # (spring.security.oauth2.client.registration.google, near the top of this
+  # file) is configured independently via the same GOOGLE_CLIENT_ID env var.
+  # Kept only in case any other tooling still reads app.google.client-id.
   google:
     client-id: "${GOOGLE_CLIENT_ID:}"
 

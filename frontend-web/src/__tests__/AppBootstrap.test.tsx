@@ -39,7 +39,7 @@ vi.mock('../context/AuthContext', async (importOriginal) => {
       verifyEmailOtp2FA: vi.fn(),
       logout: vi.fn(),
       register: vi.fn(),
-      googleLogin: vi.fn(),
+      exchangeOAuth2Code: vi.fn(),
       refreshAccessToken: vi.fn(),
       updateProfile: vi.fn(),
       updateCurrentUser: vi.fn(),

@@ -49,7 +49,7 @@ function addRefreshSubscriber(callback: (error?: any) => void) {
 
 
 function isAuthEntryRequest(url: string): boolean {
-  return /\/auth\/(login|signup|register|google|refresh|logout|phone\/verify-otp|forgot-password|verify-reset-code|reset-password)/.test(url);
+  return /\/auth\/(login|signup|register|google|oauth2\/exchange|refresh|logout|phone\/verify-otp|forgot-password|verify-reset-code|reset-password)/.test(url);
 }
 
 function isPublicRequest(url: string): boolean {

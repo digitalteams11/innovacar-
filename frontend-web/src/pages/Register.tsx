@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
@@ -9,10 +8,8 @@ import { motion } from 'framer-motion';
 import { UserPlus, Mail, Lock, Loader2, ArrowLeft, Eye, EyeOff, Check, X } from 'lucide-react';
 import { checkPasswordStrength, isPasswordStrong } from '../lib/passwordPolicy';
 import AuthLogo from '../components/auth/AuthLogo';
-
-declare global {
-  interface Window { google?: any; }
-}
+import GoogleAuthButton from '../components/auth/GoogleAuthButton';
+import { useAuth } from '../context/AuthContext';
 
 /* ============================================
    ANIMATED BACKGROUND
@@ -123,15 +120,13 @@ export default function Register() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { register, googleLogin } = useAuth();
+  const { register } = useAuth();
   const { showToast } = useToast();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const googleBtnRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
 
   // Preserve the landing page's selected language and (optional) preselected
@@ -150,50 +145,6 @@ export default function Register() {
     if (referral) localStorage.setItem('im_referral', referral);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-    if (!clientId) return;
-    let attempts = 0;
-    const initGoogle = () => {
-      if (!window.google) {
-        if (attempts++ < 50) setTimeout(initGoogle, 100);
-        return;
-      }
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredentialResponse,
-          auto_select: false,
-        });
-        if (googleBtnRef.current) {
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: 'outline', size: 'large', width: '100%',
-            text: 'signup_with', shape: 'rectangular',
-          });
-        }
-      } catch (e) {
-        console.warn('Google Sign-In init failed:', e);
-      }
-    };
-    initGoogle();
-  }, []);
-
-  const handleGoogleCredentialResponse = async (response: any) => {
-    setGoogleLoading(true);
-    setError('');
-    try {
-      const userData = await googleLogin(response.credential);
-      if (userData.role === 'SUPER_ADMIN') navigate('/super-admin/dashboard');
-      else if (userData.role === 'EMPLOYEE') navigate('/employee/dashboard');
-      else if (userData.role === 'ACCOUNTANT') navigate('/payments');
-      else navigate('/dashboard');
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Google sign-in failed. Please try again.');
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -361,24 +312,17 @@ export default function Register() {
               </motion.button>
             </form>
 
-            {/* ── Google Sign-In ─────────────────────────────────── */}
-            {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-              <div className="mt-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border-subtle)' }} />
-                  <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{t('login.or')}</span>
-                  <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border-subtle)' }} />
-                </div>
-                {googleLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-                    <Loader2 size={18} className="animate-spin" />
-                    <span className="font-medium">{t('login.signingInWithGoogle')}</span>
-                  </div>
-                ) : (
-                  <div ref={googleBtnRef} className="w-full flex justify-center" />
-                )}
+            {/* ── Google Sign-In: same server-side redirect flow as the login
+                page (GET /oauth2/authorization/google); Google always lands
+                back on /login, which finishes the sign-in either way. ── */}
+            <div className="mt-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border-subtle)' }} />
+                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{t('login.or')}</span>
+                <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border-subtle)' }} />
               </div>
-            )}
+              <GoogleAuthButton disabled={loading} />
+            </div>
 
             <div className="mt-6 pt-6 text-center" style={{ borderTop: '1px solid var(--border-subtle)' }}>
               <Link to="/login" className="inline-flex items-center gap-2 text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">

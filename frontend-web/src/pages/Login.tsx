@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, Lock, Mail, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
@@ -8,13 +8,7 @@ import api, { translateApiError } from '../api/axios';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PUBLIC_NOINDEX } from '../components/seo/robotsPresets';
 import AuthLogo from '../components/auth/AuthLogo';
-import { useTheme } from '../context/ThemeContext';
-
-declare global {
-  interface Window {
-    google?: any;
-  }
-}
+import GoogleAuthButton from '../components/auth/GoogleAuthButton';
 
 /* ============================================
    ANIMATED BACKGROUND BLOBS
@@ -119,108 +113,11 @@ export default function Login() {
   const [emailOtpLoginBusy, setEmailOtpLoginBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, verify2FA, verifyEmailOtp2FA, googleLogin } = useAuth();
+  const [googleExchanging, setGoogleExchanging] = useState(false);
+  const { login, verify2FA, verifyEmailOtp2FA, exchangeOAuth2Code } = useAuth();
   const { t } = useTranslation();
-  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
-  const googleBtnRef = useRef<HTMLDivElement>(null);
-  const googleSubmittingRef = useRef(false);
-
-  const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
-  const googleConfigured = Boolean(googleClientId);
-
-  // Both the "or" divider and the Google button render together, or not at
-  // all — never a divider with nothing underneath it (the reported bug),
-  // and never a button with no divider separating it from the form above.
-  useEffect(() => {
-    if (!googleConfigured) return;
-    let attempts = 0;
-    const maxAttempts = 50;
-    let cancelled = false;
-    let resizeTimer: number | undefined;
-
-    const renderButton = () => {
-      if (!googleBtnRef.current || !window.google) return;
-      googleBtnRef.current.innerHTML = '';
-      const width = Math.round(googleBtnRef.current.getBoundingClientRect().width) || 320;
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: resolvedTheme === 'dark' ? 'filled_black' : 'outline',
-        size: 'large',
-        width,
-        text: 'continue_with',
-        shape: 'rectangular',
-      });
-    };
-
-    const initGoogle = () => {
-      if (cancelled) return;
-      if (!window.google) {
-        attempts++;
-        if (attempts < maxAttempts) setTimeout(initGoogle, 100);
-        return;
-      }
-      try {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleGoogleCredentialResponse,
-          auto_select: false,
-        });
-        renderButton();
-      } catch (e) {
-        console.warn('Google Sign-In initialization failed:', e);
-      }
-    };
-    initGoogle();
-
-    const onResize = () => {
-      window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(renderButton, 150);
-    };
-    window.addEventListener('resize', onResize);
-    return () => {
-      cancelled = true;
-      window.removeEventListener('resize', onResize);
-      window.clearTimeout(resizeTimer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleConfigured, googleClientId, resolvedTheme]);
-
-  const handleGoogleCredentialResponse = async (response: any) => {
-    if (googleSubmittingRef.current) return;
-    googleSubmittingRef.current = true;
-    setGoogleLoading(true);
-    setError('');
-    try {
-      const userData = await googleLogin(response.credential);
-      // 2FA required after Google auth Ã¢â‚¬â€ reuse the same 2FA challenge flow
-      if (userData?.twoFactorRequired) {
-        const methods: string[] = userData.availableTwoFactorMethods ?? ['AUTHENTICATOR'];
-        setChallengeToken(userData.challengeToken || '');
-        setTwoFactorRequired(true);
-        setAvailableMethods(methods);
-        setActiveMethod(methods.includes('AUTHENTICATOR') ? 'AUTHENTICATOR' : 'EMAIL');
-        setTwoFactorCode('');
-        setRecoveryCode('');
-        setUseRecoveryCode(false);
-        setEmailOtpSent(false);
-        setEmailOtpLoginCode('');
-        setEmailOtpLoginCountdown(0);
-        setError('');
-        return;
-      }
-      if (!userData.role) {
-        setError('Your account has no role assigned. Please contact support.');
-        return;
-      }
-      navigateByRole(userData.role);
-    } catch (err: any) {
-      setError(translateApiError(err, t));
-    } finally {
-      setGoogleLoading(false);
-      googleSubmittingRef.current = false;
-    }
-  };
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const navigateByRole = (role: string) => {
     // Session-expired flow stashes the route the user was on so "Sign in
@@ -238,6 +135,58 @@ export default function Login() {
     else if (role === 'ACCOUNTANT') navigate('/payments');
     else navigate('/dashboard');
   };
+
+  // Second leg of the server-side Google OAuth2 redirect flow: the backend
+  // (OAuth2LoginSuccessHandler / OAuth2LoginFailureHandler) always lands the
+  // browser back here with either a one-time exchange code or a friendly
+  // error code in the query string. Runs once on mount; the code/error is
+  // stripped from the URL immediately after, so a page refresh never re-tries
+  // an already-consumed code or re-shows a stale error.
+  useEffect(() => {
+    const oauth2code = searchParams.get('oauth2code');
+    const oauth2error = searchParams.get('oauth2error');
+    if (!oauth2code && !oauth2error) return;
+
+    setSearchParams((params) => {
+      params.delete('oauth2code');
+      params.delete('oauth2error');
+      return params;
+    }, { replace: true });
+
+    if (oauth2error) {
+      setError(t(`errors.${oauth2error}`, t('errors.OAUTH2_LOGIN_FAILED', 'Google sign-in failed. Please try again.') as string) as string);
+      return;
+    }
+
+    setGoogleExchanging(true);
+    setError('');
+    exchangeOAuth2Code(oauth2code as string)
+      .then((userData: any) => {
+        if (userData?.twoFactorRequired) {
+          const methods: string[] = userData.availableTwoFactorMethods ?? ['AUTHENTICATOR'];
+          setChallengeToken(userData.challengeToken || '');
+          setTwoFactorRequired(true);
+          setAvailableMethods(methods);
+          setActiveMethod(methods.includes('AUTHENTICATOR') ? 'AUTHENTICATOR' : 'EMAIL');
+          setTwoFactorCode('');
+          setRecoveryCode('');
+          setUseRecoveryCode(false);
+          setEmailOtpSent(false);
+          setEmailOtpLoginCode('');
+          setEmailOtpLoginCountdown(0);
+          setError('');
+          return;
+        }
+        if (!userData?.role) {
+          setError('Your account has no role assigned. Please contact support.');
+          return;
+        }
+        navigateByRole(userData.role);
+      })
+      .catch((err: any) => setError(translateApiError(err, t)))
+      .finally(() => setGoogleExchanging(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -650,27 +599,25 @@ export default function Login() {
             </AnimatePresence>
 
             {/* Divider + Google Sign-In: both render together, or neither does —
-                a divider with nothing underneath it is exactly the bug being fixed. */}
-            {googleConfigured && (
+                a divider with nothing underneath it is exactly the bug being fixed.
+                Hidden mid-2FA-challenge, where a fresh Google redirect makes no sense. */}
+            {!twoFactorRequired && (
               <>
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center"><div className="w-full" style={{ borderTop: '1px solid var(--border-subtle)' }} /></div>
                   <div className="relative flex justify-center text-xs"><span className="px-3 font-medium" style={{ backgroundColor: 'var(--glass-bg)', color: 'var(--text-muted)' }}>{t('login.or')}</span></div>
                 </div>
 
-                {googleLoading ? (
+                {googleExchanging ? (
                   <div className="w-full min-h-[48px] py-3 rounded-xl flex items-center justify-center gap-2 text-sm" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
                     <Loader2 size={18} className="animate-spin" />
                     <span className="font-medium">{t('login.signingInWithGoogle')}</span>
                   </div>
                 ) : (
-                  // Google's own rendered button (real GSI flow, not a fake
-                  // control) — sized to match this container's full width via
-                  // renderButton's `width` option, themed to follow the app's
-                  // light/dark mode, and localized ("Continue with Google" /
-                  // "Continuer avec Google" / etc. — handled by Google itself
-                  // based on the page's language).
-                  <div ref={googleBtnRef} className="w-full min-h-[48px] flex justify-center" />
+                  // Redirects to GET /oauth2/authorization/google (Spring
+                  // Security's server-side flow) — no Client ID/Secret or
+                  // token ever touches the frontend. See GoogleAuthButton.
+                  <GoogleAuthButton disabled={loading} />
                 )}
               </>
             )}
