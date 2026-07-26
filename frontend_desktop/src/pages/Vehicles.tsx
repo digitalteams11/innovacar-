@@ -24,6 +24,7 @@ interface Vehicle {
   prixJour: number;
   fuel: string;
   transmission: string;
+  seatCount?: number | null;
   imageUrl: string;
   branchId?: number;
   branchName?: string;
@@ -88,6 +89,7 @@ export default function Vehicles() {
     prixJour: '',
     fuel: 'Essence',
     transmission: 'Manual',
+    seatCount: '',
     imageUrl: '',
     branchId: '',
   });
@@ -178,7 +180,7 @@ export default function Vehicles() {
       return;
     }
     setEditingId(null);
-    setForm({ marque: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: 'Essence', transmission: 'Manual', imageUrl: '', branchId: '' });
+    setForm({ marque: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: 'Essence', transmission: 'Manual', seatCount: '', imageUrl: '', branchId: '' });
     setImagePreview(null);
     setIsModalOpen(true);
   };
@@ -193,6 +195,7 @@ export default function Vehicles() {
       prixJour: vehicle.prixJour ? String(vehicle.prixJour) : '',
       fuel: vehicle.fuel || 'Essence',
       transmission: vehicle.transmission || 'Manual',
+      seatCount: vehicle.seatCount != null ? String(vehicle.seatCount) : '',
       imageUrl: vehicle.imageUrl || '',
       branchId: vehicle.branchId ? String(vehicle.branchId) : '',
     });
@@ -218,6 +221,13 @@ export default function Vehicles() {
       showToast(t('vehicles.validation.requiredSummary'), 'warning');
       return;
     }
+    if (form.seatCount.trim()) {
+      const seats = Number(form.seatCount);
+      if (!Number.isInteger(seats) || seats < 1 || seats > 100) {
+        showToast(t('vehicles.validation.seatCountInvalid'), 'warning');
+        return;
+      }
+    }
     try {
       const payload = {
         marque: form.marque,
@@ -227,6 +237,7 @@ export default function Vehicles() {
         plate: form.plate.trim(),
         fuel: form.fuel,
         transmission: form.transmission,
+        seatCount: form.seatCount.trim() ? Number(form.seatCount) : null,
         imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
         branchId: form.branchId ? Number(form.branchId) : null,
       };
@@ -396,7 +407,9 @@ export default function Vehicles() {
                   >
                     <div className="flex flex-col items-center gap-1">
                       <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>5 {t('vehicles.seats')}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>
+                        {vehicle.seatCount != null ? t('vehicles.seats', { count: vehicle.seatCount }) : t('vehicles.seatsNotSpecified')}
+                      </span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <Fuel size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
@@ -515,6 +528,23 @@ export default function Vehicles() {
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.pricePerDay')}</label>
               <input type="number" value={form.prixJour} onChange={(e) => setForm({ ...form, prixJour: e.target.value })} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.seatCount')}</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={100}
+                step={1}
+                placeholder={t('vehicles.seatCountPlaceholder')}
+                value={form.seatCount}
+                onChange={(e) => setForm({ ...form, seatCount: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+              />
             </div>
           </div>
           {hasFeature('MULTI_BRANCH') && (

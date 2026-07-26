@@ -656,18 +656,18 @@ export default function Vehicles() {
                   </div>
 
                   <div
-                    className={`grid ${vehicle.seatCount ? 'grid-cols-3' : 'grid-cols-2'} gap-3 py-3 mb-4 transition-colors`}
+                    className="grid grid-cols-3 gap-3 py-3 mb-4 transition-colors"
                     style={{
                       borderTop: '1px solid var(--border-subtle)',
                       borderBottom: '1px solid var(--border-subtle)',
                     }}
                   >
-                    {!!vehicle.seatCount && (
-                      <div className="flex flex-col items-center gap-1">
-                        <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                        <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{t('vehicles.seats', { count: vehicle.seatCount })}</span>
-                      </div>
-                    )}
+                    <div className="flex flex-col items-center gap-1">
+                      <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>
+                        {vehicle.seatCount != null ? t('vehicles.seats', { count: vehicle.seatCount }) : t('vehicles.seatsNotSpecified')}
+                      </span>
+                    </div>
                     <div className="flex flex-col items-center gap-1">
                       <Fuel size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
                       <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateFuelType(vehicle.fuel || 'Diesel')}</span>
