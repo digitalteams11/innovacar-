@@ -91,6 +91,7 @@ function normalizeVehicles(rows: unknown[]): Vehicle[] {
         statut: String(row.statut ?? row.status ?? 'AVAILABLE'),
         imageUrl: row.imageUrl == null ? undefined : String(row.imageUrl),
         gpsEnabled: Boolean(row.gpsEnabled),
+        seatCount: row.seatCount == null ? null : Number(row.seatCount),
       };
     })
     .filter((vehicle) => Number.isFinite(vehicle.id) && vehicle.id > 0);
@@ -446,7 +447,7 @@ export default function SmartVehicleSelector({
                     {[categoryLabel, fuelLabel, transmissionLabel].filter(Boolean).join(' - ')}
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
-                    {!!vehicle.seatCount && <span className="flex items-center gap-1 text-[10px] text-slate-400">{t('vehicles.seats', { count: vehicle.seatCount })}</span>}
+                    <span className="flex items-center gap-1 text-[10px] text-slate-400">{vehicle.seatCount ?? '—'} {t('vehicles.seats')}</span>
                     {vehicle.fuel && <span className="flex items-center gap-1 text-[10px] text-slate-400"><Fuel size={9} /> {fuelLabel}</span>}
                     {vehicle.transmission && <span className="flex items-center gap-1 text-[10px] text-slate-400"><Gauge size={9} /> {transmissionLabel}</span>}
                     {vehicle.gpsEnabled && <span className="text-[10px] font-bold text-brand-400">GPS</span>}

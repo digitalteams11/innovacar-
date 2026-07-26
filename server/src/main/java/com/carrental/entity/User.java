@@ -57,7 +57,7 @@ public class User implements UserDetails {
 
     /** How this user can authenticate — LOCAL, GOOGLE, or LOCAL_AND_GOOGLE. See AuthProvider. */
     @Enumerated(EnumType.STRING)
-    @Column(name = "auth_provider", length = 20, nullable = false)
+    @Column(name = "auth_provider", length = 20, nullable = false, columnDefinition = "varchar(20) default 'LOCAL'")
     @Builder.Default
     private AuthProvider authProvider = AuthProvider.LOCAL;
 

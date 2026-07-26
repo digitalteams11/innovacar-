@@ -8,7 +8,7 @@ import { SearchInput } from '../components/SearchInput';
 import { FilterChips } from '../components/FilterChips';
 import { StatusBadge } from '../components/StatusBadge';
 import { motion } from 'framer-motion';
-import { Plus, Download, ChevronRight, Fuel, Shield, Users as UsersIcon, Camera, Loader2, Car, RotateCcw, Trash2, AlertTriangle, FileText, FileSpreadsheet, FileType } from 'lucide-react';
+import { Plus, Download, ChevronRight, Fuel, Shield, Users as UsersIcon, Camera, Loader2, Car, RotateCcw, Trash2, AlertTriangle, FileText, FileSpreadsheet, FileType, SlidersHorizontal, MoreHorizontal, X } from 'lucide-react';
 import api from '../api/axios';
 import { useSubscription } from '../hooks/useSubscription';
 import ApiErrorState from '../components/ApiErrorState';
@@ -18,6 +18,8 @@ import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 interface Vehicle {
   id: number;
   marque: string;
+  brand?: string;
+  model?: string;
   category: string;
   plate: string;
   statut: string;
@@ -52,10 +54,15 @@ const statusVariantMap: Record<string, 'available' | 'rented' | 'maintenance' | 
   ARCHIVED: 'neutral',
 };
 
-const normalizeVehicle = (vehicle: Vehicle): Vehicle => ({
-  ...vehicle,
-  statut: normalizeStatusCode(vehicle.statut) || 'AVAILABLE',
-});
+const normalizeVehicle = (vehicle: Vehicle): Vehicle => {
+  const parts = String(vehicle.marque || '').trim().split(/\s+/, 2);
+  return {
+    ...vehicle,
+    brand: vehicle.brand || parts[0] || '',
+    model: vehicle.model || (parts.length > 1 ? String(vehicle.marque).trim().slice(parts[0].length).trim() : ''),
+    statut: normalizeStatusCode(vehicle.statut) || 'AVAILABLE',
+  };
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -79,24 +86,36 @@ const itemVariants = {
 export default function Vehicles() {
   const [filter, setFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [availabilityIds, setAvailabilityIds] = useState<Set<number> | null>(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    category: '', brand: '', fuel: '', transmission: '', seats: '',
+    minPrice: '', maxPrice: '', startDate: '', endDate: '',
+  });
   const [data, setData] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLoadingIndicator, setShowLoadingIndicator] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'view' | 'edit'>('create');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
-    marque: '',
+    brand: '',
+    model: '',
     category: '',
     plate: '',
     statut: 'AVAILABLE',
     prixJour: '',
-    fuel: 'Essence',
-    transmission: 'Manual',
+    fuel: '',
+    transmission: '',
     seatCount: '',
     imageUrl: '',
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [initialForm, setInitialForm] = useState<typeof form | null>(null);
   const [trashData, setTrashData] = useState<TrashedVehicle[]>([]);
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashLoadError, setTrashLoadError] = useState('');
@@ -104,7 +123,7 @@ export default function Vehicles() {
   const [purgingId, setPurgingId] = useState<number | null>(null);
 
   const { showToast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { canCreateVehicle, status } = useSubscription();
 
   const fetchVehicles = useCallback(async () => {
@@ -121,15 +140,44 @@ export default function Vehicles() {
     } catch (err: any) {
       console.error('Failed to fetch vehicles', err);
       setData([]);
-      setLoadError(err?.userMessage || 'Unable to load vehicle information. Please try again later.');
+      setLoadError(t('vehicles.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchVehicles();
   }, [fetchVehicles]);
+  useEffect(() => {
+    if (!loading) {
+      setShowLoadingIndicator(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setShowLoadingIndicator(true), 250);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+  useEffect(() => {
+    const { startDate, endDate } = advancedFilters;
+    if (!startDate || !endDate || startDate > endDate) {
+      setAvailabilityIds(null);
+      return;
+    }
+    let cancelled = false;
+    setAvailabilityLoading(true);
+    api.get('/availability/vehicles', {
+      params: { startDate, endDate, startTime: '09:00', endTime: '18:00' },
+    }).then(({ data: response }) => {
+      if (cancelled) return;
+      const rows = Array.isArray(response?.data) ? response.data : [];
+      setAvailabilityIds(new Set(rows.map((row: { id: number }) => Number(row.id))));
+    }).catch(() => {
+      if (!cancelled) setAvailabilityIds(new Set());
+    }).finally(() => {
+      if (!cancelled) setAvailabilityLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [advancedFilters.startDate, advancedFilters.endDate]);
 
   const fetchTrash = useCallback(async () => {
     try {
@@ -186,19 +234,34 @@ export default function Vehicles() {
 
   const filters = [
     { id: 'All', label: t('vehicles.all') },
-    { id: 'Available', label: t('vehicles.available') },
-    { id: 'Rented', label: t('vehicles.rented') },
-    { id: 'In_Maintenance', label: t('vehicles.maintenance') },
-    { id: 'Out_Of_Service', label: t('vehicles.outOfService') },
-    { id: 'Archived', label: t('vehicles.archived') },
-    { id: 'Trash', label: t('vehicles.trash') },
+    { id: 'AVAILABLE', label: t('vehicles.available') },
+    { id: 'RESERVED', label: t('common.reserved') },
+    { id: 'RENTED', label: t('vehicles.rented') },
+    { id: 'MAINTENANCE', label: t('vehicles.maintenance') },
+    { id: 'OUT_OF_SERVICE', label: t('vehicles.outOfService') },
   ];
 
+  const categories = Array.from(new Set(data.map((v) => v.category).filter(Boolean))).sort();
+  const brands = Array.from(new Set(data.map((v) => v.brand).filter((value): value is string => Boolean(value)))).sort();
+  const fuels = Array.from(new Set(data.map((v) => v.fuel).filter(Boolean))).sort();
+  const transmissions = Array.from(new Set(data.map((v) => v.transmission).filter(Boolean))).sort();
+
   const filteredData = data.filter((v) => {
-    const matchesFilter = filter === 'All' || v.statut === filter.toUpperCase();
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = v.marque?.toLowerCase().includes(q) || v.category?.toLowerCase().includes(q) || v.plate?.toLowerCase().includes(q);
-    return matchesFilter && matchesSearch;
+    const technicalMaintenance = v.statut === 'MAINTENANCE' || v.statut === 'IN_MAINTENANCE';
+    const matchesStatus = filter === 'All'
+      || (filter === 'MAINTENANCE' ? technicalMaintenance : v.statut === filter);
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q || [v.marque, v.brand, v.model, v.category, v.plate]
+      .some((value) => value?.toLowerCase().includes(q));
+    const matchesAdvanced = (!advancedFilters.category || v.category === advancedFilters.category)
+      && (!advancedFilters.brand || v.brand === advancedFilters.brand)
+      && (!advancedFilters.fuel || v.fuel === advancedFilters.fuel)
+      && (!advancedFilters.transmission || v.transmission === advancedFilters.transmission)
+      && (!advancedFilters.seats || v.seatCount === Number(advancedFilters.seats))
+      && (!advancedFilters.minPrice || v.prixJour >= Number(advancedFilters.minPrice))
+      && (!advancedFilters.maxPrice || v.prixJour <= Number(advancedFilters.maxPrice))
+      && (availabilityIds == null || availabilityIds.has(v.id));
+    return matchesStatus && matchesSearch && matchesAdvanced;
   });
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -280,28 +343,66 @@ export default function Vehicles() {
       return;
     }
     setEditingId(null);
+    setSelectedVehicle(null);
+    setModalMode('create');
+    setInitialForm(null);
     setFieldErrors({});
-    setForm({ marque: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: 'Essence', transmission: 'Manual', seatCount: '', imageUrl: '' });
+    setForm({ brand: '', model: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: '', transmission: '', seatCount: '', imageUrl: '' });
     setImagePreview(null);
     setIsModalOpen(true);
   };
 
-  const openEdit = (vehicle: Vehicle) => {
+  const vehicleToForm = (vehicle: Vehicle): typeof form => ({
+    brand: vehicle.brand || '',
+    model: vehicle.model || '',
+    category: vehicle.category || '',
+    plate: vehicle.plate || '',
+    statut: vehicle.statut || 'AVAILABLE',
+    prixJour: vehicle.prixJour != null ? String(vehicle.prixJour) : '',
+    fuel: vehicle.fuel || '',
+    transmission: vehicle.transmission || '',
+    seatCount: vehicle.seatCount != null ? String(vehicle.seatCount) : '',
+    imageUrl: vehicle.imageUrl || '',
+  });
+
+  const openDetails = (vehicle: Vehicle) => {
     setEditingId(vehicle.id);
+    setSelectedVehicle(vehicle);
+    setModalMode('view');
+    setInitialForm(null);
     setFieldErrors({});
-    setForm({
-      marque: vehicle.marque || '',
-      category: vehicle.category || '',
-      plate: vehicle.plate || '',
-      statut: vehicle.statut || 'AVAILABLE',
-      prixJour: vehicle.prixJour ? String(vehicle.prixJour) : '',
-      fuel: vehicle.fuel || 'Essence',
-      transmission: vehicle.transmission || 'Manual',
-      seatCount: vehicle.seatCount != null ? String(vehicle.seatCount) : '',
-      imageUrl: vehicle.imageUrl || '',
-    });
-    setImagePreview(vehicle.imageUrl || null);
     setIsModalOpen(true);
+  };
+
+  const startEditing = () => {
+    if (!selectedVehicle) return;
+    const nextForm = vehicleToForm(selectedVehicle);
+    setForm(nextForm);
+    setInitialForm(nextForm);
+    setImagePreview(selectedVehicle.imageUrl || null);
+    setFieldErrors({});
+    setModalMode('edit');
+  };
+
+  const cancelEditing = () => {
+    if (initialForm) {
+      setForm(initialForm);
+      setImagePreview(initialForm.imageUrl || null);
+    }
+    setFieldErrors({});
+    setModalMode('view');
+  };
+
+  const hasUnsavedChanges = modalMode === 'edit' && initialForm != null
+    && JSON.stringify(form) !== JSON.stringify(initialForm);
+
+  const closeVehicleModal = () => {
+    if (hasUnsavedChanges && !window.confirm(t('vehicles.unsavedChangesConfirm'))) return;
+    setIsModalOpen(false);
+    setEditingId(null);
+    setSelectedVehicle(null);
+    setInitialForm(null);
+    setFieldErrors({});
   };
 
   const updateFormField = (field: keyof typeof form, value: string) => {
@@ -316,10 +417,17 @@ export default function Vehicles() {
 
   const validateVehicleForm = () => {
     const errors: Record<string, string> = {};
-    if (!form.marque.trim()) errors.marque = t('vehicles.validation.brandRequired');
+    if (!form.brand.trim()) errors.brand = t('vehicles.validation.brandRequired');
+    if (!form.model.trim()) errors.model = t('vehicles.validation.modelRequired', { defaultValue: 'Le modèle est obligatoire.' });
+    if (!form.category) errors.category = t('vehicles.validation.categoryRequired', { defaultValue: 'La catégorie est obligatoire.' });
+    if (!form.fuel) errors.fuel = t('vehicles.validation.fuelRequired', { defaultValue: 'Le carburant est obligatoire.' });
+    if (!form.transmission) errors.transmission = t('vehicles.validation.transmissionRequired', { defaultValue: 'La transmission est obligatoire.' });
     if (!form.plate.trim()) errors.plate = t('vehicles.validation.plateRequired');
     if (!form.prixJour.trim()) errors.prixJour = t('vehicles.validation.dailyPriceRequired');
-    if (form.seatCount.trim()) {
+    else if (!Number.isFinite(Number(form.prixJour)) || Number(form.prixJour) < 0) errors.prixJour = t('vehicles.validation.dailyPriceInvalid');
+    if (!form.seatCount.trim()) {
+      errors.seatCount = t('vehicles.validation.seatCountRequired', { defaultValue: 'Le nombre de places est obligatoire.' });
+    } else {
       const seats = Number(form.seatCount);
       if (!Number.isInteger(seats) || seats < 1 || seats > 100) {
         errors.seatCount = t('vehicles.validation.seatCountInvalid');
@@ -349,27 +457,36 @@ export default function Vehicles() {
     }
     try {
       const payload = {
-        marque: form.marque,
+        brand: form.brand.trim(),
+        model: form.model.trim(),
+        marque: `${form.brand.trim()} ${form.model.trim()}`,
         prixJour: Number(form.prixJour),
-        statut: form.statut,
-        category: form.category || 'Economy',
+        statut: editingId && ['RESERVED', 'RENTED'].includes(form.statut) ? undefined : form.statut,
+        category: form.category || null,
         plate: form.plate.trim(),
         fuel: form.fuel,
         transmission: form.transmission,
         seatCount: form.seatCount.trim() ? Number(form.seatCount) : null,
-        imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
+        imageUrl: form.imageUrl || null,
       };
       if (editingId) {
         const { data: updated } = await api.put(`/vehicles/${editingId}`, payload);
-        setData((prev) => prev.map((v) => (v.id === editingId ? updated : v)));
-        showToast(t('toast.success', { action: t('common.update') }));
+        const normalized = normalizeVehicle(updated);
+        setData((prev) => prev.map((v) => (v.id === editingId ? normalized : v)));
+        setSelectedVehicle(normalized);
+        setForm(vehicleToForm(normalized));
+        setInitialForm(null);
+        setModalMode('view');
+        showToast(t('vehicles.updateSuccess'));
       } else {
         const { data: newVehicle } = await api.post('/vehicles', payload);
-        setData((prev) => [...prev, newVehicle]);
+        setData((prev) => [...prev, normalizeVehicle(newVehicle)]);
         showToast(t('toast.newVehicleAdded'));
       }
-      setIsModalOpen(false);
-      setEditingId(null);
+      if (!editingId) {
+        setIsModalOpen(false);
+        setEditingId(null);
+      }
       setFieldErrors({});
     } catch (err: any) {
       const details = (err as any).response?.data?.details;
@@ -407,7 +524,7 @@ export default function Vehicles() {
     <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
       <GlassPageHeader
         title={t('vehicles.title')}
-        subtitle={t('vehicles.subtitle')}
+        subtitle={t('vehicles.subtitle', { count: data.length })}
         icon={Car}
         actions={
           <>
@@ -447,15 +564,64 @@ export default function Vehicles() {
           onChange={setSearchQuery}
           className="w-full"
         />
-        <FilterChips
-          options={filters}
-          activeId={filter}
-          onChange={(id) => {
-            setFilter(id);
-            const label = filters.find((f) => f.id === id)?.label;
-            if (label) showToast(t('toast.filterApplied', { action: label }), 'info');
-          }}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterChips
+            options={filters}
+            activeId={filter}
+            onChange={setFilter}
+          />
+          <label className="relative inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
+            <MoreHorizontal size={15} />
+            <span>{t('vehicles.more')}</span>
+            <select
+              aria-label={t('vehicles.more')}
+              value={filter === 'ARCHIVED' || filter === 'Trash' ? filter : ''}
+              onChange={(event) => event.target.value && setFilter(event.target.value)}
+              className="absolute inset-0 cursor-pointer opacity-0"
+            >
+              <option value="">{t('vehicles.more')}</option>
+              <option value="ARCHIVED">{t('vehicles.archived')}</option>
+              <option value="Trash">{t('vehicles.trash')}</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowAdvancedFilters((current) => !current)}
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+          >
+            <SlidersHorizontal size={15} />
+            {t('vehicles.filtersButton')}
+          </button>
+        </div>
+        {showAdvancedFilters && (
+          <div dir={i18n.dir()} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 text-start sm:p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">{t('vehicles.advancedFilters')}</p>
+              <button type="button" onClick={() => setShowAdvancedFilters(false)} className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ['category', t('vehicles.category'), categories],
+                ['brand', t('vehicles.brand'), brands],
+                ['fuel', t('vehicles.fuel'), fuels],
+                ['transmission', t('vehicles.transmission'), transmissions],
+              ].map(([key, label, options]) => (
+                <label key={String(key)} className="space-y-1 text-xs font-medium text-[var(--text-muted)]">
+                  <span>{String(label)}</span>
+                  <select value={advancedFilters[key as 'category' | 'brand' | 'fuel' | 'transmission']} onChange={(event) => setAdvancedFilters((current) => ({ ...current, [key as string]: event.target.value }))} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-primary)]">
+                    <option value="">{t('common.all')}</option>
+                    {(options as string[]).map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+              ))}
+              <label className="space-y-1 text-xs font-medium text-[var(--text-muted)]"><span>{t('vehicles.seatCount')}</span><input type="number" min={1} step={1} value={advancedFilters.seats} onChange={(event) => setAdvancedFilters((current) => ({ ...current, seats: event.target.value }))} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-primary)]" /></label>
+              <label className="space-y-1 text-xs font-medium text-[var(--text-muted)]"><span>{t('vehicles.minPrice')}</span><input type="number" min={0} value={advancedFilters.minPrice} onChange={(event) => setAdvancedFilters((current) => ({ ...current, minPrice: event.target.value }))} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-primary)]" /></label>
+              <label className="space-y-1 text-xs font-medium text-[var(--text-muted)]"><span>{t('vehicles.maxPrice')}</span><input type="number" min={0} value={advancedFilters.maxPrice} onChange={(event) => setAdvancedFilters((current) => ({ ...current, maxPrice: event.target.value }))} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-primary)]" /></label>
+              <div className="space-y-1 text-xs font-medium text-[var(--text-muted)] sm:col-span-2 lg:col-span-2"><span>{t('vehicles.availableBetween')}</span><div className="grid grid-cols-2 gap-2"><input type="date" value={advancedFilters.startDate} onChange={(event) => setAdvancedFilters((current) => ({ ...current, startDate: event.target.value }))} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-primary)]" /><input type="date" min={advancedFilters.startDate} value={advancedFilters.endDate} onChange={(event) => setAdvancedFilters((current) => ({ ...current, endDate: event.target.value }))} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-primary)]" /></div>{availabilityLoading && <span className="inline-flex items-center gap-1"><Loader2 size={12} className="animate-spin" />{t('common.loading')}</span>}</div>
+            </div>
+            <button type="button" onClick={() => { setAdvancedFilters({ category: '', brand: '', fuel: '', transmission: '', seats: '', minPrice: '', maxPrice: '', startDate: '', endDate: '' }); setAvailabilityIds(null); }} className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl border border-brand-500/30 bg-brand-500/10 px-4 py-2 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-500/15 dark:text-brand-400">{t('common.reset')}</button>
+          </div>
+        )}
       </div>
 
       {filter === 'Trash' ? (
@@ -592,8 +758,10 @@ export default function Vehicles() {
       ) : loadError ? (
         <ApiErrorState message={loadError} onRetry={fetchVehicles} />
       ) : loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 size={32} className="animate-spin text-brand-500" />
+        <div className="flex min-h-40 items-center justify-center py-12" aria-busy="true">
+          {showLoadingIndicator && (
+            <Loader2 size={20} className="animate-spin text-brand-500" aria-label={t('common.loading')} />
+          )}
         </div>
       ) : (
         <motion.div
@@ -645,7 +813,7 @@ export default function Vehicles() {
                     <div className="min-w-0">
                       <h3 className="text-sm font-semibold group-hover:text-brand-500 transition-colors" style={{ color: 'var(--text-primary)' }}>{vehicle.marque}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{translateVehicleCategory(vehicle.category || 'Economy')}</span>
+                        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{vehicle.category ? translateVehicleCategory(vehicle.category) : '—'}</span>
                         <div className="w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--border-subtle)' }}></div>
                         <span className="text-[11px] font-mono font-medium" style={{ color: 'var(--text-muted)' }}>{vehicle.plate || `PLT-${vehicle.id}`}</span>
                       </div>
@@ -656,30 +824,29 @@ export default function Vehicles() {
                   </div>
 
                   <div
-                    className={`grid ${vehicle.seatCount ? 'grid-cols-3' : 'grid-cols-2'} gap-3 py-3 mb-4 transition-colors`}
+                    className="grid grid-cols-3 gap-3 py-3 mb-4 transition-colors"
                     style={{
                       borderTop: '1px solid var(--border-subtle)',
                       borderBottom: '1px solid var(--border-subtle)',
                     }}
                   >
-                    {!!vehicle.seatCount && (
-                      <div className="flex flex-col items-center gap-1">
-                        <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                        <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{t('vehicles.seats', { count: vehicle.seatCount })}</span>
-                      </div>
-                    )}
+                    <div className="flex flex-col items-center gap-1">
+                      <UsersIcon size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
+                      <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{vehicle.seatCount ?? '—'}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{t('vehicles.seats')}</span>
+                    </div>
                     <div className="flex flex-col items-center gap-1">
                       <Fuel size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateFuelType(vehicle.fuel || 'Diesel')}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.fuel ? translateFuelType(vehicle.fuel) : '—'}</span>
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <Shield size={15} className="group-hover:text-brand-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{translateTransmission(vehicle.transmission || 'Manual')}</span>
+                      <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{vehicle.transmission ? translateTransmission(vehicle.transmission) : '—'}</span>
                     </div>
                   </div>
 
                   <motion.button
-                    onClick={() => openEdit(vehicle)}
+                    onClick={() => openDetails(vehicle)}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
@@ -688,7 +855,7 @@ export default function Vehicles() {
                       color: 'var(--text-primary)',
                     }}
                   >
-                    {t('vehicles.manageDetails')}
+                    {t('vehicles.viewDetails')}
                     <ChevronRight size={16} />
                   </motion.button>
                 </div>
@@ -698,7 +865,11 @@ export default function Vehicles() {
           {filteredData.length === 0 && (
             <div className="col-span-full py-12 text-center" style={{ color: 'var(--text-muted)' }}>
               <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {data.length === 0 ? t('vehicles.emptyTitle') : t('vehicles.noFilterResults')}
+                {filter === 'AVAILABLE' && !searchQuery
+                  ? t('vehicles.noAvailableVehicles')
+                  : data.length === 0
+                    ? t('vehicles.emptyTitle')
+                    : t('vehicles.noFilterResults')}
               </p>
               <p className="mt-1 text-xs">
                 {data.length === 0 ? t('vehicles.emptyHint') : t('vehicles.noFilterHint')}
@@ -708,7 +879,57 @@ export default function Vehicles() {
         </motion.div>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingId(null); }} title={editingId ? t('vehicles.manageDetails') : t('vehicles.addVehicle')} maxWidth="max-w-xl">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeVehicleModal}
+        title={modalMode === 'view' ? t('vehicles.detailsTitle') : modalMode === 'edit' ? t('vehicles.editTitle') : t('vehicles.addVehicle')}
+        maxWidth="max-w-xl"
+      >
+        {modalMode === 'view' && selectedVehicle ? (
+          <div className="space-y-5">
+            <div className="h-48 overflow-hidden rounded-2xl bg-[var(--bg-hover)]">
+              {selectedVehicle.imageUrl ? (
+                <img src={selectedVehicle.imageUrl} alt={selectedVehicle.marque} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-[var(--text-muted)]"><Car size={40} /></div>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-lg font-bold text-[var(--text-primary)]">{selectedVehicle.brand || '—'} {selectedVehicle.model || ''}</h4>
+                <p className="text-sm text-[var(--text-muted)]">{selectedVehicle.plate || '—'}</p>
+              </div>
+              <StatusBadge variant={statusVariantMap[selectedVehicle.statut] || 'neutral'}>
+                {translateVehicleStatus(selectedVehicle.statut)}
+              </StatusBadge>
+            </div>
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 sm:grid-cols-2">
+              {[
+                [t('vehicles.brand'), selectedVehicle.brand || '—'],
+                [t('vehicles.model'), selectedVehicle.model || '—'],
+                [t('vehicles.category'), selectedVehicle.category ? translateVehicleCategory(selectedVehicle.category) : '—'],
+                [t('vehicles.registration'), selectedVehicle.plate || '—'],
+                [t('vehicles.pricePerDay'), `${selectedVehicle.prixJour ?? '—'} DH`],
+                [t('vehicles.fuel'), selectedVehicle.fuel ? translateFuelType(selectedVehicle.fuel) : '—'],
+                [t('vehicles.transmission'), selectedVehicle.transmission ? translateTransmission(selectedVehicle.transmission) : '—'],
+                [t('vehicles.seatCount'), selectedVehicle.seatCount ?? '—'],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</dt>
+                  <dd className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+              <button type="button" onClick={closeVehicleModal} className="rounded-xl border border-[var(--border-subtle)] px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)]">
+                {t('vehicles.close')}
+              </button>
+              <button type="button" onClick={startEditing} className="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600">
+                {t('vehicles.edit')}
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4">
           {/* Image Upload */}
           <div
@@ -752,65 +973,76 @@ export default function Vehicles() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.brandModel')}</label>
-            <input type="text" value={form.marque} onChange={(e) => updateFormField('marque', e.target.value)} aria-invalid={Boolean(fieldErrors.marque)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('marque'), color: 'var(--text-primary)' }} />
-            {fieldError('marque')}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.brand')} *</label>
+              <input type="text" value={form.brand} onChange={(e) => updateFormField('brand', e.target.value)} aria-invalid={Boolean(fieldErrors.brand)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('brand'), color: 'var(--text-primary)' }} />
+              {fieldError('brand')}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.model', { defaultValue: 'Modèle' })} *</label>
+              <input type="text" value={form.model} onChange={(e) => updateFormField('model', e.target.value)} aria-invalid={Boolean(fieldErrors.model)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('model'), color: 'var(--text-primary)' }} />
+              {fieldError('model')}
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.category')}</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.category')} *</label>
               <select value={form.category} onChange={(e) => updateFormField('category', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
                 <option value="">{t('vehicles.selectCategory')}</option>
                 {vehicleCategories.map((category) => <option key={category} value={category}>{translateVehicleCategory(category)}</option>)}
               </select>
+              {fieldError('category')}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.plate')}</label>
-              <input type="text" value={form.plate} onChange={(e) => updateFormField('plate', e.target.value)} aria-invalid={Boolean(fieldErrors.plate)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('plate'), color: 'var(--text-primary)' }} />
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.registration', { defaultValue: 'Immatriculation' })} *</label>
+              <input type="text" placeholder={t('vehicles.registrationPlaceholder', { defaultValue: 'Ex. : 12345-A-6' })} value={form.plate} onChange={(e) => updateFormField('plate', e.target.value)} aria-invalid={Boolean(fieldErrors.plate)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('plate'), color: 'var(--text-primary)' }} />
               {fieldError('plate')}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.status')}</label>
-              <select value={form.statut} onChange={(e) => updateFormField('statut', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+              <select value={form.statut} disabled={Boolean(editingId && ['RESERVED', 'RENTED'].includes(form.statut))} onChange={(e) => updateFormField('statut', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+                {editingId && ['RESERVED', 'RENTED'].includes(form.statut) && (
+                  <option value={form.statut}>{translateVehicleStatus(form.statut)}</option>
+                )}
                 <option value="AVAILABLE">{t('common.available')}</option>
-                <option value="RESERVED">{t('common.reserved')}</option>
-                <option value="RENTED">{t('common.rented')}</option>
                 <option value="MAINTENANCE">{t('common.maintenance')}</option>
                 <option value="OUT_OF_SERVICE">{t('vehicles.outOfService')}</option>
-                <option value="SOLD">{t('vehicles.sold')}</option>
-                <option value="ARCHIVED">{t('vehicles.archived')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.pricePerDay')}</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.pricePerDay')} *</label>
               <input type="number" value={form.prixJour} onChange={(e) => updateFormField('prixJour', e.target.value)} aria-invalid={Boolean(fieldErrors.prixJour)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('prixJour'), color: 'var(--text-primary)' }} />
               {fieldError('prixJour')}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.fuel')}</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.fuel')} *</label>
               <select value={form.fuel} onChange={(e) => updateFormField('fuel', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+                <option value="">—</option>
                 <option value="Essence">{t('vehicles.essence')}</option>
                 <option value="Diesel">{t('vehicles.diesel')}</option>
                 <option value="Hybrid">{t('vehicles.hybrid')}</option>
                 <option value="Electric">{t('vehicles.electric')}</option>
               </select>
+              {fieldError('fuel')}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.transmission')}</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.transmission')} *</label>
               <select value={form.transmission} onChange={(e) => updateFormField('transmission', e.target.value)} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+                <option value="">—</option>
                 <option value="Manual">{t('vehicles.manual')}</option>
                 <option value="Automatic">{t('vehicles.automatic')}</option>
               </select>
+              {fieldError('transmission')}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.seatCount')}</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.seatCount')} *</label>
               <input
                 type="number"
                 inputMode="numeric"
@@ -827,17 +1059,23 @@ export default function Vehicles() {
               {fieldError('seatCount')}
             </div>
           </div>
-          <div className="pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            {modalMode === 'edit' && (
+              <button type="button" onClick={cancelEditing} className="rounded-xl border border-[var(--border-subtle)] px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)]">
+                {t('vehicles.cancel')}
+              </button>
+            )}
             <motion.button
               onClick={saveVehicle}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 transition-all"
+              className="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10"
             >
-              {editingId ? t('vehicles.manageDetails') : t('vehicles.addVehicle')}
+              {modalMode === 'edit' ? t('vehicles.saveChanges') : t('vehicles.addVehicle')}
             </motion.button>
           </div>
         </div>
+        )}
       </Modal>
 
       {/* Export modal — PDF is the primary/default format for agency users */}

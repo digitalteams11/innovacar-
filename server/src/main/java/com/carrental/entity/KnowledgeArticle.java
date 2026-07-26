@@ -39,7 +39,7 @@ public class KnowledgeArticle {
     private LocalDateTime updatedAt;
 
     /** When true, this article is surfaced in the Help Center's FAQ section (title=question, content=answer). */
-    @Column(name = "is_faq", nullable = false)
+    @Column(name = "is_faq", nullable = false, columnDefinition = "boolean default false")
     private Boolean isFaq;
 
     @PrePersist

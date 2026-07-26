@@ -85,6 +85,12 @@ interface ThemeContextType {
 }
 
 const STORAGE_KEY = 'rentcar_appearance';
+const hasAccessToken = () => Boolean(
+  localStorage.getItem('accessToken')
+  || sessionStorage.getItem('accessToken')
+  || localStorage.getItem('token')
+  || sessionStorage.getItem('token')
+);
 // Single canonical key for just the light/dark/system preference (as opposed
 // to STORAGE_KEY above, which holds the whole white-label Appearance Studio
 // blob — presets, brand colors, glass effects, etc). Kept in sync with
@@ -439,7 +445,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const hasUserChangedThemeRef = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !hasAccessToken()) {
       setLoadedRemoteAppearance(false);
       return;
     }
@@ -474,7 +480,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   const fetchBranding = useCallback(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !hasAccessToken()) {
       setBranding(null);
       return;
     }

@@ -1,6 +1,8 @@
 {
   "app": {
     "loading": "جارٍ التحميل...",
+    "all": "الكل",
+    "reset": "إعادة التعيين",
     "underDevelopment": "القسم قيد التطوير",
     "underDevelopmentDesc": "هذه الوحدة قيد الإنشاء حالياً من فريقنا.",
     "serviceUnavailable": "الخدمة غير متوفرة مؤقتًا",
@@ -494,6 +496,7 @@
       "female": "أنثى"
     },
     "validation": {
+
       "fullNameRequired": "الاسم الكامل مطلوب.",
       "phoneRequired": "الهاتف مطلوب.",
       "cinPassportRequired": "CIN أو جواز السفر مطلوب.",
@@ -516,7 +519,12 @@
   },
   "vehicles": {
     "title": "إدارة الأسطول",
-    "subtitle": "إدارة ومتابعة 54 مركبة في جميع الفروع.",
+    "subtitle_zero": "إدارة ومتابعة 0 مركبة في جميع الفروع.",
+    "subtitle_one": "إدارة ومتابعة مركبة واحدة في جميع الفروع.",
+    "subtitle_two": "إدارة ومتابعة مركبتين في جميع الفروع.",
+    "subtitle_few": "إدارة ومتابعة {{count}} مركبات في جميع الفروع.",
+    "subtitle_many": "إدارة ومتابعة {{count}} مركبة في جميع الفروع.",
+    "subtitle_other": "إدارة ومتابعة {{count}} مركبة في جميع الفروع.",
     "exportFleet": "تصدير الأسطول",
     "export": {
       "title": "تصدير الأسطول",
@@ -539,12 +547,33 @@
     },
     "addVehicle": "إضافة مركبة",
     "searchPlaceholder": "البحث بالطراز أو الماركة أو اللوحة...",
+    "more": "المزيد",
+    "filtersButton": "الفلاتر",
+    "advancedFilters": "فلاتر متقدمة",
+    "minPrice": "السعر الأدنى",
+    "maxPrice": "السعر الأقصى",
+    "availableBetween": "متاح بين تاريخين",
     "all": "الكل",
     "available": "متاح",
     "rented": "مؤجر",
     "maintenance": "صيانة",
     "manageDetails": "إدارة التفاصيل",
+    "viewDetails": "عرض التفاصيل",
+    "detailsTitle": "تفاصيل المركبة",
+    "editTitle": "تعديل المركبة",
+    "edit": "تعديل",
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "saveChanges": "حفظ التعديلات",
+    "updateSuccess": "تم تعديل المركبة بنجاح.",
+    "unsavedChangesConfirm": "هناك تعديلات لم تُحفظ. هل تريد المغادرة دون حفظ؟",
     "seats": "مقاعد",
+    "seatCount": "عدد المقاعد",
+    "seatCountPlaceholder": "مثال: 5",
+    "brand": "الماركة",
+    "model": "الطراز",
+    "registration": "رقم التسجيل",
+    "registrationPlaceholder": "مثال: 12345-A-6",
     "perDay": "درهم/يوم",
     "vehicle": "المركبة",
     "plate": "اللوحة",
@@ -578,12 +607,22 @@
     "daysLeft": "{{count}} أيام متبقية",
     "trash": "المحذوفات",
     "validation": {
+
       "brandRequired": "الماركة / الطراز مطلوب.",
+      "modelRequired": "الطراز مطلوب.",
+      "categoryRequired": "الفئة مطلوبة.",
+      "fuelRequired": "نوع الوقود مطلوب.",
+      "transmissionRequired": "ناقل الحركة مطلوب.",
+      "dailyPriceInvalid": "يجب أن يكون السعر رقمًا أكبر من أو يساوي 0.",
+      "seatCountRequired": "عدد المقاعد مطلوب.",
+      "seatCountInvalid": "يجب أن يكون عدد المقاعد عددًا صحيحًا بين 1 و100.",
       "plateRequired": "رقم اللوحة مطلوب.",
       "dailyPriceRequired": "السعر اليومي مطلوب.",
       "requiredSummary": "الماركة ورقم اللوحة والسعر اليومي مطلوبة."
     },
     "vehicleImage": "صورة المركبة",
+    "loadError": "تعذر تحميل المركبات. يرجى المحاولة مرة أخرى.",
+    "noAvailableVehicles": "لا توجد مركبات متاحة",
     "emptyTitle": "لا توجد مركبات بعد.",
     "emptyHint": "أضف أول مركبة للبدء في إدارة أسطولك.",
     "noFilterResults": "لا توجد مركبات تطابق الفلاتر.",
@@ -1747,6 +1786,8 @@
         "cancel": "إلغاء",
         "saving": "جارٍ الحفظ...",
         "loading": "جارٍ التحميل...",
+    "all": "الكل",
+    "reset": "إعادة التعيين",
         "enabled": "مفعّل",
         "disabled": "معطّل"
       },
@@ -2368,6 +2409,8 @@
   },
   "common": {
     "loading": "جارٍ التحميل...",
+    "all": "الكل",
+    "reset": "إعادة التعيين",
     "save": "حفظ",
     "cancel": "إلغاء",
     "delete": "حذف",
@@ -2396,6 +2439,8 @@
     "success": "نجح",
     "states": {
       "loading": "جارٍ التحميل...",
+    "all": "الكل",
+    "reset": "إعادة التعيين",
       "empty": "لا توجد بيانات",
       "error": "حدث خطأ. يرجى المحاولة مرة أخرى.",
       "success": "نجح",
@@ -2810,6 +2855,7 @@
       "create": "إنشاء أمر صيانة"
     },
     "validation": {
+
       "vehicleRequired": "المركبة مطلوبة",
       "titleRequired": "العنوان مطلوب",
       "scheduledDateRequired": "التاريخ المجدول مطلوب",
