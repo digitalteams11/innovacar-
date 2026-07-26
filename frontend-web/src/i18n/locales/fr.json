@@ -618,6 +618,15 @@
     "saveFailed": "Echec de l enregistrement du vehicule",
     "deleteFailed": "Impossible de supprimer le vehicule. Veuillez reessayer plus tard.",
     "deleteConfirm": "Supprimer ce vehicule ?",
+    "moveToTrashConfirm": "Déplacer ce véhicule vers la corbeille ?",
+    "loadFailed": "Impossible de charger les informations du véhicule. Veuillez réessayer plus tard.",
+    "trashLoadFailed": "Impossible de charger les véhicules dans la corbeille. Veuillez réessayer plus tard.",
+    "restoredSuccess": "Véhicule restauré avec succès",
+    "restoreFailed": "Impossible de restaurer ce véhicule. Veuillez réessayer plus tard.",
+    "permanentlyDeleted": "Véhicule définitivement supprimé",
+    "permanentlyDeleteFailed": "Impossible de supprimer définitivement ce véhicule. Veuillez réessayer plus tard.",
+    "movedToTrash": "Véhicule déplacé vers la corbeille",
+    "permanentlyDeleteConfirm": "Supprimer définitivement le véhicule « {{name}} » ? Cette action est irréversible.",
     "statusLabel": {
       "AVAILABLE": "Disponible",
       "RESERVED": "Reserve",
@@ -716,7 +725,17 @@
     "fullyPaid": "Entièrement payé",
     "vehicleInspectionMedia": "Médias d'inspection du véhicule",
     "invoice": "Facture",
-    "contractFallbackMessage": "La création automatique a échoué. Ouverture du contrat prérempli."
+    "contractFallbackMessage": "La création automatique a échoué. Ouverture du contrat prérempli.",
+    "convertedReadOnly": "Les réservations converties sont en lecture seule.",
+    "selectClientVehicleDates": "Veuillez sélectionner un client, un véhicule et des dates",
+    "validationErrors": {
+      "clientRequired": "Le client est obligatoire.",
+      "vehicleRequired": "Le véhicule est obligatoire.",
+      "startDateRequired": "La date de début est obligatoire.",
+      "startTimeRequired": "L'heure de début est obligatoire.",
+      "endDateRequired": "La date de fin est obligatoire.",
+      "endTimeRequired": "L'heure de fin est obligatoire."
+    }
   },
   "payments": {
     "title": "Paiements & Facturation",
@@ -996,7 +1015,26 @@
       "noPhone": "Pas de téléphone",
       "rentsBadge": "loue",
       "cannotBeRestored": "ne peut pas être restauré.",
-      "restoreAsDraftDesc": "Restaure le contrat en statut BROUILLON sans réserver le véhicule. Utilisez cette option pour récupérer l’enregistrement à des fins de modification ou de référence historique — cela n’affecte pas la disponibilité du véhicule."
+      "restoreAsDraftDesc": "Restaure le contrat en statut BROUILLON sans réserver le véhicule. Utilisez cette option pour récupérer l’enregistrement à des fins de modification ou de référence historique — cela n’affecte pas la disponibilité du véhicule.",
+      "validationErrors": {
+        "startDateRequired": "La date de début est obligatoire.",
+        "startTimeRequired": "L'heure de début est obligatoire.",
+        "endDateRequired": "La date de fin est obligatoire.",
+        "endTimeRequired": "L'heure de fin est obligatoire.",
+        "vehicleRequired": "Le véhicule est obligatoire."
+      }
+    },
+    "toasts": {
+      "generateNumberFailed": "Impossible de générer le numéro de contrat. Veuillez réessayer plus tard.",
+      "selectSavedClient": "Veuillez sélectionner un client enregistré",
+      "completeClientFields": "Veuillez compléter les champs client requis",
+      "fillDatesAndVehicle": "Veuillez renseigner les dates de location et sélectionner un véhicule disponible",
+      "createdWithReservation": "Contrat et réservation créés avec succès",
+      "movedToTrash": "Contrat déplacé vers la corbeille",
+      "linkedVehicleMissing": "Le véhicule lié est manquant. Le contrat peut tout de même être supprimé en toute sécurité — veuillez réessayer.",
+      "contractCancelled": "Contrat annulé",
+      "contractRestored": "Contrat restauré avec succès",
+      "contractPermanentlyDeleted": "Contrat définitivement supprimé"
     }
   },
   "clientSearch": {

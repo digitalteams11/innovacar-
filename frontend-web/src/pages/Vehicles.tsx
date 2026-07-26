@@ -121,7 +121,7 @@ export default function Vehicles() {
     } catch (err: any) {
       console.error('Failed to fetch vehicles', err);
       setData([]);
-      setLoadError(err?.userMessage || 'Unable to load vehicle information. Please try again later.');
+      setLoadError(err?.userMessage || t('vehicles.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ export default function Vehicles() {
       })));
     } catch (err: any) {
       console.error('Failed to fetch vehicle trash', err);
-      setTrashLoadError(err?.userMessage || 'Unable to load trashed vehicles. Please try again later.');
+      setTrashLoadError(err?.userMessage || t('vehicles.trashLoadFailed'));
     } finally {
       setTrashLoading(false);
     }
@@ -158,11 +158,11 @@ export default function Vehicles() {
     setRestoringId(id);
     try {
       const { data: response } = await api.post(`/vehicles/${id}/restore`);
-      showToast(response?.message || 'Vehicle restored successfully', 'success');
+      showToast(response?.message || t('vehicles.restoredSuccess'), 'success');
       setTrashData((current) => current.filter((v) => v.id !== id));
       fetchVehicles();
     } catch (err: any) {
-      showToast(err?.userMessage || 'Unable to restore this vehicle. Please try again later.', 'error');
+      showToast(err?.userMessage || t('vehicles.restoreFailed'), 'error');
     } finally {
       setRestoringId(null);
     }
@@ -170,14 +170,14 @@ export default function Vehicles() {
 
   const purgeVehiclePermanently = async (id: number, marque: string) => {
     if (purgingId) return;
-    if (!confirm(`Permanently delete vehicle "${marque}"? This cannot be undone.`)) return;
+    if (!confirm(t('vehicles.permanentlyDeleteConfirm', { name: marque }))) return;
     setPurgingId(id);
     try {
       const { data: response } = await api.delete(`/vehicles/${id}/purge`);
-      showToast(response?.message || 'Vehicle permanently deleted', 'success');
+      showToast(response?.message || t('vehicles.permanentlyDeleted'), 'success');
       setTrashData((current) => current.filter((v) => v.id !== id));
     } catch (err: any) {
-      showToast(err?.userMessage || 'Unable to permanently delete this vehicle. Please try again later.', 'error');
+      showToast(err?.userMessage || t('vehicles.permanentlyDeleteFailed'), 'error');
     } finally {
       setPurgingId(null);
     }
@@ -393,10 +393,10 @@ export default function Vehicles() {
   );
 
   const deleteVehicle = async (id: number) => {
-    if (!confirm('Move this vehicle to trash?')) return;
+    if (!confirm(t('vehicles.moveToTrashConfirm'))) return;
     try {
       const { data: response } = await api.delete(`/vehicles/${id}`);
-      showToast(response?.message || 'Vehicle moved to trash', 'success');
+      showToast(response?.message || t('vehicles.movedToTrash'), 'success');
       fetchVehicles();
     } catch (err: any) {
       showToast(err?.userMessage || t('vehicles.deleteFailed'), 'error');
@@ -481,7 +481,7 @@ export default function Vehicles() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-[#1e293b]">{vehicle.marque}</p>
-                            <p className="font-mono text-xs text-slate-400">{vehicle.plate || 'N/A'}</p>
+                            <p className="font-mono text-xs text-slate-400">{vehicle.plate || t('common.notAvailable')}</p>
                           </div>
                           <span className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                             vehicle.daysRemaining <= 3 ? 'bg-danger-50 text-danger-500' : 'bg-warning-50 text-warning-500'
@@ -531,7 +531,7 @@ export default function Vehicles() {
                   {trashData.map((vehicle) => (
                     <tr key={vehicle.id} className="hover:bg-[#f5f5f0]/40 transition-colors group">
                       <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-medium text-[#1e293b]">{vehicle.marque}</td>
-                      <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-slate-400 font-mono">{vehicle.plate || 'N/A'}</td>
+                      <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-slate-400 font-mono">{vehicle.plate || t('common.notAvailable')}</td>
                       <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-slate-400">
                         {vehicle.deletedAt ? new Date(vehicle.deletedAt).toLocaleString() : 'N/A'}
                       </td>

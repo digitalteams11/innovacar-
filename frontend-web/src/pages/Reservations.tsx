@@ -152,7 +152,7 @@ export default function Reservations() {
         // No reservations endpoint data for this tenant yet — treat as an
         // empty list rather than a hard failure so the page still renders.
         setData([]);
-        showToast('No reservations found.', 'warning');
+        showToast(t('reservations.noResults'), 'warning');
       } else {
         setLoadError(apiErrorMessage(err, 'Unable to load reservation information. Please try again later.'));
       }
@@ -259,7 +259,7 @@ export default function Reservations() {
 
   const openEdit = (res: Reservation) => {
     if (res.readOnly) {
-      showToast('Converted reservations are read-only.', 'warning');
+      showToast(t('reservations.convertedReadOnly'), 'warning');
       return;
     }
     setEditingId(res.id);
@@ -278,15 +278,15 @@ export default function Reservations() {
 
   const saveReservation = async () => {
     const errors: Record<string, string> = {};
-    if (!clientData.clientId) errors.client = 'Client is required.';
-    if (!selectedVehicle?.id) errors.vehicle = 'Vehicle is required.';
-    if (!startDate) errors.startDate = 'Start date is required.';
-    if (!startTime) errors.startTime = 'Start time is required.';
-    if (!endDate) errors.endDate = 'End date is required.';
-    if (!endTime) errors.endTime = 'End time is required.';
+    if (!clientData.clientId) errors.client = t('reservations.validationErrors.clientRequired');
+    if (!selectedVehicle?.id) errors.vehicle = t('reservations.validationErrors.vehicleRequired');
+    if (!startDate) errors.startDate = t('reservations.validationErrors.startDateRequired');
+    if (!startTime) errors.startTime = t('reservations.validationErrors.startTimeRequired');
+    if (!endDate) errors.endDate = t('reservations.validationErrors.endDateRequired');
+    if (!endTime) errors.endTime = t('reservations.validationErrors.endTimeRequired');
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      showToast('Please select client, vehicle, and dates', 'warning');
+      showToast(t('reservations.selectClientVehicleDates'), 'warning');
       return;
     }
     try {

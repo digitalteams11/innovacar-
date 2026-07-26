@@ -602,6 +602,15 @@
     "saveFailed": "فشل حفظ المركبة",
     "deleteFailed": "تعذر حذف المركبة. يرجى إعادة المحاولة لاحقًا.",
     "deleteConfirm": "هل تريد حذف هذه المركبة؟",
+    "moveToTrashConfirm": "نقل هذه المركبة إلى سلة المحذوفات؟",
+    "loadFailed": "تعذر تحميل معلومات المركبة. يرجى المحاولة مرة أخرى لاحقًا.",
+    "trashLoadFailed": "تعذر تحميل المركبات المحذوفة. يرجى المحاولة مرة أخرى لاحقًا.",
+    "restoredSuccess": "تمت استعادة المركبة بنجاح",
+    "restoreFailed": "تعذر استعادة هذه المركبة. يرجى المحاولة مرة أخرى لاحقًا.",
+    "permanentlyDeleted": "تم حذف المركبة نهائيًا",
+    "permanentlyDeleteFailed": "تعذر حذف هذه المركبة نهائيًا. يرجى المحاولة مرة أخرى لاحقًا.",
+    "movedToTrash": "تم نقل المركبة إلى سلة المحذوفات",
+    "permanentlyDeleteConfirm": "حذف المركبة \"{{name}}\" نهائيًا؟ لا يمكن التراجع عن هذا الإجراء.",
     "statusLabel": {
       "AVAILABLE": "متاح",
       "RESERVED": "محجوز",
@@ -708,7 +717,17 @@
     "fullyPaid": "مدفوع بالكامل",
     "vehicleInspectionMedia": "وسائط فحص المركبة",
     "invoice": "فاتورة",
-    "contractFallbackMessage": "فشل الإنشاء التلقائي. جارٍ فتح نموذج العقد المعبأ مسبقًا."
+    "contractFallbackMessage": "فشل الإنشاء التلقائي. جارٍ فتح نموذج العقد المعبأ مسبقًا.",
+    "convertedReadOnly": "الحجوزات المحوَّلة للقراءة فقط.",
+    "selectClientVehicleDates": "يرجى اختيار العميل والمركبة والتواريخ",
+    "validationErrors": {
+      "clientRequired": "العميل مطلوب.",
+      "vehicleRequired": "المركبة مطلوبة.",
+      "startDateRequired": "تاريخ البدء مطلوب.",
+      "startTimeRequired": "وقت البدء مطلوب.",
+      "endDateRequired": "تاريخ الانتهاء مطلوب.",
+      "endTimeRequired": "وقت الانتهاء مطلوب."
+    }
   },
   "payments": {
     "title": "المدفوعات والفواتير",
@@ -992,7 +1011,26 @@
       "noPhone": "لا يوجد هاتف",
       "rentsBadge": "يستأجر",
       "cannotBeRestored": "لا يمكن استعادته.",
-      "restoreAsDraftDesc": "يعيد العقد إلى حالة مسودة دون حجز المركبة. استخدم هذا لاسترجاع السجل للتعديل أو للرجوع إليه تاريخياً — لن يؤثر ذلك على توفر المركبة."
+      "restoreAsDraftDesc": "يعيد العقد إلى حالة مسودة دون حجز المركبة. استخدم هذا لاسترجاع السجل للتعديل أو للرجوع إليه تاريخياً — لن يؤثر ذلك على توفر المركبة.",
+      "validationErrors": {
+        "startDateRequired": "تاريخ البدء مطلوب.",
+        "startTimeRequired": "وقت البدء مطلوب.",
+        "endDateRequired": "تاريخ الانتهاء مطلوب.",
+        "endTimeRequired": "وقت الانتهاء مطلوب.",
+        "vehicleRequired": "المركبة مطلوبة."
+      }
+    },
+    "toasts": {
+      "generateNumberFailed": "تعذر إنشاء رقم العقد. يرجى المحاولة مرة أخرى لاحقًا.",
+      "selectSavedClient": "يرجى اختيار عميل محفوظ",
+      "completeClientFields": "يرجى استكمال حقول العميل المطلوبة",
+      "fillDatesAndVehicle": "يرجى إدخال تواريخ الإيجار واختيار مركبة متاحة",
+      "createdWithReservation": "تم إنشاء العقد والحجز بنجاح",
+      "movedToTrash": "تم نقل العقد إلى سلة المحذوفات",
+      "linkedVehicleMissing": "المركبة المرتبطة مفقودة. لا يزال بالإمكان حذف العقد بأمان — يرجى المحاولة مرة أخرى.",
+      "contractCancelled": "تم إلغاء العقد",
+      "contractRestored": "تمت استعادة العقد بنجاح",
+      "contractPermanentlyDeleted": "تم حذف العقد نهائيًا"
     }
   },
   "clientSearch": {

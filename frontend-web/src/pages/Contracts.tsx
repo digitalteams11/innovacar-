@@ -358,7 +358,7 @@ export default function Contracts() {
         deletedAfter: false,
         reservationStatus: afterData.reservationStatus,
       });
-      showToast(response?.message || 'Contract restored successfully', 'success');
+      showToast(response?.message || t('contracts.toasts.contractRestored'), 'success');
       setTrashData((current) => current.filter((c) => c.id !== id));
       setRestoreConflict({ open: false });
       fetchContracts();
@@ -404,7 +404,7 @@ export default function Contracts() {
     setPurgingId(id);
     try {
       const { data: response } = await api.delete(`/contracts/${id}/purge`);
-      showToast(response?.message || 'Contract permanently deleted', 'success');
+      showToast(response?.message || t('contracts.toasts.contractPermanentlyDeleted'), 'success');
       setTrashData((current) => current.filter((c) => c.id !== id));
     } catch (err: any) {
       const errorCode = err?.errorCode;
@@ -535,7 +535,7 @@ export default function Contracts() {
     try {
       const { data } = await api.get('/contracts/generate-number');
       setContractNumber(data.contractNumber);
-    } catch (err) { showToast('Unable to generate contract number. Please try again later.', 'error'); }
+    } catch (err) { showToast(t('contracts.toasts.generateNumberFailed'), 'error'); }
   };
 
   const openCreate = async () => {
@@ -805,7 +805,7 @@ export default function Contracts() {
       if (clientMode === 'existing') {
         if (!clientData.clientId) {
           setFieldErrors((prev) => ({ ...prev, client: 'Client is required.' }));
-          showToast('Please select a saved client', 'warning');
+          showToast(t('contracts.toasts.selectSavedClient'), 'warning');
           return;
         }
       } else {
@@ -818,20 +818,20 @@ export default function Contracts() {
         }
         if (Object.keys(errs).length > 0) {
           setNewClientErrors(errs);
-          showToast('Please complete the required client fields', 'warning');
+          showToast(t('contracts.toasts.completeClientFields'), 'warning');
           return;
         }
         setNewClientErrors({});
       }
       if (!startDate || !startTime || !endDate || !endTime || !selectedVehicle) {
         const errors: Record<string, string> = {};
-        if (!startDate) errors.startDate = 'Start date is required.';
-        if (!startTime) errors.startTime = 'Start time is required.';
-        if (!endDate) errors.endDate = 'End date is required.';
-        if (!endTime) errors.endTime = 'End time is required.';
-        if (!selectedVehicle) errors.vehicle = 'Vehicle is required.';
+        if (!startDate) errors.startDate = t('contracts.form.validationErrors.startDateRequired');
+        if (!startTime) errors.startTime = t('contracts.form.validationErrors.startTimeRequired');
+        if (!endDate) errors.endDate = t('contracts.form.validationErrors.endDateRequired');
+        if (!endTime) errors.endTime = t('contracts.form.validationErrors.endTimeRequired');
+        if (!selectedVehicle) errors.vehicle = t('contracts.form.validationErrors.vehicleRequired');
         setFieldErrors((prev) => ({ ...prev, ...errors }));
-        showToast('Please fill in rental dates and select an available vehicle', 'warning');
+        showToast(t('contracts.toasts.fillDatesAndVehicle'), 'warning');
         return;
       }
       setFieldErrors({});
@@ -904,7 +904,7 @@ export default function Contracts() {
       const clientWasCreated = data?.data?.clientCreated === true;
       const msg = clientWasCreated
         ? `Contract created and new client "${data?.data?.clientName}" saved.`
-        : (isExisting ? t('contracts.fromReservation.alreadyExists') : (data?.message || 'Contract and reservation created successfully'));
+        : (isExisting ? t('contracts.fromReservation.alreadyExists') : (data?.message || t('contracts.toasts.createdWithReservation')));
       showToast(msg, isExisting ? 'info' : 'success');
       setIsModalOpen(false);
       fetchContracts();
@@ -1075,7 +1075,7 @@ export default function Contracts() {
         deletedAfter: true,
         statusUnchanged: afterStatus === beforeStatus,
       });
-      showToast(response?.message || 'Contract moved to trash', 'success');
+      showToast(response?.message || t('contracts.toasts.movedToTrash'), 'success');
       fetchContracts();
       fetchTrash();
     } catch (err: any) {
@@ -1085,7 +1085,7 @@ export default function Contracts() {
         fetchContracts();
       } else if (err?.errorCode === 'RELATED_ENTITY_MISSING') {
         setData(previous);
-        showToast('Linked vehicle is missing. Contract can still be deleted safely — please try again.', 'error');
+        showToast(t('contracts.toasts.linkedVehicleMissing'), 'error');
       } else {
         setData(previous);
         showToast(err?.userMessage || 'Unable to delete contract. Please try again later.', 'error');
@@ -1111,7 +1111,7 @@ export default function Contracts() {
         deletedBefore: false,
         deletedAfter: false,
       });
-      showToast(response?.message || 'Contract cancelled', 'success');
+      showToast(response?.message || t('contracts.toasts.contractCancelled'), 'success');
       fetchContracts();
     } catch (err: any) {
       showToast(err?.userMessage || 'Unable to cancel contract. Please try again.', 'error');
@@ -1134,7 +1134,7 @@ export default function Contracts() {
       });
       // Refresh list in background
       fetchContracts();
-      showToast('QR code generated successfully', 'success');
+      showToast(t('contracts.qrGenerated'), 'success');
     } catch (err: any) {
       showToast((err as any).userMessage || 'Unable to generate QR code. Please try again later.', 'error');
     }

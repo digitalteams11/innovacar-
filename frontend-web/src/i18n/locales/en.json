@@ -618,6 +618,15 @@
     "saveFailed": "Failed to save vehicle",
     "deleteFailed": "Unable to delete vehicle. Please try again later.",
     "deleteConfirm": "Delete this vehicle?",
+    "moveToTrashConfirm": "Move this vehicle to trash?",
+    "loadFailed": "Unable to load vehicle information. Please try again later.",
+    "trashLoadFailed": "Unable to load trashed vehicles. Please try again later.",
+    "restoredSuccess": "Vehicle restored successfully",
+    "restoreFailed": "Unable to restore this vehicle. Please try again later.",
+    "permanentlyDeleted": "Vehicle permanently deleted",
+    "permanentlyDeleteFailed": "Unable to permanently delete this vehicle. Please try again later.",
+    "movedToTrash": "Vehicle moved to trash",
+    "permanentlyDeleteConfirm": "Permanently delete vehicle \"{{name}}\"? This cannot be undone.",
     "statusLabel": {
       "AVAILABLE": "Available",
       "RESERVED": "Reserved",
@@ -716,7 +725,17 @@
     "fullyPaid": "Fully Paid",
     "vehicleInspectionMedia": "Vehicle Inspection Media",
     "invoice": "Invoice",
-    "contractFallbackMessage": "Automatic creation failed. Opening prefilled contract form."
+    "contractFallbackMessage": "Automatic creation failed. Opening prefilled contract form.",
+    "convertedReadOnly": "Converted reservations are read-only.",
+    "selectClientVehicleDates": "Please select client, vehicle, and dates",
+    "validationErrors": {
+      "clientRequired": "Client is required.",
+      "vehicleRequired": "Vehicle is required.",
+      "startDateRequired": "Start date is required.",
+      "startTimeRequired": "Start time is required.",
+      "endDateRequired": "End date is required.",
+      "endTimeRequired": "End time is required."
+    }
   },
   "payments": {
     "title": "Payments & Billing",
@@ -996,7 +1015,26 @@
       "noPhone": "No phone",
       "rentsBadge": "rents",
       "cannotBeRestored": "cannot be restored.",
-      "restoreAsDraftDesc": "Restores the contract in DRAFT status without reserving the vehicle. Use this to recover the record for editing or historical reference — it will not affect vehicle availability."
+      "restoreAsDraftDesc": "Restores the contract in DRAFT status without reserving the vehicle. Use this to recover the record for editing or historical reference — it will not affect vehicle availability.",
+      "validationErrors": {
+        "startDateRequired": "Start date is required.",
+        "startTimeRequired": "Start time is required.",
+        "endDateRequired": "End date is required.",
+        "endTimeRequired": "End time is required.",
+        "vehicleRequired": "Vehicle is required."
+      }
+    },
+    "toasts": {
+      "generateNumberFailed": "Unable to generate contract number. Please try again later.",
+      "selectSavedClient": "Please select a saved client",
+      "completeClientFields": "Please complete the required client fields",
+      "fillDatesAndVehicle": "Please fill in rental dates and select an available vehicle",
+      "createdWithReservation": "Contract and reservation created successfully",
+      "movedToTrash": "Contract moved to trash",
+      "linkedVehicleMissing": "Linked vehicle is missing. Contract can still be deleted safely — please try again.",
+      "contractCancelled": "Contract cancelled",
+      "contractRestored": "Contract restored successfully",
+      "contractPermanentlyDeleted": "Contract permanently deleted"
     }
   },
   "clientSearch": {
