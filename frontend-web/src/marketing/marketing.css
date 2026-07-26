@@ -14,6 +14,7 @@
   color: var(--text-primary);
   background: var(--bg-page);
   font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
 .im-header {
@@ -79,6 +80,8 @@
   text-decoration: none;
   font-size: 0.9rem;
   border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
 }
 
 .im-btn-lg {
@@ -91,9 +94,56 @@
   color: var(--brand-primary-foreground, #ffffff);
 }
 
+.im-btn-primary:hover {
+  background: color-mix(in srgb, var(--brand-primary, #10b981) 88%, black);
+}
+
+.im-btn-primary:active {
+  background: color-mix(in srgb, var(--brand-primary, #10b981) 76%, black);
+  transform: translateY(1px);
+}
+
 .im-btn-ghost {
   border-color: var(--border-subtle);
   color: var(--text-primary);
+  background: transparent;
+}
+
+.im-btn-ghost:hover {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-color: var(--text-primary);
+}
+
+.im-btn-ghost:active {
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  transform: translateY(1px);
+}
+
+.im-btn:focus-visible,
+.im-nav-link:focus-visible,
+.im-menu-toggle:focus-visible,
+.im-lang-btn:focus-visible {
+  outline: 2px solid var(--brand-primary, #10b981);
+  outline-offset: 2px;
+}
+
+.im-btn[aria-disabled='true'],
+.im-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.im-menu-toggle:hover {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.im-menu-toggle:active {
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+.im-lang-btn:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 main {
@@ -106,22 +156,22 @@ main {
 
 .im-hero {
   text-align: center;
-  padding: 4.5rem 1rem 3.5rem;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 1rem clamp(1.75rem, 4vw, 3.5rem);
 }
 
 .im-hero-compact {
-  padding: 3rem 1rem 2rem;
+  padding: clamp(2rem, 5vw, 3rem) 1rem clamp(1.25rem, 3vw, 2rem);
 }
 
 .im-hero h1 {
-  font-size: 2.4rem;
+  font-size: clamp(1.75rem, 5.5vw + 0.5rem, 2.4rem);
   font-weight: 800;
   margin: 0 0 1rem;
   line-height: 1.15;
 }
 
 .im-hero-sub {
-  font-size: 1.1rem;
+  font-size: clamp(0.95rem, 1.4vw + 0.7rem, 1.1rem);
   color: var(--text-muted, var(--text-primary));
   max-width: 680px;
   margin: 0 auto 2rem;
@@ -134,8 +184,23 @@ main {
   flex-wrap: wrap;
 }
 
+.im-hero-actions .im-btn {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 480px) {
+  .im-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .im-hero-actions .im-btn {
+    width: 100%;
+  }
+}
+
 .im-section {
-  padding: 2.5rem 0;
+  padding: clamp(1.75rem, 4vw, 2.5rem) 0;
 }
 
 .im-section h2 {
@@ -269,18 +334,34 @@ main {
   margin: 1rem 0 0;
 }
 
-@media (max-width: 640px) {
-  .im-hero h1 {
-    font-size: 1.8rem;
-  }
-}
-
 /* ── Header: nav / lang switch / mobile drawer ─────────────────────────── */
 .im-nav-desktop {
   display: flex;
   gap: 1.25rem;
   flex: 1;
   flex-wrap: wrap;
+}
+
+/* Compact tier before the hard cutover to the hamburger menu — keeps the
+   full desktop nav from wrapping/crowding on tablet-ish widths (768–1080px)
+   instead of jumping straight from spacious desktop gaps to the mobile menu. */
+@media (max-width: 1080px) {
+  .im-header {
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .im-nav-desktop {
+    gap: 0.85rem;
+  }
+
+  .im-nav-link {
+    font-size: 0.9rem;
+  }
+
+  .im-header-actions {
+    gap: 0.5rem;
+  }
 }
 
 .im-nav-link {
@@ -531,7 +612,7 @@ main {
 }
 
 .im-mockup-mobile {
-  width: 140px;
+  width: min(140px, 38vw);
   border-radius: 1.4rem;
   border: 1px solid var(--border-subtle);
   background: var(--bg-page-raised);

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 /**
  * The public marketing site. Deliberately self-contained (no imports from
@@ -312,6 +312,27 @@ const UI: Record<string, Dict> = {
   footerAbout: { fr: 'À propos', en: 'About', ar: 'حول' },
   footerTagline: { fr: "est un produit d'Innovax Technologies.", en: 'is a product of Innovax Technologies.', ar: 'هو منتج من Innovax Technologies.' },
   footerCopyright: { fr: 'Tous droits réservés.', en: 'All rights reserved.', ar: 'جميع الحقوق محفوظة.' },
+
+  legalPrivacy: { fr: 'Confidentialité', en: 'Privacy', ar: 'الخصوصية' },
+  legalTerms: { fr: "Conditions d'utilisation", en: 'Terms of use', ar: 'شروط الاستخدام' },
+  legalCookies: { fr: 'Cookies', en: 'Cookies', ar: 'ملفات تعريف الارتباط' },
+  legalSecurity: { fr: 'Sécurité', en: 'Security', ar: 'الأمان' },
+
+  featuresPageTitle: { fr: 'Fonctionnalités', en: 'Features', ar: 'الميزات' },
+  featuresPageSub: {
+    fr: "Découvrez les outils qu'Innovacar met à la disposition de votre agence de location de voitures.",
+    en: 'Discover the tools Innovacar puts at your car rental agency’s disposal.',
+    ar: 'اكتشف الأدوات التي تضعها Innovacar تحت تصرف وكالة تأجير السيارات الخاصة بك.',
+  },
+  featuresPageCtaTitle: { fr: 'Voir Innovacar en action', en: 'See Innovacar in action', ar: 'شاهد Innovacar أثناء العمل' },
+
+  pricingPageTitle: { fr: 'Tarifs', en: 'Pricing', ar: 'الأسعار' },
+  pricingPageSub: {
+    fr: '{trial}, puis un tarif adapté à la taille de votre agence. Tarifs indicatifs en dirhams marocains (MAD).',
+    en: '{trial}, then a price that fits the size of your agency. Indicative pricing in Moroccan dirhams (MAD).',
+    ar: '{trial}، ثم سعر يناسب حجم وكالتك. الأسعار إرشادية بالدرهم المغربي.',
+  },
+  pricingPageCtaTitle: { fr: 'Une question sur nos tarifs ?', en: 'A question about our pricing?', ar: 'هل لديك سؤال حول أسعارنا؟' },
 };
 
 function t(lang: Lang, key: keyof typeof UI): string {
@@ -389,11 +410,11 @@ const IN_PAGE_NAV: NavItem[] = [
   { key: 'navContact', id: 'contact' },
 ];
 // Footer-only legal links.
-const LEGAL_LINKS: Array<{ href: string; label: string }> = [
-  { href: '/confidentialite', label: 'Confidentialité' },
-  { href: '/conditions', label: 'Conditions d’utilisation' },
-  { href: '/cookies', label: 'Cookies' },
-  { href: '/securite', label: 'Sécurité' },
+const LEGAL_LINKS: Array<{ href: string; key: keyof typeof UI }> = [
+  { href: '/confidentialite', key: 'legalPrivacy' },
+  { href: '/conditions', key: 'legalTerms' },
+  { href: '/cookies', key: 'legalCookies' },
+  { href: '/securite', key: 'legalSecurity' },
 ];
 
 function LangSwitcher({ compact }: { compact?: boolean }) {
@@ -415,11 +436,69 @@ function LangSwitcher({ compact }: { compact?: boolean }) {
   );
 }
 
+const MOBILE_DRAWER_ID = 'im-mobile-drawer';
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 function Header() {
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+
+  const close = () => setOpen(false);
+
+  // Outside click, Escape, body-scroll lock, and a minimal Tab focus trap —
+  // all vanilla DOM APIs (this file cannot import anything besides react, see
+  // the file header). Focus returns to the toggle button on close so keyboard
+  // users don't lose their place.
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
+        close();
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close();
+        toggleRef.current?.focus();
+        return;
+      }
+      if (event.key !== 'Tab' || !drawerRef.current) return;
+      const focusable = Array.from(drawerRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    drawerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
   return (
-    <header className="im-header">
+    <header className="im-header" ref={headerRef}>
       <a href="/" className="im-brand">
         <img src="/brand/innovacar-logo.png" alt="Innovacar" width={36} height={36} />
         <span>Innovacar</span>
@@ -438,10 +517,12 @@ function Header() {
         <a href="/#/login" className="im-btn im-btn-ghost">{t(lang, 'login')}</a>
         <a href={registerHref()} className="im-btn im-btn-primary">{t(lang, 'startTrial')}</a>
         <button
+          ref={toggleRef}
           type="button"
           className="im-menu-toggle"
           aria-label={open ? t(lang, 'closeMenu') : t(lang, 'openMenu')}
           aria-expanded={open}
+          aria-controls={MOBILE_DRAWER_ID}
           onClick={() => setOpen((v) => !v)}
         >
           <Icon d={open ? ICONS.close : ICONS.menu} />
@@ -449,20 +530,20 @@ function Header() {
       </div>
 
       {open && (
-        <div className="im-mobile-drawer" role="dialog" aria-label="Menu">
+        <div id={MOBILE_DRAWER_ID} ref={drawerRef} className="im-mobile-drawer" role="dialog" aria-modal="true" aria-label="Menu">
           {IN_PAGE_NAV.map((item) => (
             <button
               key={item.id}
               type="button"
               className="im-nav-link"
-              onClick={() => { setOpen(false); scrollToId(item.id); }}
+              onClick={() => { close(); scrollToId(item.id); }}
             >
               {t(lang, item.key)}
             </button>
           ))}
           <div className="im-mobile-drawer-actions">
-            <a href="/#/login" className="im-btn im-btn-ghost">{t(lang, 'login')}</a>
-            <a href={registerHref()} className="im-btn im-btn-primary">{t(lang, 'startTrial')}</a>
+            <a href="/#/login" className="im-btn im-btn-ghost" onClick={close}>{t(lang, 'login')}</a>
+            <a href={registerHref()} className="im-btn im-btn-primary" onClick={close}>{t(lang, 'startTrial')}</a>
           </div>
           <LangSwitcher />
         </div>
@@ -494,7 +575,7 @@ function Footer() {
         <div className="im-footer-col">
           <h4>{t(lang, 'footerLegal')}</h4>
           {LEGAL_LINKS.map((link) => (
-            <a key={link.href} href={link.href}>{link.label}</a>
+            <a key={link.href} href={link.href}>{t(lang, link.key)}</a>
           ))}
         </div>
 
@@ -975,7 +1056,7 @@ function HomePageContent() {
           {LEGAL_LINKS.map((link, i) => (
             <span key={link.href}>
               {i > 0 && ' · '}
-              <a href={link.href}>{link.label}</a>
+              <a href={link.href}>{t(lang, link.key)}</a>
             </span>
           ))}
         </p>
@@ -1031,16 +1112,14 @@ function FeaturesPageContent() {
   return (
     <>
       <section className="im-hero im-hero-compact">
-        <h1>Fonctionnalités</h1>
-        <p className="im-hero-sub">
-          Découvrez les outils qu'Innovacar met à la disposition de votre agence de location de voitures.
-        </p>
+        <h1>{t(lang, 'featuresPageTitle')}</h1>
+        <p className="im-hero-sub">{t(lang, 'featuresPageSub')}</p>
       </section>
       <section className="im-section">
         <FeatureGrid />
       </section>
       <section className="im-section im-cta">
-        <h2>Voir Innovacar en action</h2>
+        <h2>{t(lang, 'featuresPageCtaTitle')}</h2>
         <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg">{t(lang, 'heroPrimaryCta')}</a>
       </section>
     </>
@@ -1060,18 +1139,15 @@ function PricingPageContent() {
   return (
     <>
       <section className="im-hero im-hero-compact">
-        <h1>Tarifs</h1>
-        <p className="im-hero-sub">
-          {trialLabel(lang)}, puis un tarif adapté à la taille de votre agence.
-          Tarifs indicatifs en dirhams marocains (MAD).
-        </p>
+        <h1>{t(lang, 'pricingPageTitle')}</h1>
+        <p className="im-hero-sub">{fmt(t(lang, 'pricingPageSub'), { trial: trialLabel(lang) })}</p>
       </section>
       <section className="im-section">
         <PricingSection />
       </section>
       <section className="im-section im-cta">
-        <h2>Une question sur nos tarifs ?</h2>
-        <a href="/#/contact" className="im-btn im-btn-ghost im-btn-lg">Contactez-nous</a>
+        <h2>{t(lang, 'pricingPageCtaTitle')}</h2>
+        <a href="/#/contact" className="im-btn im-btn-ghost im-btn-lg">{t(lang, 'contactUs')}</a>
       </section>
     </>
   );
@@ -1378,6 +1454,50 @@ export const MARKETING_PAGES: Record<string, { meta: MarketingPageMeta; Componen
       path: '/securite',
       title: 'Sécurité | Innovacar',
       description: "Chiffrement, authentification à deux facteurs, isolation des données par agence, sauvegardes et journaux d'audit — comment Innovacar protège vos données.",
+    },
+    Component: SecurityPage,
+  },
+  // English-named aliases of the pages above — same components/content, reachable
+  // under the English path visitors and external links are likely to guess/use.
+  // The French paths above stay canonical for the sitemap/meta; these are pure
+  // aliases so no visitor hits a dead/fallback-to-home page for these names.
+  '/features': {
+    meta: {
+      path: '/features',
+      title: 'Features | Innovacar',
+      description: 'Fleet management, contracts and electronic signature, GPS tracking, payments, reports and support — Innovacar’s features for your agency.',
+    },
+    Component: FeaturesPage,
+  },
+  '/pricing': {
+    meta: {
+      path: '/pricing',
+      title: 'Pricing | Innovacar',
+      description: "Discover Innovacar's Basic, Standard and Premium plans, with a free trial, fitted to the size of your agency.",
+    },
+    Component: PricingPage,
+  },
+  '/privacy': {
+    meta: {
+      path: '/privacy',
+      title: 'Privacy Policy | Innovacar',
+      description: 'How Innovacar and Innovax Technologies collect, use and protect your agency’s and your clients’ data.',
+    },
+    Component: PrivacyPage,
+  },
+  '/terms': {
+    meta: {
+      path: '/terms',
+      title: 'Terms of Use | Innovacar',
+      description: 'Innovacar terms of use: subscriptions, free trial, cancellation, agency and Innovax Technologies responsibilities.',
+    },
+    Component: TermsPage,
+  },
+  '/security': {
+    meta: {
+      path: '/security',
+      title: 'Security | Innovacar',
+      description: 'Encryption, two-factor authentication, per-agency data isolation, backups and audit logs — how Innovacar protects your data.',
     },
     Component: SecurityPage,
   },

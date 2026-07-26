@@ -106,6 +106,14 @@ const MARKETING_PAGES = [
   { file: path.join('conditions', 'index.html'), urlPath: '/conditions', expectIndexable: true },
   { file: path.join('cookies', 'index.html'), urlPath: '/cookies', expectIndexable: true },
   { file: path.join('securite', 'index.html'), urlPath: '/securite', expectIndexable: true },
+  // English-named aliases (see src/marketing/pages.tsx MARKETING_PAGES) — same
+  // components, own meta/canonical, reachable under the path name an English
+  // visitor or external link is likely to use.
+  { file: path.join('features', 'index.html'), urlPath: '/features', expectIndexable: true },
+  { file: path.join('pricing', 'index.html'), urlPath: '/pricing', expectIndexable: true },
+  { file: path.join('privacy', 'index.html'), urlPath: '/privacy', expectIndexable: true },
+  { file: path.join('terms', 'index.html'), urlPath: '/terms', expectIndexable: true },
+  { file: path.join('security', 'index.html'), urlPath: '/security', expectIndexable: true },
 ];
 for (const page of MARKETING_PAGES) {
   const html = readIfExists(page.file);

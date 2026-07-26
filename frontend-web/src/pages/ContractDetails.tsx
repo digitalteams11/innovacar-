@@ -710,7 +710,7 @@ export default function ContractDetails() {
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <span className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider ${getStatusBadge(displayedStatus)}`}>
-            {t(`contracts.statusLabel.${displayedStatus}`, displayedStatus.replace('_', ' '))}
+            {t(`contracts.statusLabel.${displayedStatus}`, { defaultValue: displayedStatus.replace('_', ' ') })}
           </span>
           <button onClick={handlePrintPdf} disabled={isSubmitting} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
             <Printer size={14} className="sm:hidden" />
@@ -1033,7 +1033,7 @@ export default function ContractDetails() {
                         ? 'bg-brand-100 text-brand-600'
                         : 'bg-slate-100 text-slate-600'
                     }`}>
-                      {t(`contractDetails.depositStatusValues.${contract.deposit.status}`, contract.deposit.status)}
+                      {t(`contractDetails.depositStatusValues.${contract.deposit.status}`, { defaultValue: contract.deposit.status })}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -1510,7 +1510,7 @@ function InspectionStatusCard({ title, inspection }: { title: string; inspection
     <div className={`rounded-2xl border p-4 ${completed ? 'border-emerald-100 bg-emerald-50' : 'border-amber-100 bg-amber-50'}`}>
       <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</p>
       <p className={`mt-1 text-lg font-black ${completed ? 'text-emerald-700' : 'text-amber-700'}`}>
-        {t(`contractDetails.inspectionStatus.${displayStatusKey}`, displayStatusKey.replace('_', ' '))}
+        {t(`contractDetails.inspectionStatus.${displayStatusKey}`, { defaultValue: displayStatusKey.replace('_', ' ') })}
       </p>
       {inspection && <p className="mt-1 text-xs text-slate-500">{t('contractDetails.photosUploadedCount', { count: photoCount, required: requiredPhotoCount })}</p>}
       {inspection?.mediaExpiresAt && <p className="mt-1 text-xs text-slate-500">{t('contractDetails.mediaExpires', { date: new Date(inspection.mediaExpiresAt).toLocaleDateString() })}</p>}
