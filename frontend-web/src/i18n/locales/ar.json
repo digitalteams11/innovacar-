@@ -1233,13 +1233,16 @@
     "deletedSuccess": "تم حذف الفاتورة بنجاح",
     "deleteFailed": "تعذر حذف الفاتورة. يرجى المحاولة مرة أخرى لاحقًا.",
     "markPaidFailed": "تعذر وضع علامة على الفاتورة كمدفوعة. يرجى المحاولة مرة أخرى لاحقًا.",
+    "saveFailed": "تعذر حفظ الفاتورة. يرجى المحاولة مرة أخرى لاحقًا.",
     "validationErrors": {
       "clientRequired": "العميل مطلوب.",
       "invoiceNumberRequired": "رقم الفاتورة مطلوب.",
       "issueDateRequired": "تاريخ الإصدار مطلوب.",
       "dueDateRequired": "تاريخ الاستحقاق مطلوب.",
       "amountRequired": "المبلغ مطلوب."
-    }
+    },
+    "invoiceUpdatedAction": "تم تحديث الفاتورة",
+    "invoiceCreatedAction": "تم إنشاء الفاتورة"
   },
   "agency": {
     "title": "نظرة عامة على الوكالة",

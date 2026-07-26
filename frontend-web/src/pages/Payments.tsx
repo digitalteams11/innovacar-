@@ -229,7 +229,7 @@ export default function Payments() {
       await fetchPayments();
       showToast(t('toast.success', { action: 'Payment marked as paid' }));
     } catch {
-      showToast('Unable to complete the payment. Please try again.', 'error');
+      showToast(t('payments.completePaymentFailed'), 'error');
     }
   };
 

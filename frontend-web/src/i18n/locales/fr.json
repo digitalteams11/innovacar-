@@ -1237,13 +1237,16 @@
     "deletedSuccess": "Facture supprimée avec succès",
     "deleteFailed": "Impossible de supprimer la facture. Veuillez réessayer plus tard.",
     "markPaidFailed": "Impossible de marquer la facture comme payée. Veuillez réessayer plus tard.",
+    "saveFailed": "Impossible d'enregistrer la facture. Veuillez réessayer plus tard.",
     "validationErrors": {
       "clientRequired": "Le client est obligatoire.",
       "invoiceNumberRequired": "Le numéro de facture est obligatoire.",
       "issueDateRequired": "La date d'émission est obligatoire.",
       "dueDateRequired": "La date d'échéance est obligatoire.",
       "amountRequired": "Le montant est obligatoire."
-    }
+    },
+    "invoiceUpdatedAction": "Facture mise à jour",
+    "invoiceCreatedAction": "Facture créée"
   },
   "agency": {
     "title": "Vue d'ensemble de l'agence",

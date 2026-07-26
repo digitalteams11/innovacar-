@@ -99,14 +99,14 @@ export default function Invoices() {
 
   const saveInvoice = async () => {
     const errors: Record<string, string> = {};
-    if (!clientData.clientId) errors.client = 'Client is required.';
-    if (!form.invoiceNumber.trim()) errors.invoiceNumber = 'Invoice number is required.';
-    if (!form.issueDate) errors.issueDate = 'Issue date is required.';
-    if (!form.dueDate) errors.dueDate = 'Due date is required.';
-    if (!form.amount.trim()) errors.amount = 'Amount is required.';
+    if (!clientData.clientId) errors.client = t('invoices.validationErrors.clientRequired');
+    if (!form.invoiceNumber.trim()) errors.invoiceNumber = t('invoices.validationErrors.invoiceNumberRequired');
+    if (!form.issueDate) errors.issueDate = t('invoices.validationErrors.issueDateRequired');
+    if (!form.dueDate) errors.dueDate = t('invoices.validationErrors.dueDateRequired');
+    if (!form.amount.trim()) errors.amount = t('invoices.validationErrors.amountRequired');
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      showToast('Please fill all required fields', 'warning');
+      showToast(t('invoices.fillRequiredFields'), 'warning');
       return;
     }
     try {
@@ -122,16 +122,16 @@ export default function Invoices() {
       }
       if (editingId !== null) {
         await api.put(`/invoices/${editingId}`, payload);
-        showToast(t('toast.success', { action: 'Invoice updated' }));
+        showToast(t('toast.success', { action: t('invoices.invoiceUpdatedAction') }));
       } else {
         await api.post('/invoices', payload);
-        showToast(t('toast.success', { action: 'Invoice created' }));
+        showToast(t('toast.success', { action: t('invoices.invoiceCreatedAction') }));
       }
       setIsModalOpen(false);
       setFieldErrors({});
       fetchInvoices();
     } catch (err: any) {
-      showToast((err as any).userMessage || 'Unable to save invoice. Please try again later.', 'error');
+      showToast((err as any).userMessage || t('invoices.saveFailed'), 'error');
     }
   };
 
@@ -169,9 +169,9 @@ export default function Invoices() {
       try {
         await api.delete(`/invoices/${id}`);
         fetchInvoices();
-        showToast('Invoice deleted successfully', 'success');
+        showToast(t('invoices.deletedSuccess'), 'success');
       } catch (err) {
-        showToast('Unable to delete invoice. Please try again later.', 'error');
+        showToast(t('invoices.deleteFailed'), 'error');
       }
     }
   };
@@ -191,7 +191,7 @@ export default function Invoices() {
       fetchInvoices();
       showToast(t('toast.success', { action: 'Invoice marked as paid' }));
     } catch (err) {
-      showToast('Unable to mark invoice as paid. Please try again later.', 'error');
+      showToast(t('invoices.markPaidFailed'), 'error');
     }
   };
 
@@ -319,7 +319,7 @@ export default function Invoices() {
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {invoice.status !== 'PAID' && (
-                          <button onClick={() => markAsPaid(invoice.id)} className="px-3 py-1.5 bg-success-50 text-success-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-success-500 hover:text-white transition-all">Pay</button>
+                          <button onClick={() => markAsPaid(invoice.id)} className="px-3 py-1.5 bg-success-50 text-success-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-success-500 hover:text-white transition-all">{t('invoices.pay')}</button>
                         )}
                         <button onClick={() => openEdit(invoice)} className="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"><FileText size={17} /></button>
                         <button onClick={() => deleteInvoice(invoice.id)} className="p-2 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all"><Trash2 size={17} /></button>
@@ -328,7 +328,7 @@ export default function Invoices() {
                   </tr>
                 ))}
                 {filteredData.length === 0 && (
-                  <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400 text-sm">No invoices found</td></tr>
+                  <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400 text-sm">{t('invoices.noInvoicesFound')}</td></tr>
                 )}
               </tbody>
             </table>

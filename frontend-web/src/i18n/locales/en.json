@@ -1237,13 +1237,16 @@
     "deletedSuccess": "Invoice deleted successfully",
     "deleteFailed": "Unable to delete invoice. Please try again later.",
     "markPaidFailed": "Unable to mark invoice as paid. Please try again later.",
+    "saveFailed": "Unable to save invoice. Please try again later.",
     "validationErrors": {
       "clientRequired": "Client is required.",
       "invoiceNumberRequired": "Invoice number is required.",
       "issueDateRequired": "Issue date is required.",
       "dueDateRequired": "Due date is required.",
       "amountRequired": "Amount is required."
-    }
+    },
+    "invoiceUpdatedAction": "Invoice updated",
+    "invoiceCreatedAction": "Invoice created"
   },
   "agency": {
     "title": "Agency Overview",
