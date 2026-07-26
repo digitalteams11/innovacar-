@@ -8,6 +8,10 @@ import com.carrental.security.JwtTokenProvider;
 import com.carrental.security.SecurityConfig;
 import com.carrental.security.SubscriptionFilter;
 import com.carrental.security.UserDetailsServiceImpl;
+import com.carrental.security.oauth2.CookieOAuth2AuthorizationRequestRepository;
+import com.carrental.security.oauth2.CustomOidcUserService;
+import com.carrental.security.oauth2.OAuth2LoginFailureHandler;
+import com.carrental.security.oauth2.OAuth2LoginSuccessHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +23,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -149,6 +158,45 @@ class HealthEndpointSecurityTest {
         @Bean
         SubscriptionFilter subscriptionFilter() {
             return new SubscriptionFilter();
+        }
+
+        @Bean
+        CookieOAuth2AuthorizationRequestRepository oAuth2AuthorizationRequestRepository() {
+            return Mockito.mock(CookieOAuth2AuthorizationRequestRepository.class);
+        }
+
+        @Bean
+        CustomOidcUserService customOidcUserService() {
+            return Mockito.mock(CustomOidcUserService.class);
+        }
+
+        @Bean
+        OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler() {
+            return Mockito.mock(OAuth2LoginSuccessHandler.class);
+        }
+
+        @Bean
+        OAuth2LoginFailureHandler oAuth2LoginFailureHandler() {
+            return Mockito.mock(OAuth2LoginFailureHandler.class);
+        }
+
+        @Bean
+        ClientRegistrationRepository clientRegistrationRepository() {
+            ClientRegistration google = ClientRegistration.withRegistrationId("google")
+                    .clientId("test-client-id")
+                    .clientSecret("test-client-secret")
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                    .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                    .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                    .scope("openid", "email", "profile")
+                    .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+                    .tokenUri("https://www.googleapis.com/oauth2/v4/token")
+                    .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+                    .userNameAttributeName("sub")
+                    .jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
+                    .clientName("Google")
+                    .build();
+            return new InMemoryClientRegistrationRepository(google);
         }
     }
 }
