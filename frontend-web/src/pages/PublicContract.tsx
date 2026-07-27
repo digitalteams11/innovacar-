@@ -80,7 +80,7 @@ export default function PublicContract() {
   const [contract, setContract] = useState<PublicContractData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [errorTitle, setErrorTitle] = useState<string>('Invalid Link');
+  const [errorTitle, setErrorTitle] = useState<string>(t('publicContract.errorTitles.invalidLink'));
   // Separate from `error` on purpose: a failed PDF download must never blow
   // away an already-successfully-loaded contract page (see downloadSignedPdf).
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export default function PublicContract() {
 
   useEffect(() => {
     if (!qrToken) {
-      setError('Invalid contract link');
+      setError(t('publicContract.invalidContractLink'));
       setLoading(false);
       return;
     }
@@ -130,17 +130,17 @@ export default function PublicContract() {
       // server-side failure — do not label every exception "Invalid Link".
       console.error('[PublicContract] fetch failed:', path, 'errorCode=', errorCode, err);
       if (errorCode === 'CONTRACT_NOT_FOUND' || status === 404) {
-        setErrorTitle('Invalid Link');
-        setError('This contract link is invalid. Please contact your rental agency for a new link.');
+        setErrorTitle(t('publicContract.errorTitles.invalidLink'));
+        setError(t('publicContract.errors.invalidLinkContactAgency'));
       } else if (status && status >= 500) {
-        setErrorTitle('Temporary Error');
-        setError(message || 'The contract could not be loaded right now. Please try again shortly.');
+        setErrorTitle(t('publicContract.errorTitles.temporaryError'));
+        setError(message || t('publicContract.errors.loadFailedTryAgain'));
       } else if (status) {
-        setErrorTitle('Unable to Load Contract');
-        setError(message || `Server error (HTTP ${status}). Please try again or contact support.`);
+        setErrorTitle(t('publicContract.errorTitles.unableToLoad'));
+        setError(message || t('publicContract.errors.serverError', { status }));
       } else {
-        setErrorTitle('Invalid Link');
-        setError('This contract link is invalid or has expired.');
+        setErrorTitle(t('publicContract.errorTitles.invalidLink'));
+        setError(t('publicContract.errors.invalidOrExpired'));
       }
     } finally {
       setLoading(false);
@@ -163,7 +163,7 @@ export default function PublicContract() {
       setIsSigned(true);
       setShowSuccess(true);
     } catch (err) {
-      setError('Failed to save your signature. Please try again.');
+      setError(t('publicContract.errors.signatureSaveFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -179,14 +179,14 @@ export default function PublicContract() {
         let code: string | undefined;
         try { code = (await res.json())?.errorCode; } catch { /* body wasn't JSON */ }
         if (res.status === 404 || code === 'CONTRACT_NOT_FOUND') {
-          throw new Error('This contract could not be found. Please contact your rental agency for a new link.');
+          throw new Error(t('publicContract.errors.pdfNotFound'));
         }
         // The contract itself loaded fine (we're on this page) — a PDF
         // failure here is a server-side generation problem, not a bad link.
-        throw new Error('The contract exists, but the PDF could not be generated. Please try again.');
+        throw new Error(t('publicContract.errors.pdfGenerationFailed'));
       }
       const blob = await res.blob();
-      if (!blob || blob.size === 0) throw new Error('The generated PDF was empty. Please try again.');
+      if (!blob || blob.size === 0) throw new Error(t('publicContract.errors.pdfEmpty'));
       const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -198,7 +198,7 @@ export default function PublicContract() {
     } catch (err) {
       console.error('[PublicContract] PDF download failed:', err);
       const message = err instanceof Error ? err.message : undefined;
-      setPdfError(message || 'The contract exists, but the PDF could not be generated. Please try again.');
+      setPdfError(message || t('publicContract.errors.pdfGenerationFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -209,7 +209,7 @@ export default function PublicContract() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center space-y-3">
           <Loader2 size={32} className="animate-spin text-brand-500 mx-auto" />
-          <p className="text-sm text-slate-400">Loading contract...</p>
+          <p className="text-sm text-slate-400">{t('publicContract.loadingContract')}</p>
         </div>
       </div>
     );
@@ -219,8 +219,8 @@ export default function PublicContract() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <SeoHead
-          title="Contract Signing"
-          description="Secure contract signing link."
+          title={t('publicContract.seo.title')}
+          description={t('publicContract.seo.description')}
           canonical={typeof window !== 'undefined' ? window.location.href : `${PUBLIC_APP_URL}/`}
           robots={ROBOTS_PRIVATE}
         />
@@ -230,7 +230,7 @@ export default function PublicContract() {
           </div>
           <h1 className="text-xl font-bold text-[#1e293b]">{errorTitle}</h1>
           <p className="text-sm text-slate-400">{error}</p>
-          <p className="text-xs text-slate-300">Please contact your rental agency for assistance.</p>
+          <p className="text-xs text-slate-300">{t('publicContract.contactAgencyForAssistance')}</p>
         </div>
       </div>
     );
@@ -247,29 +247,29 @@ export default function PublicContract() {
             </div>
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-[#1e293b]">Contract Signed!</h1>
+            <h1 className="text-2xl font-bold text-[#1e293b]">{t('publicContract.contractSigned')}</h1>
             <p className="text-sm text-slate-400">
-              Your signature has been securely recorded and synced to the agency dashboard.
+              {t('publicContract.signatureRecordedSynced')}
             </p>
           </div>
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">Contract</span>
+              <span className="text-slate-400">{t('contracts.contractNumber')}</span>
               <span className="font-mono font-bold text-[#1e293b]">{contract.contractNumber}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">Status</span>
-              <span className="font-bold text-success-500">Signed</span>
+              <span className="text-slate-400">{t('publicContract.status')}</span>
+              <span className="font-bold text-success-500">{t('publicContract.signedStatusValue')}</span>
             </div>
             {contract.ownerSigned && (
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Final Status</span>
-                <span className="font-bold text-success-500">Active</span>
+                <span className="text-slate-400">{t('publicContract.finalStatus')}</span>
+                <span className="font-bold text-success-500">{t('publicContract.activeStatusValue')}</span>
               </div>
             )}
           </div>
           <p className="text-xs text-slate-300">
-            You can now close this page. A confirmation email will be sent shortly.
+            {t('publicContract.canCloseNowNote')}
           </p>
         </div>
       </div>
@@ -300,14 +300,14 @@ export default function PublicContract() {
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-bold text-[#1e293b]">{contract.agencyName || 'Agency'}</p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Digital Contract</p>
+              <p className="text-sm font-bold text-[#1e293b]">{contract.agencyName || t('publicContract.agencyFallback')}</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">{t('publicContract.digitalContract')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${contract.ownerSigned ? 'bg-success-500' : 'bg-warning-500'} animate-pulse`} />
             <span className="text-xs font-medium text-slate-500">
-              {contract.ownerSigned ? 'Active' : 'Pending'}
+              {contract.ownerSigned ? t('publicContract.activeStatusValue') : t('publicContract.pendingStatusValue')}
             </span>
           </div>
         </div>
@@ -316,7 +316,7 @@ export default function PublicContract() {
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
         {/* Contract Number */}
         <div className="text-center space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Contract Number</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('contracts.contractNumber')}</p>
           <p className="font-mono text-base sm:text-lg font-bold text-[#1e293b]">{contract.contractNumber}</p>
         </div>
 
@@ -327,7 +327,7 @@ export default function PublicContract() {
             <span className="text-xs font-bold uppercase tracking-wider">{t('contracts.client') || 'Client'}</span>
           </div>
           <div>
-            <p className="text-base sm:text-lg font-bold text-[#1e293b]">{contract.clientFullName || contract.clientName || 'Client'}</p>
+            <p className="text-base sm:text-lg font-bold text-[#1e293b]">{contract.clientFullName || contract.clientName || t('publicContract.clientFallback')}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
               {contract.clientEmail && (
                 <span className="flex items-center gap-1"><Mail size={11} /> {contract.clientEmail}</span>
@@ -336,7 +336,7 @@ export default function PublicContract() {
                 <span className="flex items-center gap-1"><Phone size={11} /> {contract.clientPhone}</span>
               )}
               {contract.clientCin && (
-                <span className="flex items-center gap-1"><User size={11} /> CIN: {contract.clientCin}</span>
+                <span className="flex items-center gap-1"><User size={11} /> {t('reservations.cin')}: {contract.clientCin}</span>
               )}
               {contract.clientAddress && (
                 <span className="flex items-center gap-1 w-full mt-1"><MapPin size={11} className="shrink-0"/> {contract.clientAddress}</span>
@@ -352,7 +352,7 @@ export default function PublicContract() {
             <span className="text-xs font-bold uppercase tracking-wider">{t('contracts.vehicle') || 'Vehicle'}</span>
           </div>
           <div>
-            <p className="text-base sm:text-lg font-bold text-[#1e293b]">{contract.vehicleBrand || contract.vehicleModel || 'Vehicle'}</p>
+            <p className="text-base sm:text-lg font-bold text-[#1e293b]">{contract.vehicleBrand || contract.vehicleModel || t('publicContract.vehicleFallback')}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
               {(contract.vehicleRegistration || contract.vehiclePlate) && (
                 <span className="flex items-center gap-1"><Shield size={11} /> {contract.vehicleRegistration || contract.vehiclePlate}</span>
@@ -372,18 +372,18 @@ export default function PublicContract() {
           </div>
           <div className="flex items-center justify-between">
             <div className="text-center">
-              <p className="text-xs text-slate-400">Start</p>
+              <p className="text-xs text-slate-400">{t('publicContract.start')}</p>
               <p className="text-sm font-bold text-[#1e293b]">{new Date(contract.startDate).toLocaleDateString()}</p>
             </div>
             <div className="flex-1 flex items-center justify-center px-4">
               <div className="h-px bg-slate-200 flex-1" />
               <div className="px-3 py-1 bg-brand-50 rounded-full text-xs font-bold text-brand-500 whitespace-nowrap">
-                {days} days
+                {t('publicContract.daysCount', { count: days })}
               </div>
               <div className="h-px bg-slate-200 flex-1" />
             </div>
             <div className="text-center">
-              <p className="text-xs text-slate-400">End</p>
+              <p className="text-xs text-slate-400">{t('publicContract.end')}</p>
               <p className="text-sm font-bold text-[#1e293b]">{new Date(contract.endDate).toLocaleDateString()}</p>
             </div>
           </div>
@@ -393,34 +393,34 @@ export default function PublicContract() {
         <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
           <div className="flex items-center gap-2 text-brand-500">
             <Landmark size={14} />
-            <span className="text-xs font-bold uppercase tracking-wider">Payment Summary</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('publicContract.paymentSummary')}</span>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Rental Price ({days} days)</span>
+              <span className="text-slate-500">{t('publicContract.rentalPriceForDays', { count: days })}</span>
               <span className="font-medium text-[#1e293b]">{(contract.dailyPrice || 0) * days} MAD</span>
             </div>
             {(contract.depositAmount || 0) > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Deposit</span>
+                <span className="text-slate-500">{t('contractDetails.depositLabel')}</span>
                 <span className="font-medium text-[#1e293b]">{contract.depositAmount} MAD</span>
               </div>
             )}
             {((contract.deliveryFees || 0) + (contract.returnFees || 0) + (contract.cleaningFees || 0) + (contract.lateFees || 0) + (contract.fuelCharges || 0)) > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Additional Fees</span>
+                <span className="text-slate-500">{t('publicContract.additionalFees')}</span>
                 <span className="font-medium text-[#1e293b]">{((contract.deliveryFees || 0) + (contract.returnFees || 0) + (contract.cleaningFees || 0) + (contract.lateFees || 0) + (contract.fuelCharges || 0))} MAD</span>
               </div>
             )}
             {(contract.discountAmount || 0) > 0 && (
               <div className="flex justify-between text-sm text-success-600">
-                <span>Discount</span>
+                <span>{t('publicContract.discount')}</span>
                 <span className="font-medium">-{contract.discountAmount} MAD</span>
               </div>
             )}
             <div className="h-px bg-slate-100 my-2" />
             <div className="flex justify-between text-base">
-              <span className="font-bold text-slate-800">Total Amount</span>
+              <span className="font-bold text-slate-800">{t('publicContract.totalAmount')}</span>
               <span className="font-black text-brand-600">{contract.totalPrice || contract.totalAmount || 0} MAD</span>
             </div>
           </div>
@@ -431,26 +431,26 @@ export default function PublicContract() {
           <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
             <div className="flex items-center gap-2 text-success-500">
               <CheckCircle2 size={14} />
-              <span className="text-xs font-bold uppercase tracking-wider">Agency Signed</span>
+              <span className="text-xs font-bold uppercase tracking-wider">{t('publicContract.agencySigned')}</span>
             </div>
             <div className="flex items-center gap-3 p-3 bg-success-50 rounded-xl">
-              <img src={contract.ownerSignature} alt="Agency Signature" className="h-16 bg-white rounded-lg border border-success-200 p-2" />
+              <img src={contract.ownerSignature} alt={t('contractDetails.agencySignatureAlt')} className="h-16 bg-white rounded-lg border border-success-200 p-2" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-success-700">{contract.agencyName || 'Agency'}</p>
+                <p className="text-sm font-bold text-success-700">{contract.agencyName || t('publicContract.agencyFallback')}</p>
                 <p className="text-xs text-success-500">
-                  Signed on {contract.ownerSignedAt ? new Date(contract.ownerSignedAt).toLocaleString() : 'N/A'}
+                  {t('publicContract.signedOnDate', { date: contract.ownerSignedAt ? new Date(contract.ownerSignedAt).toLocaleString() : t('common.notAvailable') })}
                 </p>
               </div>
               {contract.agencyStampUrl && (
                 <img
                   src={resolveAsset(contract.agencyStampUrl)}
-                  alt="Agency Stamp"
+                  alt={t('contractDetails.agencyStampAlt')}
                   className="h-16 w-16 object-contain rounded-lg border border-success-200 bg-white p-1 shrink-0"
                 />
               )}
             </div>
             <p className="text-xs text-slate-400">
-              This contract has already been signed by the agency. Please review and sign below to complete the agreement.
+              {t('publicContract.alreadySignedByAgencyNote')}
             </p>
           </div>
         )}
@@ -460,30 +460,30 @@ export default function PublicContract() {
           <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
             <div className="flex items-center gap-2 text-brand-500">
               <Landmark size={14} />
-              <span className="text-xs font-bold uppercase tracking-wider">Security Deposit</span>
+              <span className="text-xs font-bold uppercase tracking-wider">{t('contractDetails.securityDeposit')}</span>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Type</span>
-                <span className="font-medium text-[#1e293b]">{contract.deposit.depositType || 'Cash'}</span>
+                <span className="text-slate-500">{t('contractDetails.type')}</span>
+                <span className="font-medium text-[#1e293b]">{contract.deposit.depositType || t('contractDetails.cash')}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Amount</span>
+                <span className="text-slate-500">{t('contractDetails.amount')}</span>
                 <span className="font-bold text-brand-600">{contract.deposit.amount} {contract.deposit.currency || 'MAD'}</span>
               </div>
               {contract.deposit.reference && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Reference</span>
+                  <span className="text-slate-500">{t('contractDetails.reference')}</span>
                   <span className="font-medium text-[#1e293b]">{contract.deposit.reference}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Status</span>
-                <span className="font-medium text-[#1e293b]">{contract.deposit.status || 'Pending'}</span>
+                <span className="text-slate-500">{t('publicContract.status')}</span>
+                <span className="font-medium text-[#1e293b]">{contract.deposit.status ? t(`contractDetails.depositStatusValues.${contract.deposit.status}`, contract.deposit.status) : t('contractDetails.depositStatusValues.PENDING')}</span>
               </div>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-xl">
-              {contract.deposit.conditionsText || 'The deposit will be returned after inspection of the vehicle and validation of all contractual obligations.'}
+              {contract.deposit.conditionsText || t('publicContract.depositConditionsDefault')}
             </p>
             {!isSigned && (
               <label className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl cursor-pointer transition-all hover:bg-amber-100 border border-amber-200">
@@ -500,7 +500,7 @@ export default function PublicContract() {
                   )}
                 </div>
                 <span className="text-sm text-amber-800 font-medium">
-                  I understand and accept the deposit conditions.
+                  {t('publicContract.acceptDepositConditions')}
                 </span>
               </label>
             )}
@@ -511,7 +511,7 @@ export default function PublicContract() {
         <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
           <div className="flex items-center gap-2 text-brand-500">
             <Shield size={14} />
-            <span className="text-xs font-bold uppercase tracking-wider">Terms & Conditions</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('contracts.termsStatus')}</span>
           </div>
           <ul className="space-y-3">
             {(contract.terms || []).map((term, idx) => (
@@ -538,7 +538,7 @@ export default function PublicContract() {
                 )}
               </div>
               <span className="text-sm text-slate-600">
-                I have read and agree to the terms and conditions above.
+                {t('publicContract.acceptTermsConditions')}
               </span>
             </label>
           )}
@@ -549,26 +549,26 @@ export default function PublicContract() {
           <div className="bg-white rounded-2xl p-3 sm:p-5 shadow-sm border border-slate-100 space-y-4">
             <div className="flex items-center gap-2 text-brand-500">
               <Shield size={14} />
-              <span className="text-xs font-bold uppercase tracking-wider">Your Signature</span>
+              <span className="text-xs font-bold uppercase tracking-wider">{t('publicContract.yourSignature')}</span>
             </div>
 
             {!termsChecked && (
               <div className="flex items-center gap-2 p-3 bg-warning-50 text-warning-600 rounded-xl text-xs">
                 <AlertCircle size={14} />
-                <span>Please accept the terms and conditions above before signing.</span>
+                <span>{t('publicContract.acceptTermsBeforeSigning')}</span>
               </div>
             )}
 
             {!depositAcknowledged && contract.deposit && contract.deposit.amount && contract.deposit.amount > 0 && (
               <div className="flex items-center gap-2 p-3 bg-warning-50 text-warning-600 rounded-xl text-xs">
                 <AlertCircle size={14} />
-                <span>Please acknowledge the security deposit conditions above before signing.</span>
+                <span>{t('publicContract.acknowledgeDepositBeforeSigning')}</span>
               </div>
             )}
             <div className={termsChecked && (!contract.deposit || !contract.deposit.amount || depositAcknowledged) ? '' : 'opacity-50 pointer-events-none'}>
               <SignaturePad
                 onSave={handleSignatureSave}
-                label="Sign with your finger or stylus"
+                label={t('publicContract.signWithFingerOrStylus')}
                 penColor="#0f172a"
                 autoSaveKey={`public_contract_${qrToken}`}
               />
@@ -577,7 +577,7 @@ export default function PublicContract() {
             {isSubmitting && (
               <div className="flex items-center justify-center gap-2 py-3 text-sm text-brand-500">
                 <Loader2 size={16} className="animate-spin" />
-                <span>Syncing your signature...</span>
+                <span>{t('publicContract.syncingSignature')}</span>
               </div>
             )}
           </div>
@@ -585,15 +585,15 @@ export default function PublicContract() {
           <div className="bg-success-50 rounded-2xl p-3 sm:p-5 border border-success-100 text-center space-y-4">
             <CheckCircle2 size={32} className="text-success-500 mx-auto" />
             <div>
-              <p className="text-sm font-bold text-success-600">Contract Signed!</p>
+              <p className="text-sm font-bold text-success-600">{t('publicContract.contractSigned')}</p>
               <p className="text-xs text-success-400 mt-1">
-                You signed this contract on {contract.clientSignedAt ? new Date(contract.clientSignedAt).toLocaleString() : 'N/A'}
+                {t('publicContract.signedContractOnDate', { date: contract.clientSignedAt ? new Date(contract.clientSignedAt).toLocaleString() : t('common.notAvailable') })}
               </p>
             </div>
             {contract.clientSignature && (
               <div className="p-2 bg-white rounded-xl border border-success-200 mx-auto max-w-xs">
-                <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase">Your Signature</p>
-                <img src={contract.clientSignature} alt="Your Signature" className="h-16 w-full object-contain" />
+                <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase">{t('publicContract.yourSignature')}</p>
+                <img src={contract.clientSignature} alt={t('publicContract.yourSignature')} className="h-16 w-full object-contain" />
               </div>
             )}
             {contract.pdfUrl && (
@@ -605,7 +605,7 @@ export default function PublicContract() {
                   className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-success-600 rounded-xl text-sm font-medium border border-success-200 hover:bg-success-100 transition-all"
                 >
                   {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-                  {isSubmitting ? 'Preparing PDF...' : 'Download Signed Contract'}
+                  {isSubmitting ? t('publicContract.preparingPdf') : t('publicContract.downloadSignedContract')}
                 </button>
                 {pdfError && (
                   <div className="flex flex-col items-center gap-2 p-3 bg-danger-50 text-danger-600 rounded-xl text-xs max-w-xs mx-auto">
@@ -619,7 +619,7 @@ export default function PublicContract() {
                       disabled={isSubmitting}
                       className="underline font-medium"
                     >
-                      Retry
+                      {t('common.retry')}
                     </button>
                   </div>
                 )}
@@ -630,7 +630,7 @@ export default function PublicContract() {
 
         {/* Agency Footer */}
         <div className="text-center space-y-2 pt-4 border-t border-slate-200">
-          <p className="text-xs font-bold text-slate-400">{contract.agencyName || 'Agency'}</p>
+          <p className="text-xs font-bold text-slate-400">{contract.agencyName || t('publicContract.agencyFallback')}</p>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-slate-300">
             {contract.agencyAddress && (
               <span className="flex items-center gap-1"><MapPin size={9} /> {contract.agencyAddress}</span>
@@ -643,7 +643,7 @@ export default function PublicContract() {
             )}
           </div>
           <p className="text-[10px] text-slate-300 mt-2">
-            This document is digitally signed and timestamped.
+            {t('publicContract.digitallySignedNotice')}
           </p>
         </div>
       </div>
