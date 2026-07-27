@@ -51,15 +51,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         AuthResponse authResponse = principal.getAuthResponse();
         String code = exchangeCodeStore.store(authResponse);
-        String redirectTarget = frontendUrl.replaceAll("/+$", "")
-                + "/#/login?oauth2code=" + urlEncode(code);
-        log.info("[OAUTH2_LOGIN_SUCCESS] userId={} twoFactorRequired={}",
-                authResponse.getUserId(), Boolean.TRUE.equals(authResponse.getTwoFactorRequired()));
+        String base = FrontendUrls.canonicalize(frontendUrl);
+        String redirectTarget = base + "/#/login?oauth2code=" + urlEncode(code);
+        log.info("[OAUTH2_LOGIN_SUCCESS] userId={} tenantId={} twoFactorRequired={} redirectHost={}",
+                authResponse.getUserId(), authResponse.getTenantId(),
+                Boolean.TRUE.equals(authResponse.getTwoFactorRequired()), base);
         response.sendRedirect(redirectTarget);
     }
 
     private String loginUrlWithError(String code) {
-        return frontendUrl.replaceAll("/+$", "") + "/#/login?oauth2error=" + urlEncode(code);
+        return FrontendUrls.canonicalize(frontendUrl) + "/#/login?oauth2error=" + urlEncode(code);
     }
 
     private String urlEncode(String value) {

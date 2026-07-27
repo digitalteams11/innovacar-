@@ -43,8 +43,12 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                          AuthenticationException exception) throws IOException {
         String code = mapErrorCode(exception);
-        log.warn("[OAUTH2_LOGIN_FAILURE] code={} message={}", code, exception.getMessage());
-        String redirectTarget = frontendUrl.replaceAll("/+$", "")
+        boolean authRequestCookiePresent = request.getCookies() != null
+                && java.util.Arrays.stream(request.getCookies())
+                        .anyMatch(c -> CookieOAuth2AuthorizationRequestRepository.COOKIE_NAME.equals(c.getName()));
+        log.warn("[OAUTH2_LOGIN_FAILURE] code={} authRequestCookiePresent={} requestUri={} message={}",
+                code, authRequestCookiePresent, request.getRequestURI(), exception.getMessage());
+        String redirectTarget = FrontendUrls.canonicalize(frontendUrl)
                 + "/#/login?oauth2error=" + URLEncoder.encode(code, StandardCharsets.UTF_8);
         response.sendRedirect(redirectTarget);
     }

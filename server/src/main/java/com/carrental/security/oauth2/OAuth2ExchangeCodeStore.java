@@ -38,7 +38,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class OAuth2ExchangeCodeStore {
 
-    private static final long TTL_SECONDS = 60;
+    // Was 60s; widened to 180s (matching CookieOAuth2AuthorizationRequestRepository's
+    // own window) as defensive slack against the extra hop a www->non-www redirect,
+    // a slow mobile network, or a cold Vercel/CDN load adds between this code being
+    // issued and the frontend's exchange call actually reaching this endpoint.
+    private static final long TTL_SECONDS = 180;
 
     private final Map<String, Entry> store = new ConcurrentHashMap<>();
 
@@ -58,9 +62,16 @@ public class OAuth2ExchangeCodeStore {
     public AuthResponse consume(String code) {
         if (code == null || code.isBlank()) return null;
         Entry entry = store.remove(code);
-        if (entry == null) return null;
+        if (entry == null) {
+            // Never issued (bad/garbled param), already consumed once (double
+            // call), or this instance restarted/rolled over to a different
+            // container since the code was stored — this in-memory, per-instance
+            // store (see class Javadoc) can't tell these apart.
+            log.warn("[OAUTH2_EXCHANGE_CODE_NOT_FOUND] storeSize={}", store.size());
+            return null;
+        }
         if (Instant.now().isAfter(entry.expiresAt())) {
-            log.warn("[OAUTH2_EXCHANGE_CODE_EXPIRED]");
+            log.warn("[OAUTH2_EXCHANGE_CODE_EXPIRED] ttlSeconds={}", TTL_SECONDS);
             return null;
         }
         return entry.authResponse();

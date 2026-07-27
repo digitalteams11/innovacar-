@@ -230,9 +230,16 @@ public class AuthController {
             HttpServletResponse httpResponse) {
         AuthResponse response = oAuth2ExchangeCodeStore.consume(request.getCode());
         if (response == null) {
+            // Distinct from OAUTH2_EXPIRED_AUTHORIZATION (Spring Security's own
+            // authorization_request_not_found, thrown before this endpoint is
+            // ever reached — see OAuth2LoginFailureHandler) so logs/error codes
+            // tell the two failure points apart instead of both surfacing the
+            // same ambiguous code.
+            log.warn("[OAUTH2_EXCHANGE_FAILED] reason=code_not_found_or_expired");
             throw new com.carrental.exception.GoogleAuthException(
-                    "This sign-in link has expired. Please try again.", "OAUTH2_EXPIRED_AUTHORIZATION");
+                    "This sign-in link has expired. Please try again.", "OAUTH2_EXCHANGE_CODE_EXPIRED");
         }
+        log.info("[OAUTH2_EXCHANGE_SUCCESS] userId={} tenantId={}", response.getUserId(), response.getTenantId());
         return authResponse(response, HttpStatus.OK, httpRequest, httpResponse, "Google login successful");
     }
 
