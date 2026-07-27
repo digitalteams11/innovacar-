@@ -7,7 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
  * language.
  */
 
-const SECTION_IDS = ['features', 'how-it-works', 'web-desktop', 'pricing', 'faq', 'contact'] as const;
+const SECTION_IDS = ['features', 'how-it-works', 'web-desktop', 'trial', 'faq', 'contact'] as const;
 
 async function isInViewport(page: Page, id: string): Promise<boolean> {
   return page.evaluate((elementId) => {
@@ -176,6 +176,71 @@ test.describe('Web & Desktop section', () => {
       const href = await realDownload.getAttribute('href');
       expect(href).toMatch(/^https:\/\//);
     }
+  });
+});
+
+test.describe('Free trial CTA (pricing removed)', () => {
+  test('no priced plan cards are rendered', async ({ page }) => {
+    await page.goto('/');
+    expect(await page.locator('.im-pricing-card, .im-grid-pricing, [class*="pricing-card"]').count()).toBe(0);
+    expect(await page.getByText('Choose this plan').count()).toBe(0);
+    expect(await page.getByText(/\d+\s*MAD/).count()).toBe(0);
+  });
+
+  test('navbar "Pricing" link is gone — renamed to Free trial / Essai gratuit', async ({ page }) => {
+    await page.goto('/');
+    const navLinks = page.locator('nav.im-nav-desktop button');
+    await expect(navLinks).toHaveCount(6);
+    // Auto-retrying assertion on the specific nav item, not a one-shot
+    // snapshot of all labels — avoids a race with the client-side render.
+    await expect(navLinks.nth(3)).toHaveText(/essai gratuit|free trial/i);
+    const labels = await navLinks.allTextContents();
+    expect(labels.some((label) => /tarifs|pricing/i.test(label))).toBe(false);
+  });
+
+  test('clicking the renamed nav item scrolls to the free-trial CTA, not a pricing grid', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('nav.im-nav-desktop button').nth(3).click();
+    await page.waitForTimeout(600);
+    expect(await isInViewport(page, 'trial')).toBe(true);
+    expect(await page.locator('#trial .im-pricing-card').count()).toBe(0);
+  });
+
+  test('free-trial CTA primary button starts real registration, secondary opens contact', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#trial').scrollIntoViewIfNeeded();
+    const primary = page.locator('#trial a.im-btn-primary');
+    const secondary = page.locator('#trial a.im-btn-ghost');
+    await expect(primary).toHaveAttribute('href', /#\/register/);
+    await expect(secondary).toHaveAttribute('href', /#\/contact/);
+  });
+
+  test('/tarifs and /pricing deep-dive pages also show the trial CTA, not price cards', async ({ page }) => {
+    for (const path of ['/tarifs', '/pricing']) {
+      await page.goto(path);
+      expect(await page.locator('.im-pricing-card').count()).toBe(0);
+      await expect(page.locator('#trial')).toBeVisible();
+    }
+  });
+});
+
+test.describe('Contact', () => {
+  test('Contact nav item scrolls to the contact section', async ({ page }) => {
+    await page.goto('/');
+    const index = SECTION_IDS.indexOf('contact');
+    await page.locator('nav.im-nav-desktop button').nth(index).click();
+    await page.waitForTimeout(600);
+    expect(await isInViewport(page, 'contact')).toBe(true);
+  });
+
+  test('contact section has a real action (form link, email, or WhatsApp)', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#contact').scrollIntoViewIfNeeded();
+    const actions = page.locator('.im-contact-actions a');
+    expect(await actions.count()).toBeGreaterThan(0);
+    const href = await actions.first().getAttribute('href');
+    expect(href).toBeTruthy();
+    expect(href).not.toBe('#');
   });
 });
 

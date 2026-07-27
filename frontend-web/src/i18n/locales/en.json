@@ -210,7 +210,6 @@
   "register": {
     "title": "Create Account",
     "subtitle": "Join your team on RentCar SaaS",
-    "planPreselected": "Selected plan: {{plan}} — you can review or change it after creating your account.",
     "firstName": "First Name",
     "lastName": "Last Name",
     "tenantId": "Tenant ID",
@@ -3090,6 +3089,7 @@
     "OAUTH2_ACCESS_DENIED": "Google sign-in was cancelled.",
     "OAUTH2_INVALID_STATE": "Your sign-in request could not be verified. Please try again.",
     "OAUTH2_EXPIRED_AUTHORIZATION": "This sign-in link has expired. Please try again.",
+    "OAUTH2_EXCHANGE_CODE_EXPIRED": "Your Google sign-in took too long to complete. Please try again.",
     "OAUTH2_INVALID_TOKEN": "Google returned an invalid response. Please try again.",
     "OAUTH2_GOOGLE_UNAVAILABLE": "Google is temporarily unavailable. Please try again in a moment.",
     "TENANT_NOT_FOUND": "No agency is linked to this account. Please contact support.",

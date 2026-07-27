@@ -210,7 +210,6 @@
   "register": {
     "title": "Créer un compte",
     "subtitle": "Rejoignez votre équipe sur RentCar SaaS",
-    "planPreselected": "Formule sélectionnée : {{plan}} — vous pourrez la vérifier ou la changer après la création de votre compte.",
     "firstName": "Prénom",
     "lastName": "Nom",
     "tenantId": "ID Tenant",
@@ -3089,6 +3088,7 @@
     "OAUTH2_ACCESS_DENIED": "La connexion avec Google a été annulée.",
     "OAUTH2_INVALID_STATE": "Votre demande de connexion n'a pas pu être vérifiée. Veuillez réessayer.",
     "OAUTH2_EXPIRED_AUTHORIZATION": "Ce lien de connexion a expiré. Veuillez réessayer.",
+    "OAUTH2_EXCHANGE_CODE_EXPIRED": "Votre connexion Google a pris trop de temps. Veuillez réessayer.",
     "OAUTH2_INVALID_TOKEN": "Google a renvoyé une réponse invalide. Veuillez réessayer.",
     "OAUTH2_GOOGLE_UNAVAILABLE": "Google est temporairement indisponible. Veuillez réessayer dans un instant.",
     "GOOGLE_EMAIL_NOT_VERIFIED": "L'adresse email de votre compte Google n'est pas vérifiée. Veuillez la vérifier auprès de Google d'abord.",

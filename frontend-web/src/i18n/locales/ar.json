@@ -187,7 +187,6 @@
   "register": {
     "title": "إنشاء حساب",
     "subtitle": "انضم إلى فريقك على RentCar SaaS",
-    "planPreselected": "الباقة المختارة: {{plan}} — يمكنك مراجعتها أو تغييرها بعد إنشاء حسابك.",
     "firstName": "الاسم الأول",
     "lastName": "اسم العائلة",
     "tenantId": "معرف المستأجر",
@@ -3101,6 +3100,7 @@
     "OAUTH2_ACCESS_DENIED": "تم إلغاء تسجيل الدخول عبر Google.",
     "OAUTH2_INVALID_STATE": "تعذر التحقق من طلب تسجيل الدخول. يرجى المحاولة مرة أخرى.",
     "OAUTH2_EXPIRED_AUTHORIZATION": "انتهت صلاحية رابط تسجيل الدخول هذا. يرجى المحاولة مرة أخرى.",
+    "OAUTH2_EXCHANGE_CODE_EXPIRED": "استغرق تسجيل الدخول عبر Google وقتًا طويلاً. يرجى المحاولة مرة أخرى.",
     "OAUTH2_INVALID_TOKEN": "أعادت Google استجابة غير صالحة. يرجى المحاولة مرة أخرى.",
     "OAUTH2_GOOGLE_UNAVAILABLE": "خدمة Google غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.",
     "GOOGLE_EMAIL_NOT_VERIFIED": "البريد الإلكتروني لحساب Google الخاص بك غير موثّق. يرجى توثيقه مع Google أولاً.",

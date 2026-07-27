@@ -69,8 +69,6 @@ const ENV: EnvBag = {
   VITE_DESKTOP_PLATFORM: import.meta.env?.VITE_DESKTOP_PLATFORM,
   VITE_CONTACT_EMAIL: import.meta.env?.VITE_CONTACT_EMAIL,
   VITE_CONTACT_WHATSAPP: import.meta.env?.VITE_CONTACT_WHATSAPP,
-  VITE_API_URL: import.meta.env?.VITE_API_URL,
-  PROD: import.meta.env?.PROD,
 };
 
 // Blanket guard applied to EVERY env value this file reads, not just the
@@ -78,10 +76,9 @@ const ENV: EnvBag = {
 // are free text an operator fills in, and any of them could just as easily
 // have a leftover Vercel preview URL pasted into it as VITE_*_URL/DOWNLOAD
 // fields do). Only vercel.app is stripped here — NOT localhost/192.168.*,
-// since VITE_API_URL is documented to legitimately be a LAN address for
-// local dev and is also read through this same function (see apiBase()
-// below). A rejected value renders as unconfigured/empty rather than
-// shipping the literal string into the production bundle.
+// so a legitimate LAN address in another *_URL field isn't blanket-rejected.
+// A rejected value renders as unconfigured/empty rather than shipping the
+// literal string into the production bundle.
 const UNSAFE_VALUE_PATTERN = /vercel\.app/i;
 function envStr(key: string): string {
   const v = ENV[key];
@@ -96,8 +93,8 @@ function envBool(key: string): boolean {
 
 // Public marketing links (the real Innovax website, the desktop installer)
 // must additionally be a real https:// URL that isn't a LAN/loopback
-// address — unlike VITE_API_URL, there's no legitimate reason for either of
-// these to ever be a local/internal host.
+// address — there's no legitimate reason for either of these to ever be a
+// local/internal host.
 const UNSAFE_PUBLIC_HOST_PATTERN = /localhost|127\.0\.0\.1|^192\.168\./i;
 function envSafeUrl(key: string): string {
   const value = envStr(key);
@@ -126,28 +123,6 @@ const CONTACT_WHATSAPP_DIGITS = envStr('VITE_CONTACT_WHATSAPP').replace(/[^\d]/g
 /** True once this module runs in a real browser (never during SSR/prerender). */
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
-}
-
-/**
- * Minimal duplicate of src/lib/api.ts's base-URL resolution. Can't import
- * that module here (zero-import constraint above) — this file must also
- * execute standalone in the Node prerender script, which has neither
- * import.meta.env substitution nor `window`.
- */
-function apiBase(): string {
-  // envStr() already strips a vercel.app value out of VITE_API_URL (see
-  // above) — deliberately not routed through envSafeUrl() on top of that:
-  // that helper requires https: and rejects localhost/192.168.*, but
-  // VITE_API_URL is documented to legitimately be an http:// LAN address
-  // for local dev.
-  const configured = envStr('VITE_API_URL');
-  if (configured) {
-    const trimmed = configured.replace(/\/+$/, '');
-    return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
-  }
-  if (!isBrowser()) return 'https://api.innovacar.app/api';
-  if (ENV.PROD) return 'https://api.innovacar.app/api';
-  return `http://${window.location.hostname}:8082/api`;
 }
 
 function scrollToId(id: string) {
@@ -204,7 +179,7 @@ const UI: Record<string, Dict> = {
   navFeatures: { fr: 'Fonctionnalités', en: 'Features', ar: 'الميزات' },
   navHow: { fr: 'Comment ça marche', en: 'How it works', ar: 'كيف يعمل' },
   navWebDesktop: { fr: 'Web & Bureau', en: 'Web & Desktop', ar: 'الويب وسطح المكتب' },
-  navPricing: { fr: 'Tarifs', en: 'Pricing', ar: 'الأسعار' },
+  navFreeTrial: { fr: 'Essai gratuit', en: 'Free trial', ar: 'تجربة مجانية' },
   navFaq: { fr: 'FAQ', en: 'FAQ', ar: 'الأسئلة الشائعة' },
   navContact: { fr: 'Contact', en: 'Contact', ar: 'اتصل بنا' },
   login: { fr: 'Connexion', en: 'Log in', ar: 'تسجيل الدخول' },
@@ -255,33 +230,17 @@ const UI: Record<string, Dict> = {
   desktopSoon: { fr: 'Bientôt disponible', en: 'Coming soon', ar: 'قريباً' },
   desktopWaitlist: { fr: "M'avertir à la disponibilité", en: 'Notify me when available', ar: 'أعلمني عند التوفر' },
 
-  pricingTitle: { fr: 'Des tarifs adaptés à la taille de votre agence', en: 'Pricing that fits the size of your agency', ar: 'أسعار تناسب حجم وكالتك' },
-  pricingSub: {
-    fr: "Tarifs en dirhams marocains (MAD). Changez de formule à tout moment.",
-    en: 'Prices in Moroccan dirhams (MAD). Change plans at any time.',
-    ar: 'الأسعار بالدرهم المغربي. يمكنك تغيير باقتك في أي وقت.',
-  },
-  pricingLoadError: {
-    fr: 'Nos formules sont momentanément indisponibles. Contactez-nous pour un devis.',
-    en: 'Our plans are temporarily unavailable. Contact us for a quote.',
-    ar: 'باقاتنا غير متوفرة مؤقتاً. تواصل معنا للحصول على عرض سعر.',
-  },
-  pricingRecommended: { fr: 'Recommandé', en: 'Recommended', ar: 'موصى به' },
-  perMonth: { fr: '/mois', en: '/mo', ar: '/شهر' },
-  vehiclesUpTo: { fr: "Jusqu'à {n} véhicules", en: 'Up to {n} vehicles', ar: 'حتى {n} مركبة' },
-  employeesUpTo: { fr: "Jusqu'à {n} employés", en: 'Up to {n} employees', ar: 'حتى {n} موظف' },
-  gpsUpTo: { fr: 'Suivi GPS ({n} appareils)', en: 'GPS tracking ({n} devices)', ar: 'تتبع GPS ({n} أجهزة)' },
-  trialEligible: { fr: "Essai gratuit inclus", en: 'Free trial included', ar: 'تجربة مجانية متضمنة' },
-  choosePlan: { fr: 'Choisir cette formule', en: 'Choose this plan', ar: 'اختر هذه الباقة' },
   contactUs: { fr: 'Contactez-nous', en: 'Contact us', ar: 'تواصل معنا' },
 
-  trialTitle: { fr: 'Testez Innovacar gratuitement', en: 'Try Innovacar for free', ar: 'جرّب Innovacar مجاناً' },
+  // Public checkout/plan-selection isn't wired end-to-end yet (see
+  // FreeTrialCta below) — every new agency starts on the same free trial,
+  // so this is a single trustworthy CTA rather than priced plan cards.
+  trialTitle: { fr: 'Commencez votre essai gratuit', en: 'Start your free trial', ar: 'ابدأ تجربتك المجانية' },
   trialBody: {
-    fr: 'Configurez votre agence, ajoutez vos véhicules et découvrez les outils essentiels sans engagement.',
-    en: 'Set up your agency, add your vehicles and explore the essential tools, no commitment.',
-    ar: 'أعدّ وكالتك، أضف مركباتك واكتشف الأدوات الأساسية دون أي التزام.',
+    fr: 'Découvrez Innovacar et gérez votre agence depuis un espace de travail unique et sécurisé.',
+    en: 'Discover Innovacar and manage your agency from one secure workspace.',
+    ar: 'اكتشف Innovacar وأدر وكالتك من مساحة عمل واحدة وآمنة.',
   },
-  trialCta: { fr: 'Commencer mon essai gratuit', en: 'Start my free trial', ar: 'ابدأ تجربتي المجانية' },
   trialNoCard: { fr: 'Aucune carte bancaire requise', en: 'No credit card required', ar: 'لا حاجة لبطاقة بنكية' },
   trialCancel: { fr: 'Annulez à tout moment', en: 'Cancel anytime', ar: 'ألغِ في أي وقت' },
   trialSupport: { fr: 'Support pendant la mise en route', en: 'Support during onboarding', ar: 'دعم أثناء الإعداد' },
@@ -326,22 +285,17 @@ const UI: Record<string, Dict> = {
   },
   featuresPageCtaTitle: { fr: 'Voir Innovacar en action', en: 'See Innovacar in action', ar: 'شاهد Innovacar أثناء العمل' },
 
-  pricingPageTitle: { fr: 'Tarifs', en: 'Pricing', ar: 'الأسعار' },
+  pricingPageTitle: { fr: 'Essai gratuit', en: 'Free trial', ar: 'تجربة مجانية' },
   pricingPageSub: {
-    fr: '{trial}, puis un tarif adapté à la taille de votre agence. Tarifs indicatifs en dirhams marocains (MAD).',
-    en: '{trial}, then a price that fits the size of your agency. Indicative pricing in Moroccan dirhams (MAD).',
-    ar: '{trial}، ثم سعر يناسب حجم وكالتك. الأسعار إرشادية بالدرهم المغربي.',
+    fr: "Nous n'affichons pas encore de grille tarifaire publique. Démarrez un essai gratuit ou contactez-nous pour un devis adapté à la taille de votre agence.",
+    en: "We don't publish a public price list yet. Start a free trial or contact us for a quote fitted to the size of your agency.",
+    ar: 'لا نعرض حالياً قائمة أسعار عامة. ابدأ تجربة مجانية أو تواصل معنا للحصول على عرض سعر يناسب حجم وكالتك.',
   },
-  pricingPageCtaTitle: { fr: 'Une question sur nos tarifs ?', en: 'A question about our pricing?', ar: 'هل لديك سؤال حول أسعارنا؟' },
 };
 
 function t(lang: Lang, key: keyof typeof UI): string {
   return UI[key][lang] ?? UI[key].fr;
 }
-function fmt(s: string, vars: Record<string, string | number>): string {
-  return Object.entries(vars).reduce((acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)), s);
-}
-
 /** The real, current trial offer — driven by config, never a hardcoded promise. */
 function trialLabel(lang: Lang): string {
   if (TRIAL_PROMO_ENABLED && TRIAL_LABEL_OVERRIDE) return TRIAL_LABEL_OVERRIDE;
@@ -405,7 +359,7 @@ const IN_PAGE_NAV: NavItem[] = [
   { key: 'navFeatures', id: 'features' },
   { key: 'navHow', id: 'how-it-works' },
   { key: 'navWebDesktop', id: 'web-desktop' },
-  { key: 'navPricing', id: 'pricing' },
+  { key: 'navFreeTrial', id: 'trial' },
   { key: 'navFaq', id: 'faq' },
   { key: 'navContact', id: 'contact' },
 ];
@@ -565,7 +519,7 @@ function Footer() {
         <div className="im-footer-col">
           <h4>{t(lang, 'footerProduct')}</h4>
           <button type="button" onClick={() => scrollToId('features')}>{t(lang, 'navFeatures')}</button>
-          <button type="button" onClick={() => scrollToId('pricing')}>{t(lang, 'navPricing')}</button>
+          <button type="button" onClick={() => scrollToId('trial')}>{t(lang, 'navFreeTrial')}</button>
           <a href="/#/login">{t(lang, 'login')}</a>
           <a href={registerHref()}>{t(lang, 'startTrial')}</a>
           <button type="button" onClick={() => scrollToId('web-desktop')}>{t(lang, 'footerWebApp')}</button>
@@ -824,72 +778,32 @@ function Faq() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Pricing (Section 9) — fetches the real backend plans (GET /api/public/plans,
-// unauthenticated). Falls back to a "contact us" message on failure rather
-// than ever inventing a price.
+// Free trial CTA (replaces the old priced plan cards — see file history).
+// Plan selection on the public site never reached checkout: the backend only
+// exposes an authenticated, admin-only checkout (POST /api/saas/checkout/*,
+// used from the in-app Subscription/Billing settings after signup), and
+// every newly registered agency starts on the same free trial regardless of
+// which "plan" a visitor clicked. Rather than present cards that imply a
+// purchase this site can't complete, this is one honest CTA into the real
+// registration flow. In-app plan upgrade/checkout is unaffected — see
+// src/pages/Subscription.tsx and src/components/settings/BillingTab.tsx.
 // ─────────────────────────────────────────────────────────────────────────
-interface PublicPlan {
-  code: string;
-  name: string;
-  description?: string;
-  monthlyPrice?: number;
-  yearlyPrice?: number;
-  currency?: string;
-  maxVehicles?: number;
-  maxEmployees?: number;
-  maxGpsDevices?: number;
-  trialDays?: number;
-  highlighted?: boolean;
-}
-
-function usePublicPlans() {
-  const [plans, setPlans] = useState<PublicPlan[] | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`${apiBase()}/public/plans`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((data) => { if (!cancelled) setPlans(Array.isArray(data) ? data : []); })
-      .catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; };
-  }, []);
-  return { plans, failed };
-}
-
-function PricingSection() {
+function FreeTrialCta() {
   const { lang } = useLang();
-  const { plans, failed } = usePublicPlans();
-
-  if (failed || (plans && plans.length === 0)) {
-    return <p className="im-pricing-fallback">{t(lang, 'pricingLoadError')}</p>;
-  }
-  if (!plans) {
-    return <p className="im-pricing-fallback im-pricing-loading">…</p>;
-  }
-
   return (
-    <div className="im-grid im-grid-pricing">
-      {plans.map((plan) => (
-        <div key={plan.code} className={`im-card im-pricing-card${plan.highlighted ? ' im-pricing-card-highlight' : ''}`}>
-          {plan.highlighted && <span className="im-pricing-badge">{t(lang, 'pricingRecommended')}</span>}
-          <h3>{plan.name}</h3>
-          {typeof plan.monthlyPrice === 'number' && (
-            <p className="im-pricing-price">
-              {plan.monthlyPrice.toLocaleString(lang === 'ar' ? 'ar-MA' : lang)} {plan.currency || 'MAD'}
-              <span>{t(lang, 'perMonth')}</span>
-            </p>
-          )}
-          {plan.description && <p className="im-pricing-tagline">{plan.description}</p>}
-          <ul>
-            {typeof plan.maxVehicles === 'number' && <li>{fmt(t(lang, 'vehiclesUpTo'), { n: plan.maxVehicles })}</li>}
-            {typeof plan.maxEmployees === 'number' && <li>{fmt(t(lang, 'employeesUpTo'), { n: plan.maxEmployees })}</li>}
-            {typeof plan.maxGpsDevices === 'number' && plan.maxGpsDevices > 0 && <li>{fmt(t(lang, 'gpsUpTo'), { n: plan.maxGpsDevices })}</li>}
-            {typeof plan.trialDays === 'number' && plan.trialDays > 0 && <li>{t(lang, 'trialEligible')}</li>}
-          </ul>
-          <a href={registerHref({ plan: plan.code })} className="im-btn im-btn-primary">{t(lang, 'choosePlan')}</a>
-        </div>
-      ))}
-    </div>
+    <section id="trial" className="im-section im-trial">
+      <h2>{t(lang, 'trialTitle')}</h2>
+      <p className="im-section-sub">{t(lang, 'trialBody')}</p>
+      <div className="im-trial-actions">
+        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg">{t(lang, 'startTrial')}</a>
+        <a href="/#/contact" className="im-btn im-btn-ghost im-btn-lg">{t(lang, 'contactUs')}</a>
+      </div>
+      <p className="im-hero-note">{t(lang, 'trialNoCard')}</p>
+      <ul className="im-trial-notes">
+        <li>{t(lang, 'trialCancel')}</li>
+        <li>{t(lang, 'trialSupport')}</li>
+      </ul>
+    </section>
   );
 }
 
@@ -1024,22 +938,7 @@ function HomePageContent() {
         </div>
       </section>
 
-      <section id="pricing" className="im-section">
-        <h2>{t(lang, 'pricingTitle')}</h2>
-        <p className="im-section-sub">{t(lang, 'pricingSub')}</p>
-        <PricingSection />
-      </section>
-
-      <section id="trial" className="im-section im-trial">
-        <h2>{t(lang, 'trialTitle')}</h2>
-        <p className="im-section-sub">{t(lang, 'trialBody')}</p>
-        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg">{t(lang, 'trialCta')}</a>
-        <ul className="im-trial-notes">
-          <li>{t(lang, 'trialNoCard')}</li>
-          <li>{t(lang, 'trialCancel')}</li>
-          <li>{t(lang, 'trialSupport')}</li>
-        </ul>
-      </section>
+      <FreeTrialCta />
 
       <section id="trust" className="im-section">
         <h2>{t(lang, 'trustTitle')}</h2>
@@ -1140,15 +1039,9 @@ function PricingPageContent() {
     <>
       <section className="im-hero im-hero-compact">
         <h1>{t(lang, 'pricingPageTitle')}</h1>
-        <p className="im-hero-sub">{fmt(t(lang, 'pricingPageSub'), { trial: trialLabel(lang) })}</p>
+        <p className="im-hero-sub">{t(lang, 'pricingPageSub')}</p>
       </section>
-      <section className="im-section">
-        <PricingSection />
-      </section>
-      <section className="im-section im-cta">
-        <h2>{t(lang, 'pricingPageCtaTitle')}</h2>
-        <a href="/#/contact" className="im-btn im-btn-ghost im-btn-lg">{t(lang, 'contactUs')}</a>
-      </section>
+      <FreeTrialCta />
     </>
   );
 }
@@ -1420,8 +1313,8 @@ export const MARKETING_PAGES: Record<string, { meta: MarketingPageMeta; Componen
   '/tarifs': {
     meta: {
       path: '/tarifs',
-      title: 'Tarifs | Innovacar',
-      description: "Découvrez les formules Basic, Standard et Premium d'Innovacar, avec un essai gratuit, adaptées à la taille de votre agence.",
+      title: 'Essai gratuit | Innovacar',
+      description: "Démarrez un essai gratuit d'Innovacar, sans carte bancaire, ou contactez-nous pour un devis adapté à votre agence.",
     },
     Component: PricingPage,
   },
@@ -1472,8 +1365,8 @@ export const MARKETING_PAGES: Record<string, { meta: MarketingPageMeta; Componen
   '/pricing': {
     meta: {
       path: '/pricing',
-      title: 'Pricing | Innovacar',
-      description: "Discover Innovacar's Basic, Standard and Premium plans, with a free trial, fitted to the size of your agency.",
+      title: 'Free trial | Innovacar',
+      description: 'Start a free trial of Innovacar, no credit card required, or contact us for a quote fitted to your agency.',
     },
     Component: PricingPage,
   },
