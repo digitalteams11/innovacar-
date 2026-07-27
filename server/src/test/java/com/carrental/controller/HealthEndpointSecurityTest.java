@@ -5,6 +5,7 @@ import com.carrental.repository.UserSessionRepository;
 import com.carrental.security.AuthCookieService;
 import com.carrental.security.JwtAuthenticationFilter;
 import com.carrental.security.JwtTokenProvider;
+import com.carrental.security.PasswordConfig;
 import com.carrental.security.SecurityConfig;
 import com.carrental.security.SubscriptionFilter;
 import com.carrental.security.UserDetailsServiceImpl;
@@ -40,7 +41,9 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -105,10 +108,35 @@ class HealthEndpointSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void googleOAuth2AuthorizationRedirectsToGoogleAnonymously() throws Exception {
+        // No Authorization header, no cookies at all — reproduces `curl -I
+        // https://api.innovacar.app/oauth2/authorization/google` exactly.
+        // Must be a 3xx redirect straight to Google, never this app's own
+        // 401 JSON (that JSON response means the request was denied by
+        // anyRequest().authenticated() instead of ever reaching Spring
+        // Security's OAuth2AuthorizationRequestRedirectFilter).
+        mockMvc.perform(get("/oauth2/authorization/google"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("https://accounts.google.com/**"));
+    }
+
+    @Test
+    void googleOAuth2AuthorizationIgnoresStaleAuthorizationHeader() throws Exception {
+        // A stale/garbage Authorization header (e.g. an old localStorage JWT
+        // still attached by a shared HTTP client) must not turn this into a
+        // 401 — JwtAuthenticationFilter.shouldNotFilter() must skip /oauth2/**
+        // entirely regardless of what credentials happen to be present.
+        mockMvc.perform(get("/oauth2/authorization/google")
+                        .header("Authorization", "Bearer not-a-real-jwt"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("https://accounts.google.com/")));
+    }
+
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
-    @Import(SecurityConfig.class)
+    @Import({SecurityConfig.class, PasswordConfig.class})
     static class TestConfig {
 
         @Bean

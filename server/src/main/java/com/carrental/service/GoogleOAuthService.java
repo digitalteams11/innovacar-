@@ -46,7 +46,6 @@ public class GoogleOAuthService {
     private final RefreshTokenService refreshTokenService;
     private final SessionService sessionService;
     private final EmailService emailService;
-    private final TwoFactorService twoFactorService;
 
     /**
      * Resolves an already-verified Google identity into an authenticated

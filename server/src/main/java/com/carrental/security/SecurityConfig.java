@@ -16,7 +16,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -53,20 +52,15 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins:https://innovacar.app,https://www.innovacar.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
     private String allowedOrigins;
 
-    // ── Password encoder ────────────────────────────────────────────────────
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
     // ── Authentication provider ─────────────────────────────────────────────
+    // PasswordEncoder is defined in PasswordConfig, not here — see
+    // that class's Javadoc for why (breaks a circular bean dependency).
 
     @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
+    public DaoAuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
+        provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
 
@@ -81,7 +75,7 @@ public class SecurityConfig {
     // ── HTTP security ────────────────────────────────────────────────────────
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, PasswordEncoder passwordEncoder) throws Exception {
         http
             // Enable CORS
             .cors(org.springframework.security.config.Customizer.withDefaults())
@@ -184,7 +178,7 @@ public class SecurityConfig {
                 .successHandler(oAuth2LoginSuccessHandler)
                 .failureHandler(oAuth2LoginFailureHandler))
 
-            .authenticationProvider(authenticationProvider());
+            .authenticationProvider(authenticationProvider(passwordEncoder));
 
         return http.build();
     }

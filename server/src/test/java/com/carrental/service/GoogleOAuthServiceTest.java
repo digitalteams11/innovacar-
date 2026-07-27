@@ -41,7 +41,6 @@ class GoogleOAuthServiceTest {
     @Mock private RefreshTokenService refreshTokenService;
     @Mock private SessionService sessionService;
     @Mock private EmailService emailService;
-    @Mock private TwoFactorService twoFactorService;
 
     private GoogleOAuthService service;
 
@@ -51,7 +50,7 @@ class GoogleOAuthServiceTest {
     @BeforeEach
     void setUp() {
         service = new GoogleOAuthService(userRepository, tenantRepository, jwtTokenProvider,
-                refreshTokenService, sessionService, emailService, twoFactorService);
+                refreshTokenService, sessionService, emailService);
     }
 
     private User existingUser(Tenant tenant) {

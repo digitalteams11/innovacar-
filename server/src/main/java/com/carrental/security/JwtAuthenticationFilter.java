@@ -55,6 +55,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 || path.equals("/public/branding")
                 || path.equals("/api/client-errors")) return true;
 
+        // Google OAuth2 Authorization Code flow — the browser hits these with
+        // no JWT at all (initial redirect-to-Google) or with Google's own
+        // callback params (the code exchange). This filter must never touch
+        // them: a stale/expired access-token cookie sitting alongside a fresh
+        // OAuth2 login attempt must not be able to turn a real 302-to-Google
+        // into this filter's own 401 handling further down the chain. /error
+        // is included because a failed OAuth2 attempt is redirected there by
+        // Spring Security's own machinery and must render, not 401.
+        if (path.startsWith("/oauth2/") || path.startsWith("/login/oauth2/") || path.equals("/error")) return true;
+
         // Public auth routes — no JWT needed.
         // IMPORTANT: /api/auth/security-status, /api/auth/change-password,
         // and /api/auth/2fa/setup|confirm|disable|regenerate-codes are AUTHENTICATED
