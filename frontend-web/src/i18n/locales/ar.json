@@ -2999,6 +2999,10 @@
       "vehicle": "المركبة *",
       "selectVehicle": "اختر مركبة",
       "inMaintenanceSuffix": " (قيد الصيانة)",
+      "registration": "رقم التسجيل",
+      "currentStatus": "الحالة الحالية",
+      "currentMileage": "عداد المسافة الحالي",
+      "agency": "الوكالة",
       "titleField": "العنوان *",
       "serviceProvider": "مزود الخدمة",
       "scheduledDate": "التاريخ المجدول *",
@@ -3016,6 +3020,7 @@
     },
     "toast": {
       "loadFailed": "تعذر تحميل معلومات الصيانة. يرجى المحاولة لاحقًا.",
+      "vehicleNotFound": "المركبة غير موجودة.",
       "createFailed": "تعذر إنشاء أمر الصيانة.",
       "createdSuccess": "تم إنشاء أمر الصيانة بنجاح",
       "createdWithNotificationWarning": "تم إنشاء أمر الصيانة، ولكن فشل إرسال الإشعار.",

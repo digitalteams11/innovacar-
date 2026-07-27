@@ -193,7 +193,7 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
           </button>
         )}
         {v.statut !== 'IN_MAINTENANCE' && v.statut !== 'MAINTENANCE' && (
-          <button onClick={() => navigate('/maintenance')}
+          <button onClick={() => navigate('/maintenance', { state: { vehicleId: v.id, returnTo: '/dashboard' } })}
             aria-label={t('common.maintenance')}
             className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             style={{ background: 'var(--mobile-action-danger-bg)', color: 'var(--mobile-action-danger-text)', borderColor: 'transparent' }}>

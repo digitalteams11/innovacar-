@@ -2987,6 +2987,10 @@
       "vehicle": "Vehicle *",
       "selectVehicle": "Select vehicle",
       "inMaintenanceSuffix": " (in maintenance)",
+      "registration": "Registration",
+      "currentStatus": "Current status",
+      "currentMileage": "Current mileage",
+      "agency": "Agency",
       "titleField": "Title *",
       "serviceProvider": "Service provider",
       "scheduledDate": "Scheduled date *",
@@ -3004,6 +3008,7 @@
     },
     "toast": {
       "loadFailed": "Unable to load maintenance information. Please try again later.",
+      "vehicleNotFound": "Vehicle not found.",
       "createFailed": "Unable to create maintenance work order.",
       "createdSuccess": "Maintenance work order created successfully",
       "createdWithNotificationWarning": "Maintenance created, but notification failed.",

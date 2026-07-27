@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import { GlassCard } from '../components/GlassCard';
@@ -90,6 +91,7 @@ const itemVariants = {
 };
 
 export default function Vehicles() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -932,6 +934,11 @@ export default function Vehicles() {
             <div className="flex gap-3">
               <button type="button" onClick={closeVehicleModal} className="flex-1 rounded-xl border border-[var(--border-subtle)] px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)]">
                 {t('common.close')}
+              </button>
+              <button type="button"
+                onClick={() => navigate('/maintenance', { state: { vehicleId: selectedVehicle.id, returnTo: '/vehicles' } })}
+                className="flex-1 rounded-xl border border-[var(--border-subtle)] px-5 py-2.5 text-sm font-semibold text-[var(--text-secondary)]">
+                {t('common.maintenance')}
               </button>
               <button type="button" onClick={startEditing} className="flex-1 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600">
                 {t('common.edit')}

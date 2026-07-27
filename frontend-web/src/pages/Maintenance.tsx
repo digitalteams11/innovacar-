@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Ban, CheckCircle2, Loader2, Plus, Play, Wrench } from 'lucide-react';
 import api from '../api/axios';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { resolveApiErrorMessage } from '../i18n/apiError';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
+import { translateVehicleStatus } from '../utils/statusLabels';
 
 const emptyForm = {
   vehicleId: '',
@@ -52,6 +54,9 @@ const toIsoLocalDateTime = (value: string) => {
 export default function Maintenance() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [rows, setRows] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +67,12 @@ export default function Maintenance() {
   const [form, setForm] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [orphanCount, setOrphanCount] = useState(0);
+  // Set when the create flow was entered from a specific vehicle (card button,
+  // vehicle details modal, or a /maintenance/new?vehicleId=… deep link) — the
+  // vehicle is locked in and, on success, we navigate back to where we came from
+  // instead of just closing the modal.
+  const [preselectedVehicle, setPreselectedVehicle] = useState<any | null>(null);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     const scheduled  = rows.filter((r) => r.status === 'SCHEDULED').length;
@@ -112,6 +123,52 @@ export default function Maintenance() {
 
   useEffect(() => { load(); }, []);
 
+  // Preselect a vehicle when arriving from a vehicle card's "Maintenance"
+  // button — via router state ({ vehicleId, returnTo }) or a
+  // /maintenance?vehicleId=… deep link. Fetches the vehicle directly (rather
+  // than relying on the fleet dropdown, which excludes RENTED/OUT_OF_SERVICE
+  // vehicles) so the workflow opens pre-filled and never needs a manual pick.
+  useEffect(() => {
+    const stateVehicleId = (location.state as { vehicleId?: number | string } | null)?.vehicleId;
+    const queryVehicleId = searchParams.get('vehicleId');
+    const rawVehicleId = stateVehicleId ?? queryVehicleId;
+    if (rawVehicleId == null || rawVehicleId === '') return;
+
+    const vehicleId = Number(rawVehicleId);
+    const from = (location.state as { returnTo?: string } | null)?.returnTo ?? null;
+    if (!Number.isFinite(vehicleId)) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(`/vehicles/${vehicleId}`);
+        if (cancelled) return;
+        const vehicle = res.data;
+        setPreselectedVehicle(vehicle);
+        setReturnTo(from);
+        setForm({
+          ...emptyForm,
+          vehicleId: String(vehicleId),
+          mileage: vehicle.mileageCurrent != null ? String(vehicle.mileageCurrent) : '',
+        });
+        setFieldErrors({});
+        setOpen(true);
+      } catch (err: any) {
+        if (cancelled) return;
+        if (err?.response?.status === 404) {
+          showToast(t('maintenance.toast.vehicleNotFound'), 'error');
+        } else {
+          showToast(resolveApiErrorMessage(err, t('maintenance.toast.vehicleNotFound')), 'error');
+        }
+      }
+    })();
+    // Consume the router state so a browser refresh / back navigation doesn't
+    // re-trigger the preselect flow with a stale vehicleId.
+    navigate(location.pathname, { replace: true, state: {} });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
   const updateFormField = (field: keyof typeof emptyForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFieldErrors((prev) => {
@@ -142,7 +199,9 @@ export default function Maintenance() {
       const scheduledDateIso = toIsoLocalDateTime(form.scheduledDate);
       const costNumber = form.cost ? Number(form.cost) : 0;
       const mileageNumber = form.mileage ? Number(form.mileage) : 0;
-      const selectedVehicleObject = vehicles.find((vehicle: any) => Number(vehicle.id) === vehicleId) ?? null;
+      const selectedVehicleObject = preselectedVehicle && Number(preselectedVehicle.id) === vehicleId
+        ? preselectedVehicle
+        : vehicles.find((vehicle: any) => Number(vehicle.id) === vehicleId) ?? null;
       const payload = {
         vehicleId,
         title: form.title.trim(),
@@ -168,6 +227,7 @@ export default function Maintenance() {
       setForm(emptyForm);
       setFieldErrors({});
       await load();
+      // Dashboard stats, vehicle timeline and any other listener refresh off this.
       window.dispatchEvent(new Event('rentcar-data-updated'));
       const warnings: string[] = response.data?.warnings || [];
       if (warnings.includes('NOTIFICATION_CREATE_FAILED')) {
@@ -175,6 +235,11 @@ export default function Maintenance() {
       } else {
         showToast(t('maintenance.toast.createdSuccess'), 'success');
       }
+      if (returnTo) {
+        navigate(returnTo);
+      }
+      setPreselectedVehicle(null);
+      setReturnTo(null);
     } catch (err: any) {
       showToast(resolveApiErrorMessage(err, t('maintenance.toast.createFailed')), 'error');
     } finally {
@@ -185,7 +250,16 @@ export default function Maintenance() {
   const openCreate = () => {
     setForm(emptyForm);
     setFieldErrors({});
+    setPreselectedVehicle(null);
+    setReturnTo(null);
     setOpen(true);
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setOpen(false);
+    setPreselectedVehicle(null);
+    setReturnTo(null);
   };
 
   const fieldError = (field: string) => (
@@ -435,23 +509,38 @@ export default function Maintenance() {
         />
       )}
 
-      <Modal isOpen={open} onClose={() => !saving && setOpen(false)} title={t('maintenance.modal.title')}>
+      <Modal isOpen={open} onClose={closeModal} title={t('maintenance.modal.title')}>
         <div className="space-y-4">
-          <label className="block">
-            <span className="text-xs font-medium text-slate-500">{t('maintenance.modal.vehicle')}</span>
-            <select value={form.vehicleId} onChange={(e) => updateFormField('vehicleId', e.target.value)}
-              aria-invalid={Boolean(fieldErrors.vehicleId)}
-              className={inputClass('vehicleId')}>
-              <option value="">{t('maintenance.modal.selectVehicle')}</option>
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.marque || v.brand} - {v.plate || v.plateNumber}
-                  {(v.statut || v.status) === 'MAINTENANCE' ? t('maintenance.modal.inMaintenanceSuffix') : ''}
-                </option>
-              ))}
-            </select>
-            {fieldError('vehicleId')}
-          </label>
+          {preselectedVehicle ? (
+            <div className="rounded-lg border border-[#e8e6e1] bg-[#f5f5f0] p-3 space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('maintenance.modal.vehicle')}</p>
+              <p className="text-sm font-bold text-[#1e293b]">
+                {preselectedVehicle.marque || `${preselectedVehicle.brand || ''} ${preselectedVehicle.model || ''}`.trim()}
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-500">
+                <span>{t('maintenance.modal.registration')}: <span className="font-semibold text-[#1e293b]">{preselectedVehicle.plate || '-'}</span></span>
+                <span>{t('maintenance.modal.currentStatus')}: <span className="font-semibold text-[#1e293b]">{preselectedVehicle.statut ? translateVehicleStatus(preselectedVehicle.statut) : '-'}</span></span>
+                <span>{t('maintenance.modal.currentMileage')}: <span className="font-semibold text-[#1e293b]">{preselectedVehicle.mileageCurrent != null ? `${preselectedVehicle.mileageCurrent} km` : '-'}</span></span>
+                <span>{t('maintenance.modal.agency')}: <span className="font-semibold text-[#1e293b]">{preselectedVehicle.branchName || preselectedVehicle.tenantName || '-'}</span></span>
+              </div>
+            </div>
+          ) : (
+            <label className="block">
+              <span className="text-xs font-medium text-slate-500">{t('maintenance.modal.vehicle')}</span>
+              <select value={form.vehicleId} onChange={(e) => updateFormField('vehicleId', e.target.value)}
+                aria-invalid={Boolean(fieldErrors.vehicleId)}
+                className={inputClass('vehicleId')}>
+                <option value="">{t('maintenance.modal.selectVehicle')}</option>
+                {vehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.marque || v.brand} - {v.plate || v.plateNumber}
+                    {(v.statut || v.status) === 'MAINTENANCE' ? t('maintenance.modal.inMaintenanceSuffix') : ''}
+                  </option>
+                ))}
+              </select>
+              {fieldError('vehicleId')}
+            </label>
+          )}
           <Field label={t('maintenance.modal.titleField')} value={form.title} onChange={(title) => updateFormField('title', title)} error={fieldErrors.title} />
           <Field label={t('maintenance.modal.serviceProvider')} value={form.serviceProvider} onChange={(serviceProvider) => updateFormField('serviceProvider', serviceProvider)} />
           <Field label={t('maintenance.modal.scheduledDate')} type="datetime-local" value={form.scheduledDate} onChange={(scheduledDate) => updateFormField('scheduledDate', scheduledDate)} error={fieldErrors.scheduledDate} />

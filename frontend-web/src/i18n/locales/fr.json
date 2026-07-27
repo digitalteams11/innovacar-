@@ -2987,6 +2987,10 @@
       "vehicle": "Véhicule *",
       "selectVehicle": "Sélectionner un véhicule",
       "inMaintenanceSuffix": " (en entretien)",
+      "registration": "Immatriculation",
+      "currentStatus": "Statut actuel",
+      "currentMileage": "Kilométrage actuel",
+      "agency": "Agence",
       "titleField": "Titre *",
       "serviceProvider": "Prestataire de service",
       "scheduledDate": "Date planifiée *",
@@ -3004,6 +3008,7 @@
     },
     "toast": {
       "loadFailed": "Impossible de charger les informations d'entretien. Veuillez réessayer plus tard.",
+      "vehicleNotFound": "Véhicule introuvable.",
       "createFailed": "Impossible de créer l'ordre d'entretien.",
       "createdSuccess": "Ordre d'entretien créé avec succès",
       "createdWithNotificationWarning": "Ordre d'entretien créé, mais la notification a échoué.",

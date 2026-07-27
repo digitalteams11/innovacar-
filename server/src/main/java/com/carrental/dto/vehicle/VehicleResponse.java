@@ -30,6 +30,9 @@ public class VehicleResponse {
     private Integer       seatCount;
     private String        imageUrl;
     private Long          tenantId;
+    private String        tenantName;
+    private String        branchName;
+    private Integer       mileageCurrent;
 
     // GPS fields
     private String        gpsDeviceId;
@@ -58,6 +61,9 @@ public class VehicleResponse {
                 .seatCount(v.getSeatCount())
                 .imageUrl(v.getImageUrl() != null ? v.getImageUrl() : "")
                 .tenantId(v.getTenant() == null ? null : v.getTenant().getId())
+                .tenantName(v.getTenant() == null ? null : v.getTenant().getName())
+                .branchName(v.getBranch() == null ? null : v.getBranch().getName())
+                .mileageCurrent(v.getMileageCurrent())
                 .gpsDeviceId(v.getGpsDeviceId())
                 .gpsImei(v.getGpsImei())
                 .lastLatitude(v.getLastLatitude())
