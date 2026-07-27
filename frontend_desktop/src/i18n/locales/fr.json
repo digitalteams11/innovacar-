@@ -272,7 +272,8 @@
   },
   "vehicles": {
     "title": "Gestion de la flotte",
-    "subtitle": "Gérez et suivez vos 54 véhicules dans toutes les succursales.",
+    "subtitle_one": "Gérez et suivez votre véhicule dans toutes les succursales.",
+    "subtitle_other": "Gérez et suivez vos {{count}} véhicules dans toutes les succursales.",
     "exportFleet": "Exporter la flotte",
     "addVehicle": "Ajouter un véhicule",
     "searchPlaceholder": "Rechercher par modèle, marque ou immatriculation...",

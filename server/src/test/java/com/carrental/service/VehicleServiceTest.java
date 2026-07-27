@@ -184,7 +184,7 @@ class VehicleServiceTest {
     @Test
     void updateVehicle_appliesOnlyNonNullFields() {
         UpdateVehicleRequest req = new UpdateVehicleRequest();
-        req.setStatut(VehicleStatus.RENTED); // only statut changes
+        req.setStatut(VehicleStatus.OUT_OF_SERVICE); // only technical status changes
 
         when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
                 .thenReturn(Optional.of(availableVehicle));
@@ -192,13 +192,41 @@ class VehicleServiceTest {
         Vehicle saved = Vehicle.builder()
                 .id(VEHICLE_ID).marque("Toyota Corolla 2023")
                 .prixJour(new BigDecimal("89.99"))
-                .statut(VehicleStatus.RENTED).tenant(tenant).build();
+                .statut(VehicleStatus.OUT_OF_SERVICE).tenant(tenant).build();
         when(vehicleRepository.save(any(Vehicle.class))).thenReturn(saved);
 
         VehicleResponse response = vehicleService.updateVehicle(VEHICLE_ID, req);
 
-        assertThat(response.getStatut()).isEqualTo(VehicleStatus.RENTED);
+        assertThat(response.getStatut()).isEqualTo(VehicleStatus.OUT_OF_SERVICE);
         assertThat(response.getMarque()).isEqualTo("Toyota Corolla 2023"); // unchanged
+    }
+
+    @Test
+    void createVehicle_rejectsCommercialStatuses() {
+        CreateVehicleRequest req = new CreateVehicleRequest();
+        req.setMarque("Workflow Only");
+        req.setPrixJour(new BigDecimal("50.00"));
+        req.setPlate("WF-1");
+        req.setStatut(VehicleStatus.RESERVED);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+
+        assertThatThrownBy(() -> vehicleService.createVehicle(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("only be created");
+        verify(vehicleRepository, never()).save(any());
+    }
+
+    @Test
+    void updateVehicle_rejectsManualRentedStatus() {
+        UpdateVehicleRequest req = new UpdateVehicleRequest();
+        req.setStatut(VehicleStatus.RENTED);
+        when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
+                .thenReturn(Optional.of(availableVehicle));
+
+        assertThatThrownBy(() -> vehicleService.updateVehicle(VEHICLE_ID, req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("managed by reservation and contract workflows");
+        verify(vehicleRepository, never()).save(any());
     }
 
     // ── deleteVehicle ─────────────────────────────────────────────────────────
@@ -280,6 +308,8 @@ class VehicleServiceTest {
     void createVehicle_withFiveSeats_persistsExactValue() {
         CreateVehicleRequest req = new CreateVehicleRequest();
         req.setMarque("Dacia Logan");
+        req.setBrand("Dacia");
+        req.setModel("Logan");
         req.setPrixJour(new BigDecimal("45.00"));
         req.setPlate("A-5");
         req.setSeatCount(5);
@@ -290,6 +320,9 @@ class VehicleServiceTest {
         VehicleResponse response = vehicleService.createVehicle(req);
 
         assertThat(response.getSeatCount()).isEqualTo(5);
+        assertThat(response.getBrand()).isEqualTo("Dacia");
+        assertThat(response.getModel()).isEqualTo("Logan");
+        assertThat(response.getMarque()).isEqualTo("Dacia Logan");
     }
 
     @Test
@@ -326,9 +359,10 @@ class VehicleServiceTest {
     }
 
     @Test
-    void updateVehicle_setsSeatCount_whenProvided() {
+    void updateVehicle_changesSeatCountFromFiveToSeven() {
+        availableVehicle.setSeatCount(5);
         UpdateVehicleRequest req = new UpdateVehicleRequest();
-        req.setSeatCount(4);
+        req.setSeatCount(7);
 
         when(vehicleRepository.findByIdAndTenantId(VEHICLE_ID, TENANT_ID))
                 .thenReturn(Optional.of(availableVehicle));
@@ -336,7 +370,8 @@ class VehicleServiceTest {
 
         VehicleResponse response = vehicleService.updateVehicle(VEHICLE_ID, req);
 
-        assertThat(response.getSeatCount()).isEqualTo(4);
+        assertThat(response.getSeatCount()).isEqualTo(7);
+        verify(vehicleRepository).save(argThat(v -> Integer.valueOf(7).equals(v.getSeatCount())));
     }
 
     @Test

@@ -91,6 +91,7 @@ function normalizeVehicles(rows: unknown[]): Vehicle[] {
         statut: String(row.statut ?? row.status ?? 'AVAILABLE'),
         imageUrl: row.imageUrl == null ? undefined : String(row.imageUrl),
         gpsEnabled: Boolean(row.gpsEnabled),
+        seatCount: row.seatCount == null ? null : Number(row.seatCount),
       };
     })
     .filter((vehicle) => Number.isFinite(vehicle.id) && vehicle.id > 0);

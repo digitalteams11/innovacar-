@@ -50,6 +50,10 @@ public class VehicleService {
     private static final java.util.Set<VehicleStatus> MAINTENANCE_STATUSES =
             java.util.Set.of(VehicleStatus.IN_MAINTENANCE, VehicleStatus.MAINTENANCE, VehicleStatus.OUT_OF_SERVICE);
 
+    /** New vehicles can only enter the fleet in one of these — RESERVED/RENTED are workflow-derived, never set at creation. */
+    private static final java.util.Set<VehicleStatus> ALLOWED_CREATE_STATUSES =
+            java.util.Set.of(VehicleStatus.AVAILABLE, VehicleStatus.MAINTENANCE, VehicleStatus.OUT_OF_SERVICE);
+
     // ── READ ─────────────────────────────────────────────────────────────────
 
     /**
@@ -111,9 +115,27 @@ public class VehicleService {
         VehicleStatus statut = request.getStatut() != null
                 ? request.getStatut()
                 : VehicleStatus.AVAILABLE;
+        if (!ALLOWED_CREATE_STATUSES.contains(statut)) {
+            throw new IllegalArgumentException(
+                    "New vehicles can only be created as AVAILABLE, MAINTENANCE, or OUT_OF_SERVICE.");
+        }
+
+        // brand/model are the source of truth going forward; marque (legacy
+        // combined field) is derived from them so older callers/reports that
+        // still read marque keep working unchanged.
+        String legacyName = StringUtils.hasText(request.getMarque()) ? request.getMarque().trim() : "";
+        String[] legacyParts = legacyName.split("\\s+", 2);
+        String brand = StringUtils.hasText(request.getBrand())
+                ? request.getBrand().trim()
+                : (legacyParts.length > 0 ? legacyParts[0] : "");
+        String model = StringUtils.hasText(request.getModel())
+                ? request.getModel().trim()
+                : (legacyParts.length > 1 ? legacyParts[1] : "");
 
         Vehicle vehicle = vehicleRepository.save(Vehicle.builder()
-                .marque(request.getMarque())
+                .marque(combinedName(brand, model))
+                .brand(brand)
+                .model(model)
                 .prixJour(request.getPrixJour())
                 .statut(statut)
                 .category(request.getCategory())
@@ -146,13 +168,25 @@ public class VehicleService {
     public VehicleResponse updateVehicle(Long id, UpdateVehicleRequest request) {
         Vehicle vehicle = fetchVehicleInTenant(id);
 
-        if (StringUtils.hasText(request.getMarque())) {
+        if (StringUtils.hasText(request.getBrand())) {
+            vehicle.setBrand(request.getBrand().trim());
+        }
+        if (StringUtils.hasText(request.getModel())) {
+            vehicle.setModel(request.getModel().trim());
+        }
+        if (StringUtils.hasText(request.getBrand()) || StringUtils.hasText(request.getModel())) {
+            vehicle.setMarque(combinedName(vehicle.getBrand(), vehicle.getModel()));
+        } else if (StringUtils.hasText(request.getMarque())) {
             vehicle.setMarque(request.getMarque());
         }
         if (request.getPrixJour() != null) {
             vehicle.setPrixJour(request.getPrixJour());
         }
         if (request.getStatut() != null) {
+            if (request.getStatut() == VehicleStatus.RESERVED || request.getStatut() == VehicleStatus.RENTED) {
+                throw new IllegalArgumentException(
+                        "RESERVED and RENTED statuses are managed by reservation and contract workflows.");
+            }
             vehicle.setStatut(request.getStatut());
         }
         if (request.getCategory() != null) {
@@ -316,5 +350,12 @@ public class VehicleService {
     private String currentUserEmail() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null ? authentication.getName() : "system";
+    }
+
+    private String combinedName(String brand, String model) {
+        return java.util.stream.Stream.of(brand, model)
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.joining(" "));
     }
 }

@@ -16,6 +16,12 @@ public class UpdateVehicleRequest {
     @Size(max = 150, message = "Marque must not exceed 150 characters")
     private String marque;
 
+    @Size(max = 100, message = "Brand must not exceed 100 characters")
+    private String brand;
+
+    @Size(max = 100, message = "Model must not exceed 100 characters")
+    private String model;
+
     @DecimalMin(value = "0.01", message = "Daily price must be greater than zero")
     @Digits(integer = 8, fraction = 2, message = "Prix jour format: up to 8 integer digits and 2 decimal places")
     private BigDecimal prixJour;

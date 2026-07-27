@@ -272,7 +272,8 @@
   },
   "vehicles": {
     "title": "Fleet Management",
-    "subtitle": "Manage and track your 54 vehicles across all branches.",
+    "subtitle_one": "Manage and track your vehicle across all branches.",
+    "subtitle_other": "Manage and track your {{count}} vehicles across all branches.",
     "exportFleet": "Export Fleet",
     "addVehicle": "Add Vehicle",
     "searchPlaceholder": "Search by model, brand or plate...",

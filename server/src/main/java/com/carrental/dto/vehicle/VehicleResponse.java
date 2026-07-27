@@ -18,6 +18,8 @@ public class VehicleResponse {
 
     private Long          id;
     private String        marque;
+    private String        brand;
+    private String        model;
     private BigDecimal    prixJour;
     private VehicleStatus statut;
     private String        category;
@@ -45,6 +47,8 @@ public class VehicleResponse {
         return VehicleResponse.builder()
                 .id(v.getId())
                 .marque(v.getMarque() != null ? v.getMarque() : "")
+                .brand(v.getBrand())
+                .model(v.getModel())
                 .prixJour(v.getPrixJour() != null ? v.getPrixJour() : BigDecimal.ZERO)
                 .statut(v.getStatut() != null ? v.getStatut() : VehicleStatus.AVAILABLE)
                 .category(v.getCategory() != null ? v.getCategory() : "")
