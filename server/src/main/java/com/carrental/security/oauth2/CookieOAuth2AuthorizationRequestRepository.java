@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.client.jackson2.OAuth2ClientJackson2Module;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
@@ -67,6 +68,21 @@ public class CookieOAuth2AuthorizationRequestRepository
             @Value("${app.auth.cookies.secure:false}") boolean secure) {
         this.secure = secure;
         this.objectMapper = new ObjectMapper();
+        // SecurityJackson2Modules registers the polymorphic-type allowlist (via
+        // activateDefaultTyping + a validator) that permits deserializing the
+        // JDK collection types Spring Security's own model classes are built
+        // from — e.g. OAuth2AuthorizationRequest.getScopes() is a
+        // java.util.Collections$UnmodifiableSet. Without it, every single
+        // deserialize() call below fails with "... is not in the allowlist"
+        // (see https://github.com/spring-projects/spring-security/issues/4370),
+        // loadAuthorizationRequest() always returns null regardless of whether
+        // the cookie round-tripped correctly, and every OAuth2 login
+        // unconditionally fails with authorization_request_not_found. Registering
+        // only OAuth2ClientJackson2Module (as this used to) is not sufficient on
+        // its own — that module adds mixins for the OAuth2-specific types, but
+        // the base allowlist for the JDK types they're composed of comes from
+        // SecurityJackson2Modules.
+        this.objectMapper.registerModules(SecurityJackson2Modules.getModules(getClass().getClassLoader()));
         this.objectMapper.registerModule(new OAuth2ClientJackson2Module());
     }
 
