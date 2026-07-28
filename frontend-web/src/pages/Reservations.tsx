@@ -248,10 +248,57 @@ export default function Reservations() {
     }
   };
 
+  // Preselects a vehicle clicked from a fleet card elsewhere in the app
+  // (Dashboard's "Reserve" button, etc.) — GET /vehicles/{id} is the same
+  // tenant-scoped endpoint used everywhere else, so a stale/cross-tenant/
+  // deleted vehicle id fails safely with a clear toast instead of opening a
+  // half-populated form. The vehicle is not locked to a specific date range
+  // yet (SmartVehicleSelector needs dates first), but it is set as
+  // `selectedVehicle` immediately so the "selected vehicle" summary panel
+  // below shows it right away and saveReservation() already includes it.
+  const openCreateFromVehicle = async (vehicleId: number) => {
+    openCreate();
+    try {
+      const { data: vehicle } = await api.get(`/vehicles/${vehicleId}`);
+      const notAvailable = ['RENTED', 'OUT_OF_SERVICE', 'MAINTENANCE', 'IN_MAINTENANCE', 'SOLD', 'ARCHIVED']
+        .includes(String(vehicle.statut || '').toUpperCase());
+      if (notAvailable) {
+        showToast(t('reservations.vehicleNotAvailableToast', 'This vehicle is not currently available for reservation.'), 'warning');
+        return;
+      }
+      setSelectedVehicle({
+        id: vehicle.id,
+        marque: vehicle.marque || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim(),
+        category: vehicle.category,
+        plate: vehicle.plate,
+        fuel: vehicle.fuel,
+        transmission: vehicle.transmission,
+        prixJour: Number(vehicle.prixJour) || 0,
+        statut: vehicle.statut,
+      });
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        showToast(t('reservations.vehicleNotFoundToast', 'Vehicle not found.'), 'error');
+      } else {
+        showToast(apiErrorMessage(err, t('reservations.prefillLoadFailed')), 'error');
+      }
+    }
+  };
+
   useEffect(() => {
     const fromClientId = searchParams.get('fromClientId');
+    const fromVehicleId = searchParams.get('fromVehicleId');
     if (fromClientId) {
       openCreateFromClient(Number(fromClientId));
+      setSearchParams({}, { replace: true });
+    } else if (fromVehicleId) {
+      const vehicleId = Number(fromVehicleId);
+      if (Number.isInteger(vehicleId) && vehicleId > 0) {
+        openCreateFromVehicle(vehicleId);
+      } else {
+        console.error('[Reservations] refused to prefill — invalid fromVehicleId in URL', fromVehicleId);
+        showToast(t('reservations.vehicleNotFoundToast', 'Vehicle not found.'), 'error');
+      }
       setSearchParams({}, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -313,6 +360,10 @@ export default function Reservations() {
       setIsModalOpen(false);
       setFieldErrors({});
       await fetchReservations();
+      // No query-cache library in this app — cross-page freshness (vehicle
+      // status/availability, dashboard stats) is driven by this event, same
+      // convention as Maintenance.tsx.
+      window.dispatchEvent(new Event('rentcar-data-updated'));
     } catch (error: unknown) {
       showToast(apiErrorMessage(error, 'Unable to save reservation. Please try again later.'), 'error');
     } finally {

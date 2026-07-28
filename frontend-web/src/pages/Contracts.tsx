@@ -756,14 +756,52 @@ export default function Contracts() {
     }
   };
 
+  // Opens the New Contract modal preselecting the vehicle clicked from a
+  // fleet card elsewhere in the app (Dashboard's "Contract" button, etc.).
+  // GET /vehicles/{id} is the same tenant-scoped endpoint used everywhere
+  // else, so a stale/cross-tenant/deleted id fails safely with a toast
+  // instead of silently opening a blank form. True availability conflicts
+  // (already rented, etc.) are still enforced server-side at save time via
+  // the existing VEHICLE_ALREADY_RESERVED/VEHICLE_INACTIVE handling above —
+  // this is just an early, friendlier heads-up.
+  const openCreateFromVehicle = async (vehicleId: number) => {
+    await openCreate();
+    try {
+      const { data: vehicle } = await api.get(`/vehicles/${vehicleId}`);
+      setSelectedVehicle(vehicle);
+      const notAvailable = ['RENTED', 'OUT_OF_SERVICE', 'MAINTENANCE', 'IN_MAINTENANCE', 'SOLD', 'ARCHIVED']
+        .includes(String(vehicle.statut || '').toUpperCase());
+      if (notAvailable) {
+        showToast(t('contracts.vehicleNotAvailableToast', 'This vehicle is not currently available.'), 'warning');
+      }
+    } catch (err: any) {
+      setSelectedVehicle(null);
+      if (err?.response?.status === 404) {
+        showToast(t('contracts.vehicleNotFoundToast', 'Vehicle not found.'), 'error');
+      } else {
+        showToast(t('contracts.prefillLoadFailed'), 'error');
+      }
+    }
+  };
+
   useEffect(() => {
     const fromReservationId = searchParams.get('fromReservationId');
     const fromClientId = searchParams.get('fromClientId');
+    const fromVehicleId = searchParams.get('fromVehicleId');
     if (fromReservationId) {
       openCreateFromReservation(Number(fromReservationId));
       setSearchParams({}, { replace: true });
     } else if (fromClientId) {
       openCreateFromClient(Number(fromClientId));
+      setSearchParams({}, { replace: true });
+    } else if (fromVehicleId) {
+      const vehicleId = Number(fromVehicleId);
+      if (Number.isInteger(vehicleId) && vehicleId > 0) {
+        openCreateFromVehicle(vehicleId);
+      } else {
+        console.error('[Contracts] refused to prefill — invalid fromVehicleId in URL', fromVehicleId);
+        showToast(t('contracts.vehicleNotFoundToast', 'Vehicle not found.'), 'error');
+      }
       setSearchParams({}, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -908,6 +946,10 @@ export default function Contracts() {
       showToast(msg, isExisting ? 'info' : 'success');
       setIsModalOpen(false);
       fetchContracts();
+      // No query-cache library in this app — cross-page freshness (vehicle
+      // status, reservations, dashboard stats) is driven by this event, same
+      // convention as Maintenance.tsx/Reservations.tsx.
+      window.dispatchEvent(new Event('rentcar-data-updated'));
       if (contractId) navigate(`/contracts/${contractId}`);
     } catch (err: any) {
       if (import.meta.env.DEV) {

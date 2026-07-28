@@ -631,6 +631,7 @@
     "deleteConfirm": "هل تريد حذف هذه المركبة؟",
     "moveToTrashConfirm": "نقل هذه المركبة إلى سلة المحذوفات؟",
     "loadFailed": "تعذر تحميل معلومات المركبة. يرجى المحاولة مرة أخرى لاحقًا.",
+    "notFound": "المركبة غير موجودة.",
     "trashLoadFailed": "تعذر تحميل المركبات المحذوفة. يرجى المحاولة مرة أخرى لاحقًا.",
     "restoredSuccess": "تمت استعادة المركبة بنجاح",
     "restoreFailed": "تعذر استعادة هذه المركبة. يرجى المحاولة مرة أخرى لاحقًا.",
@@ -722,6 +723,8 @@
     "city": "المدينة",
     "nationality": "الجنسية",
     "vehicleUnavailableToast": "المركبة المختارة لم تعد متاحة لهذه التواريخ",
+    "vehicleNotAvailableToast": "هذه المركبة غير متاحة حاليًا للحجز.",
+    "vehicleNotFoundToast": "المركبة غير موجودة.",
     "daysCount_zero": "لا أيام",
     "daysCount_one": "يوم واحد",
     "daysCount_two": "يومان",
@@ -807,6 +810,8 @@
   "contracts": {
     "prefillReviewMessage": "فشل الإنشاء التلقائي. يرجى مراجعة العقد المعبأ مسبقًا ثم حفظه.",
     "prefillLoadFailed": "تعذر تحميل بيانات الحجز للعقد المعبأ مسبقًا. يرجى المحاولة لاحقًا.",
+    "vehicleNotAvailableToast": "هذه المركبة غير متاحة حاليًا.",
+    "vehicleNotFoundToast": "المركبة غير موجودة.",
     "fromReservation": {
       "title": "إنشاء عقد من حجز",
       "subtitle": "تم تعبئة هذا العقد تلقائيًا من الحجز المحدد.",
@@ -2655,7 +2660,8 @@
     "return": "إرجاع",
     "select": "اختيار",
     "saveChanges": "حفظ التغييرات",
-    "notAvailable": "غير متاح"
+    "notAvailable": "غير متاح",
+    "vehicleActionInvalidId": "تعذر فتح هذا الإجراء — مرجع المركبة مفقود."
   },
   "trialBanner": {
     "trialEndsIn": "ينتهي الإصدار التجريبي خلال {{count}} يوم. قم بالترقية لفتح كامل الإمكانات.",

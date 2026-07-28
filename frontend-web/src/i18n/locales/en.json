@@ -643,6 +643,7 @@
     "deleteConfirm": "Delete this vehicle?",
     "moveToTrashConfirm": "Move this vehicle to trash?",
     "loadFailed": "Unable to load vehicle information. Please try again later.",
+    "notFound": "Vehicle not found.",
     "trashLoadFailed": "Unable to load trashed vehicles. Please try again later.",
     "restoredSuccess": "Vehicle restored successfully",
     "restoreFailed": "Unable to restore this vehicle. Please try again later.",
@@ -730,6 +731,8 @@
     "city": "City",
     "nationality": "Nationality",
     "vehicleUnavailableToast": "Selected vehicle is no longer available for these dates",
+    "vehicleNotAvailableToast": "This vehicle is not currently available for reservation.",
+    "vehicleNotFoundToast": "Vehicle not found.",
     "daysCount_one": "{{count}} day",
     "daysCount_other": "{{count}} days",
     "daysCount": "{{count}} days",
@@ -811,6 +814,8 @@
   "contracts": {
     "prefillReviewMessage": "Direct creation failed. Please review the prefilled contract and save.",
     "prefillLoadFailed": "Unable to load reservation data for the prefilled contract. Please try again later.",
+    "vehicleNotAvailableToast": "This vehicle is not currently available.",
+    "vehicleNotFoundToast": "Vehicle not found.",
     "fromReservation": {
       "title": "Creating contract from reservation",
       "subtitle": "This contract is prefilled from the selected reservation.",
@@ -2655,7 +2660,8 @@
     "return": "Return",
     "select": "Select",
     "saveChanges": "Save Changes",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "vehicleActionInvalidId": "Unable to open this action — the vehicle reference is missing."
   },
   "trialBanner": {
     "trialEndsIn": "Trial ends in {{count}} day. Upgrade anytime to unlock your full potential.",

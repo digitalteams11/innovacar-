@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import { GlassCard } from '../components/GlassCard';
@@ -92,6 +92,7 @@ const itemVariants = {
 
 export default function Vehicles() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -156,6 +157,17 @@ export default function Vehicles() {
 
   useEffect(() => {
     fetchVehicles();
+  }, [fetchVehicles]);
+
+  // Refetch when a reservation/contract/maintenance created elsewhere
+  // changes a vehicle's status — no query-cache library in this app, so this
+  // event (dispatched by Reservations.tsx/Contracts.tsx/Maintenance.tsx on
+  // successful save) is how the fleet list stays fresh without a hard
+  // browser refresh.
+  useEffect(() => {
+    const onDataUpdated = () => fetchVehicles();
+    window.addEventListener('rentcar-data-updated', onDataUpdated);
+    return () => window.removeEventListener('rentcar-data-updated', onDataUpdated);
   }, [fetchVehicles]);
 
   // Avoids a loading-spinner flash on fast connections — only shows the
@@ -393,6 +405,44 @@ export default function Vehicles() {
     setFieldErrors({});
     setIsModalOpen(true);
   };
+
+  // Deep-link support for the "View" action on vehicle cards elsewhere in the
+  // app (Dashboard's fleet card, etc.) — /vehicles?vehicleId=X opens this
+  // exact vehicle's details, refresh-safe since the id lives in the URL, not
+  // in router state. Always fetches by id directly (GET /vehicles/{id}, the
+  // same tenant-scoped endpoint the backend uses everywhere) rather than
+  // searching the already-loaded `data` array, so it still works if the
+  // vehicle is filtered out, on another page of results, or not loaded yet.
+  // Guards against double-handling: clearing the query param below itself
+  // changes `searchParams`, which would re-run this effect — without this
+  // ref, the effect's own cleanup (tied to the `searchParams` dependency)
+  // would fire and cancel the very fetch that same run just started, so the
+  // modal would never open. A ref (not state) survives across that re-run
+  // without doing so.
+  const consumedVehicleIdParamRef = useRef<string | null>(null);
+  useEffect(() => {
+    const raw = searchParams.get('vehicleId');
+    if (!raw || consumedVehicleIdParamRef.current === raw) return;
+    consumedVehicleIdParamRef.current = raw;
+    setSearchParams({}, { replace: true });
+
+    const vehicleId = Number(raw);
+    if (!Number.isInteger(vehicleId) || vehicleId <= 0) {
+      console.error('[Vehicles] refused to open details — invalid vehicleId in URL', raw);
+      showToast(t('vehicles.notFound', 'Vehicle not found.'), 'error');
+      return;
+    }
+    api.get(`/vehicles/${vehicleId}`).then(({ data: vehicle }) => {
+      openDetails(normalizeVehicle(vehicle));
+    }).catch((err: any) => {
+      if (err?.response?.status === 404) {
+        showToast(t('vehicles.notFound', 'Vehicle not found.'), 'error');
+      } else {
+        showToast(err?.userMessage || t('vehicles.loadFailed'), 'error');
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const startEditing = () => {
     if (!selectedVehicle) return;

@@ -860,6 +860,12 @@ export default function Dashboard() {
   const [showCustomize,  setShowCustomize]  = useState(false);
   const [gpsStatus,      setGpsStatus]      = useState<{ configured: boolean; online?: number; offline?: number; total?: number } | null>(null);
   const [agencyConfigured, setAgencyConfigured] = useState(false);
+  // Bumped by the 'rentcar-data-updated' listener below so vehicle/dashboard
+  // data (fleet cards, stats) refreshes after a reservation/contract/
+  // maintenance is created from elsewhere in the app — no query-cache
+  // library in this codebase, so a full refetch of this page's data is the
+  // "invalidation" mechanism, without requiring a hard browser refresh.
+  const [refreshTick,    setRefreshTick]    = useState(0);
 
   const { t, i18n: i18nInstance } = useTranslation();
   const navigate = useNavigate();
@@ -880,6 +886,12 @@ export default function Dashboard() {
     hour < 12 ? t('dashboard.greetingMorning',   'Good morning')
     : hour < 17 ? t('dashboard.greetingAfternoon', 'Good afternoon')
     :              t('dashboard.greetingEvening',   'Good evening');
+
+  useEffect(() => {
+    const onDataUpdated = () => setRefreshTick((tick) => tick + 1);
+    window.addEventListener('rentcar-data-updated', onDataUpdated);
+    return () => window.removeEventListener('rentcar-data-updated', onDataUpdated);
+  }, []);
 
   /* ── data loading ─────────────────────────────────────────────── */
   useEffect(() => {
@@ -989,7 +1001,7 @@ export default function Dashboard() {
     };
     fetchAll();
     return () => { active = false; };
-  }, [authLoading, isAuthenticated, location.pathname, t]);
+  }, [authLoading, isAuthenticated, location.pathname, t, refreshTick]);
 
   /* ── derived values ─────────────────────────────────────────────── */
   const totalVehicles     = stats?.totalVehicles ?? stats?.fleet ?? 0;
@@ -1829,7 +1841,10 @@ export default function Dashboard() {
           isOpen={returnContractId != null}
           contractId={returnContractId}
           onClose={() => setReturnContractId(null)}
-          onSuccess={() => { setReturnContractId(null); window.location.reload(); }}
+          onSuccess={() => {
+            setReturnContractId(null);
+            window.dispatchEvent(new Event('rentcar-data-updated'));
+          }}
         />
       )}
 

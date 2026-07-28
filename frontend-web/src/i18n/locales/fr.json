@@ -643,6 +643,7 @@
     "deleteConfirm": "Supprimer ce vehicule ?",
     "moveToTrashConfirm": "Déplacer ce véhicule vers la corbeille ?",
     "loadFailed": "Impossible de charger les informations du véhicule. Veuillez réessayer plus tard.",
+    "notFound": "Véhicule introuvable.",
     "trashLoadFailed": "Impossible de charger les véhicules dans la corbeille. Veuillez réessayer plus tard.",
     "restoredSuccess": "Véhicule restauré avec succès",
     "restoreFailed": "Impossible de restaurer ce véhicule. Veuillez réessayer plus tard.",
@@ -730,6 +731,8 @@
     "city": "Ville",
     "nationality": "Nationalité",
     "vehicleUnavailableToast": "Le véhicule sélectionné n'est plus disponible pour ces dates",
+    "vehicleNotAvailableToast": "Ce véhicule n'est pas disponible actuellement pour une réservation.",
+    "vehicleNotFoundToast": "Véhicule introuvable.",
     "daysCount_one": "{{count}} jour",
     "daysCount_other": "{{count}} jours",
     "daysCount": "{{count}} jours",
@@ -811,6 +814,8 @@
   "contracts": {
     "prefillReviewMessage": "La création automatique a échoué. Vérifiez le contrat prérempli puis enregistrez-le.",
     "prefillLoadFailed": "Impossible de charger les données de la réservation pour le contrat prérempli. Veuillez réessayer plus tard.",
+    "vehicleNotAvailableToast": "Ce véhicule n'est pas disponible actuellement.",
+    "vehicleNotFoundToast": "Véhicule introuvable.",
     "fromReservation": {
       "title": "Création d'un contrat depuis une réservation",
       "subtitle": "Ce contrat est prérempli à partir de la réservation sélectionnée.",
@@ -2655,7 +2660,8 @@
     "return": "Retour",
     "select": "Sélectionner",
     "saveChanges": "Enregistrer les modifications",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "vehicleActionInvalidId": "Impossible d'ouvrir cette action — la référence du véhicule est manquante."
   },
   "trialBanner": {
     "trialEndsIn": "Votre essai se termine dans {{count}} jour. Passez à la version complète pour débloquer tout le potentiel.",

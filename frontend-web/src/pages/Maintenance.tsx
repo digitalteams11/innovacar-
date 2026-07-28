@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Ban, CheckCircle2, Loader2, Plus, Play, Wrench } from 'lucide-react';
@@ -128,46 +128,51 @@ export default function Maintenance() {
   // /maintenance?vehicleId=… deep link. Fetches the vehicle directly (rather
   // than relying on the fleet dropdown, which excludes RENTED/OUT_OF_SERVICE
   // vehicles) so the workflow opens pre-filled and never needs a manual pick.
+  //
+  // consumedVehicleIdRef guards against a self-cancellation race: clearing
+  // the state/query param below (so refresh/back doesn't replay this) itself
+  // changes `location.state`, which would re-run this effect — a `cancelled`
+  // flag tied to that dependency would then cancel the very fetch this same
+  // run just started, before it resolves. A ref survives the re-run without
+  // doing that; state/props can't be used here since they'd also trigger a
+  // re-render/re-run.
+  const consumedVehicleIdRef = useRef<string | null>(null);
   useEffect(() => {
     const stateVehicleId = (location.state as { vehicleId?: number | string } | null)?.vehicleId;
     const queryVehicleId = searchParams.get('vehicleId');
     const rawVehicleId = stateVehicleId ?? queryVehicleId;
     if (rawVehicleId == null || rawVehicleId === '') return;
+    const rawKey = String(rawVehicleId);
+    if (consumedVehicleIdRef.current === rawKey) return;
+    consumedVehicleIdRef.current = rawKey;
 
     const vehicleId = Number(rawVehicleId);
     const from = (location.state as { returnTo?: string } | null)?.returnTo ?? null;
+    // Consume the router state/query so a browser refresh or back navigation
+    // doesn't replay the preselect flow with a stale vehicleId.
+    navigate(location.pathname, { replace: true, state: {} });
     if (!Number.isFinite(vehicleId)) return;
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.get(`/vehicles/${vehicleId}`);
-        if (cancelled) return;
-        const vehicle = res.data;
-        setPreselectedVehicle(vehicle);
-        setReturnTo(from);
-        setForm({
-          ...emptyForm,
-          vehicleId: String(vehicleId),
-          mileage: vehicle.mileageCurrent != null ? String(vehicle.mileageCurrent) : '',
-        });
-        setFieldErrors({});
-        setOpen(true);
-      } catch (err: any) {
-        if (cancelled) return;
-        if (err?.response?.status === 404) {
-          showToast(t('maintenance.toast.vehicleNotFound'), 'error');
-        } else {
-          showToast(resolveApiErrorMessage(err, t('maintenance.toast.vehicleNotFound')), 'error');
-        }
+    api.get(`/vehicles/${vehicleId}`).then((res) => {
+      const vehicle = res.data;
+      setPreselectedVehicle(vehicle);
+      setReturnTo(from);
+      setForm({
+        ...emptyForm,
+        vehicleId: String(vehicleId),
+        mileage: vehicle.mileageCurrent != null ? String(vehicle.mileageCurrent) : '',
+      });
+      setFieldErrors({});
+      setOpen(true);
+    }).catch((err: any) => {
+      if (err?.response?.status === 404) {
+        showToast(t('maintenance.toast.vehicleNotFound'), 'error');
+      } else {
+        showToast(resolveApiErrorMessage(err, t('maintenance.toast.vehicleNotFound')), 'error');
       }
-    })();
-    // Consume the router state so a browser refresh / back navigation doesn't
-    // re-trigger the preselect flow with a stale vehicleId.
-    navigate(location.pathname, { replace: true, state: {} });
-    return () => { cancelled = true; };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]);
+  }, [location.state, searchParams]);
 
   const updateFormField = (field: keyof typeof emptyForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));

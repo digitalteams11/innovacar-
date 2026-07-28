@@ -2,6 +2,8 @@ import { Car, Gauge, Fuel, FileText, Calendar, User, Wrench, Eye, Plus } from 'l
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { normalizeStatusCode, translateFuelLevel, translateFuelType, translateVehicleCategory, translateVehicleStatus } from '../../utils/statusLabels';
+import { navigateToVehicleAction } from '../../lib/vehicleActions';
+import { useToast } from '../../context/ToastContext';
 
 /* ─── types ─────────────────────────────────────────────────────────── */
 export interface VehicleCardData {
@@ -76,9 +78,19 @@ function VehicleIcon({ imageUrl, marque }: { imageUrl?: string; marque: string }
 export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardData; onReturn?: (id: number) => void }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const pct = fuelPercent(v.fuelLevelCurrent);
   const fuelLevelLabel = translateFuelLevel(v.fuelLevelCurrent) || '-';
   const fuelTypeLabel = translateFuelType(v.fuel);
+
+  // Every action on this card must carry v.id (the real database key) into
+  // the destination workflow via the URL — never silently drop it, never
+  // fall back to an index or the plate string. See lib/vehicleActions.ts.
+  const goTo = (action: 'view' | 'reserve' | 'contract' | 'maintenance') => {
+    navigateToVehicleAction(action, v.id, (path) => navigate(path), () => {
+      showToast(t('common.vehicleActionInvalidId', 'Unable to open this action — the vehicle reference is missing.'), 'error');
+    });
+  };
 
   return (
     <div className="glass-card rounded-2xl p-4 flex flex-col gap-3 hover:shadow-lg transition-all duration-200"
@@ -162,7 +174,7 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
           button is allowed to grow to fill a 2-up row on 320px screens
           instead of shrink-wrapping into an unreadably narrow pill. */}
       <div className="flex gap-2 flex-wrap pt-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-        <button onClick={() => navigate(`/vehicles`)}
+        <button onClick={() => goTo('view')}
           aria-label={t('common.view')}
           className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           style={{ background: 'var(--mobile-action-neutral-bg)', color: 'var(--mobile-action-neutral-text)', borderColor: 'transparent' }}>
@@ -170,13 +182,13 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
         </button>
         {v.statut === 'AVAILABLE' && (
           <>
-            <button onClick={() => navigate('/reservations')}
+            <button onClick={() => goTo('reserve')}
               aria-label={t('common.reserve')}
               className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               style={{ background: 'var(--mobile-action-success-bg)', color: 'var(--mobile-action-success-text)', borderColor: 'transparent' }}>
               <Calendar size={14} /> {t('common.reserve')}
             </button>
-            <button onClick={() => navigate('/contracts')}
+            <button onClick={() => goTo('contract')}
               aria-label={t('common.contract')}
               className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               style={{ background: 'var(--mobile-action-primary-bg)', color: 'var(--mobile-action-primary-text)', borderColor: 'transparent' }}>
@@ -193,7 +205,7 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
           </button>
         )}
         {v.statut !== 'IN_MAINTENANCE' && v.statut !== 'MAINTENANCE' && (
-          <button onClick={() => navigate('/maintenance', { state: { vehicleId: v.id, returnTo: '/dashboard' } })}
+          <button onClick={() => goTo('maintenance')}
             aria-label={t('common.maintenance')}
             className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             style={{ background: 'var(--mobile-action-danger-bg)', color: 'var(--mobile-action-danger-text)', borderColor: 'transparent' }}>
