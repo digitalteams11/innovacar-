@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Mail } from 'lucide-react';
-import api from '../api/axios';
+import api, { translateApiError } from '../api/axios';
 import SeoHead from '../components/seo/SeoHead';
 import { ROBOTS_PUBLIC_INDEXABLE } from '../components/seo/robotsPresets';
 
@@ -12,6 +13,7 @@ const CATEGORIES = [
 ];
 
 export default function PublicContact() {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     requesterName: '', requesterEmail: '', requesterPhone: '',
     category: 'GENERAL', subject: '', message: '',
@@ -37,10 +39,10 @@ export default function PublicContact() {
     setSubmitting(true);
     try {
       const response = await api.post('/public/contact', form);
-      const data = response.data as { ticketNumber?: string };
-      setTicketNumber(data.ticketNumber ?? null);
-    } catch {
-      setError('Unable to submit your request. Please try again later.');
+      const data = response.data as { requestNumber?: string };
+      setTicketNumber(data.requestNumber ?? null);
+    } catch (err) {
+      setError(translateApiError(err, t));
     } finally {
       setSubmitting(false);
     }
