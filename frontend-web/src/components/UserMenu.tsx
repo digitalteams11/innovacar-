@@ -323,24 +323,31 @@ export default function UserMenu() {
       )}
 
       {/* Logout confirmation */}
-      <Modal isOpen={confirmLogout} onClose={() => setConfirmLogout(false)} title={t('userMenu.signOut', 'Sign out')} maxWidth="max-w-md">
-        <p className="text-sm text-[var(--text-secondary)] mb-5">
+      <Modal
+        isOpen={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        title={t('userMenu.signOut', 'Sign out')}
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setConfirmLogout(false)}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-rose-500 text-white hover:bg-rose-600 transition-colors"
+            >
+              {t('userMenu.signOut', 'Sign out')}
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-[var(--text-secondary)]">
           {t('userMenu.signOutConfirm', 'Are you sure you want to sign out of your account?')}
         </p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => setConfirmLogout(false)}
-            className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
-          >
-            {t('common.cancel', 'Cancel')}
-          </button>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-rose-500 text-white hover:bg-rose-600 transition-colors"
-          >
-            {t('userMenu.signOut', 'Sign out')}
-          </button>
-        </div>
       </Modal>
     </div>
   );

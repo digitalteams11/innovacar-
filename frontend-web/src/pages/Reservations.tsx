@@ -835,7 +835,23 @@ export default function Reservations() {
         </div>
       </GlassCard>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? t('reservations.edit') : t('reservations.createReservation')} maxWidth="5xl">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingId ? t('reservations.edit') : t('reservations.createReservation')}
+        maxWidth="5xl"
+        footer={
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={saveReservation}
+            disabled={saving}
+            className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Saving...' : editingId ? 'Save Changes' : t('reservations.createReservation')}
+          </motion.button>
+        }
+      >
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:gap-6">
           <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
             <SmartClientSearch value={clientData} onSelect={(value) => { setClientData(value); clearFieldError('client'); }} required />
@@ -1021,16 +1037,6 @@ export default function Reservations() {
                 </motion.div>
               )}
             </AnimatePresence>
-
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={saveReservation}
-              disabled={saving}
-              className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Saving...' : editingId ? 'Save Changes' : t('reservations.createReservation')}
-            </motion.button>
           </div>
         </div>
       </Modal>

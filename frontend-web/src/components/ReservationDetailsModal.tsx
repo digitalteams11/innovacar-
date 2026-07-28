@@ -41,8 +41,27 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
   const duration = Math.ceil((new Date(reservation.dateFin).getTime() - new Date(reservation.dateDebut).getTime()) / (1000 * 3600 * 24));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={t('reservations.detailsModalTitle', 'Reservation Details')}>
-      <div className="space-y-6 max-h-[80vh] overflow-y-auto no-scrollbar pe-1">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('reservations.detailsModalTitle', 'Reservation Details')}
+      footer={
+        <div className="flex gap-3">
+          <button className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-100 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95">
+            <FileText size={18} /> {t('reservations.invoice', 'Invoice')}
+          </button>
+          <button className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/20 active:scale-95">
+            <CheckCircle2 size={18} /> {t('common.manage', 'Manage')}
+          </button>
+        </div>
+      }
+    >
+      {/* Modal's own body (min-h-0 flex-1 overflow-y-auto) already provides the
+          scroll region — the nested max-h-[80vh] overflow-y-auto this used to
+          have was a redundant second scroll container, and it buried the
+          action buttons at the end of a long stack instead of docking them in
+          the sticky footer above. */}
+      <div className="space-y-6">
         {/* Reservation Status Banner */}
         <div className={`p-4 rounded-2xl flex items-center justify-between ${
           reservation.statut === 'CONFIRMED' ? 'bg-success-50 text-success-700 border border-success-100' :
@@ -166,16 +185,6 @@ export default function ReservationDetailsModal({ isOpen, onClose, reservation }
             <FileText size={14} /> {t('reservations.vehicleInspectionMedia', 'Vehicle Inspection Media')}
           </h4>
           <InspectionGallery inspections={inspections} />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-           <button className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-100 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95">
-              <FileText size={18} /> {t('reservations.invoice', 'Invoice')}
-           </button>
-           <button className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-brand-500 text-white rounded-2xl font-bold text-sm hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/20 active:scale-95">
-              <CheckCircle2 size={18} /> {t('common.manage', 'Manage')}
-           </button>
         </div>
       </div>
     </Modal>

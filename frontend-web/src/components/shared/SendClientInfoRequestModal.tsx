@@ -141,8 +141,48 @@ export default function SendClientInfoRequestModal({
     if (link) window.open(link, '_blank', 'noopener,noreferrer');
   };
 
+  const footer = result ? (
+    <button onClick={handleClose} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all">
+      {t('common.close', 'Close')}
+    </button>
+  ) : step === 1 ? (
+    <button
+      onClick={goToChannels}
+      className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all"
+    >
+      {t('common.next', 'Next')}
+    </button>
+  ) : (
+    <div className="flex gap-2">
+      <button
+        onClick={() => setStep(1)}
+        disabled={submitting}
+        className="flex-1 py-2.5 rounded-xl font-medium text-sm border border-[var(--border-subtle)] text-[#1e293b] dark:text-white"
+      >
+        {t('common.back', 'Back')}
+      </button>
+      <button
+        onClick={send}
+        disabled={submitting || (!emailChannel && !whatsappChannel)}
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all disabled:opacity-50"
+      >
+        {submitting ? (
+          <>
+            <Loader2 size={16} className="animate-spin" />
+            {t('clientInfoAdmin.form.sending', 'Generating secure link and sending…')}
+          </>
+        ) : (
+          <>
+            <Send size={16} />
+            {t('clientInfoAdmin.generateAndSend', 'Generate and send')}
+          </>
+        )}
+      </button>
+    </div>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={t('clientInfoAdmin.sendToClient', 'Send form to client')} maxWidth="max-w-md">
+    <Modal isOpen={isOpen} onClose={handleClose} title={t('clientInfoAdmin.sendToClient', 'Send form to client')} maxWidth="max-w-md" footer={footer}>
       <div dir={isRtl ? 'rtl' : 'ltr'}>
         {result ? (
           <DeliveryResultCard
@@ -155,7 +195,6 @@ export default function SendClientInfoRequestModal({
             onOpen={openLink}
             onRetry={retryChannel}
             retrying={retrying}
-            onClose={handleClose}
           />
         ) : step === 1 ? (
           <div className="space-y-4">
@@ -196,12 +235,6 @@ export default function SendClientInfoRequestModal({
               />
               {errors.phone && <p className="mt-1 text-xs text-danger-500">{errors.phone}</p>}
             </div>
-            <button
-              onClick={goToChannels}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all"
-            >
-              {t('common.next', 'Next')}
-            </button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -236,33 +269,6 @@ export default function SendClientInfoRequestModal({
                 {!phoneAvailable && <p className="text-xs text-slate-400">{t('clientInfoAdmin.form.phoneUnavailable', 'Phone number not available')}</p>}
               </div>
             </label>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setStep(1)}
-                disabled={submitting}
-                className="flex-1 py-2.5 rounded-xl font-medium text-sm border border-[var(--border-subtle)] text-[#1e293b] dark:text-white"
-              >
-                {t('common.back', 'Back')}
-              </button>
-              <button
-                onClick={send}
-                disabled={submitting || (!emailChannel && !whatsappChannel)}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all disabled:opacity-50"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    {t('clientInfoAdmin.form.sending', 'Generating secure link and sending…')}
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    {t('clientInfoAdmin.generateAndSend', 'Generate and send')}
-                  </>
-                )}
-              </button>
-            </div>
           </div>
         )}
       </div>
@@ -401,11 +407,11 @@ function WhatsAppShareRow({
 }
 
 function DeliveryResultCard({
-  result, clientName, clientPhone, agencyName, language, onCopy, onOpen, onRetry, retrying, onClose,
+  result, clientName, clientPhone, agencyName, language, onCopy, onOpen, onRetry, retrying,
 }: {
   result: DeliveryResponse; clientName: string; clientPhone: string; agencyName?: string; language: string;
   onCopy: () => void; onOpen: () => void;
-  onRetry: (channel: 'EMAIL' | 'WHATSAPP') => void; retrying: 'EMAIL' | 'WHATSAPP' | null; onClose: () => void;
+  onRetry: (channel: 'EMAIL' | 'WHATSAPP') => void; retrying: 'EMAIL' | 'WHATSAPP' | null;
 }) {
   const { t, i18n } = useTranslation();
   const expiresAtLabel = result.expiresAt
@@ -447,10 +453,6 @@ function DeliveryResultCard({
           <ExternalLink size={15} />
         </button>
       </div>
-
-      <button onClick={onClose} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all">
-        {t('common.close', 'Close')}
-      </button>
     </div>
   );
 }

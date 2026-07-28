@@ -402,8 +402,18 @@ export default function Employees() {
         />
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => { if (!saving) setIsModalOpen(false); }} title={editingId ? t('employees.editEmployee') : t('employees.newEmployee')}>
-        <form onSubmit={(e) => { e.preventDefault(); void saveEmployee(); }} className="space-y-4">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => { if (!saving) setIsModalOpen(false); }}
+        title={editingId ? t('employees.editEmployee') : t('employees.newEmployee')}
+        footer={
+          <button type="submit" form="employee-form" disabled={saving || permissionsLoading} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            {saving && <Loader2 size={16} className="animate-spin" />}
+            {editingId ? t('employees.saveChanges') : saving ? t('employees.addingEmployee') : t('employees.newEmployee')}
+          </button>
+        }
+      >
+        <form id="employee-form" onSubmit={(e) => { e.preventDefault(); void saveEmployee(); }} className="space-y-4">
           <div><label className="block text-sm font-medium text-[var(--text-primary)] mb-2">{t('employees.fullName')} *</label><input type="text" value={form.fullName} onChange={(e) => updateFormField('fullName', e.target.value)} aria-invalid={Boolean(fieldErrors.fullName)} className={inputClass('fullName')} />{fieldError('fullName')}</div>
           <div><label className="block text-sm font-medium text-[var(--text-primary)] mb-2">{t('employees.email')} *</label><input type="email" value={form.email} onChange={(e) => updateFormField('email', e.target.value)} aria-invalid={Boolean(fieldErrors.email)} className={inputClass('email')} />{fieldError('email')}</div>
           <div><label className="block text-sm font-medium text-[var(--text-primary)] mb-2">{t('employees.phone')}</label><input type="tel" value={form.phone} onChange={(e) => updateFormField('phone', e.target.value)} className="w-full px-4 py-2.5 glass-input text-sm text-[var(--text-primary)]" /></div>
@@ -425,12 +435,6 @@ export default function Employees() {
               {formError}
             </div>
           )}
-          <div className="pt-2">
-            <button type="submit" disabled={saving || permissionsLoading} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              {saving && <Loader2 size={16} className="animate-spin" />}
-              {editingId ? t('employees.saveChanges') : saving ? t('employees.addingEmployee') : t('employees.newEmployee')}
-            </button>
-          </div>
         </form>
       </Modal>
     </div>

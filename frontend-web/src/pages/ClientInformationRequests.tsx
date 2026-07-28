@@ -235,7 +235,89 @@ export default function ClientInformationRequests() {
         </div>
       )}
 
-      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title={selected?.temporaryName || ''} maxWidth="max-w-lg">
+      <Modal
+        isOpen={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected?.temporaryName || ''}
+        maxWidth="max-w-lg"
+        footer={selected && !detailLoading ? (
+          <>
+            {selected.status === 'SUBMITTED' && (
+              <div className="flex flex-col gap-2">
+                {linkExistingId != null && (
+                  <button
+                    onClick={() => approve(selected.id, 'LINK_EXISTING', linkExistingId)}
+                    disabled={busyId === selected.id}
+                    className="flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
+                  >
+                    <Link2 size={15} /> {t('clientInfoAdmin.linkExisting', 'Link to selected existing client')}
+                  </button>
+                )}
+                <button
+                  onClick={() => approve(selected.id, 'CREATE_NEW')}
+                  disabled={busyId === selected.id}
+                  className="flex items-center justify-center gap-2 py-2.5 bg-success-50 text-success-600 rounded-xl font-semibold text-sm"
+                >
+                  <UserPlus size={15} /> {t('clientInfoAdmin.createNew', 'Approve & create new client')}
+                </button>
+                <button
+                  onClick={() => reject(selected.id)}
+                  disabled={busyId === selected.id}
+                  className="flex items-center justify-center gap-2 py-2.5 bg-danger-50 text-danger-500 rounded-xl font-semibold text-sm"
+                >
+                  <XCircle size={15} /> {t('clientInfoAdmin.reject', 'Reject')}
+                </button>
+              </div>
+            )}
+            {(selected.status === 'SENT' || selected.status === 'OPENED') && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => resend(selected.id)}
+                  disabled={busyId === selected.id}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
+                >
+                  <Send size={15} /> {t('clientInfoAdmin.resend', 'Resend')}
+                </button>
+                <button
+                  onClick={() => revoke(selected.id)}
+                  disabled={busyId === selected.id}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-danger-50 text-danger-500 rounded-xl font-semibold text-sm"
+                >
+                  <XCircle size={15} /> {t('clientInfoAdmin.revoke', 'Cancel request')}
+                </button>
+              </div>
+            )}
+            {selected.status === 'APPROVED' && selected.approvedClientId && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => navigate(`/clients?viewClientId=${selected.approvedClientId}`)}
+                  className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/10 text-[#1e293b] dark:text-white rounded-xl font-semibold text-sm"
+                >
+                  <Eye size={15} /> {t('clientInfoAdmin.viewClient', 'View client')}
+                </button>
+                <button
+                  onClick={() => navigate(`/clients?editClientId=${selected.approvedClientId}`)}
+                  className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/10 text-[#1e293b] dark:text-white rounded-xl font-semibold text-sm"
+                >
+                  <Pencil size={15} /> {t('clientInfoAdmin.editClient', 'Edit client')}
+                </button>
+                <button
+                  onClick={() => navigate(`/reservations?fromClientId=${selected.approvedClientId}`)}
+                  className="flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
+                >
+                  <CalendarPlus size={15} /> {t('clientInfoAdmin.continueToReservation', 'Continue to reservation')}
+                </button>
+                <button
+                  onClick={() => navigate(`/contracts?fromClientId=${selected.approvedClientId}`)}
+                  className="flex items-center justify-center gap-2 py-2.5 bg-success-50 text-success-600 rounded-xl font-semibold text-sm"
+                >
+                  <FileText size={15} /> {t('clientInfoAdmin.continueToContract', 'Continue to contract')}
+                </button>
+              </div>
+            )}
+          </>
+        ) : null}
+      >
         {detailLoading || !selected ? (
           <div className="flex items-center justify-center py-8"><Loader2 size={24} className="animate-spin text-brand-500" /></div>
         ) : (
@@ -295,84 +377,9 @@ export default function ClientInformationRequests() {
               </div>
             )}
 
-            {selected.status === 'SUBMITTED' && (
-              <div className="flex flex-col gap-2 pt-2 border-t border-[var(--border-subtle)]">
-                {linkExistingId != null && (
-                  <button
-                    onClick={() => approve(selected.id, 'LINK_EXISTING', linkExistingId)}
-                    disabled={busyId === selected.id}
-                    className="flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
-                  >
-                    <Link2 size={15} /> {t('clientInfoAdmin.linkExisting', 'Link to selected existing client')}
-                  </button>
-                )}
-                <button
-                  onClick={() => approve(selected.id, 'CREATE_NEW')}
-                  disabled={busyId === selected.id}
-                  className="flex items-center justify-center gap-2 py-2.5 bg-success-50 text-success-600 rounded-xl font-semibold text-sm"
-                >
-                  <UserPlus size={15} /> {t('clientInfoAdmin.createNew', 'Approve & create new client')}
-                </button>
-                <button
-                  onClick={() => reject(selected.id)}
-                  disabled={busyId === selected.id}
-                  className="flex items-center justify-center gap-2 py-2.5 bg-danger-50 text-danger-500 rounded-xl font-semibold text-sm"
-                >
-                  <XCircle size={15} /> {t('clientInfoAdmin.reject', 'Reject')}
-                </button>
-              </div>
-            )}
-            {(selected.status === 'SENT' || selected.status === 'OPENED') && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => resend(selected.id)}
-                  disabled={busyId === selected.id}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
-                >
-                  <Send size={15} /> {t('clientInfoAdmin.resend', 'Resend')}
-                </button>
-                <button
-                  onClick={() => revoke(selected.id)}
-                  disabled={busyId === selected.id}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-danger-50 text-danger-500 rounded-xl font-semibold text-sm"
-                >
-                  <XCircle size={15} /> {t('clientInfoAdmin.revoke', 'Cancel request')}
-                </button>
-              </div>
-            )}
             {selected.status === 'APPROVED' && (
-              <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
-                <div className="flex items-center gap-2 text-sm text-success-600">
-                  <CheckCircle2 size={15} /> {t('clientInfoAdmin.approvedNote', 'Approved and linked.')}
-                </div>
-                {selected.approvedClientId && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => navigate(`/clients?viewClientId=${selected.approvedClientId}`)}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/10 text-[#1e293b] dark:text-white rounded-xl font-semibold text-sm"
-                    >
-                      <Eye size={15} /> {t('clientInfoAdmin.viewClient', 'View client')}
-                    </button>
-                    <button
-                      onClick={() => navigate(`/clients?editClientId=${selected.approvedClientId}`)}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/10 text-[#1e293b] dark:text-white rounded-xl font-semibold text-sm"
-                    >
-                      <Pencil size={15} /> {t('clientInfoAdmin.editClient', 'Edit client')}
-                    </button>
-                    <button
-                      onClick={() => navigate(`/reservations?fromClientId=${selected.approvedClientId}`)}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-brand-50 text-brand-600 rounded-xl font-semibold text-sm"
-                    >
-                      <CalendarPlus size={15} /> {t('clientInfoAdmin.continueToReservation', 'Continue to reservation')}
-                    </button>
-                    <button
-                      onClick={() => navigate(`/contracts?fromClientId=${selected.approvedClientId}`)}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-success-50 text-success-600 rounded-xl font-semibold text-sm"
-                    >
-                      <FileText size={15} /> {t('clientInfoAdmin.continueToContract', 'Continue to contract')}
-                    </button>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 text-sm text-success-600 pt-2 border-t border-[var(--border-subtle)]">
+                <CheckCircle2 size={15} /> {t('clientInfoAdmin.approvedNote', 'Approved and linked.')}
               </div>
             )}
           </div>

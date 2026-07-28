@@ -1088,7 +1088,29 @@ export default function GpsSettingsPage() {
       <GpsConnectGuideModal isOpen={guideOpen} onClose={() => setGuideOpen(false)} provider={settings.provider} />
 
       {/* Save Confirmation Modal */}
-      <Modal isOpen={showSaveModal} onClose={() => setShowSaveModal(false)} title={t('gps.saveConfiguration')} maxWidth="max-w-md">
+      <Modal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        title={t('gps.saveConfiguration')}
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowSaveModal(false)}
+              className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 px-4 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600 transition-all disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('gps.confirmAndSave')}
+            </button>
+          </div>
+        }
+      >
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 bg-brand-50 rounded-xl">
             <Shield size={20} className="text-brand-500" />
@@ -1115,38 +1137,17 @@ export default function GpsSettingsPage() {
               <span className="font-semibold text-[#1e293b]">{settings.enabled ? t('gps.enabledLabel') : t('gps.disabledLabel')}</span>
             </div>
           </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={() => setShowSaveModal(false)}
-              className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 px-4 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600 transition-all disabled:opacity-50"
-            >
-              {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('gps.confirmAndSave')}
-            </button>
-          </div>
         </div>
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={t('gps.removeIntegration')} maxWidth="max-w-md">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl">
-            <AlertTriangle size={20} className="text-rose-500" />
-            <p className="text-sm text-rose-700">
-              {t('gps.removeIntegrationWarning')}
-            </p>
-          </div>
-          <p className="text-sm text-slate-500">
-            {t('gps.removeIntegrationNote')}
-          </p>
-          <div className="flex gap-3 pt-2">
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={t('gps.removeIntegration')}
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex gap-3">
             <button
               onClick={() => setShowDeleteModal(false)}
               className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
@@ -1160,19 +1161,29 @@ export default function GpsSettingsPage() {
               {t('gps.removeIntegrationAction')}
             </button>
           </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl">
+            <AlertTriangle size={20} className="text-rose-500" />
+            <p className="text-sm text-rose-700">
+              {t('gps.removeIntegrationWarning')}
+            </p>
+          </div>
+          <p className="text-sm text-slate-500">
+            {t('gps.removeIntegrationNote')}
+          </p>
         </div>
       </Modal>
 
       {/* Deactivate Confirmation Modal */}
-      <Modal isOpen={showDeactivateModal} onClose={() => setShowDeactivateModal(false)} title={t('gps.deactivateIntegration')} maxWidth="max-w-md">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
-            <PowerOff size={20} className="text-amber-500" />
-            <p className="text-sm text-amber-700">
-              {t('gps.deactivateWarning')}
-            </p>
-          </div>
-          <div className="flex gap-3 pt-2">
+      <Modal
+        isOpen={showDeactivateModal}
+        onClose={() => setShowDeactivateModal(false)}
+        title={t('gps.deactivateIntegration')}
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex gap-3">
             <button
               onClick={() => setShowDeactivateModal(false)}
               className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
@@ -1187,22 +1198,26 @@ export default function GpsSettingsPage() {
               {deactivating ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('gps.deactivateAction')}
             </button>
           </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
+            <PowerOff size={20} className="text-amber-500" />
+            <p className="text-sm text-amber-700">
+              {t('gps.deactivateWarning')}
+            </p>
+          </div>
         </div>
       </Modal>
 
       {/* Delete Credentials Confirmation Modal */}
-      <Modal isOpen={showDeleteCredentialsModal} onClose={() => setShowDeleteCredentialsModal(false)} title={t('gps.deleteCredentials')} maxWidth="max-w-md">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl">
-            <AlertTriangle size={20} className="text-rose-500" />
-            <p className="text-sm text-rose-700">
-              {t('gps.deleteCredentialsWarning')}
-            </p>
-          </div>
-          <p className="text-sm text-slate-500">
-            {t('gps.deleteCredentialsNote')}
-          </p>
-          <div className="flex gap-3 pt-2">
+      <Modal
+        isOpen={showDeleteCredentialsModal}
+        onClose={() => setShowDeleteCredentialsModal(false)}
+        title={t('gps.deleteCredentials')}
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex gap-3">
             <button
               onClick={() => setShowDeleteCredentialsModal(false)}
               className="flex-1 px-4 py-2.5 bg-[#f5f5f0] text-[#1e293b] rounded-xl text-sm font-medium hover:bg-[#e8e6e1] transition-all"
@@ -1217,6 +1232,18 @@ export default function GpsSettingsPage() {
               {deletingCredentials ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('gps.deleteCredentialsAction')}
             </button>
           </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl">
+            <AlertTriangle size={20} className="text-rose-500" />
+            <p className="text-sm text-rose-700">
+              {t('gps.deleteCredentialsWarning')}
+            </p>
+          </div>
+          <p className="text-sm text-slate-500">
+            {t('gps.deleteCredentialsNote')}
+          </p>
         </div>
       </Modal>
     </div>

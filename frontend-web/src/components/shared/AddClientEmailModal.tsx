@@ -65,6 +65,28 @@ export default function AddClientEmailModal({
       onClose={onClose}
       title={(isEditing ? t('contractEmail.modal.titleEdit') : t('contractEmail.modal.titleAdd')) as string}
       maxWidth="max-w-md"
+      footer={
+        <div className="flex flex-col-reverse gap-2.5 sm:flex-row">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="min-h-[44px] flex-1 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+            style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
+          >
+            {t('contractEmail.modal.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+          >
+            {saving && <Loader2 size={15} className="animate-spin" />}
+            {sendAfterSave ? t('contractEmail.saveAndSend') : t('contractEmail.save')}
+          </button>
+        </div>
+      }
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
@@ -117,27 +139,6 @@ export default function AddClientEmailModal({
           />
           {t('contractEmail.modal.sendImmediately')}
         </label>
-
-        <div className="flex flex-col-reverse gap-2.5 pt-1 sm:flex-row">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="min-h-[44px] flex-1 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
-            style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
-          >
-            {t('contractEmail.modal.cancel')}
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={saving}
-            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
-          >
-            {saving && <Loader2 size={15} className="animate-spin" />}
-            {sendAfterSave ? t('contractEmail.saveAndSend') : t('contractEmail.save')}
-          </button>
-        </div>
       </div>
     </Modal>
   );

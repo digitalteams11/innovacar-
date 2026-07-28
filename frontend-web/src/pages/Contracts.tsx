@@ -1556,7 +1556,22 @@ export default function Contracts() {
       )}
 
       {/* Create Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('contracts.form.createContractTitle')} maxWidth="5xl">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={t('contracts.form.createContractTitle')}
+        maxWidth="5xl"
+        footer={
+          <button onClick={saveContract} disabled={saving} className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-70">
+            {saving ? (
+              <span className="inline-flex items-center justify-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                {t('contracts.form.creatingContract')}
+              </span>
+            ) : t('contracts.form.createContractTitle')}
+          </button>
+        }
+      >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-5 pe-1">
@@ -2122,15 +2137,6 @@ export default function Contracts() {
               discountAmount={discountAmount ? Number(discountAmount) : 0}
               discountPercent={discountPercent ? Number(discountPercent) : 0}
             />
-
-            <button onClick={saveContract} disabled={saving} className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-70">
-              {saving ? (
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Loader2 size={16} className="animate-spin" />
-                  {t('contracts.form.creatingContract')}
-                </span>
-              ) : t('contracts.form.createContractTitle')}
-            </button>
           </div>
         </div>
       </Modal>

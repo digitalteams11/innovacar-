@@ -514,7 +514,17 @@ export default function Maintenance() {
         />
       )}
 
-      <Modal isOpen={open} onClose={closeModal} title={t('maintenance.modal.title')}>
+      <Modal
+        isOpen={open}
+        onClose={closeModal}
+        title={t('maintenance.modal.title')}
+        footer={
+          <button onClick={create} disabled={saving}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium disabled:opacity-70">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Wrench size={16} />} {t('maintenance.modal.create')}
+          </button>
+        }
+      >
         <div className="space-y-4">
           {preselectedVehicle ? (
             <div className="rounded-lg border border-[#e8e6e1] bg-[#f5f5f0] p-3 space-y-1.5">
@@ -558,10 +568,6 @@ export default function Maintenance() {
             <textarea value={form.description} onChange={(e) => updateFormField('description', e.target.value)}
               className="mt-1 w-full px-3 py-2.5 border rounded-lg text-sm" rows={3} />
           </label>
-          <button onClick={create} disabled={saving}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium disabled:opacity-70">
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Wrench size={16} />} {t('maintenance.modal.create')}
-          </button>
         </div>
       </Modal>
     </div>

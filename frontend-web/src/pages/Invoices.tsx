@@ -338,7 +338,14 @@ export default function Invoices() {
         />
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Edit Invoice' : t('invoices.newInvoice')}>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingId ? 'Edit Invoice' : t('invoices.newInvoice')}
+        footer={
+          <button onClick={saveInvoice} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">{editingId ? 'Save Changes' : t('invoices.newInvoice')}</button>
+        }
+      >
         <div className="space-y-4">
           <SmartClientSearch value={clientData} onSelect={selectClient} required />
           {fieldError('client')}
@@ -360,7 +367,6 @@ export default function Invoices() {
               </select>
             </div>
           </div>
-          <div className="pt-2"><button onClick={saveInvoice} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">{editingId ? 'Save Changes' : t('invoices.newInvoice')}</button></div>
         </div>
       </Modal>
     </div>
