@@ -95,6 +95,27 @@ if (!indexHtml) {
   } else if (!routeBootstrapJs.includes('data-app-route')) {
     fail('dist/route-bootstrap.js does not set the data-app-route attribute.');
   }
+
+  // ── stylesheet-before-script discovery order (see vite.config.ts's
+  // stylesheetBeforeModulePreloadPlugin) ──────────────────────────────────
+  // This build's default HTML injection order puts the entry
+  // <script type="module"> and 20-30 <link rel="modulepreload"> hints
+  // BEFORE the entry <link rel="stylesheet">. Browsers only discover (and
+  // start fetching) a stylesheet once the HTML parser reaches its <link>
+  // tag, so a stylesheet buried behind that many preload requests is
+  // measurably delayed on a slow/mobile connection — long enough for the
+  // real, prerendered marketing HTML already sitting in #root to paint
+  // fully unstyled first. This was the actual root cause of the "unstyled
+  // flash on mobile refresh" production bug; keep the stylesheet first.
+  const stylesheetIndex = indexHtml.indexOf('<link rel="stylesheet"');
+  const moduleScriptIndex = indexHtml.indexOf('<script type="module"');
+  if (stylesheetIndex === -1) {
+    fail('dist/index.html has no <link rel="stylesheet"> for the built CSS bundle.');
+  } else if (moduleScriptIndex === -1) {
+    fail('dist/index.html has no <script type="module"> entry point.');
+  } else if (stylesheetIndex > moduleScriptIndex) {
+    fail('dist/index.html\'s <link rel="stylesheet"> appears AFTER <script type="module"> — this delays CSS discovery behind every modulepreload hint and reproduces the unstyled-flash bug. See vite.config.ts\'s stylesheetBeforeModulePreloadPlugin.');
+  }
 }
 
 // ── prerendered marketing pages (see scripts/prerender-marketing.mjs) ──────

@@ -89,12 +89,47 @@ function assertNoVercelPreviewUrls(env: Record<string, string>, isProduction: bo
   )
 }
 
+// Fixes the actual root cause of the "unstyled flash on mobile" production
+// bug: this build's default HTML injection order puts the entry
+// <script type="module"> and 20-30 <link rel="modulepreload"> hints BEFORE
+// the entry stylesheet's <link rel="stylesheet"> tag. Browsers only
+// discover (and start fetching) a stylesheet once the HTML parser reaches
+// its <link> tag, so pushing it dead-last behind that many preload requests
+// measurably delays when the CSS request even starts — long enough on a
+// slow/mobile connection for the real, prerendered marketing HTML already
+// sitting in #root (see scripts/prerender-marketing.mjs) to paint fully
+// unstyled before the stylesheet resolves. This does not touch the Google
+// Fonts <link> in index.html's <head> (that one has `href` before `rel`,
+// so the pattern below never matches it) — only reorders the build's own
+// injected stylesheet link(s) to immediately precede the entry module
+// script, which every prerendered page (built from this same dist/index.html
+// template — see scripts/prerender-marketing.mjs) inherits automatically.
+function stylesheetBeforeModulePreloadPlugin(): Plugin {
+  const stylesheetLinkPattern = /<link rel="stylesheet"[^>]*>\n?/g
+  return {
+    name: 'stylesheet-before-modulepreload',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        const stylesheetLinks = html.match(stylesheetLinkPattern)
+        if (!stylesheetLinks || stylesheetLinks.length === 0) return html
+        const withoutStylesheets = html.replace(stylesheetLinkPattern, '')
+        return withoutStylesheets.replace(
+          /<script type="module"/,
+          `${stylesheetLinks.join('')}<script type="module"`
+        )
+      },
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   assertNoVercelPreviewUrls(env, mode === 'production')
   return {
-  plugins: [react(), googleSiteVerificationPlugin(env.VITE_GOOGLE_SITE_VERIFICATION)],
+  plugins: [react(), googleSiteVerificationPlugin(env.VITE_GOOGLE_SITE_VERIFICATION), stylesheetBeforeModulePreloadPlugin()],
   server: {
     host: '0.0.0.0',
     port: 5174,
