@@ -31,6 +31,10 @@
     --text-muted: #64748b;
     --text-faint: #94a3b8;
     --text-inverse: #f8fafc;
+    /* Disabled text/icon — deliberately its own token (not just an opacity
+       modifier on --text-primary) so a disabled button's readability never
+       depends on what opacity utility a given component happened to pick. */
+    --text-disabled: #94a3b8;
 
     /* Sidebar text is luminance-checked against --bg-sidebar at theme-apply
        time (see ThemeContext) so a light sidebar (e.g. Clean White Pro) never
@@ -44,6 +48,10 @@
     /* Pre-JS fallback only — ThemeContext.tsx recomputes this per-preset/white-label
        color via a luminance check the moment it mounts, same as --text-sidebar above. */
     --brand-primary-foreground: #ffffff;
+    /* Readable variant of --brand-primary for text-only UI (links, ghost
+       buttons, icons) — see brandTextColorFor() in ThemeContext.tsx. Same
+       pre-JS-fallback caveat as --brand-primary-foreground above. */
+    --brand-primary-text: var(--brand-primary);
     --brand-secondary: #0f766e;
     --brand-accent: #f59e0b;
     --brand-accent-foreground: #171817;
@@ -111,6 +119,26 @@
     --nav-inactive: var(--text-muted);
     --focus-ring: var(--brand-primary);
 
+    /* --color-* aliases — same tokens above, exposed under the generic
+       --color-* names so new/audited components can reference a stable,
+       documented set instead of picking whichever raw Tailwind color looks
+       right on one page. Aliases only, not replacements, for the same
+       non-regression reason as the block above. */
+    --color-bg-page: var(--bg-page);
+    --color-bg-card: var(--bg-card-solid);
+    --color-bg-muted: var(--bg-hover);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-disabled: var(--text-disabled);
+    --color-border: var(--border-subtle);
+    --color-button-primary-bg: var(--brand-primary);
+    --color-button-primary-text: var(--brand-primary-foreground);
+    --color-button-secondary-bg: var(--bg-hover);
+    --color-button-secondary-text: var(--text-primary);
+    --color-button-disabled-bg: var(--bg-hover);
+    --color-button-disabled-text: var(--text-disabled);
+    --color-focus-ring: var(--focus-ring);
+
     /* Mobile dashboard tokens — deliberately NOT aliased to --brand-primary.
        White-label agencies can set an arbitrary (sometimes dark/navy) brand
        color via ThemeContext; a critical-legibility element like the active
@@ -161,6 +189,10 @@
     --text-muted: #94a3b8;
     --text-faint: #64748b;
     --text-inverse: #0f172a;
+    /* Lighter than the light-mode value — the same numeric opacity/gray reads
+       noticeably fainter against dark surfaces, so disabled text needs a
+       brighter floor here to stay legible. */
+    --text-disabled: #7c8aa0;
 
     --border-light: rgba(255, 255, 255, 0.08);
     --border-subtle: rgba(255, 255, 255, 0.09);
@@ -1198,6 +1230,28 @@
   color: var(--text-primary) !important;
 }
 
+/* ============================================
+   DISABLED BUTTONS
+   Disabled state must never be communicated by
+   opacity alone — cursor is set unconditionally,
+   and dark mode gets an opacity floor so the
+   lowest-opacity utilities used across the app
+   (disabled:opacity-30/40) don't read as nearly
+   invisible against dark surfaces, where the same
+   numeric opacity is noticeably fainter than on a
+   light background.
+   ============================================ */
+button:disabled,
+button[aria-disabled='true'],
+[role='button'][aria-disabled='true'] {
+  cursor: not-allowed;
+}
+.dark [class*='disabled:opacity-20']:disabled,
+.dark [class*='disabled:opacity-30']:disabled,
+.dark [class*='disabled:opacity-40']:disabled {
+  opacity: 0.55 !important;
+}
+
 .border-\[\#e8e6e1\],
 .border-\[\#e8e6e1\]\/50,
 .border-\[\#e8e6e1\]\/60,
@@ -1220,10 +1274,26 @@
   background-color: var(--brand-primary) !important;
 }
 
-.text-brand-500,
-.text-brand-600,
-.text-brand-700 {
+/* text-brand-500/600/700 used to be forced to var(--brand-primary)
+   unconditionally in every mode. That silently defeated any component's own
+   dark:text-brand-* override (Tailwind's dark: utilities aren't !important,
+   so this unscoped !important rule always won), and for presets whose
+   primaryColor is itself dark (e.g. Clean White Pro's near-black #111827)
+   it rendered as dark navy text on the app's already-dark surfaces — the
+   root cause of the "Resend email" button being unreadable in dark mode.
+   Split so light mode keeps the raw brand color (unchanged look) and dark
+   mode uses the luminance-safe --brand-primary-text (see brandTextColorFor()
+   in ThemeContext.tsx), which only lightens the color when the raw brand
+   color would actually be unreadable. */
+html:not(.dark) .text-brand-500,
+html:not(.dark) .text-brand-600,
+html:not(.dark) .text-brand-700 {
   color: var(--brand-primary) !important;
+}
+.dark .text-brand-500,
+.dark .text-brand-600,
+.dark .text-brand-700 {
+  color: var(--brand-primary-text) !important;
 }
 
 .bg-blue-50,

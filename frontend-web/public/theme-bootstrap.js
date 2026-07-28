@@ -77,6 +77,7 @@
     if (resolved === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
     root.style.colorScheme = resolved;
+    root.setAttribute('data-theme', resolved);
 
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0F172A' : '#F8FAFC');

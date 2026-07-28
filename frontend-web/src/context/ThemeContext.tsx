@@ -379,6 +379,29 @@ function readableTextOn(bgHex: string): { text: string; muted: string } {
     : { text: 'rgba(255, 255, 255, 0.94)', muted: 'rgba(255, 255, 255, 0.46)' };
 }
 
+/**
+ * Readable variant of the active preset's primaryColor for TEXT that sits
+ * directly on the page/card background (links, ghost/ text-only buttons,
+ * icons) — as opposed to readableTextOn(), which picks a color for text
+ * sitting ON TOP of a primaryColor-filled surface.
+ *
+ * Several presets choose a deliberately dark primaryColor for its filled-
+ * button/badge look (e.g. "Clean White Pro" uses #111827, near-black) — in
+ * light mode that's fine, but the same value in dark mode is a barely-
+ * visible dark navy on the app's already-dark page background. This is what
+ * caused e.g. a "Resend email" button styled `text-brand-600` to render
+ * effectively invisible: index.css's `.text-brand-600 { color:
+ * var(--brand-primary) }` rule literally is that preset color, unconditional
+ * of mode. In light mode (or for a preset whose primary is already light
+ * enough, like the default emerald), the raw primaryColor is used unchanged.
+ */
+function brandTextColorFor(primaryHex: string, mode: 'light' | 'dark'): string {
+  if (mode === 'light' || relativeLuminance(primaryHex) >= 0.35) return primaryHex;
+  const { r, g, b } = hexToRgb(primaryHex);
+  const lighten = (channel: number) => Math.round(channel + (255 - channel) * 0.55);
+  return `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
+}
+
 function loadAppearance(): AppearanceSettings {
   // Must run before the very first read of THEME_PREFERENCE_KEY below — see
   // migrateLegacyThemeKeys() for why: it makes sure exactly one key is ever
@@ -437,6 +460,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // over a stale or late backend response (see setTheme() and the sync-once
   // effect below).
   const hasUserChangedThemeRef = useRef(false);
+  // True when innovacar-theme already held a value the instant this
+  // ThemeProvider mounted — i.e. a preference saved in ANY previous session,
+  // not just one changed in this one. This is what the sync-once effect below
+  // must actually gate on: without it, the very first login after a logout
+  // (which clears THEME_SYNCED_USER_KEY) — or literally the first login ever
+  // on a device — would treat an already-explicit local "light" as fair game
+  // to overwrite with a stale/default backend themeMode, which is exactly
+  // the "I picked Light, logged in, and it went back to Dark" production bug.
+  // Computed once via useState's lazy initializer (not a plain useRef(expr),
+  // which would re-run the cheap-but-pointless localStorage read every
+  // render) and never changes for the life of this provider instance.
+  const [hadExplicitLocalPreferenceOnMount] = useState(() => readThemePreferenceKey() !== null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -508,20 +543,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Pulls the user's server-saved theme mode down to this device exactly once per
   // (device, user) — genuinely once, surviving refreshes — not once per page load.
-  // A fresh login on a new device/browser (no marker yet) adopts the server value,
-  // same as before; every refresh after that trusts the already-loaded localStorage
-  // value instead of re-pulling and potentially reverting a choice the server copy
-  // is stale on. localStorage.getItem/setItem can legitimately throw (private
+  // A fresh login on a genuinely new device/browser (no local preference at all yet)
+  // adopts the server value; every other case — including the very first login
+  // after a logout, which clears THEME_SYNCED_USER_KEY — trusts whatever
+  // innovacar-theme already holds over the backend's possibly-stale/default
+  // value. localStorage.getItem/setItem can legitimately throw (private
   // browsing, storage disabled) — treated as "never synced", which just means this
   // one-time pull happens again next time, never breaking theme switching itself.
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
       return;
     }
-    // A local explicit change this session always wins — never let a sync
-    // (even a first-time one) clobber a choice the user just made.
-    if (hasUserChangedThemeRef.current) {
-      themeDebugLog('sync-once effect: skipped, user changed theme this session');
+    // A local explicit choice always wins over the backend — whether it was
+    // changed this exact session (hasUserChangedThemeRef) or simply already
+    // present in innovacar-theme when the app loaded
+    // (hadExplicitLocalPreferenceOnMount, e.g. saved in a previous session on
+    // this device). Only a device with NO local preference at all adopts the
+    // backend's value.
+    if (hasUserChangedThemeRef.current || hadExplicitLocalPreferenceOnMount) {
+      themeDebugLog('sync-once effect: skipped, local preference takes priority over backend', {
+        changedThisSession: hasUserChangedThemeRef.current,
+        hadLocalPreferenceOnMount: hadExplicitLocalPreferenceOnMount,
+      });
       return;
     }
     let syncedUserId: string | null = null;
@@ -607,9 +650,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // computed here rather than assumed.
     const primaryText = readableTextOn(resolvedPrimary);
     const accentText = readableTextOn(resolvedAccent);
+    // Text-only brand-colored UI (links, ghost buttons, icons) sitting
+    // directly on the page/card background — see brandTextColorFor() above.
+    const primaryTextOnPage = brandTextColorFor(resolvedPrimary, resolvedTheme);
 
     root.classList.toggle('dark', resolvedTheme === 'dark');
     root.style.colorScheme = resolvedTheme;
+    root.dataset.theme = resolvedTheme;
     root.dataset.themePreset = appearance.preset;
     root.dataset.buttonStyle = appearance.buttonStyle;
     // Keeps the mobile/PWA browser chrome tint in sync with the resolved
@@ -623,6 +670,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // they override the preset's primary/accent so saving branding repaints the app immediately.
     root.style.setProperty('--brand-primary', resolvedPrimary);
     root.style.setProperty('--brand-primary-foreground', primaryText.text);
+    root.style.setProperty('--brand-primary-text', primaryTextOnPage);
     root.style.setProperty('--brand-secondary', appearance.secondaryColor);
     root.style.setProperty('--brand-accent', resolvedAccent);
     root.style.setProperty('--brand-accent-foreground', accentText.text);
