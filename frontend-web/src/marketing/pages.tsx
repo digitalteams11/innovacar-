@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 
 /**
  * The public marketing site. Deliberately self-contained (no imports from
@@ -315,6 +315,34 @@ function registerHref(extra?: Record<string, string>): string {
   return `/#/register${qs ? `?${qs}` : ''}`;
 }
 
+/**
+ * Every link that hands off from this static, router-less marketing site to
+ * the real HashRouter app (login/register/contact — anything under "/#/...")
+ * must go through this handler. A plain `<a href="/#/login">` click only
+ * changes the URL's fragment, which browsers NEVER reload the page for
+ * (true for any same-document fragment navigation, whether triggered by a
+ * real anchor click or `location.hash =` — this holds regardless of how the
+ * URL is changed). Since MarketingApp (see MarketingApp.tsx) is mounted once
+ * by main.tsx with no router of its own, nothing would ever re-render: the
+ * URL bar updates but the landing page stays fully visible underneath,
+ * exactly the "URL changes but page doesn't" bug this guards against. A full
+ * reload forces main.tsx's shouldRenderMarketingSite() to re-run with the
+ * new hash present, which correctly mounts the real app instead this time.
+ *
+ * Modifier-clicks (ctrl/cmd/shift+click, middle-click) are left alone so
+ * "open in new tab" still works via the browser's native handling — a brand
+ * new tab loads main.tsx fresh with the target hash already in the URL, so
+ * it needs no special handling at all.
+ */
+export function handOffToApp(e: ReactMouseEvent<HTMLAnchorElement>) {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const href = e.currentTarget.getAttribute('href');
+  if (!href) return;
+  e.preventDefault();
+  window.location.href = href;
+  window.location.reload();
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Icons — a small hand-rolled, consistent set (stroke-based, 24x24) so the
 // marketing bundle doesn't depend on an external icon package (kept out per
@@ -438,15 +466,19 @@ function Header() {
       }
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
+    // Cast to EventListener: the handler's `MouseEvent | TouchEvent` param is
+    // wider than the specific event type each overload (mousedown ->
+    // MouseEvent, touchstart -> TouchEvent) expects — a real runtime non-
+    // issue (one function correctly handles both), just a TS variance gap.
+    document.addEventListener('mousedown', handlePointerDown as EventListener);
+    document.addEventListener('touchstart', handlePointerDown as EventListener);
     document.addEventListener('keydown', handleKeyDown);
     drawerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('mousedown', handlePointerDown as EventListener);
+      document.removeEventListener('touchstart', handlePointerDown as EventListener);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
@@ -468,8 +500,8 @@ function Header() {
 
       <div className="im-header-actions">
         <LangSwitcher compact />
-        <a href="/#/login" className="im-btn im-btn-ghost">{t(lang, 'login')}</a>
-        <a href={registerHref()} className="im-btn im-btn-primary">{t(lang, 'startTrial')}</a>
+        <a href="/#/login" className="im-btn im-btn-ghost" onClick={handOffToApp}>{t(lang, 'login')}</a>
+        <a href={registerHref()} className="im-btn im-btn-primary" onClick={handOffToApp}>{t(lang, 'startTrial')}</a>
         <button
           ref={toggleRef}
           type="button"
@@ -496,8 +528,8 @@ function Header() {
             </button>
           ))}
           <div className="im-mobile-drawer-actions">
-            <a href="/#/login" className="im-btn im-btn-ghost" onClick={close}>{t(lang, 'login')}</a>
-            <a href={registerHref()} className="im-btn im-btn-primary" onClick={close}>{t(lang, 'startTrial')}</a>
+            <a href="/#/login" className="im-btn im-btn-ghost" onClick={(e) => { close(); handOffToApp(e); }}>{t(lang, 'login')}</a>
+            <a href={registerHref()} className="im-btn im-btn-primary" onClick={(e) => { close(); handOffToApp(e); }}>{t(lang, 'startTrial')}</a>
           </div>
           <LangSwitcher />
         </div>
@@ -520,8 +552,8 @@ function Footer() {
           <h4>{t(lang, 'footerProduct')}</h4>
           <button type="button" onClick={() => scrollToId('features')}>{t(lang, 'navFeatures')}</button>
           <button type="button" onClick={() => scrollToId('trial')}>{t(lang, 'navFreeTrial')}</button>
-          <a href="/#/login">{t(lang, 'login')}</a>
-          <a href={registerHref()}>{t(lang, 'startTrial')}</a>
+          <a href="/#/login" onClick={handOffToApp}>{t(lang, 'login')}</a>
+          <a href={registerHref()} onClick={handOffToApp}>{t(lang, 'startTrial')}</a>
           <button type="button" onClick={() => scrollToId('web-desktop')}>{t(lang, 'footerWebApp')}</button>
           <button type="button" onClick={() => scrollToId('web-desktop')}>{t(lang, 'footerDesktopApp')}</button>
         </div>
@@ -540,7 +572,7 @@ function Footer() {
           ) : (
             <span className="im-footer-static">{COMPANY_NAME}</span>
           )}
-          <a href="/#/contact">{t(lang, 'navContact')}</a>
+          <a href="/#/contact" onClick={handOffToApp}>{t(lang, 'navContact')}</a>
         </div>
       </div>
 
@@ -795,8 +827,8 @@ function FreeTrialCta() {
       <h2>{t(lang, 'trialTitle')}</h2>
       <p className="im-section-sub">{t(lang, 'trialBody')}</p>
       <div className="im-trial-actions">
-        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg">{t(lang, 'startTrial')}</a>
-        <a href="/#/contact" className="im-btn im-btn-ghost im-btn-lg">{t(lang, 'contactUs')}</a>
+        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg" onClick={handOffToApp}>{t(lang, 'startTrial')}</a>
+        <a href="/#/contact" className="im-btn im-btn-ghost im-btn-lg" onClick={handOffToApp}>{t(lang, 'contactUs')}</a>
       </div>
       <p className="im-hero-note">{t(lang, 'trialNoCard')}</p>
       <ul className="im-trial-notes">
@@ -880,7 +912,7 @@ function HomePageContent() {
         <h1>{t(lang, 'heroTitle')}</h1>
         <p className="im-hero-sub">{t(lang, 'heroSub')}</p>
         <div className="im-hero-actions">
-          <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg">{t(lang, 'heroPrimaryCta')} — {trialLabel(lang)}</a>
+          <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg" onClick={handOffToApp}>{t(lang, 'heroPrimaryCta')} — {trialLabel(lang)}</a>
           <button type="button" className="im-btn im-btn-ghost im-btn-lg" onClick={() => scrollToId('product')}>{t(lang, 'heroSecondaryCta')}</button>
         </div>
         <p className="im-hero-note">{t(lang, 'heroNoCard')}</p>
@@ -916,7 +948,7 @@ function HomePageContent() {
             <div className="im-feature-icon"><Icon d={ICONS.globe} /></div>
             <h3>{t(lang, 'webCardTitle')}</h3>
             <p>{t(lang, 'webCardBody')}</p>
-            <a href={registerHref()} className="im-btn im-btn-primary">{t(lang, 'startTrial')}</a>
+            <a href={registerHref()} className="im-btn im-btn-primary" onClick={handOffToApp}>{t(lang, 'startTrial')}</a>
           </div>
           <div className="im-card im-webdesktop-card">
             <div className="im-feature-icon"><Icon d={ICONS.monitor} /></div>
@@ -974,7 +1006,7 @@ function HomePageContent() {
         <h2>{t(lang, 'contactTitle')}</h2>
         <p className="im-section-sub">{t(lang, 'contactSub')}</p>
         <div className="im-contact-actions">
-          <a href="/#/contact" className="im-btn im-btn-primary">{t(lang, 'contactOpenForm')}</a>
+          <a href="/#/contact" className="im-btn im-btn-primary" onClick={handOffToApp}>{t(lang, 'contactOpenForm')}</a>
           {CONTACT_EMAIL && (
             <a href={`mailto:${CONTACT_EMAIL}`} className="im-btn im-btn-ghost">
               <Icon d={ICONS.mail} size={18} /> {CONTACT_EMAIL}
@@ -992,7 +1024,7 @@ function HomePageContent() {
       <section className="im-section im-cta">
         <h2>{t(lang, 'finalCtaTitle')}</h2>
         <p>{t(lang, 'finalCtaBody')}</p>
-        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg">{t(lang, 'heroPrimaryCta')}</a>
+        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg" onClick={handOffToApp}>{t(lang, 'heroPrimaryCta')}</a>
       </section>
     </>
   );
@@ -1019,7 +1051,7 @@ function FeaturesPageContent() {
       </section>
       <section className="im-section im-cta">
         <h2>{t(lang, 'featuresPageCtaTitle')}</h2>
-        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg">{t(lang, 'heroPrimaryCta')}</a>
+        <a href={registerHref()} className="im-btn im-btn-primary im-btn-lg" onClick={handOffToApp}>{t(lang, 'heroPrimaryCta')}</a>
       </section>
     </>
   );

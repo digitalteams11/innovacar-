@@ -33,22 +33,39 @@ test.describe('Header in-page navigation', () => {
 });
 
 test.describe('Auth CTAs', () => {
-  test('Login navigates to /login', async ({ page }) => {
+  // Regression coverage for the "URL changes but the landing page never
+  // does" production bug: MarketingApp (src/marketing/MarketingApp.tsx) is
+  // mounted once with no router of its own, so a plain hash-only anchor
+  // click updated the URL bar but left the landing page fully visible
+  // underneath. Asserting on toHaveURL alone (the only thing these tests
+  // checked before) does NOT catch that — the URL genuinely does change in
+  // the broken version too. Every test below also asserts the marketing
+  // hero (".im-hero", unique to this page) is gone and the real destination
+  // page actually rendered.
+
+  test('Login navigates to /login and actually renders the login page', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('link', { name: 'Connexion' }).first().click();
     await expect(page).toHaveURL(/#\/login$/);
+    await expect(page.locator('.im-hero')).toHaveCount(0);
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
-  test('Start free trial navigates to signup', async ({ page }) => {
+  test('Start free trial navigates to signup and actually renders the register page', async ({ page }) => {
     await page.goto('/');
     await page.locator('.im-header-actions a.im-btn-primary').click();
     await expect(page).toHaveURL(/#\/register/);
+    await expect(page.locator('.im-hero')).toHaveCount(0);
+    await expect(page.locator('input[type="email"]')).toBeVisible();
   });
 
-  test('Hero primary CTA (Try it for free) navigates to signup', async ({ page }) => {
+  test('Hero primary CTA (Try it for free) navigates to signup and actually renders the register page', async ({ page }) => {
     await page.goto('/');
     await page.locator('.im-hero-actions a.im-btn-primary').click();
     await expect(page).toHaveURL(/#\/register/);
+    await expect(page.locator('.im-hero')).toHaveCount(0);
+    await expect(page.locator('input[type="email"]')).toBeVisible();
   });
 
   test('Hero secondary CTA (Discover the platform) scrolls to product preview', async ({ page }) => {
@@ -56,6 +73,48 @@ test.describe('Auth CTAs', () => {
     await page.locator('.im-hero-actions button.im-btn-ghost').click();
     await page.waitForTimeout(600);
     expect(await isInViewport(page, 'product')).toBe(true);
+  });
+
+  test('refreshing on /#/register keeps the register page (not the landing page)', async ({ page }) => {
+    await page.goto('/#/register');
+    await expect(page.locator('.im-hero')).toHaveCount(0);
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await page.reload();
+    await expect(page.locator('.im-hero')).toHaveCount(0);
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+  });
+
+  // Known scoped limitation (see PR/commit notes): the marketing landing
+  // page is a separate, router-less static document (src/marketing/), never
+  // a route inside the real HashRouter app — MarketingApp.tsx is replaced
+  // wholesale by a full reload on hand-off, not pushed onto the same
+  // history/router as /login. Browser "back" therefore lands inside the
+  // real app's own router (whose "/" is Dashboard/login-redirect, not the
+  // marketing hero), not back on the marketing document. Fully unifying
+  // that would mean merging two separately-bundled/prerendered apps into
+  // one router — a materially larger change than this fix. This test
+  // documents the actual, current behavior: back navigates without erroring
+  // and the login page's own back/forward-safe render still works.
+  test('browser back after navigating to /login stays inside the app without erroring', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Connexion' }).first().click();
+    await expect(page).toHaveURL(/#\/login$/);
+    await page.goBack();
+    // Whatever the real app resolves "/" to for an unauthenticated visitor
+    // (currently: redirected straight back to /login) must render without
+    // a blank page or thrown error — never the stale marketing document.
+    await expect(page.locator('.im-hero')).toHaveCount(0);
+    await expect(page.locator('body')).not.toBeEmpty();
+  });
+});
+
+test.describe('Contact CTA hands off to the real contact page', () => {
+  test('Contact us button navigates to /contact and actually renders the contact page', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#trial a.im-btn-ghost').click();
+    await expect(page).toHaveURL(/#\/contact/);
+    await expect(page.locator('.im-hero')).toHaveCount(0);
+    await expect(page.locator('textarea')).toBeVisible();
   });
 });
 
