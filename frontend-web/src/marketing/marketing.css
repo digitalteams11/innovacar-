@@ -22,11 +22,19 @@
   align-items: center;
   gap: 1.5rem;
   padding: 1rem 1.5rem;
+  padding-top: max(1rem, env(safe-area-inset-top));
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-page-raised);
   position: sticky;
   top: 0;
   z-index: 10;
+  /* Wrapping is needed for exactly one case: the mobile drawer below
+     (`.im-mobile-drawer { width: 100%; order: 10 }`) deliberately drops onto
+     its own row when open. The closed-state row (logo + hamburger below the
+     mobile breakpoint, logo + nav + actions above it) must never itself wrap
+     — that's the "wrapped navigation text / oversized header" production
+     bug — which is guaranteed by hiding the desktop nav/actions outright on
+     mobile (see the media query below), not by fighting flex-wrap here. */
   flex-wrap: wrap;
 }
 
@@ -38,20 +46,18 @@
   font-size: 1.1rem;
   color: var(--text-primary);
   text-decoration: none;
+  /* Logo must never be compressed or wrapped by neighboring header content —
+     icon and "Innovacar" stay on one row at every width. */
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .im-brand img {
   border-radius: 8px;
+  flex-shrink: 0;
 }
 
-.im-header nav {
-  display: flex;
-  gap: 1.25rem;
-  flex: 1;
-  flex-wrap: wrap;
-}
-
-.im-header nav a,
 .im-footer nav a {
   color: var(--text-primary);
   text-decoration: none;
@@ -59,7 +65,6 @@
   opacity: 0.85;
 }
 
-.im-header nav a:hover,
 .im-footer nav a:hover {
   opacity: 1;
   text-decoration: underline;
@@ -390,9 +395,17 @@ main {
 }
 
 @media (max-width: 860px) {
+  /* Below this breakpoint the header row must contain only the logo and the
+     hamburger — desktop nav links, language switcher, Login and Start free
+     trial all move into the drawer (rendered below) instead. */
+  .im-header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
   .im-nav-desktop { display: none; }
   .im-header-actions .im-lang-switch { display: none; }
   .im-header-actions .im-btn-ghost { display: none; }
+  .im-header-actions .im-btn-primary { display: none; }
   .im-menu-toggle { display: inline-flex; }
 
   .im-mobile-drawer {
