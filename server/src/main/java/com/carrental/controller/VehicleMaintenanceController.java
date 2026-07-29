@@ -89,7 +89,10 @@ public class VehicleMaintenanceController {
 
     @ExceptionHandler(MaintenanceValidationException.class)
     public ResponseEntity<Map<String, Object>> handleMaintenanceValidation(MaintenanceValidationException ex) {
-        return ResponseEntity.status(statusFor(ex.getErrorCode())).body(error(ex.getMessage(), ex.getErrorCode()));
+        Map<String, Object> body = ex.getDetails() != null
+                ? error(ex.getMessage(), ex.getErrorCode(), ex.getDetails())
+                : error(ex.getMessage(), ex.getErrorCode());
+        return ResponseEntity.status(statusFor(ex.getErrorCode())).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -259,6 +262,7 @@ public class VehicleMaintenanceController {
         if ("PERMISSION_DENIED".equals(errorCode))       return HttpStatus.FORBIDDEN;
         if ("VEHICLE_NOT_FOUND".equals(errorCode))       return HttpStatus.NOT_FOUND;
         if ("VEHICLE_CURRENTLY_RENTED".equals(errorCode)) return HttpStatus.CONFLICT;
+        if ("ACTIVE_MAINTENANCE_EXISTS".equals(errorCode)) return HttpStatus.CONFLICT;
         return HttpStatus.BAD_REQUEST;
     }
 

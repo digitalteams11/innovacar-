@@ -3,6 +3,7 @@ package com.carrental.service;
 import com.carrental.dto.maintenance.CreateMaintenanceRequest;
 import com.carrental.entity.*;
 import com.carrental.dto.maintenance.MaintenanceResponse;
+import com.carrental.exception.MaintenanceValidationException;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.ReservationRepository;
 import com.carrental.repository.VehicleMaintenanceRepository;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -78,6 +80,104 @@ class VehicleMaintenanceServiceTest {
         assertThat(result.getStatus()).isEqualTo(MaintenanceStatus.SCHEDULED);
         assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.MAINTENANCE);
         verify(vehicleRepository).saveAndFlush(vehicle);
+    }
+
+    // Regression coverage for the production bug where every maintenance
+    // creation for a RENTED vehicle was rejected unconditionally, even when
+    // clearly scheduled for after the rental period — the reported example
+    // was a vehicle currently LOUE/RENTED with a maintenance planned for the
+    // next day. Planned (future-dated) maintenance must be allowed while
+    // rented, and must NOT flip the vehicle's status away from RENTED
+    // (the active rental must never be silently affected).
+    @Test
+    void plannedFutureMaintenanceIsAllowedForRentedVehicleAndDoesNotChangeVehicleStatus() {
+        vehicle.setStatut(VehicleStatus.RENTED);
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(vehicle));
+        when(maintenanceRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            VehicleMaintenance value = invocation.getArgument(0);
+            value.setId(20L);
+            return value;
+        });
+
+        CreateMaintenanceRequest request = new CreateMaintenanceRequest();
+        request.setVehicleId(10L);
+        request.setTitle("Oil service");
+        request.setScheduledDate(LocalDateTime.now().plusDays(1));
+
+        MaintenanceResponse result = service.create(request);
+
+        assertThat(result.getStatus()).isEqualTo(MaintenanceStatus.SCHEDULED);
+        // The rental must be left untouched — status changes to MAINTENANCE
+        // only when work actually starts, never for a future planned order.
+        assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.RENTED);
+        verify(vehicleRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void immediateMaintenanceIsStillBlockedForRentedVehicle() {
+        vehicle.setStatut(VehicleStatus.RENTED);
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(vehicle));
+
+        CreateMaintenanceRequest request = new CreateMaintenanceRequest();
+        request.setVehicleId(10L);
+        request.setTitle("Emergency repair");
+        request.setScheduledDate(LocalDateTime.now().minusMinutes(1));
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(MaintenanceValidationException.class)
+                .satisfies(ex -> assertThat(((MaintenanceValidationException) ex).getErrorCode())
+                        .isEqualTo("VEHICLE_CURRENTLY_RENTED"));
+        verify(maintenanceRepository, never()).saveAndFlush(any());
+        assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.RENTED);
+    }
+
+    @Test
+    void immediateMaintenanceForAvailableVehicleStillFlipsStatus() {
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.saveAndFlush(vehicle)).thenReturn(vehicle);
+        when(maintenanceRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            VehicleMaintenance value = invocation.getArgument(0);
+            value.setId(20L);
+            return value;
+        });
+
+        CreateMaintenanceRequest request = new CreateMaintenanceRequest();
+        request.setVehicleId(10L);
+        request.setTitle("Oil service");
+        request.setScheduledDate(LocalDateTime.now().minusMinutes(1));
+
+        service.create(request);
+
+        assertThat(vehicle.getStatut()).isEqualTo(VehicleStatus.MAINTENANCE);
+        verify(vehicleRepository).saveAndFlush(vehicle);
+    }
+
+    @Test
+    void creationIsBlockedWhenVehicleAlreadyHasAnInProgressMaintenanceOrder() {
+        VehicleMaintenance existing = VehicleMaintenance.builder()
+                .id(99L).tenant(tenant).vehicle(vehicle).title("Existing repair")
+                .status(MaintenanceStatus.IN_PROGRESS).build();
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(vehicle));
+        when(maintenanceRepository.findFirstByTenantIdAndVehicleIdAndStatusOrderByCreatedAtDesc(
+                1L, 10L, MaintenanceStatus.IN_PROGRESS)).thenReturn(Optional.of(existing));
+
+        CreateMaintenanceRequest request = new CreateMaintenanceRequest();
+        request.setVehicleId(10L);
+        request.setTitle("Another repair");
+        request.setScheduledDate(LocalDateTime.now().plusDays(1));
+
+        assertThatThrownBy(() -> service.create(request))
+                .isInstanceOf(MaintenanceValidationException.class)
+                .satisfies(ex -> {
+                    MaintenanceValidationException mve = (MaintenanceValidationException) ex;
+                    assertThat(mve.getErrorCode()).isEqualTo("ACTIVE_MAINTENANCE_EXISTS");
+                    assertThat(mve.getDetails()).containsEntry("existingMaintenanceId", 99L);
+                });
+        verify(maintenanceRepository, never()).saveAndFlush(any());
     }
 
     @Test

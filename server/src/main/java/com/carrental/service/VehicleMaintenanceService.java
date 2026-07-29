@@ -117,17 +117,42 @@ public class VehicleMaintenanceService {
         MaintenanceStatus status = MaintenanceStatus.SCHEDULED;
         VehicleStatus vehicleStatusBefore = vehicle.getStatut();
 
-        // A vehicle that is actively RENTED cannot be pulled into maintenance immediately.
-        if (vehicleStatusBefore == VehicleStatus.RENTED) {
+        // A work order scheduled for a future date is a *planned* maintenance —
+        // it must not be blocked by (or itself change) the vehicle's current
+        // rental state, since the work hasn't started yet. Only a work order
+        // meant to start now/in the past ever competes with an active rental
+        // or flips the vehicle's status. This is the fix for the reported bug:
+        // every maintenance creation for a RENTED vehicle used to be rejected
+        // unconditionally, even when clearly scheduled for after the rental
+        // period (e.g. tomorrow), which is a legitimate, common workflow.
+        boolean isImmediate = !request.getScheduledDate().isAfter(LocalDateTime.now());
+
+        if (isImmediate && vehicleStatusBefore == VehicleStatus.RENTED) {
             log.warn("[MAINTENANCE_CREATE_DEBUG] result=FAILED errorCode=VEHICLE_CURRENTLY_RENTED vehicleId={} vehicleStatusBefore={}",
                     vehicle.getId(), vehicleStatusBefore);
             throw new MaintenanceValidationException(
-                    "A rented vehicle cannot be put into maintenance while a rental contract is active. Complete or cancel the contract first.",
-                    "VEHICLE_CURRENTLY_RENTED");
+                    "This vehicle is currently rented. Schedule maintenance after the rental return, or pick a future date to plan it while the rental is still active.",
+                    "VEHICLE_CURRENTLY_RENTED",
+                    Map.of("vehicleId", vehicle.getId()));
         }
 
-        log.debug("[MAINTENANCE_CREATE_DEBUG] vehicleExists=true vehicleAgencyId={} vehicleStatusBefore={} status={}",
-                vehicleAgencyId, vehicleStatusBefore, status);
+        // A vehicle already being actively worked on (IN_PROGRESS) cannot take a
+        // second concurrent work order — planned/SCHEDULED orders don't
+        // conflict with each other or block new ones, only an order that's
+        // genuinely in progress right now does.
+        maintenanceRepository
+                .findFirstByTenantIdAndVehicleIdAndStatusOrderByCreatedAtDesc(tenantId, vehicle.getId(), MaintenanceStatus.IN_PROGRESS)
+                .ifPresent(existing -> {
+                    log.warn("[MAINTENANCE_CREATE_DEBUG] result=FAILED errorCode=ACTIVE_MAINTENANCE_EXISTS vehicleId={} existingMaintenanceId={}",
+                            vehicle.getId(), existing.getId());
+                    throw new MaintenanceValidationException(
+                            "This vehicle already has an active maintenance order in progress.",
+                            "ACTIVE_MAINTENANCE_EXISTS",
+                            Map.of("vehicleId", vehicle.getId(), "existingMaintenanceId", existing.getId()));
+                });
+
+        log.debug("[MAINTENANCE_CREATE_DEBUG] vehicleExists=true vehicleAgencyId={} vehicleStatusBefore={} status={} isImmediate={}",
+                vehicleAgencyId, vehicleStatusBefore, status, isImmediate);
 
         VehicleMaintenance maintenance = VehicleMaintenance.builder()
                 .tenant(vehicle.getTenant())
@@ -142,9 +167,14 @@ public class VehicleMaintenanceService {
                 .createdBy(user)
                 .build();
 
-        // Always block the vehicle as soon as a work order is created.
-        vehicle.setStatut(VehicleStatus.MAINTENANCE);
-        vehicleRepository.saveAndFlush(vehicle);
+        // Only block the vehicle the instant work actually starts. A future,
+        // planned work order must never flip a currently-rented (or otherwise
+        // in-use) vehicle's status — the existing rental/reservation is never
+        // silently affected by scheduling future maintenance.
+        if (isImmediate) {
+            vehicle.setStatut(VehicleStatus.MAINTENANCE);
+            vehicleRepository.saveAndFlush(vehicle);
+        }
 
         VehicleMaintenance saved = maintenanceRepository.saveAndFlush(maintenance);
         log.debug("[MAINTENANCE_CREATE_DEBUG] workOrderSaved=true workOrderId={} vehicleId={} vehicleStatusBefore={} vehicleStatusAfter={} scheduledDateParsed={} result=SUCCESS",
