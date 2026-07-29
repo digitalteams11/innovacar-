@@ -1,6 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Modal from '../Modal';
+// Vite's `?raw` import gives a .tsx file's text content at transform time —
+// used below to check that fixed-position components reference a --z-*
+// token instead of a hardcoded number. (A `.css?raw` import would be the
+// obvious way to also pull the token *values* straight from index.css, but
+// vitest's `css: false` test config stubs .css module imports — including
+// ?raw ones — to an empty string, so those values are asserted as literal
+// constants below instead; keep them in sync with index.css's :root block
+// if that scale ever changes.)
+import bottomNavigationSource from '../BottomNavigation.tsx?raw';
+import mobileAssistantFabSource from '../shared/MobileAssistantFab.tsx?raw';
+import mobileBottomSheetSource from '../MobileBottomSheet.tsx?raw';
+import modalSource from '../Modal.tsx?raw';
 
 /**
  * Regression coverage for the shared Modal's sticky-header / scrollable-body
@@ -106,5 +118,77 @@ describe('Modal — sticky header/body/footer contract', () => {
     // that scrolls.
     expect(dialog.className).toMatch(/h-\[100dvh\]/);
     expect(dialog.className).toMatch(/max-h-\[calc\(100dvh-2rem\)\]/);
+  });
+
+  it('renders through a document.body portal, not inline where the component is mounted', () => {
+    const { container } = render(
+      <div data-testid="mount-point">
+        <Modal isOpen onClose={() => {}} title="Portal check" footer={<button>Save</button>}>
+          <p>Body content</p>
+        </Modal>
+      </div>
+    );
+    // The bug this whole pass fixes: a bespoke modal rendered inline (not
+    // through a portal) at the same numeric z-index as BottomNavigation lost
+    // the stacking tie-break because BottomNavigation renders later in the
+    // DOM (Layout.tsx). A portal makes the modal's DOM position irrelevant to
+    // its stacking — it's appended directly to document.body, as a sibling
+    // of the app root, not nested under wherever <Modal> was written.
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
+  it('uses the documented z-index token, not a magic number, for its overlay', () => {
+    render(
+      <Modal isOpen onClose={() => {}} title="Z-index check" footer={<button>Save</button>}>
+        <p>Body content</p>
+      </Modal>
+    );
+    const overlay = screen.getByRole('dialog').parentElement;
+    expect(overlay?.className).toContain('z-[var(--z-modal-overlay)]');
+  });
+});
+
+describe('Z-index scale — modal must always outrank the mobile bottom navigation', () => {
+  // Mirrors the :root custom-property values declared in index.css (see the
+  // import comment above for why this can't just read that file directly in
+  // this test environment). If that scale ever changes, update both places.
+  const Z = {
+    content: 0,
+    stickyHeader: 30,
+    bottomNav: 50,
+    floatingFab: 55,
+    bottomSheetOverlay: 60,
+    bottomSheetPanel: 70,
+    modalOverlay: 1000,
+    modalDialog: 1000,
+    toast: 1100,
+  } as const;
+
+  it('modal overlay/dialog outrank the bottom nav, the floating AI FAB, and bottom sheets', () => {
+    expect(Z.modalOverlay).toBe(Z.modalDialog);
+    expect(Z.modalOverlay).toBeGreaterThan(Z.bottomNav);
+    expect(Z.modalOverlay).toBeGreaterThan(Z.floatingFab);
+    expect(Z.modalOverlay).toBeGreaterThan(Z.bottomSheetOverlay);
+    expect(Z.modalOverlay).toBeGreaterThan(Z.bottomSheetPanel);
+    expect(Z.modalOverlay).toBeGreaterThan(Z.stickyHeader);
+  });
+
+  it('the floating AI FAB and bottom sheets outrank the bottom nav they sit above', () => {
+    expect(Z.floatingFab).toBeGreaterThan(Z.bottomNav);
+    expect(Z.bottomSheetOverlay).toBeGreaterThan(Z.bottomNav);
+    expect(Z.bottomSheetPanel).toBeGreaterThan(Z.bottomSheetOverlay);
+  });
+
+  it('every fixed-position component that must clear the bottom nav references a token, not a hardcoded number', () => {
+    const filesThatMustUseTokens: Array<[string, string]> = [
+      ['BottomNavigation.tsx', bottomNavigationSource],
+      ['MobileAssistantFab.tsx', mobileAssistantFabSource],
+      ['MobileBottomSheet.tsx', mobileBottomSheetSource],
+      ['Modal.tsx', modalSource],
+    ];
+    for (const [name, source] of filesThatMustUseTokens) {
+      expect(source, `${name} should reference a --z-* token`).toMatch(/z-\[var\(--z-/);
+    }
   });
 });

@@ -99,6 +99,26 @@
     --space-xl: 2rem;
     --space-2xl: 3rem;
 
+    /* Z-index scale — the single source of truth for every fixed/sticky
+       layer in the app. Values match what was already in production use
+       (documented here, not renumbered, to avoid an unrelated stacking
+       regression); new fixed-position UI must reference one of these
+       instead of picking an arbitrary z-[N]. A bespoke modal that bypassed
+       this (rendered inline instead of through Modal.tsx's portal, with a
+       z-index equal to BottomNavigation's) is what let the bottom nav paint
+       over the "Vehicle Return Inspection" modal's footer — with equal
+       z-index, later-in-DOM wins, and BottomNavigation renders after page
+       content in Layout.tsx. */
+    --z-content: 0;
+    --z-sticky-header: 30;
+    --z-bottom-nav: 50;
+    --z-floating-fab: 55;
+    --z-bottom-sheet-overlay: 60;
+    --z-bottom-sheet-panel: 70;
+    --z-modal-overlay: 1000;
+    --z-modal-dialog: 1000;
+    --z-toast: 1100;
+
     /* Transitions */
     --transition-fast: calc(150ms * var(--motion-speed)) cubic-bezier(0.16, 1, 0.3, 1);
     --transition-base: calc(250ms * var(--motion-speed)) cubic-bezier(0.16, 1, 0.3, 1);
@@ -1164,7 +1184,7 @@
    ============================================ */
 .toast-viewport {
   position: fixed;
-  z-index: 250;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: 0.625rem;

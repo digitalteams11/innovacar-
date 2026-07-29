@@ -57,7 +57,7 @@ export default function MobileBottomSheet({ isOpen, onClose, title, children, ma
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-sm lg:hidden"
+        className="fixed inset-0 z-[var(--z-bottom-sheet-overlay)] bg-black/45 backdrop-blur-sm lg:hidden"
         onClick={onClose}
         aria-label="Close"
         tabIndex={-1}
@@ -66,7 +66,7 @@ export default function MobileBottomSheet({ isOpen, onClose, title, children, ma
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
-        className={`fixed z-[70] flex flex-col inset-x-2 bottom-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+10px)] overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-card-solid)] shadow-elevated lg:hidden ${maxHeightClass}`}
+        className={`fixed z-[var(--z-bottom-sheet-panel)] flex flex-col inset-x-2 bottom-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+10px)] overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-card-solid)] shadow-elevated lg:hidden ${maxHeightClass}`}
       >
         {showDragHandle && (
           <div className="flex shrink-0 justify-center pt-2" aria-hidden="true">

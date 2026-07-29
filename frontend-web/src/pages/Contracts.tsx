@@ -2161,22 +2161,46 @@ export default function Contracts() {
 
       {/* Restore Conflict Modal */}
       {restoreConflict.open && restoreConflict.contractId != null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setRestoreConflict({ open: false })} />
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade">
-            <div className="flex items-start gap-3 mb-5">
+        <Modal
+          isOpen
+          onClose={() => setRestoreConflict({ open: false })}
+          maxWidth="max-w-md"
+          title={
+            <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-danger-50 rounded-xl flex items-center justify-center shrink-0">
                 <AlertTriangle size={20} className="text-danger-500" />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-[#1e293b]">{t('contracts.form.vehicleAlreadyBooked')}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {t('contracts.contract')} <span className="font-mono font-bold text-slate-600">{restoreConflict.contractNumber}</span> {t('contracts.form.cannotBeRestored')}
+              <div className="min-w-0">
+                <p className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{t('contracts.form.vehicleAlreadyBooked')}</p>
+                <p className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
+                  {t('contracts.contract')} <span className="font-mono font-bold" style={{ color: 'var(--text-secondary)' }}>{restoreConflict.contractNumber}</span> {t('contracts.form.cannotBeRestored')}
                 </p>
               </div>
             </div>
-
-            <div className="bg-[#f8f8f6] rounded-xl p-4 space-y-3 mb-5 text-xs">
+          }
+          footer={
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRestoreConflict({ open: false })}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#e8e6e1] text-sm font-medium text-slate-600 hover:bg-[#f5f5f0] transition-all min-h-[44px]"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={() => restoreContract(restoreConflict.contractId!, 'DRAFT_ONLY')}
+                disabled={restoringId === restoreConflict.contractId}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-warning-500 hover:bg-warning-600 text-white text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
+              >
+                {restoringId === restoreConflict.contractId
+                  ? <Loader2 size={15} className="animate-spin" />
+                  : <RotateCcw size={15} />}
+                {t('contracts.form.restoreAsDraft')}
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div className="bg-[#f8f8f6] rounded-xl p-4 space-y-3 text-xs">
               <p className="text-slate-500">{t('contracts.form.alreadyBookedDesc')}</p>
               <div className="grid grid-cols-2 gap-2">
                 {restoreConflict.conflictSource && (
@@ -2222,31 +2246,12 @@ export default function Contracts() {
               </div>
             </div>
 
-            <div className="bg-warning-50 border border-warning-200 rounded-xl p-3 mb-5 text-xs text-warning-700">
+            <div className="bg-warning-50 border border-warning-200 rounded-xl p-3 text-xs text-warning-700">
               <p className="font-semibold mb-1">{t('contracts.form.restoreAsDraft')}</p>
               <p>{t('contracts.form.restoreAsDraftDesc')}</p>
             </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setRestoreConflict({ open: false })}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-[#e8e6e1] text-sm font-medium text-slate-600 hover:bg-[#f5f5f0] transition-all"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={() => restoreContract(restoreConflict.contractId!, 'DRAFT_ONLY')}
-                disabled={restoringId === restoreConflict.contractId}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-warning-500 hover:bg-warning-600 text-white text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {restoringId === restoreConflict.contractId
-                  ? <Loader2 size={15} className="animate-spin" />
-                  : <RotateCcw size={15} />}
-                {t('contracts.form.restoreAsDraft')}
-              </button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -229,7 +229,7 @@ export default function QRCodeModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[var(--z-modal-overlay)] flex items-end justify-center p-0 sm:items-center sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -237,9 +237,9 @@ export default function QRCodeModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+      <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl animate-scale-in sm:max-h-[90dvh] sm:max-w-md sm:rounded-3xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <h3 className="text-lg font-bold text-[#1e293b]">
               {t('contracts.signingLink') || 'Contract Signing Link'}
@@ -256,6 +256,7 @@ export default function QRCodeModal({
           </button>
         </div>
 
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {/* Signed success banner */}
         {isSigned && (
           <div className="mx-6 mt-4 flex items-center gap-3 rounded-2xl bg-success-50 border border-success-200 px-4 py-3">
@@ -353,6 +354,7 @@ export default function QRCodeModal({
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

@@ -50,7 +50,7 @@ export default function MobileAssistantFab() {
   return (
     <>
       <div
-        className="fixed z-[55] end-4 lg:hidden"
+        className="fixed z-[var(--z-floating-fab)] end-4 lg:hidden"
         style={{ bottom: 'calc(var(--mobile-nav-height, 66px) + env(safe-area-inset-bottom) + 16px)' }}
       >
         {showFirstUseLabel && (

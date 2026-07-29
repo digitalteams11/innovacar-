@@ -26,7 +26,7 @@ interface BottomNavigationProps {
 export default function BottomNavigation({ items, isActive, moreLabel, onMoreClick }: BottomNavigationProps) {
   return (
     <nav
-      className="fixed lg:hidden z-50 bottom-0 inset-x-0 min-h-[var(--mobile-nav-height,66px)] pb-[env(safe-area-inset-bottom)] px-1 flex items-center justify-around bg-[var(--glass-bg)] backdrop-blur-2xl border-t border-[var(--glass-border)]"
+      className="fixed lg:hidden z-[var(--z-bottom-nav)] bottom-0 inset-x-0 min-h-[var(--mobile-nav-height,66px)] pb-[env(safe-area-inset-bottom)] px-1 flex items-center justify-around bg-[var(--glass-bg)] backdrop-blur-2xl border-t border-[var(--glass-border)]"
       aria-label="Mobile navigation"
     >
       {items.map((item) => {

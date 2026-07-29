@@ -456,8 +456,9 @@ export default function SecurityTab() {
 
       {/* ── Recovery codes modal ──────────────────────────────────────────── */}
       {showRecoveryModal && recoveryCodes.length > 0 && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-[var(--z-modal-overlay)] flex items-end justify-center p-0 sm:items-center sm:p-4 bg-black/60">
+          <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
                 <Key size={20} className="text-amber-500" />
@@ -483,21 +484,25 @@ export default function SecurityTab() {
                 ))}
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={copyRecoveryCodes}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-[#e8e6e1] rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all"
-              >
-                <Copy size={14} /> {t('settings.securityTab.copyCodes')}
-              </button>
-              <button
-                onClick={() => setShowRecoveryModal(false)}
-                className="flex-1 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600 transition-all"
-              >
-                {t('settings.securityTab.savedThem')}
-              </button>
-            </div>
+          <div
+            className="shrink-0 flex gap-2 border-t border-[#e8e6e1] p-6"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button
+              onClick={copyRecoveryCodes}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-[#e8e6e1] rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all"
+            >
+              <Copy size={14} /> {t('settings.securityTab.copyCodes')}
+            </button>
+            <button
+              onClick={() => setShowRecoveryModal(false)}
+              className="flex-1 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-medium hover:bg-brand-600 transition-all"
+            >
+              {t('settings.securityTab.savedThem')}
+            </button>
+          </div>
           </div>
         </div>
       )}

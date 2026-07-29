@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  /** Usually a string; accepts a full node (e.g. icon + title + subtitle) for modals migrated from a bespoke header layout. */
+  title: React.ReactNode;
   children: React.ReactNode;
   maxWidth?: string;
   /** Optional sticky footer (e.g. Save/Cancel buttons) rendered below the scrollable body, pinned above the safe area on mobile. */
@@ -67,7 +68,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
   return createPortal(
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[1000] flex items-stretch justify-center overflow-y-auto p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[var(--z-modal-overlay)] flex items-stretch justify-center overflow-y-auto p-0 sm:items-center sm:p-4"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
@@ -107,7 +108,10 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
             <X size={18} />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5"
+          style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+        >
           {children}
         </div>
         {footer && (
