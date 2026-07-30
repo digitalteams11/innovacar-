@@ -110,7 +110,7 @@ class AuthServiceForgotPasswordTest {
         when(passwordResetTokenRepository.findFirstByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
         when(passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(0L);
         when(emailService.sendPasswordResetCodeEmail(anyString(), anyString(), anyString(), eq(10), any()))
-                .thenReturn(new SmtpMailService.SmtpResult(true, "smtp", null, null, null));
+                .thenReturn(new SmtpMailService.SmtpResult(true, "smtp", null, null, null, null));
 
         authService.requestPasswordReset(request(), "127.0.0.1", "test-agent");
 
@@ -143,7 +143,7 @@ class AuthServiceForgotPasswordTest {
         when(passwordResetTokenRepository.findFirstByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
         when(passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(0L);
         when(emailService.sendPasswordResetCodeEmail(anyString(), anyString(), anyString(), eq(10), any()))
-                .thenReturn(new SmtpMailService.SmtpResult(false, "smtp", "timed out", "SMTP_CONNECTION_FAILED", null));
+                .thenReturn(new SmtpMailService.SmtpResult(false, "smtp", "timed out", "SMTP_CONNECTION_FAILED", null, null));
 
         authService.requestPasswordReset(request(), "127.0.0.1", "test-agent");
 

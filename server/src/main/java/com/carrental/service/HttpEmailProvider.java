@@ -138,9 +138,10 @@ public class HttpEmailProvider implements EmailProvider {
 
             // 200 and 201 both indicate ZeptoMail accepted the message.
             if (response.statusCode() == 200 || response.statusCode() == 201) {
-                log.info("[EMAIL_API] method=POST url={} status={} sender={} recipientDomain={} subject={}",
-                        url, response.statusCode(), fromEmail, recipientDomain, message.subject());
-                return SmtpMailService.SmtpResult.success(label());
+                String requestId = extractRequestId(response.body());
+                log.info("[EMAIL_API] method=POST url={} status={} sender={} recipientDomain={} subject={} requestId={}",
+                        url, response.statusCode(), fromEmail, recipientDomain, message.subject(), requestId);
+                return SmtpMailService.SmtpResult.success(label(), requestId);
             }
 
             ZeptoMailError parsed = parseError(response.body());
@@ -217,6 +218,18 @@ public class HttpEmailProvider implements EmailProvider {
         String text = ((error.code() != null ? error.code() : "") + " " + (error.message() != null ? error.message() : "")).toLowerCase();
         return text.contains("sender") || text.contains("from address") || text.contains("mail_agent")
                 || text.contains("domain") || text.contains("not verified") || text.contains("unverified");
+    }
+
+    /** Best-effort extraction of ZeptoMail's own {@code request_id} from a success response — used as the stored provider tracking id. Never throws; returns null if absent/unparseable. */
+    private String extractRequestId(String body) {
+        if (!StringUtils.hasText(body)) return null;
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            String requestId = root.path("request_id").asText(null);
+            return StringUtils.hasText(requestId) ? requestId : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** The part of the recipient address after '@' — safe to log, never the full address. */

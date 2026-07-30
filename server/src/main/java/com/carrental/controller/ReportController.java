@@ -106,15 +106,56 @@ public class ReportController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/reports/{id}/resend")
-    public ResponseEntity<Map<String, Object>> resendReport(@PathVariable Long id) {
+    /**
+     * Sends (first send) or re-sends the already-generated report PDF by email.
+     * One endpoint covers both — the only difference is the {@code triggeredBy}
+     * tag recorded on the {@code ReportEmailAttempt} row, which the frontend
+     * controls implicitly via which action label it showed (Send vs Resend).
+     * Never regenerates the PDF (spec section 21) and never reports SENT
+     * without a real provider-confirmed send (spec section 6).
+     */
+    @PostMapping("/reports/{id}/send-email")
+    public ResponseEntity<Map<String, Object>> sendReportEmail(@PathVariable Long id) {
         requireFeature(FEATURE_ARCHIVE);
         Report report = requireOwnedReport(id);
-        Report resent = reportGenerationService.resend(report);
+        String triggeredBy = report.getStatus() == com.carrental.entity.ReportStatus.SENT
+                ? com.carrental.entity.ReportEmailAttempt.TRIGGERED_BY_MANUAL_RESEND
+                : com.carrental.entity.ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND;
+        ReportGenerationService.SendEmailOutcome outcome = reportGenerationService.sendReportEmail(report, triggeredBy);
+        return buildSendEmailResponse(outcome);
+    }
+
+    /** Deprecated alias kept for any existing callers — identical behavior to {@code /send-email}. */
+    @PostMapping("/reports/{id}/resend")
+    public ResponseEntity<Map<String, Object>> resendReport(@PathVariable Long id) {
+        return sendReportEmail(id);
+    }
+
+    private ResponseEntity<Map<String, Object>> buildSendEmailResponse(ReportGenerationService.SendEmailOutcome outcome) {
+        Report report = outcome.report();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("reportId", report.getId());
+        data.put("emailStatus", report.getEmailStatus());
+        data.put("emailSentAt", report.getEmailSentAt());
+        data.put("recipient", report.getRecipientEmails());
+
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", resent.getEmailStatus().name().equals("SENT"));
-        response.put("report", toDetail(resent));
-        return ResponseEntity.ok(response);
+        if (outcome.success()) {
+            response.put("success", true);
+            response.put("message", outcome.message());
+            response.put("data", data);
+            return ResponseEntity.ok(response);
+        }
+
+        response.put("success", false);
+        response.put("errorCode", outcome.errorCode());
+        response.put("message", outcome.message());
+        response.put("data", data);
+        int status = switch (outcome.errorCode()) {
+            case "REPORT_RECIPIENT_MISSING", "REPORT_NOT_READY" -> 400;
+            default -> 200; // provider/attachment/transient failures are a legitimate business outcome, not a bad request
+        };
+        return ResponseEntity.status(status).body(response);
     }
 
     // ── Preferences ──────────────────────────────────────────────────────────
@@ -180,6 +221,9 @@ public class ReportController {
         row.put("generatedAt", r.getGeneratedAt());
         row.put("emailSentAt", r.getEmailSentAt());
         row.put("language", r.getLanguage());
+        row.put("emailFailureCode", r.getEmailFailureCode());
+        row.put("emailFailureReason", r.getEmailFailureReason());
+        row.put("recipientEmails", r.getRecipientEmails());
         return row;
     }
 
@@ -189,7 +233,8 @@ public class ReportController {
         row.put("failureReason", r.getFailureReason());
         row.put("aiSummaryUsed", r.isAiSummaryUsed());
         row.put("calculationVersion", r.getCalculationVersion());
-        row.put("recipientEmails", r.getRecipientEmails());
+        row.put("emailAttemptCount", r.getEmailAttemptCount());
+        row.put("lastEmailAttemptAt", r.getLastEmailAttemptAt());
         return row;
     }
 

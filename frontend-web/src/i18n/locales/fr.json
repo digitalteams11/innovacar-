@@ -1396,6 +1396,14 @@
     "monthly": "Mensuel",
     "yearly": "Annuel",
     "period": "Période",
+    "columns": {
+      "period": "Période",
+      "type": "Type",
+      "status": "Statut",
+      "email": "Email",
+      "generated": "Généré",
+      "actions": "Actions"
+    },
     "type": { "MONTHLY": "Mensuel", "YEARLY": "Annuel" },
     "status": {
       "PENDING": "En attente",
@@ -1404,8 +1412,13 @@
       "EMAIL_PENDING": "Email en attente",
       "SENT": "Envoyé",
       "FAILED": "Échec",
-      "CANCELLED": "Annulé",
-      "NOT_SENT": "Non envoyé"
+      "CANCELLED": "Annulé"
+    },
+    "emailStatusValue": {
+      "NOT_SENT": "Non envoyé",
+      "PENDING": "Envoi en cours…",
+      "SENT": "Envoyé",
+      "FAILED": "Échec"
     },
     "emailStatus": "Email",
     "generatedAt": "Généré le",
@@ -1419,7 +1432,25 @@
     "generateSuccess": "Rapport généré",
     "generateSkipped": "Rapport non généré : {{reason}}",
     "generateFailed": "Échec de la génération du rapport",
-    "empty": "Aucun rapport pour le moment."
+    "empty": "Aucun rapport pour le moment.",
+    "actions": {
+      "download": "Télécharger le rapport",
+      "send": "Envoyer le rapport par email",
+      "resend": "Renvoyer le rapport par email",
+      "retry": "Réessayer l'envoi"
+    },
+    "email": {
+      "sentSuccess": "Rapport envoyé à {{recipient}}.",
+      "sendFailed": "L'email n'a pas pu être envoyé : {{reason}}",
+      "sending": "Envoi en cours…",
+      "sentAt": "Envoyé le {{date}}",
+      "recipientMissing": "L'email n'a pas pu être envoyé car aucun destinataire n'est configuré.",
+      "notReady": "Le rapport n'est pas encore prêt à être envoyé.",
+      "fileMissing": "Le fichier du rapport est manquant. Veuillez régénérer le rapport.",
+      "providerRejected": "Le fournisseur d'email a rejeté le message. Veuillez contacter le support.",
+      "inProgress": "Ce rapport est déjà en cours d'envoi.",
+      "genericFailure": "Le rapport n'a pas pu être envoyé. Veuillez réessayer."
+    }
   },
   "gps": {
     "openDashboard": "Ouvrir le tableau de bord GPS",

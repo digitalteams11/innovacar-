@@ -84,6 +84,24 @@ public class Report {
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
 
+    // ── Email delivery tracking (distinct from report-generation failure above) ──
+
+    @Column(name = "email_failure_code", length = 60)
+    private String emailFailureCode;
+
+    @Column(name = "email_failure_reason", length = 1000)
+    private String emailFailureReason;
+
+    @Builder.Default
+    @Column(name = "email_attempt_count", nullable = false)
+    private int emailAttemptCount = 0;
+
+    @Column(name = "last_email_attempt_at")
+    private LocalDateTime lastEmailAttemptAt;
+
+    @Column(name = "provider_message_id", length = 200)
+    private String providerMessageId;
+
     @Column(name = "calculation_snapshot", columnDefinition = "TEXT")
     private String calculationSnapshot;
 

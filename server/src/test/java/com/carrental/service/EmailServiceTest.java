@@ -36,7 +36,7 @@ class EmailServiceTest {
     @Test
     void verificationCodeEmail_sendsRealHtmlWithSeparatePlainTextFallback() {
         when(smtpMailService.sendPlatform(anyString(), anyString(), htmlCaptor.capture(), plainCaptor.capture()))
-                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null));
+                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null, null));
 
         emailService.sendEmailVerificationCodeEmail("user@example.com", "Yassine", "271888", 10);
 
@@ -60,7 +60,7 @@ class EmailServiceTest {
     @Test
     void verificationLinkEmail_sendsRealHtmlWithSeparatePlainTextFallback() {
         when(smtpMailService.sendPlatform(anyString(), anyString(), htmlCaptor.capture(), plainCaptor.capture()))
-                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null));
+                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null, null));
 
         emailService.sendVerificationEmail("user@example.com", "raw-token-123", "https://app.innovacar.app");
 

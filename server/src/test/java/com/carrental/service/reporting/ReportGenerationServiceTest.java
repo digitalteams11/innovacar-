@@ -171,6 +171,185 @@ class ReportGenerationServiceTest {
         assertThat(outcome.report().isAiSummaryUsed()).isFalse();
     }
 
+    // ── sendReportEmail / resend ─────────────────────────────────────────────
+
+    private Report readyReport() {
+        return Report.builder()
+                .id(500L).tenant(tenant()).reportType(ReportType.MONTHLY)
+                .periodStart(LocalDateTime.of(2026, 7, 1, 0, 0)).periodEnd(LocalDateTime.of(2026, 8, 1, 0, 0))
+                .language("en").status(ReportStatus.GENERATED).emailStatus(ReportEmailStatus.NOT_SENT)
+                .fileStorageKey("tenant_1_report_500.pdf").calculationVersion(1).emailAttemptCount(0)
+                .build();
+    }
+
+    @Test
+    void sendReportEmail_success_persistsSentStatusTimestampAndProviderMessageId() {
+        Report report = readyReport();
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.of(ReportPreferences.builder()
+                .tenant(tenant()).primaryRecipientEmail("owner@example.com").build()));
+        when(pdfStorage.read("tenant_1_report_500.pdf")).thenReturn(new byte[]{1, 2, 3});
+        when(emailAttemptRepository.countByReportId(500L)).thenReturn(0);
+        when(smtpMailService.sendForTenant(eq(1L), eq("owner@example.com"), anyString(), anyString(), isNull(),
+                anyString(), any(), eq("application/pdf")))
+                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null, "req-abc-123"));
+        when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isTrue();
+        assertThat(outcome.report().getStatus()).isEqualTo(ReportStatus.SENT);
+        assertThat(outcome.report().getEmailStatus()).isEqualTo(ReportEmailStatus.SENT);
+        assertThat(outcome.report().getEmailSentAt()).isNotNull();
+        assertThat(outcome.report().getRecipientEmails()).isEqualTo("owner@example.com");
+        assertThat(outcome.report().getProviderMessageId()).isEqualTo("req-abc-123");
+        assertThat(outcome.report().getEmailAttemptCount()).isEqualTo(1);
+        verify(emailAttemptRepository).save(argThat(a -> a.isSuccess() && a.getAttemptNo() == 1));
+    }
+
+    @Test
+    void sendReportEmail_noRecipientConfigured_returnsPreciseErrorCodeWithoutCallingProvider() {
+        Report report = readyReport();
+        Tenant tenantNoEmail = Tenant.builder().id(1L).name("Test Agency").email(null).build();
+        report.setTenant(tenantNoEmail);
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.of(ReportPreferences.builder()
+                .tenant(tenantNoEmail).primaryRecipientEmail(null).build()));
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isFalse();
+        assertThat(outcome.errorCode()).isEqualTo("REPORT_RECIPIENT_MISSING");
+        verifyNoInteractions(smtpMailService);
+        verifyNoInteractions(emailAttemptRepository);
+    }
+
+    @Test
+    void sendReportEmail_missingPdfFile_returnsReportFileMissing() {
+        Report report = readyReport();
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.of(ReportPreferences.builder()
+                .tenant(tenant()).primaryRecipientEmail("owner@example.com").build()));
+        when(pdfStorage.read("tenant_1_report_500.pdf")).thenReturn(null);
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isFalse();
+        assertThat(outcome.errorCode()).isEqualTo("REPORT_FILE_MISSING");
+        verifyNoInteractions(smtpMailService);
+    }
+
+    @Test
+    void sendReportEmail_reportNotYetGenerated_returnsReportNotReady() {
+        Report report = readyReport();
+        report.setStatus(ReportStatus.GENERATING);
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isFalse();
+        assertThat(outcome.errorCode()).isEqualTo("REPORT_NOT_READY");
+        verifyNoInteractions(pdfStorage, smtpMailService);
+    }
+
+    @Test
+    void sendReportEmail_alreadySendingRecently_isRejectedAsInProgress_doesNotDuplicateSend() {
+        Report report = readyReport();
+        report.setEmailStatus(ReportEmailStatus.PENDING);
+        report.setLastEmailAttemptAt(LocalDateTime.now().minusSeconds(5));
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isFalse();
+        assertThat(outcome.errorCode()).isEqualTo("REPORT_EMAIL_SEND_IN_PROGRESS");
+        verifyNoInteractions(smtpMailService);
+    }
+
+    @Test
+    void sendReportEmail_staleInProgressLock_isAllowedToRetry() {
+        Report report = readyReport();
+        report.setEmailStatus(ReportEmailStatus.PENDING);
+        report.setLastEmailAttemptAt(LocalDateTime.now().minusMinutes(10)); // older than the 2-minute staleness window
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.of(ReportPreferences.builder()
+                .tenant(tenant()).primaryRecipientEmail("owner@example.com").build()));
+        when(pdfStorage.read("tenant_1_report_500.pdf")).thenReturn(new byte[]{1});
+        when(emailAttemptRepository.countByReportId(500L)).thenReturn(0);
+        when(smtpMailService.sendForTenant(eq(1L), anyString(), anyString(), anyString(), isNull(), anyString(), any(), anyString()))
+                .thenReturn(SmtpMailService.SmtpResult.success("ZEPTOMAIL"));
+        when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isTrue();
+        verify(smtpMailService).sendForTenant(eq(1L), anyString(), anyString(), anyString(), isNull(), anyString(), any(), anyString());
+    }
+
+    @Test
+    void sendReportEmail_providerRejection_persistsFailedStateWithMappedErrorCode() {
+        Report report = readyReport();
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.of(ReportPreferences.builder()
+                .tenant(tenant()).primaryRecipientEmail("owner@example.com").build()));
+        when(pdfStorage.read("tenant_1_report_500.pdf")).thenReturn(new byte[]{1});
+        when(emailAttemptRepository.countByReportId(500L)).thenReturn(0);
+        when(smtpMailService.sendForTenant(eq(1L), anyString(), anyString(), anyString(), isNull(), anyString(), any(), anyString()))
+                .thenReturn(SmtpMailService.SmtpResult.failure("ZEPTOMAIL", "Sender domain not verified.", "EMAIL_SENDER_NOT_VERIFIED"));
+        when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isFalse();
+        assertThat(outcome.errorCode()).isEqualTo("REPORT_EMAIL_PROVIDER_REJECTED");
+        assertThat(outcome.report().getEmailStatus()).isEqualTo(ReportEmailStatus.FAILED);
+        assertThat(outcome.report().getEmailFailureCode()).isEqualTo("REPORT_EMAIL_PROVIDER_REJECTED");
+        assertThat(outcome.report().getEmailFailureReason()).isEqualTo("Sender domain not verified.");
+        // Never fake success: report.status must NOT have been advanced to SENT.
+        assertThat(outcome.report().getStatus()).isEqualTo(ReportStatus.GENERATED);
+        verify(emailAttemptRepository).save(argThat(a -> !a.isSuccess()));
+    }
+
+    @Test
+    void sendReportEmail_retryAfterFailure_succeedsAndIncrementsAttemptCount() {
+        Report report = readyReport();
+        report.setEmailStatus(ReportEmailStatus.FAILED);
+        report.setEmailFailureCode("REPORT_EMAIL_SEND_FAILED");
+        report.setEmailAttemptCount(1);
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.of(ReportPreferences.builder()
+                .tenant(tenant()).primaryRecipientEmail("owner@example.com").build()));
+        when(pdfStorage.read("tenant_1_report_500.pdf")).thenReturn(new byte[]{1});
+        when(emailAttemptRepository.countByReportId(500L)).thenReturn(1);
+        when(smtpMailService.sendForTenant(eq(1L), anyString(), anyString(), anyString(), isNull(), anyString(), any(), anyString()))
+                .thenReturn(SmtpMailService.SmtpResult.success("ZEPTOMAIL", "req-2"));
+        when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isTrue();
+        assertThat(outcome.report().getEmailAttemptCount()).isEqualTo(2);
+        assertThat(outcome.report().getEmailFailureCode()).isNull();
+        verify(emailAttemptRepository).save(argThat(a -> a.getAttemptNo() == 2));
+    }
+
+    @Test
+    void sendReportEmail_transientNetworkError_mapsToRetryableSendFailedCode() {
+        Report report = readyReport();
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.of(ReportPreferences.builder()
+                .tenant(tenant()).primaryRecipientEmail("owner@example.com").build()));
+        when(pdfStorage.read("tenant_1_report_500.pdf")).thenReturn(new byte[]{1});
+        when(emailAttemptRepository.countByReportId(500L)).thenReturn(0);
+        when(smtpMailService.sendForTenant(eq(1L), anyString(), anyString(), anyString(), isNull(), anyString(), any(), anyString()))
+                .thenReturn(SmtpMailService.SmtpResult.failure("ZEPTOMAIL", "Could not reach the email provider.", "EMAIL_API_NETWORK_ERROR"));
+        when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.errorCode()).isEqualTo("REPORT_EMAIL_SEND_FAILED");
+    }
+
     private ReportDataset sampleDataset() {
         ReportDataset.FinancialSummary financial = new ReportDataset.FinancialSummary(
                 BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN, BigDecimal.ZERO,

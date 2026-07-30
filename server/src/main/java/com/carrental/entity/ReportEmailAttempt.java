@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class ReportEmailAttempt {
 
     public static final String TRIGGERED_BY_SYSTEM = "SYSTEM";
+    public static final String TRIGGERED_BY_MANUAL_SEND = "MANUAL_SEND";
     public static final String TRIGGERED_BY_MANUAL_RESEND = "MANUAL_RESEND";
 
     @Id

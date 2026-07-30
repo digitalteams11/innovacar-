@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Archive, Download, Loader2, RefreshCw, Send, AlertCircle, Plus } from 'lucide-react';
+import { Archive, Download, Loader2, RefreshCw, AlertCircle, Plus } from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { FilterChips } from '../components/FilterChips';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
+import SendEmailButton from '../components/reports/SendEmailButton';
 import { useReports, type ReportRow } from '../hooks/useReports';
 import { useFeatureAccess } from '../context/FeatureAccessContext';
 import { useToast } from '../context/ToastContext';
@@ -16,18 +17,20 @@ const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-slate-500/15 text-slate-500',
   FAILED: 'bg-red-500/15 text-red-600 dark:text-red-400',
   CANCELLED: 'bg-slate-500/15 text-slate-500',
+  NOT_SENT: 'bg-slate-500/15 text-slate-500',
 };
 
 export default function ReportArchive() {
   const { t } = useTranslation();
   const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
-  const { reports, loading, error, fetchReports, generateReport, resendReport, downloadReport } = useReports();
+  const { reports, loading, error, fetchReports, generateReport, sendReportEmail, downloadReport } = useReports();
   const [typeFilter, setTypeFilter] = useState('ALL');
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [downloadBusyId, setDownloadBusyId] = useState<number | null>(null);
   const [generating, setGenerating] = useState(false);
 
   const canManualGenerate = hasFeature('MANUAL_REPORT_EXPORT');
+  const canSendEmail = hasFeature('REPORT_ARCHIVE');
 
   const filtered = useMemo(
     () => reports.filter((r) => typeFilter === 'ALL' || r.reportType === typeFilter),
@@ -41,27 +44,13 @@ export default function ReportArchive() {
   };
 
   const handleDownload = async (r: ReportRow) => {
-    setBusyId(r.id);
+    setDownloadBusyId(r.id);
     try {
       await downloadReport(r.id, `report_${r.reportType.toLowerCase()}_${periodLabel(r)}.pdf`);
     } catch {
       showToast(t('reports.downloadFailed', 'Unable to download report'), 'error');
     } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleResend = async (r: ReportRow) => {
-    setBusyId(r.id);
-    try {
-      const result = await resendReport(r.id);
-      showToast(result.success
-        ? t('reports.resendSuccess', 'Report re-sent')
-        : t('reports.resendFailed', 'Failed to send email'));
-    } catch {
-      showToast(t('reports.resendFailed', 'Failed to send email'), 'error');
-    } finally {
-      setBusyId(null);
+      setDownloadBusyId(null);
     }
   };
 
@@ -81,31 +70,40 @@ export default function ReportArchive() {
     }
   };
 
-  const badge = (status: string) => (
+  const statusBadge = (status: string) => (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[status] || 'bg-slate-500/15 text-slate-500'}`}>
       {t(`reports.status.${status}`, status)}
     </span>
   );
 
+  const emailBadge = (status: string) => (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[status] || 'bg-slate-500/15 text-slate-500'}`}>
+      {t(`reports.emailStatusValue.${status}`, status)}
+    </span>
+  );
+
+  const downloadButton = (r: ReportRow) => (
+    <button
+      onClick={() => handleDownload(r)}
+      disabled={downloadBusyId === r.id || !['GENERATED', 'SENT', 'EMAIL_PENDING'].includes(r.status)}
+      aria-label={t('reports.actions.download')}
+      title={t('reports.actions.download')}
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 hover:bg-[var(--bg-hover)]
+        disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+    >
+      {downloadBusyId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+    </button>
+  );
+
   const rowActions = (r: ReportRow) => (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => handleDownload(r)}
-        disabled={busyId === r.id || !['GENERATED', 'SENT', 'EMAIL_PENDING'].includes(r.status)}
-        className="p-2 rounded-lg hover:bg-[var(--bg-hover)] disabled:opacity-30"
-        title={t('reports.download', 'Download')}
-      >
-        {busyId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-      </button>
-      {hasFeature('REPORT_ARCHIVE') && (
-        <button
-          onClick={() => handleResend(r)}
-          disabled={busyId === r.id || !['GENERATED', 'SENT', 'EMAIL_PENDING'].includes(r.status)}
-          className="p-2 rounded-lg hover:bg-[var(--bg-hover)] disabled:opacity-30"
-          title={t('reports.resend', 'Resend email')}
-        >
-          <Send className="w-4 h-4" />
-        </button>
+    <div className="flex items-center gap-1">
+      {downloadButton(r)}
+      {canSendEmail && (
+        <SendEmailButton
+          report={r}
+          onSend={sendReportEmail}
+          disabled={!['GENERATED', 'SENT', 'EMAIL_PENDING', 'FAILED'].includes(r.status)}
+        />
       )}
     </div>
   );
@@ -177,12 +175,12 @@ export default function ReportArchive() {
               <table className="w-full text-sm">
                 <thead className="bg-[var(--bg-card)]">
                   <tr className="text-left text-[var(--text-muted)]">
-                    <th className="p-3">{t('reports.period', 'Period')}</th>
-                    <th className="p-3">{t('reports.type', 'Type')}</th>
-                    <th className="p-3">{t('reports.status', 'Status')}</th>
-                    <th className="p-3">{t('reports.emailStatus', 'Email')}</th>
-                    <th className="p-3">{t('reports.generatedAt', 'Generated')}</th>
-                    <th className="p-3 text-right">{t('common.actions', 'Actions')}</th>
+                    <th className="p-3">{t('reports.columns.period', 'Period')}</th>
+                    <th className="p-3">{t('reports.columns.type', 'Type')}</th>
+                    <th className="p-3">{t('reports.columns.status', 'Status')}</th>
+                    <th className="p-3">{t('reports.columns.email', 'Email')}</th>
+                    <th className="p-3">{t('reports.columns.generated', 'Generated')}</th>
+                    <th className="p-3 text-right">{t('reports.columns.actions', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -190,8 +188,17 @@ export default function ReportArchive() {
                     <tr key={r.id} className="border-t border-[var(--border-subtle)]">
                       <td className="p-3 font-medium">{periodLabel(r)}</td>
                       <td className="p-3">{t(`reports.type.${r.reportType}`, r.reportType)}</td>
-                      <td className="p-3">{badge(r.status)}</td>
-                      <td className="p-3">{badge(r.emailStatus)}</td>
+                      <td className="p-3">{statusBadge(r.status)}</td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-0.5">
+                          {emailBadge(r.emailStatus)}
+                          {r.emailStatus === 'SENT' && r.emailSentAt && (
+                            <span className="text-xs text-[var(--text-muted)] whitespace-normal break-words">
+                              {new Date(r.emailSentAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-3 text-[var(--text-muted)]">
                         {r.generatedAt ? new Date(r.generatedAt).toLocaleString() : '-'}
                       </td>
@@ -208,11 +215,18 @@ export default function ReportArchive() {
                 <div key={r.id} className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-semibold">{periodLabel(r)}</span>
-                    {badge(r.status)}
+                    {statusBadge(r.status)}
                   </div>
                   <div className="flex items-center justify-between text-sm text-[var(--text-muted)]">
                     <span>{t(`reports.type.${r.reportType}`, r.reportType)}</span>
-                    {badge(r.emailStatus)}
+                    <div className="flex flex-col items-end gap-0.5">
+                      {emailBadge(r.emailStatus)}
+                      {r.emailStatus === 'SENT' && r.emailSentAt && (
+                        <span className="text-xs whitespace-normal break-words text-right">
+                          {new Date(r.emailSentAt).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="mt-3 flex justify-end">{rowActions(r)}</div>
                 </div>

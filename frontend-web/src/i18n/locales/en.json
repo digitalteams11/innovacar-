@@ -1396,6 +1396,14 @@
     "monthly": "Monthly",
     "yearly": "Yearly",
     "period": "Period",
+    "columns": {
+      "period": "Period",
+      "type": "Type",
+      "status": "Status",
+      "email": "Email",
+      "generated": "Generated",
+      "actions": "Actions"
+    },
     "type": { "MONTHLY": "Monthly", "YEARLY": "Yearly" },
     "status": {
       "PENDING": "Pending",
@@ -1404,8 +1412,13 @@
       "EMAIL_PENDING": "Email pending",
       "SENT": "Sent",
       "FAILED": "Failed",
-      "CANCELLED": "Cancelled",
-      "NOT_SENT": "Not sent"
+      "CANCELLED": "Cancelled"
+    },
+    "emailStatusValue": {
+      "NOT_SENT": "Not sent",
+      "PENDING": "Sending…",
+      "SENT": "Sent",
+      "FAILED": "Failed"
     },
     "emailStatus": "Email",
     "generatedAt": "Generated",
@@ -1419,7 +1432,25 @@
     "generateSuccess": "Report generated",
     "generateSkipped": "Report not generated: {{reason}}",
     "generateFailed": "Failed to generate report",
-    "empty": "No reports yet."
+    "empty": "No reports yet.",
+    "actions": {
+      "download": "Download report",
+      "send": "Send report by email",
+      "resend": "Resend report by email",
+      "retry": "Retry sending"
+    },
+    "email": {
+      "sentSuccess": "Report sent to {{recipient}}.",
+      "sendFailed": "Email could not be sent: {{reason}}",
+      "sending": "Sending…",
+      "sentAt": "Sent {{date}}",
+      "recipientMissing": "Email could not be sent because no recipient is configured.",
+      "notReady": "The report is not ready to be emailed yet.",
+      "fileMissing": "The report file is missing. Please regenerate the report.",
+      "providerRejected": "The email provider rejected the message. Please contact support.",
+      "inProgress": "This report is already being sent.",
+      "genericFailure": "The report could not be sent. Please try again."
+    }
   },
   "gps": {
     "openDashboard": "Open GPS Dashboard",

@@ -32,18 +32,22 @@ public class SmtpMailService {
     private final HttpEmailProvider httpEmailProvider;
 
     public record SmtpResult(boolean sent, String providerUsed, String errorMessage, String errorCode,
-                              String exceptionClass) {
+                              String exceptionClass, String messageId) {
         public static SmtpResult unconfigured() {
-            return new SmtpResult(false, null, "No email provider is configured.", "EMAIL_NOT_CONFIGURED", null);
+            return new SmtpResult(false, null, "No email provider is configured.", "EMAIL_NOT_CONFIGURED", null, null);
         }
         public static SmtpResult failure(String provider, String message, String code) {
-            return new SmtpResult(false, provider, message, code, null);
+            return new SmtpResult(false, provider, message, code, null, null);
         }
         public static SmtpResult failure(String provider, String message, String code, String exceptionClass) {
-            return new SmtpResult(false, provider, message, code, exceptionClass);
+            return new SmtpResult(false, provider, message, code, exceptionClass, null);
         }
         public static SmtpResult success(String provider) {
-            return new SmtpResult(true, provider, null, null, null);
+            return new SmtpResult(true, provider, null, null, null, null);
+        }
+        /** Success carrying the provider's own tracking id (e.g. ZeptoMail's request_id) — safe to persist/expose, never a secret. */
+        public static SmtpResult success(String provider, String messageId) {
+            return new SmtpResult(true, provider, null, null, null, messageId);
         }
     }
 

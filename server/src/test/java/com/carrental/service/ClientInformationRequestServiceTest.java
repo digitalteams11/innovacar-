@@ -70,7 +70,7 @@ class ClientInformationRequestServiceTest {
         ReflectionTestUtils.setField(service, "frontendUrl", "https://innovacar.app");
 
         lenient().when(emailService.sendClientInformationRequestEmail(any(), any(), any(), any(), any(), any()))
-                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null));
+                .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null, null));
     }
 
     @AfterEach

@@ -16,12 +16,14 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * The single entry point for generating (and emailing) a report — used by
@@ -42,6 +44,21 @@ public class ReportGenerationService {
     private static final List<ReportStatus> ALREADY_DONE = List.of(
             ReportStatus.GENERATED, ReportStatus.EMAIL_PENDING, ReportStatus.SENT);
 
+    /** A report is eligible to be emailed once it has a real PDF on disk — GENERATED (first send) or SENT (resend). */
+    private static final Set<ReportStatus> EMAIL_ELIGIBLE_STATUSES = Set.of(ReportStatus.GENERATED, ReportStatus.SENT);
+
+    /**
+     * How long an in-flight PENDING send is trusted before being treated as stale
+     * (e.g. the app instance crashed mid-send) and allowed to be retried — a
+     * best-effort duplicate-send guard, not a strict distributed lock.
+     */
+    private static final Duration PENDING_SEND_STALE_AFTER = Duration.ofMinutes(2);
+
+    /** Provider-level error codes (see {@link com.carrental.service.HttpEmailProvider}) that mean the provider actively rejected the request rather than a transient/network failure. */
+    private static final Set<String> PROVIDER_REJECTION_CODES = Set.of(
+            "EMAIL_SENDER_NOT_VERIFIED", "EMAIL_API_UNAUTHORIZED", "EMAIL_API_REQUEST_REJECTED",
+            "EMAIL_API_INVALID_PAYLOAD", "EMAIL_CONFIGURATION_MISSING", "EMAIL_API_ENDPOINT_INVALID");
+
     private final TenantRepository tenantRepository;
     private final ReportRepository reportRepository;
     private final ReportPreferencesRepository preferencesRepository;
@@ -61,6 +78,16 @@ public class ReportGenerationService {
     public record GenerationOutcome(Report report, SkipReason skipReason) {
         public static GenerationOutcome skipped(SkipReason reason) { return new GenerationOutcome(null, reason); }
         public static GenerationOutcome of(Report report) { return new GenerationOutcome(report, null); }
+    }
+
+    /** Structured result of an email send/resend attempt — never a bare boolean, per spec section 8. */
+    public record SendEmailOutcome(boolean success, String errorCode, String message, Report report) {
+        public static SendEmailOutcome ok(Report report, String message) {
+            return new SendEmailOutcome(true, null, message, report);
+        }
+        public static SendEmailOutcome fail(String errorCode, String message, Report report) {
+            return new SendEmailOutcome(false, errorCode, message, report);
+        }
     }
 
     /** Scheduler entry point — resolves the previous closed period relative to {@code referenceDate}. */
@@ -132,20 +159,117 @@ public class ReportGenerationService {
         return GenerationOutcome.of(report);
     }
 
-    /** Re-sends the stored PDF for an already-generated report — never regenerates the PDF (spec section 21). */
+    /**
+     * The single entry point for sending or re-sending a report's email — used
+     * by the manual "Send"/"Resend" endpoint and by the scheduler's auto-email
+     * step. Never regenerates the PDF (spec section 21): only ever reads the
+     * already-stored file. Returns a structured outcome instead of a bare
+     * report/boolean so the caller can surface a precise reason on failure
+     * (spec section 8) — the frontend must never collapse every failure into
+     * one generic "Failed to send email" message again.
+     */
     @Transactional
-    public Report resend(Report report) {
+    public SendEmailOutcome sendReportEmail(Report report, String triggeredBy) {
+        if (report.getStatus() == null || !EMAIL_ELIGIBLE_STATUSES.contains(report.getStatus())) {
+            return SendEmailOutcome.fail("REPORT_NOT_READY",
+                    "The report is not ready to be emailed yet. Wait for generation to finish.", report);
+        }
+        if (report.getEmailStatus() == ReportEmailStatus.PENDING && report.getLastEmailAttemptAt() != null
+                && report.getLastEmailAttemptAt().isAfter(LocalDateTime.now().minus(PENDING_SEND_STALE_AFTER))) {
+            // Backend-side duplicate-send guard (spec section 7) — a second click/request
+            // arriving while a send is already in flight for this exact report is rejected
+            // rather than firing a second email. Not a strict distributed lock (a crashed
+            // request would leave PENDING behind), which is why it self-expires after
+            // PENDING_SEND_STALE_AFTER instead of locking the report forever.
+            return SendEmailOutcome.fail("REPORT_EMAIL_SEND_IN_PROGRESS",
+                    "An email send for this report is already in progress.", report);
+        }
+        if (!StringUtils.hasText(report.getFileStorageKey())) {
+            return SendEmailOutcome.fail("REPORT_FILE_MISSING", "The report PDF file is missing.", report);
+        }
+
         Tenant tenant = report.getTenant();
         ReportPreferences preferences = resolvePreferences(tenant);
         String recipient = resolvePrimaryRecipient(tenant, preferences);
-        byte[] pdfBytes = pdfStorage.read(report.getFileStorageKey());
-        if (pdfBytes == null) {
-            report.setEmailStatus(ReportEmailStatus.FAILED);
-            report.setFailureReason("Stored PDF file is missing; cannot resend without regenerating.");
-            return reportRepository.save(report);
+        if (!StringUtils.hasText(recipient)) {
+            return SendEmailOutcome.fail("REPORT_RECIPIENT_MISSING", "No report recipient email is configured.", report);
         }
-        sendEmail(report, tenant, recipient, pdfBytes, ReportEmailAttempt.TRIGGERED_BY_MANUAL_RESEND);
-        return reportRepository.save(report);
+
+        byte[] pdfBytes;
+        try {
+            pdfBytes = pdfStorage.read(report.getFileStorageKey());
+        } catch (Exception e) {
+            log.error("[REPORT_EMAIL] Failed to read stored PDF for reportId={}: {}", report.getId(), e.getMessage(), e);
+            pdfBytes = null;
+        }
+        if (pdfBytes == null) {
+            return SendEmailOutcome.fail("REPORT_FILE_MISSING", "The report PDF file could not be read.", report);
+        }
+
+        // Mark in-flight and persist immediately, before the (potentially slow) provider
+        // call, so a concurrent duplicate request sees PENDING rather than the pre-send state.
+        report.setEmailStatus(ReportEmailStatus.PENDING);
+        report.setLastEmailAttemptAt(LocalDateTime.now());
+        report = reportRepository.save(report);
+
+        return performSend(report, tenant, recipient, pdfBytes, triggeredBy);
+    }
+
+    private SendEmailOutcome performSend(Report report, Tenant tenant, String recipient, byte[] pdfBytes, String triggeredBy) {
+        String subject = emailSubject(tenant, report);
+        String html = emailBody(tenant, report);
+        int attemptNo = emailAttemptRepository.countByReportId(report.getId()) + 1;
+        String attachmentName = "report_" + report.getReportType().name().toLowerCase()
+                + "_" + report.getPeriodStart().toLocalDate() + ".pdf";
+
+        SmtpMailService.SmtpResult result;
+        try {
+            result = smtpMailService.sendForTenant(
+                    tenant.getId(), recipient, subject, html, null, attachmentName, pdfBytes, "application/pdf");
+        } catch (Exception e) {
+            log.error("[REPORT_EMAIL] Unexpected error sending reportId={} to={}: {}", report.getId(), recipient, e.getMessage(), e);
+            result = SmtpMailService.SmtpResult.failure("ZEPTOMAIL", e.getMessage(), "REPORT_ATTACHMENT_FAILED");
+        }
+
+        report.setEmailAttemptCount(report.getEmailAttemptCount() + 1);
+        emailAttemptRepository.save(ReportEmailAttempt.builder()
+                .report(report).attemptNo(attemptNo).triggeredBy(triggeredBy)
+                .recipientEmails(recipient).success(result.sent())
+                .errorMessage(result.sent() ? null : truncate(result.errorMessage(), 900))
+                .build());
+
+        if (result.sent()) {
+            report.setRecipientEmails(recipient);
+            report.setEmailSentAt(LocalDateTime.now());
+            report.setEmailStatus(ReportEmailStatus.SENT);
+            report.setProviderMessageId(result.messageId());
+            report.setEmailFailureCode(null);
+            report.setEmailFailureReason(null);
+            if (report.getStatus() == ReportStatus.GENERATED) report.setStatus(ReportStatus.SENT);
+            report = reportRepository.save(report);
+            log.info("[REPORT_EMAIL] Sent reportId={} tenantId={} recipientDomain={} providerMessageId={}",
+                    report.getId(), tenant.getId(), domainOf(recipient), result.messageId());
+            return SendEmailOutcome.ok(report, "Report email sent successfully.");
+        }
+
+        String errorCode = "REPORT_ATTACHMENT_FAILED".equals(result.errorCode())
+                ? "REPORT_ATTACHMENT_FAILED"
+                : (PROVIDER_REJECTION_CODES.contains(result.errorCode()) ? "REPORT_EMAIL_PROVIDER_REJECTED" : "REPORT_EMAIL_SEND_FAILED");
+        String message = StringUtils.hasText(result.errorMessage())
+                ? result.errorMessage() : "The report could not be sent. Please try again.";
+        report.setEmailStatus(ReportEmailStatus.FAILED);
+        report.setEmailFailureCode(errorCode);
+        report.setEmailFailureReason(truncate(message, 900));
+        report = reportRepository.save(report);
+        log.warn("[REPORT_EMAIL] Failed reportId={} tenantId={} errorCode={} providerErrorCode={}",
+                report.getId(), tenant.getId(), errorCode, result.errorCode());
+        return SendEmailOutcome.fail(errorCode, message, report);
+    }
+
+    private String domainOf(String email) {
+        if (email == null) return null;
+        int at = email.indexOf('@');
+        return at >= 0 && at < email.length() - 1 ? email.substring(at + 1) : null;
     }
 
     // ── Core pipeline ────────────────────────────────────────────────────────
@@ -202,11 +326,8 @@ public class ReportGenerationService {
             report = reportRepository.save(report);
 
             if (autoEmail) {
-                String recipient = resolvePrimaryRecipient(tenant, preferences);
-                if (StringUtils.hasText(recipient)) {
-                    sendEmail(report, tenant, recipient, pdfBytes, ReportEmailAttempt.TRIGGERED_BY_SYSTEM);
-                    report = reportRepository.save(report);
-                }
+                SendEmailOutcome emailOutcome = sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_SYSTEM);
+                report = emailOutcome.report();
             }
             return report;
         } catch (Exception e) {
@@ -215,34 +336,6 @@ public class ReportGenerationService {
             report.setStatus(ReportStatus.FAILED);
             report.setFailureReason(safeMessage(e));
             return reportRepository.save(report);
-        }
-    }
-
-    private void sendEmail(Report report, Tenant tenant, String recipient, byte[] pdfBytes, String triggeredBy) {
-        String subject = emailSubject(tenant, report);
-        String html = emailBody(tenant, report);
-        int attemptNo = emailAttemptRepository.countByReportId(report.getId()) + 1;
-        String attachmentName = "report_" + report.getReportType().name().toLowerCase()
-                + "_" + report.getPeriodStart().toLocalDate() + ".pdf";
-        try {
-            SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(
-                    tenant.getId(), recipient, subject, html, null, attachmentName, pdfBytes, "application/pdf");
-            emailAttemptRepository.save(ReportEmailAttempt.builder()
-                    .report(report).attemptNo(attemptNo).triggeredBy(triggeredBy)
-                    .recipientEmails(recipient).success(result.sent())
-                    .errorMessage(result.sent() ? null : truncate(result.errorMessage(), 900))
-                    .build());
-            report.setRecipientEmails(recipient);
-            report.setEmailSentAt(result.sent() ? LocalDateTime.now() : report.getEmailSentAt());
-            report.setEmailStatus(result.sent() ? ReportEmailStatus.SENT : ReportEmailStatus.FAILED);
-            report.setStatus(result.sent() ? ReportStatus.SENT : report.getStatus());
-        } catch (Exception e) {
-            log.error("[REPORT_EMAIL] Failed to send reportId={} to={}: {}", report.getId(), recipient, e.getMessage(), e);
-            emailAttemptRepository.save(ReportEmailAttempt.builder()
-                    .report(report).attemptNo(attemptNo).triggeredBy(triggeredBy)
-                    .recipientEmails(recipient).success(false).errorMessage(truncate(e.getMessage(), 900))
-                    .build());
-            report.setEmailStatus(ReportEmailStatus.FAILED);
         }
     }
 
