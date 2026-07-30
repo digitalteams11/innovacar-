@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Shield, AlertCircle, Calculator, CheckCircle2 } from 'lucide-react';
 import api from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
 import Modal from '../Modal';
+import { useInlineAction } from '../../hooks/useInlineAction';
+import AnimatedStatusIcon from './AnimatedStatusIcon';
+import Tooltip from './Tooltip';
+import { cn } from '../../lib/utils';
 
 interface ReturnInspectionModalProps {
   isOpen: boolean;
@@ -25,9 +28,6 @@ export default function ReturnInspectionModal({
   depositAmount,
   onSuccess,
 }: ReturnInspectionModalProps) {
-  const { showToast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [fuelLevel, setFuelLevel] = useState('Full');
   const [interiorCondition, setInteriorCondition] = useState('Clean');
   const [exteriorCondition, setExteriorCondition] = useState('Clean');
@@ -43,34 +43,26 @@ export default function ReturnInspectionModal({
   const totalDeductions = damageCost + cleaningCost + lateFee + fuelCharge + otherCharge;
   const returnedAmount = Math.max(depositAmount - totalDeductions, 0);
 
-  const handleSubmit = async () => {
+  const submitAction = useInlineAction(async () => {
     if (totalDeductions > depositAmount) {
-      showToast('Total deductions cannot exceed deposit amount', 'warning');
-      return;
+      throw new Error('Total deductions cannot exceed the deposit amount.');
     }
-    setIsSubmitting(true);
-    try {
-      await api.post(`/deposits/${depositId}/return`, {
-        damageDeduction: damageCost,
-        cleaningDeduction: cleaningCost,
-        lateFeeDeduction: lateFee,
-        fuelDeduction: fuelCharge,
-        otherDeduction: otherCharge,
-        returnNotes,
-        fuelLevelEnd: fuelLevel,
-        interiorCondition,
-        exteriorCondition,
-        missingItems,
-      });
-      showToast('Deposit return processed successfully', 'success');
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      showToast((err as any).userMessage || 'Unable to process return. Please try again later.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    await api.post(`/deposits/${depositId}/return`, {
+      damageDeduction: damageCost,
+      cleaningDeduction: cleaningCost,
+      lateFeeDeduction: lateFee,
+      fuelDeduction: fuelCharge,
+      otherDeduction: otherCharge,
+      returnNotes,
+      fuelLevelEnd: fuelLevel,
+      interiorCondition,
+      exteriorCondition,
+      missingItems,
+    });
+    onSuccess();
+    onClose();
+  }, { context: 'deposit-return' });
+  const isSubmitting = submitAction.phase === 'loading';
 
   return (
     <Modal
@@ -94,15 +86,16 @@ export default function ReturnInspectionModal({
             className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-200 transition-all min-h-[44px]">
             Cancel
           </button>
-          <button onClick={handleSubmit} disabled={isSubmitting || totalDeductions > depositAmount}
-            className="flex-1 py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]">
-            {isSubmitting ? (
-              <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-            ) : (
-              <CheckCircle2 size={18} />
-            )}
-            Confirm Return
-          </button>
+          <Tooltip label={submitAction.phase === 'error' ? submitAction.errorMessage : null}>
+            <button onClick={() => submitAction.run()} disabled={isSubmitting || totalDeductions > depositAmount}
+              className={cn(
+                'flex-1 py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]',
+                submitAction.phase === 'error' && 'ring-2 ring-red-400',
+              )}>
+              <AnimatedStatusIcon phase={submitAction.phase} idleIcon={CheckCircle2} size={18} />
+              Confirm Return
+            </button>
+          </Tooltip>
         </div>
       }
     >

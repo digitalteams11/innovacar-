@@ -5,9 +5,12 @@ import { GlassPageHeader } from '../components/GlassPageHeader';
 import { FilterChips } from '../components/FilterChips';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 import SendEmailButton from '../components/reports/SendEmailButton';
+import InlineActionButton from '../components/shared/InlineActionButton';
+import AnimatedStatusIcon from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
+import { useInlineAction } from '../hooks/useInlineAction';
 import { useReports, type ReportRow } from '../hooks/useReports';
 import { useFeatureAccess } from '../context/FeatureAccessContext';
-import { useToast } from '../context/ToastContext';
 
 const STATUS_BADGE: Record<string, string> = {
   SENT: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
@@ -23,11 +26,8 @@ const STATUS_BADGE: Record<string, string> = {
 export default function ReportArchive() {
   const { t } = useTranslation();
   const { hasFeature } = useFeatureAccess();
-  const { showToast } = useToast();
   const { reports, loading, error, fetchReports, generateReport, sendReportEmail, downloadReport } = useReports();
   const [typeFilter, setTypeFilter] = useState('ALL');
-  const [downloadBusyId, setDownloadBusyId] = useState<number | null>(null);
-  const [generating, setGenerating] = useState(false);
 
   const canManualGenerate = hasFeature('MANUAL_REPORT_EXPORT');
   const canSendEmail = hasFeature('REPORT_ARCHIVE');
@@ -43,32 +43,19 @@ export default function ReportArchive() {
     return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   };
 
-  const handleDownload = async (r: ReportRow) => {
-    setDownloadBusyId(r.id);
-    try {
-      await downloadReport(r.id, `report_${r.reportType.toLowerCase()}_${periodLabel(r)}.pdf`);
-    } catch {
-      showToast(t('reports.downloadFailed', 'Unable to download report'), 'error');
-    } finally {
-      setDownloadBusyId(null);
-    }
-  };
-
-  const handleGenerate = async (type: 'MONTHLY' | 'YEARLY') => {
-    setGenerating(true);
-    try {
-      const result = await generateReport(type);
-      if (result.success) {
-        showToast(t('reports.generateSuccess', 'Report generated'));
-      } else {
-        showToast(t('reports.generateSkipped', 'Report not generated: {{reason}}', { reason: result.reason }), 'error');
-      }
-    } catch {
-      showToast(t('reports.generateFailed', 'Failed to generate report'), 'error');
-    } finally {
-      setGenerating(false);
-    }
-  };
+  // Each generate button owns its own icon-state instead of firing a toast —
+  // a rejected/skipped generation (e.g. plan doesn't allow it yet) shows as a
+  // shaking red icon with the precise reason on hover, not a banner.
+  const monthlyGenerate = useInlineAction(async () => {
+    const result = await generateReport('MONTHLY');
+    if (!result.success) throw new Error(result.reason || 'Report not generated');
+    return result;
+  }, { context: 'generate-monthly-report' });
+  const yearlyGenerate = useInlineAction(async () => {
+    const result = await generateReport('YEARLY');
+    if (!result.success) throw new Error(result.reason || 'Report not generated');
+    return result;
+  }, { context: 'generate-yearly-report' });
 
   const statusBadge = (status: string) => (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[status] || 'bg-slate-500/15 text-slate-500'}`}>
@@ -83,16 +70,13 @@ export default function ReportArchive() {
   );
 
   const downloadButton = (r: ReportRow) => (
-    <button
-      onClick={() => handleDownload(r)}
-      disabled={downloadBusyId === r.id || !['GENERATED', 'SENT', 'EMAIL_PENDING'].includes(r.status)}
-      aria-label={t('reports.actions.download')}
-      title={t('reports.actions.download')}
-      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 hover:bg-[var(--bg-hover)]
-        disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
-    >
-      {downloadBusyId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-    </button>
+    <InlineActionButton
+      icon={Download}
+      label={t('reports.actions.download')}
+      onAction={() => downloadReport(r.id, `report_${r.reportType.toLowerCase()}_${periodLabel(r)}.pdf`)}
+      disabled={!['GENERATED', 'SENT', 'EMAIL_PENDING'].includes(r.status)}
+      context="download-report"
+    />
   );
 
   const rowActions = (r: ReportRow) => (
@@ -116,21 +100,26 @@ export default function ReportArchive() {
         icon={Archive}
         actions={canManualGenerate ? (
           <div className="flex gap-2">
-            <button
-              onClick={() => handleGenerate('MONTHLY')}
-              disabled={generating}
-              className="btn-primary flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
-            >
-              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              {t('reports.generateMonthly', 'Generate Monthly')}
-            </button>
-            <button
-              onClick={() => handleGenerate('YEARLY')}
-              disabled={generating}
-              className="px-3 py-2 rounded-lg text-sm border border-[var(--border-subtle)]"
-            >
-              {t('reports.generateYearly', 'Generate Yearly')}
-            </button>
+            <Tooltip label={monthlyGenerate.phase === 'error' ? monthlyGenerate.errorMessage : null}>
+              <button
+                onClick={() => monthlyGenerate.run()}
+                disabled={monthlyGenerate.phase === 'loading' || yearlyGenerate.phase === 'loading'}
+                className={`btn-primary flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${monthlyGenerate.phase === 'error' ? 'ring-2 ring-red-500' : ''}`}
+              >
+                <AnimatedStatusIcon phase={monthlyGenerate.phase} idleIcon={Plus} className="w-4 h-4" />
+                {t('reports.generateMonthly', 'Generate Monthly')}
+              </button>
+            </Tooltip>
+            <Tooltip label={yearlyGenerate.phase === 'error' ? yearlyGenerate.errorMessage : null}>
+              <button
+                onClick={() => yearlyGenerate.run()}
+                disabled={monthlyGenerate.phase === 'loading' || yearlyGenerate.phase === 'loading'}
+                className={`px-3 py-2 rounded-lg text-sm border flex items-center gap-2 ${yearlyGenerate.phase === 'error' ? 'border-red-500' : 'border-[var(--border-subtle)]'}`}
+              >
+                <AnimatedStatusIcon phase={yearlyGenerate.phase} idleIcon={Plus} className="w-4 h-4" />
+                {t('reports.generateYearly', 'Generate Yearly')}
+              </button>
+            </Tooltip>
           </div>
         ) : undefined}
       />

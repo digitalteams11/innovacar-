@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,10 @@ import {
   Shield, Building2, Users, Pencil, Trash2, Eye, User, ChevronDown, AlertTriangle, Download
 } from 'lucide-react';
 import ApiErrorState from '../components/ApiErrorState';
+import AnimatedStatusIcon from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
+import { cn } from '../lib/utils';
+import { logDevError, toFriendlyError } from '../lib/errorMessages';
 
 type DocumentType = 'CIN' | 'PASSPORT' | 'RESIDENCE_PERMIT' | 'OTHER';
 
@@ -94,6 +98,10 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const confirmDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deleteError, setDeleteError] = useState<{ id: number; message: string } | null>(null);
   const [exportingClients, setExportingClients] = useState(false);
   const [duplicateField, setDuplicateField] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -184,6 +192,7 @@ export default function Clients() {
   const openCreate = () => {
     setEditingId(null);
     setDuplicateField(null);
+    setSaveError(null);
     setFieldErrors({});
     setShowDocumentDetails(false);
     setForm({ ...EMPTY_FORM });
@@ -193,6 +202,7 @@ export default function Clients() {
   const openEdit = (client: Client) => {
     setEditingId(client.id);
     setDuplicateField(null);
+    setSaveError(null);
     setFieldErrors({});
     setShowDocumentDetails(Boolean(client.documentIssueDate || client.documentExpiryDate || client.documentIssuingCountry || client.documentIssuingAuthority));
     setForm({
@@ -286,10 +296,7 @@ export default function Clients() {
 
   const saveClient = async () => {
     if (saving) return;
-    if (!validateClientForm()) {
-      showToast(t('clients.validation.requiredSummary'), 'error');
-      return;
-    }
+    if (!validateClientForm()) return; // inline field errors already shown
     const optional = (value: string) => value.trim() || null;
     const normalizeDate = (value: string) => {
       const trimmed = value.trim();
@@ -334,9 +341,9 @@ export default function Clients() {
     try {
       setSaving(true);
       setDuplicateField(null);
+      setSaveError(null);
       if (editingId !== null) {
         await api.put(`/clients/${editingId}`, { ...payload, name: payload.fullName });
-        showToast(t('toast.success', { action: t('clients.updateAction') }));
       } else {
         const params = new URLSearchParams();
         if (payload.email) params.set('email', payload.email);
@@ -348,13 +355,12 @@ export default function Clients() {
         if (duplicate?.exists) {
           const field = duplicate.field || 'phone';
           setDuplicateField(field);
-          showToast(duplicate.message || `A client with this ${field} already exists`, 'error');
+          setSaveError(duplicate.message || `A client with this ${field} already exists`);
           return;
         }
-        const response = await api.post('/clients', payload);
-        const message = response.data?.message || t('toast.newClientAdded');
-        showToast(message, message.toLowerCase().includes('already exists') ? 'info' : 'success');
+        await api.post('/clients', payload);
       }
+      // Closing the modal is the confirmation — no toast needed for the success path.
       setIsModalOpen(false);
       setEditingId(null);
       setFieldErrors({});
@@ -364,21 +370,29 @@ export default function Clients() {
       const responseData = err?.response?.data;
       const field = responseData?.field || responseData?.data?.field;
       if (field) setDuplicateField(field);
-      showToast((err as any).userMessage || t('clients.saveFailed'), 'error');
+      setSaveError((err as any).userMessage || t('clients.saveFailed'));
     } finally {
       setSaving(false);
     }
   };
 
   const deleteClient = async (id: number) => {
-    if (confirm(t('clients.deleteConfirm'))) {
-      try {
-        await api.delete(`/clients/${id}`);
-        fetchClients();
-        showToast(t('toast.success', { action: t('clients.deleteAction') }));
-      } catch (err) {
-        showToast(t('clients.deleteFailed'), 'error');
-      }
+    // Inline click-to-confirm instead of a native window.confirm() dialog.
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      if (confirmDeleteTimerRef.current) clearTimeout(confirmDeleteTimerRef.current);
+      confirmDeleteTimerRef.current = setTimeout(() => setConfirmDeleteId(null), 2500);
+      return;
+    }
+    setConfirmDeleteId(null);
+    try {
+      await api.delete(`/clients/${id}`);
+      fetchClients();
+      // Row disappears from the (refetched) list — that's the confirmation.
+    } catch (err) {
+      logDevError('delete-client', err);
+      setDeleteError({ id, message: toFriendlyError(err, t('clients.deleteFailed')).message });
+      setTimeout(() => setDeleteError((d) => (d?.id === id ? null : d)), 2500);
     }
   };
 
@@ -525,14 +539,29 @@ export default function Clients() {
                       >
                         <Pencil size={14} />
                       </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => deleteClient(client.id)}
-                        className="p-1.5 text-[var(--text-muted)] hover:text-danger-500 hover:bg-danger-500/10 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </motion.button>
+                      <Tooltip label={
+                        confirmDeleteId === client.id ? t('common.clickAgainToConfirm', 'Click again to confirm')
+                          : deleteError?.id === client.id ? deleteError.message
+                          : null
+                      }>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => deleteClient(client.id)}
+                          className={cn(
+                            'p-1.5 rounded-lg transition-colors',
+                            confirmDeleteId === client.id ? 'text-amber-500 bg-amber-500/10'
+                              : deleteError?.id === client.id ? 'text-red-500 bg-red-500/10'
+                              : 'text-[var(--text-muted)] hover:text-danger-500 hover:bg-danger-500/10',
+                          )}
+                        >
+                          <AnimatedStatusIcon
+                            phase={confirmDeleteId === client.id ? 'confirm' : deleteError?.id === client.id ? 'error' : 'idle'}
+                            idleIcon={Trash2}
+                            size={14}
+                          />
+                        </motion.button>
+                      </Tooltip>
                     </div>
                   </div>
 
@@ -615,15 +644,23 @@ export default function Clients() {
             >
               {t('common.cancel')}
             </button>
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={saveClient}
-              disabled={saving}
-              className="min-h-[44px] px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60"
-            >
-              {saving ? t('common.saving') : editingId ? t('common.saveChanges') : t('clients.newClient')}
-            </motion.button>
+            <Tooltip label={saveError}>
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={saveClient}
+                disabled={saving}
+                className={cn(
+                  'min-h-[44px] px-5 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60 flex items-center justify-center gap-2',
+                  saveError && 'ring-2 ring-red-400',
+                )}
+              >
+                {(saving || saveError) && (
+                  <AnimatedStatusIcon phase={saving ? 'loading' : 'error'} idleIcon={Loader2} size={16} />
+                )}
+                {saving ? t('common.saving') : editingId ? t('common.saveChanges') : t('clients.newClient')}
+              </motion.button>
+            </Tooltip>
           </div>
         }
       >

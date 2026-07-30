@@ -1,8 +1,11 @@
-import { useState } from 'react';
 import { Fuel, Gauge, FileText, AlertTriangle, CheckCircle2, RotateCcw } from 'lucide-react';
 import api from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
 import Modal from '../Modal';
+import { useInlineAction } from '../../hooks/useInlineAction';
+import AnimatedStatusIcon from './AnimatedStatusIcon';
+import Tooltip from './Tooltip';
+import { cn } from '../../lib/utils';
+import { useState } from 'react';
 
 interface ContractReturnModalProps {
   isOpen: boolean;
@@ -43,9 +46,6 @@ function fuelIndex(level?: string): number {
 export default function ContractReturnModal({
   isOpen, contractId, onClose, onSuccess, fuelLevelStart, mileageStart,
 }: ContractReturnModalProps) {
-  const { showToast } = useToast();
-  const [submitting, setSubmitting] = useState(false);
-
   const [fuelLevelEnd, setFuelLevelEnd] = useState('FULL');
   const [mileageEnd, setMileageEnd] = useState('');
   const [conditionEndNote, setConditionEndNote] = useState('');
@@ -60,25 +60,20 @@ export default function ContractReturnModal({
     ? parseInt(mileageEnd) - mileageStart
     : null;
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    try {
-      await api.post(`/contracts/${contractId}/return-inspection`, {
-        fuelLevelEnd,
-        mileageEnd: mileageEnd ? parseInt(mileageEnd) : null,
-        conditionEndNote: conditionEndNote || null,
-        damageEndNote: damageEndNote || null,
-        extraFuelFee: extraFuelFee > 0 ? extraFuelFee : null,
-        damageFee: damageFee > 0 ? damageFee : null,
-      });
-      showToast('Vehicle returned successfully. Contract completed.', 'success');
-      onSuccess();
-    } catch (err: any) {
-      showToast(err?.userMessage ?? err?.message ?? 'Failed to process return', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const submitAction = useInlineAction(async () => {
+    await api.post(`/contracts/${contractId}/return-inspection`, {
+      fuelLevelEnd,
+      mileageEnd: mileageEnd ? parseInt(mileageEnd) : null,
+      conditionEndNote: conditionEndNote || null,
+      damageEndNote: damageEndNote || null,
+      extraFuelFee: extraFuelFee > 0 ? extraFuelFee : null,
+      damageFee: damageFee > 0 ? damageFee : null,
+    });
+    // The parent closes this modal and refreshes the contract on success —
+    // that transition is the confirmation, no toast needed.
+    onSuccess();
+  }, { context: 'contract-return-inspection' });
+  const submitting = submitAction.phase === 'loading';
 
   return (
     <Modal
@@ -103,15 +98,17 @@ export default function ContractReturnModal({
             style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
             Cancel
           </button>
-          <button onClick={handleSubmit} disabled={submitting}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all min-h-[44px]"
-            style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)', opacity: submitting ? 0.7 : 1 }}>
-            {submitting
-              ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              : <CheckCircle2 size={16} />
-            }
-            Confirm Return
-          </button>
+          <Tooltip label={submitAction.phase === 'error' ? submitAction.errorMessage : null}>
+            <button onClick={() => submitAction.run()} disabled={submitting}
+              className={cn(
+                'flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all min-h-[44px]',
+                submitAction.phase === 'error' && 'ring-2 ring-red-400',
+              )}
+              style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)', opacity: submitting ? 0.7 : 1 }}>
+              <AnimatedStatusIcon phase={submitAction.phase} idleIcon={CheckCircle2} size={16} />
+              Confirm Return
+            </button>
+          </Tooltip>
         </div>
       }
     >

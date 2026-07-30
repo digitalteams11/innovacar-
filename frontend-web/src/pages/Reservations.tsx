@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -18,6 +18,9 @@ import {
   Plus, Download, ChevronRight, Clock, MapPin, CreditCard,
   Trash2, Edit3, FileText, Car, Shield, X, Calendar
 } from 'lucide-react';
+import { useInlineAction } from '../hooks/useInlineAction';
+import AnimatedStatusIcon from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
 
 interface Reservation {
   id: number;
@@ -102,6 +105,8 @@ export default function Reservations() {
   const [loadError, setLoadError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const confirmDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [clientData, setClientData] = useState<Partial<SmartClientSearchValue>>({});
   const [selectedVehicle, setSelectedVehicle] = useState<SelectedVehicle | null>(null);
@@ -114,7 +119,6 @@ export default function Reservations() {
   const [returnLocation, setReturnLocation] = useState('');
   const [notes, setNotes] = useState('');
 
-  const [saving, setSaving] = useState(false);
 
   const { showToast } = useToast();
   const { t, i18n } = useTranslation();
@@ -323,7 +327,38 @@ export default function Reservations() {
     setIsModalOpen(true);
   };
 
-  const saveReservation = async () => {
+  // Validation errors render inline under each field (see fieldError() below)
+  // instead of a toast — the field itself is the right place for that
+  // feedback, not a banner. Only the actual submit outcome (success/failure
+  // of the API call) gets an icon-state on the Save button.
+  const saveAction = useInlineAction(async () => {
+    const vehicle = selectedVehicle as SelectedVehicle;
+    const payload = {
+      vehicleId: vehicle.id,
+      clientId: clientData.clientId,
+      dateStart: startDate,
+      startTime,
+      dateEnd: endDate,
+      endTime,
+      pickupLocation: pickupLocation || undefined,
+      returnLocation: returnLocation || undefined,
+      notes: notes || undefined,
+    };
+    if (editingId !== null) {
+      await api.put(`/reservations/${editingId}`, payload);
+    } else {
+      await api.post('/reservations', payload);
+    }
+    setIsModalOpen(false);
+    setFieldErrors({});
+    await fetchReservations();
+    // No query-cache library in this app — cross-page freshness (vehicle
+    // status/availability, dashboard stats) is driven by this event, same
+    // convention as Maintenance.tsx.
+    window.dispatchEvent(new Event('rentcar-data-updated'));
+  }, { context: 'save-reservation' });
+
+  const saveReservation = () => {
     const errors: Record<string, string> = {};
     if (!clientData.clientId) errors.client = t('reservations.validationErrors.clientRequired');
     if (!selectedVehicle?.id) errors.vehicle = t('reservations.validationErrors.vehicleRequired');
@@ -332,43 +367,8 @@ export default function Reservations() {
     if (!endDate) errors.endDate = t('reservations.validationErrors.endDateRequired');
     if (!endTime) errors.endTime = t('reservations.validationErrors.endTimeRequired');
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) {
-      showToast(t('reservations.selectClientVehicleDates'), 'warning');
-      return;
-    }
-    try {
-      setSaving(true);
-      const vehicle = selectedVehicle as SelectedVehicle;
-      const payload = {
-        vehicleId: vehicle.id,
-        clientId: clientData.clientId,
-        dateStart: startDate,
-        startTime,
-        dateEnd: endDate,
-        endTime,
-        pickupLocation: pickupLocation || undefined,
-        returnLocation: returnLocation || undefined,
-        notes: notes || undefined,
-      };
-      if (editingId !== null) {
-        await api.put(`/reservations/${editingId}`, payload);
-        showToast(t('toast.success', { action: t('reservations.edit') }));
-      } else {
-        await api.post('/reservations', payload);
-        showToast(t('toast.newReservationCreated'));
-      }
-      setIsModalOpen(false);
-      setFieldErrors({});
-      await fetchReservations();
-      // No query-cache library in this app — cross-page freshness (vehicle
-      // status/availability, dashboard stats) is driven by this event, same
-      // convention as Maintenance.tsx.
-      window.dispatchEvent(new Event('rentcar-data-updated'));
-    } catch (error: unknown) {
-      showToast(apiErrorMessage(error, 'Unable to save reservation. Please try again later.'), 'error');
-    } finally {
-      setSaving(false);
-    }
+    if (Object.keys(errors).length > 0) return;
+    saveAction.run();
   };
 
   const clearFieldError = (field: string) => {
@@ -391,7 +391,15 @@ export default function Reservations() {
 
   const deleteReservation = async (id: number) => {
     const reservation = data.find((r) => r.id === id);
-    if (!confirm(t('reservations.deleteConfirm') || 'Move this reservation to Trash?')) return;
+    // Inline click-to-confirm instead of a native window.confirm() dialog —
+    // first click arms the trash icon (see confirmDeleteId), second confirms.
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      if (confirmDeleteTimerRef.current) clearTimeout(confirmDeleteTimerRef.current);
+      confirmDeleteTimerRef.current = setTimeout(() => setConfirmDeleteId(null), 2500);
+      return;
+    }
+    setConfirmDeleteId(null);
 
     console.log('[RESERVATION_DELETE_CLICK]', {
       reservationId: id,
@@ -626,9 +634,13 @@ export default function Reservations() {
                 <button type="button" onClick={() => openEdit(res)} disabled={res.readOnly} className="glass-button rounded-2xl p-2 text-[var(--text-muted)] disabled:opacity-40" aria-label={t('reservations.editAria')}>
                   <Edit3 size={17} />
                 </button>
-                <button type="button" onClick={() => deleteReservation(res.id)} disabled={res.readOnly} className="glass-button rounded-2xl p-2 text-rose-500 disabled:opacity-40" aria-label={t('reservations.deleteAria')}>
-                  <Trash2 size={17} />
-                </button>
+                <Tooltip label={confirmDeleteId === res.id ? t('common.clickAgainToConfirm', 'Click again to confirm') : null}>
+                  <button type="button" onClick={() => deleteReservation(res.id)} disabled={res.readOnly}
+                    className={`glass-button rounded-2xl p-2 disabled:opacity-40 ${confirmDeleteId === res.id ? 'text-amber-500' : 'text-rose-500'}`}
+                    aria-label={t('reservations.deleteAria')}>
+                    <AnimatedStatusIcon phase={confirmDeleteId === res.id ? 'confirm' : 'idle'} idleIcon={Trash2} size={17} />
+                  </button>
+                </Tooltip>
               </div>
             </GlassCard>
           ))
@@ -800,24 +812,28 @@ export default function Reservations() {
                           >
                             <Edit3 size={17} />
                           </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => deleteReservation(res.id)}
-                            disabled={res.readOnly}
-                            className="p-2 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-30"
-                            style={{ color: 'var(--text-muted)' }}
-                            onMouseEnter={(e) => {
-                              (e.currentTarget as HTMLElement).style.color = 'var(--danger)';
-                              (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
-                            }}
-                            onMouseLeave={(e) => {
-                              (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)';
-                              (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-                            }}
-                          >
-                            <Trash2 size={17} />
-                          </motion.button>
+                          <Tooltip label={confirmDeleteId === res.id ? t('common.clickAgainToConfirm', 'Click again to confirm') : null}>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => deleteReservation(res.id)}
+                              disabled={res.readOnly}
+                              className="p-2 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-30"
+                              style={{ color: confirmDeleteId === res.id ? 'var(--warning, #f59e0b)' : 'var(--text-muted)' }}
+                              onMouseEnter={(e) => {
+                                if (confirmDeleteId === res.id) return;
+                                (e.currentTarget as HTMLElement).style.color = 'var(--danger)';
+                                (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (confirmDeleteId === res.id) return;
+                                (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)';
+                                (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <AnimatedStatusIcon phase={confirmDeleteId === res.id ? 'confirm' : 'idle'} idleIcon={Trash2} size={17} />
+                            </motion.button>
+                          </Tooltip>
                         </div>
                       </td>
                     </motion.tr>
@@ -841,15 +857,20 @@ export default function Reservations() {
         title={editingId ? t('reservations.edit') : t('reservations.createReservation')}
         maxWidth="5xl"
         footer={
-          <motion.button
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={saveReservation}
-            disabled={saving}
-            className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving...' : editingId ? 'Save Changes' : t('reservations.createReservation')}
-          </motion.button>
+          <Tooltip label={saveAction.phase === 'error' ? saveAction.errorMessage : null}>
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={saveReservation}
+              disabled={saveAction.phase === 'loading'}
+              className={`w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${saveAction.phase === 'error' ? 'ring-2 ring-red-400' : ''}`}
+            >
+              {saveAction.phase !== 'idle' && (
+                <AnimatedStatusIcon phase={saveAction.phase} idleIcon={Edit3} className="w-4 h-4" />
+              )}
+              {editingId ? 'Save Changes' : t('reservations.createReservation')}
+            </motion.button>
+          </Tooltip>
         }
       >
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:gap-6">

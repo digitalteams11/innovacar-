@@ -10,6 +10,9 @@ import ApiErrorState from '../components/ApiErrorState';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
+import AnimatedStatusIcon from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
+import { logDevError, toFriendlyError } from '../lib/errorMessages';
 
 interface Payment {
   id: number;
@@ -64,6 +67,8 @@ export default function Payments() {
   const [statsUnavailable, setStatsUnavailable] = useState(false);
   const [exportingStatements, setExportingStatements] = useState(false);
   const { showToast } = useToast();
+  const [markingPaidId, setMarkingPaidId] = useState<number | null>(null);
+  const [markPaidFlash, setMarkPaidFlash] = useState<{ id: number; message: string } | null>(null);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { hasPermission, loading: permLoading, isAgencyAdmin } = usePermissions();
@@ -223,13 +228,19 @@ export default function Payments() {
   };
 
   const markAsPaid = async (reservationId?: number) => {
-    if (!reservationId) return;
+    if (!reservationId || markingPaidId === reservationId) return;
+    setMarkingPaidId(reservationId);
     try {
       await api.patch(`/payments/reservation/${reservationId}/pay`);
       await fetchPayments();
-      showToast(t('toast.success', { action: 'Payment marked as paid' }));
-    } catch {
-      showToast(t('payments.completePaymentFailed'), 'error');
+      // Row re-renders as PAID (button unmounts) — that status change is the
+      // confirmation, no toast needed.
+    } catch (err) {
+      logDevError('mark-payment-paid', err);
+      setMarkPaidFlash({ id: reservationId, message: toFriendlyError(err, t('payments.completePaymentFailed')).message });
+      setTimeout(() => setMarkPaidFlash((f) => (f?.id === reservationId ? null : f)), 2500);
+    } finally {
+      setMarkingPaidId(null);
     }
   };
 
@@ -380,12 +391,19 @@ export default function Payments() {
                       {payment.contractNumber && ` · ${payment.contractNumber}`}
                     </p>
                     {payment.reservationId && payment.status !== 'PAID' && (
-                      <button
-                        onClick={() => markAsPaid(payment.reservationId)}
-                        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-50 text-xs font-bold uppercase tracking-wider text-brand-500 hover:bg-brand-500 hover:text-white transition-all"
-                      >
-                        <RefreshCcw size={13} /> {t('payments.markPaid')}
-                      </button>
+                      <Tooltip label={markPaidFlash?.id === payment.reservationId ? markPaidFlash.message : null}>
+                        <button
+                          onClick={() => markAsPaid(payment.reservationId)}
+                          disabled={markingPaidId === payment.reservationId}
+                          className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-50 text-xs font-bold uppercase tracking-wider text-brand-500 hover:bg-brand-500 hover:text-white transition-all disabled:opacity-60"
+                        >
+                          <AnimatedStatusIcon
+                            phase={markingPaidId === payment.reservationId ? 'loading' : markPaidFlash?.id === payment.reservationId ? 'error' : 'idle'}
+                            idleIcon={RefreshCcw}
+                            size={13}
+                          /> {t('payments.markPaid')}
+                        </button>
+                      </Tooltip>
                     )}
                   </div>
                 ))}
@@ -421,9 +439,19 @@ export default function Payments() {
                   <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs text-slate-500">{payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}</td>
                   <td className="px-3 sm:px-5 py-3 sm:py-4">
                     {payment.reservationId && payment.status !== 'PAID' && (
-                      <button onClick={() => markAsPaid(payment.reservationId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 text-brand-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-brand-500 hover:text-white transition-all">
-                        <RefreshCcw size={12} /> {t('payments.markPaid')}
-                      </button>
+                      <Tooltip label={markPaidFlash?.id === payment.reservationId ? markPaidFlash.message : null}>
+                        <button
+                          onClick={() => markAsPaid(payment.reservationId)}
+                          disabled={markingPaidId === payment.reservationId}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 text-brand-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-brand-500 hover:text-white transition-all disabled:opacity-60"
+                        >
+                          <AnimatedStatusIcon
+                            phase={markingPaidId === payment.reservationId ? 'loading' : markPaidFlash?.id === payment.reservationId ? 'error' : 'idle'}
+                            idleIcon={RefreshCcw}
+                            size={12}
+                          /> {t('payments.markPaid')}
+                        </button>
+                      </Tooltip>
                     )}
                   </td>
                 </tr>

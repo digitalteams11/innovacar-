@@ -6,6 +6,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { isValidMoroccanWhatsAppPhone, normalizePhoneForWhatsApp } from '../../lib/phone';
 import Modal from '../Modal';
+import AnimatedStatusIcon from './AnimatedStatusIcon';
+import Tooltip from './Tooltip';
+import { cn } from '../../lib/utils';
 
 interface SendClientInfoRequestModalProps {
   isOpen: boolean;
@@ -48,6 +51,7 @@ export default function SendClientInfoRequestModal({
   const [whatsappChannel, setWhatsappChannel] = useState(true);
   const [errors, setErrors] = useState<{ name?: string; phone?: string; email?: string }>({});
   const [submitting, setSubmitting] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<'EMAIL' | 'WHATSAPP' | null>(null);
   const [result, setResult] = useState<DeliveryResponse | null>(null);
 
@@ -55,7 +59,7 @@ export default function SendClientInfoRequestModal({
     setStep(1);
     setTemporaryName(initialName || ''); setPhone(initialPhone || ''); setEmail(initialEmail || '');
     setEmailChannel(true); setWhatsappChannel(true);
-    setErrors({}); setResult(null);
+    setErrors({}); setResult(null); setSendError(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -81,10 +85,11 @@ export default function SendClientInfoRequestModal({
     if (emailChannel && emailAvailable) channels.push('EMAIL');
     if (whatsappChannel && phoneAvailable) channels.push('WHATSAPP');
     if (channels.length === 0) {
-      showToast(t('clientInfoAdmin.form.selectChannel', 'Select at least one delivery channel.'), 'warning');
+      setSendError(t('clientInfoAdmin.form.selectChannel', 'Select at least one delivery channel.'));
       return;
     }
     setSubmitting(true);
+    setSendError(null);
     try {
       const { data } = await api.post('/client-information-requests', {
         clientId,
@@ -97,7 +102,7 @@ export default function SendClientInfoRequestModal({
       });
       setResult(data);
     } catch (err: any) {
-      showToast(translateErrorCode(err?.response?.data?.code, t) || err?.userMessage || t('clientInfoAdmin.actionFailed', 'Action failed. Please try again.'), 'error');
+      setSendError(translateErrorCode(err?.response?.data?.code, t) || err?.userMessage || t('clientInfoAdmin.actionFailed', 'Action failed. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -116,12 +121,8 @@ export default function SendClientInfoRequestModal({
         emailResult: channel === 'EMAIL' ? data.emailResult : prev.emailResult,
         whatsappResult: channel === 'WHATSAPP' ? data.whatsappResult : prev.whatsappResult,
       } : data);
-      const channelResult = channel === 'EMAIL' ? data.emailResult : data.whatsappResult;
-      if (channelResult?.sent) {
-        showToast(t('clientInfoAdmin.result.retrySuccess', 'Message sent'), 'success');
-      } else {
-        showToast(t('clientInfoAdmin.result.retryFailed', 'Still could not deliver. Please try again later.'), 'warning');
-      }
+      // ChannelRow already re-renders from the updated result (Sent checkmark
+      // or the Retry button reappearing) — that's the confirmation, no toast needed.
     } catch (err: any) {
       showToast(err?.userMessage || t('clientInfoAdmin.actionFailed', 'Action failed. Please try again.'), 'error');
     } finally {
@@ -161,23 +162,19 @@ export default function SendClientInfoRequestModal({
       >
         {t('common.back', 'Back')}
       </button>
-      <button
-        onClick={send}
-        disabled={submitting || (!emailChannel && !whatsappChannel)}
-        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all disabled:opacity-50"
-      >
-        {submitting ? (
-          <>
-            <Loader2 size={16} className="animate-spin" />
-            {t('clientInfoAdmin.form.sending', 'Generating secure link and sending…')}
-          </>
-        ) : (
-          <>
-            <Send size={16} />
-            {t('clientInfoAdmin.generateAndSend', 'Generate and send')}
-          </>
-        )}
-      </button>
+      <Tooltip label={sendError}>
+        <button
+          onClick={send}
+          disabled={submitting || (!emailChannel && !whatsappChannel)}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 transition-all disabled:opacity-50',
+            sendError && 'ring-2 ring-red-400',
+          )}
+        >
+          <AnimatedStatusIcon phase={submitting ? 'loading' : sendError ? 'error' : 'idle'} idleIcon={Send} size={16} />
+          {submitting ? t('clientInfoAdmin.form.sending', 'Generating secure link and sending…') : t('clientInfoAdmin.generateAndSend', 'Generate and send')}
+        </button>
+      </Tooltip>
     </div>
   );
 
@@ -313,7 +310,7 @@ function ChannelRow({
   );
 }
 
-type WhatsAppShareStatus = 'AVAILABLE' | 'OPENED' | 'PHONE_MISSING' | 'INVALID_PHONE';
+type WhatsAppShareStatus = 'AVAILABLE' | 'OPENED' | 'PHONE_MISSING' | 'INVALID_PHONE' | 'BLOCKED';
 
 /** Builds the translated invitation message sent through the manual wa.me share link. */
 function buildWhatsAppMessage(params: {
@@ -343,7 +340,6 @@ function WhatsAppShareRow({
   clientName: string; clientPhone: string; agencyName?: string; language: string; secureUrl: string; expiresAt?: string;
 }) {
   const { t } = useTranslation();
-  const { showToast } = useToast();
   const [status, setStatus] = useState<WhatsAppShareStatus>(() => (
     !clientPhone.trim() ? 'PHONE_MISSING' : !isValidMoroccanWhatsAppPhone(clientPhone) ? 'INVALID_PHONE' : 'AVAILABLE'
   ));
@@ -361,11 +357,10 @@ function WhatsAppShareRow({
 
     if (!win) {
       navigator.clipboard?.writeText(`${message}`);
-      showToast(t('clientInfoAdmin.result.whatsappBlocked', 'WhatsApp could not be opened. The message was copied.'), 'warning');
+      setStatus('BLOCKED');
       return;
     }
     setStatus('OPENED');
-    showToast(t('clientInfoAdmin.result.whatsappOpened', 'WhatsApp opened'), 'success');
   };
 
   return (
@@ -390,6 +385,15 @@ function WhatsAppShareRow({
           className="min-h-[44px] flex items-center gap-1.5 px-3 text-xs font-semibold text-success-600 hover:text-success-700 transition-colors"
         >
           <CheckCircle2 size={14} /> {t('clientInfoAdmin.result.whatsappOpened', 'WhatsApp opened')}
+        </button>
+      ) : status === 'BLOCKED' ? (
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-label={t('clientInfoAdmin.result.openWhatsapp', 'Open WhatsApp')}
+          className="min-h-[44px] flex items-center gap-1.5 px-3 text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+        >
+          <AlertTriangle size={14} /> {t('clientInfoAdmin.result.whatsappBlocked', 'Blocked — message copied, tap to retry')}
         </button>
       ) : (
         <button

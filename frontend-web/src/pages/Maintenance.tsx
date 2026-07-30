@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Ban, CheckCircle2, Loader2, Plus, Play, Wrench } from 'lucide-react';
+import { AlertTriangle, Ban, CheckCircle2, Loader2, Plus, Play, Wrench, XCircle } from 'lucide-react';
 import api from '../api/axios';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { resolveApiErrorMessage } from '../i18n/apiError';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 import { translateVehicleStatus } from '../utils/statusLabels';
+import { useInlineAction } from '../hooks/useInlineAction';
+import { logDevError, toFriendlyError } from '../lib/errorMessages';
+import AnimatedStatusIcon, { type StatusPhase } from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
+import { cn } from '../lib/utils';
 
 const emptyForm = {
   vehicleId: '',
@@ -61,8 +66,12 @@ export default function Maintenance() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [repairing, setRepairing] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [updatingMaintenanceId, setUpdatingMaintenanceId] = useState<number | null>(null);
+  // Replaces the old success/error toast for status changes: a brief flash
+  // (green row highlight on success, red shaking icon + tooltip on the
+  // clicked button on failure) instead of a banner announcing the outcome.
+  const [statusFlash, setStatusFlash] = useState<{ id: number; action: string; ok: boolean; message?: string } | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -197,7 +206,7 @@ export default function Maintenance() {
 
   const create = async () => {
     const validation = validateForm();
-    if (validation) { showToast(validation, 'warning'); return; }
+    if (validation) return; // inline field errors (fieldError()) already show it — no toast needed
     setSaving(true);
     try {
       const vehicleId = Number(form.vehicleId);
@@ -227,26 +236,24 @@ export default function Maintenance() {
         endpoint: '/maintenance',
       });
       console.debug('[MAINTENANCE_FRONTEND_PAYLOAD]', payload);
-      const response = await api.post('/maintenance', payload);
+      await api.post('/maintenance', payload);
+      // Closing the modal on success is the confirmation — no toast needed;
+      // the work order now visibly appears in the (freshly reloaded) list.
       setOpen(false);
       setForm(emptyForm);
       setFieldErrors({});
+      setCreateError(null);
       await load();
       // Dashboard stats, vehicle timeline and any other listener refresh off this.
       window.dispatchEvent(new Event('rentcar-data-updated'));
-      const warnings: string[] = response.data?.warnings || [];
-      if (warnings.includes('NOTIFICATION_CREATE_FAILED')) {
-        showToast(t('maintenance.toast.createdWithNotificationWarning'), 'warning');
-      } else {
-        showToast(t('maintenance.toast.createdSuccess'), 'success');
-      }
       if (returnTo) {
         navigate(returnTo);
       }
       setPreselectedVehicle(null);
       setReturnTo(null);
     } catch (err: any) {
-      showToast(resolveApiErrorMessage(err, t('maintenance.toast.createFailed')), 'error');
+      logDevError('maintenance-create', err);
+      setCreateError(resolveApiErrorMessage(err, t('maintenance.toast.createFailed')));
     } finally {
       setSaving(false);
     }
@@ -255,6 +262,7 @@ export default function Maintenance() {
   const openCreate = () => {
     setForm(emptyForm);
     setFieldErrors({});
+    setCreateError(null);
     setPreselectedVehicle(null);
     setReturnTo(null);
     setOpen(true);
@@ -276,49 +284,40 @@ export default function Maintenance() {
       fieldErrors[field] ? 'border-danger-500 ring-2 ring-danger-500/20' : ''
     }`;
 
-  const statusSuccessKey = (status: string) => {
-    switch (status) {
-      case 'IN_PROGRESS': return 'maintenance.toast.startedSuccess';
-      case 'COMPLETED': return 'maintenance.toast.completedSuccess';
-      case 'CANCELLED': return 'maintenance.toast.cancelledSuccess';
-      default: return 'maintenance.toast.statusUpdatedSuccess';
-    }
-  };
-
   const changeStatus = async (id: number, status: string) => {
     // Guard against double-click/spam: only one PATCH per work order at a time.
     if (updatingMaintenanceId === id) return;
     setUpdatingMaintenanceId(id);
     try {
       console.debug('[MAINTENANCE_STATUS_PATCH_DEBUG]', { id, endpoint: `/maintenance/${id}/status`, payload: { status } });
-      const response = await api.patch(`/maintenance/${id}/status`, { status });
+      await api.patch(`/maintenance/${id}/status`, { status });
       await load();
       window.dispatchEvent(new Event('rentcar-data-updated'));
-      const warnings: string[] = response.data?.warnings || [];
-      if (warnings.includes('NOTIFICATION_CREATE_FAILED')) {
-        showToast(t('maintenance.toast.statusUpdatedWithNotificationWarning'), 'warning');
-      } else {
-        showToast(t(statusSuccessKey(status)), 'success');
-      }
+      setStatusFlash({ id, action: status, ok: true });
     } catch (err: any) {
-      showToast(resolveApiErrorMessage(err, t('maintenance.toast.statusUpdateFailed')), 'error');
+      logDevError('maintenance-status-change', err);
+      setStatusFlash({ id, action: status, ok: false, message: toFriendlyError(err, resolveApiErrorMessage(err, t('maintenance.toast.statusUpdateFailed'))).message });
     } finally {
       setUpdatingMaintenanceId(null);
+      setTimeout(() => setStatusFlash((f) => (f?.id === id ? null : f)), 2000);
     }
   };
 
-  const repairOrphans = async () => {
-    setRepairing(true);
-    try {
-      await api.post('/maintenance/repair-missing-work-orders');
-      await load();
-      showToast(t('maintenance.toast.repairComplete'), 'success');
-    } catch (err: any) {
-      showToast(resolveApiErrorMessage(err, t('maintenance.toast.repairFailed')), 'error');
-    } finally {
-      setRepairing(false);
-    }
+  const statusButtonPhase = (id: number, action: string): StatusPhase => {
+    if (updatingMaintenanceId === id) return 'loading';
+    if (statusFlash?.id === id && statusFlash.action === action) return statusFlash.ok ? 'success' : 'error';
+    return 'idle';
   };
+
+  const statusButtonTooltip = (id: number, action: string, idleLabel: string) => {
+    if (statusFlash?.id === id && statusFlash.action === action && !statusFlash.ok) return statusFlash.message || idleLabel;
+    return idleLabel;
+  };
+
+  const repairAction = useInlineAction(async () => {
+    await api.post('/maintenance/repair-missing-work-orders');
+    await load();
+  }, { context: 'maintenance-repair-orphans' });
 
   return (
     <div className="space-y-5 p-3 sm:p-4 lg:p-6">
@@ -345,14 +344,19 @@ export default function Maintenance() {
               {t('maintenance.repairBannerDescription')}
             </p>
           </div>
-          <button
-            onClick={repairOrphans}
-            disabled={repairing}
-            className="shrink-0 flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-          >
-            {repairing ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />}
-            {t('maintenance.repairNow')}
-          </button>
+          <Tooltip label={repairAction.phase === 'error' ? repairAction.errorMessage : null}>
+            <button
+              onClick={() => repairAction.run()}
+              disabled={repairAction.phase === 'loading'}
+              className={cn(
+                'shrink-0 flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-60',
+                repairAction.phase === 'error' && 'ring-2 ring-red-400',
+              )}
+            >
+              <AnimatedStatusIcon phase={repairAction.phase} idleIcon={Wrench} size={13} />
+              {t('maintenance.repairNow')}
+            </button>
+          </Tooltip>
         </div>
       )}
 
@@ -417,24 +421,30 @@ export default function Maintenance() {
                   {(row.status === 'SCHEDULED' || row.status === 'IN_PROGRESS') && (
                     <div className="flex items-center gap-2 border-t border-[#e8e6e1] pt-3">
                       {row.status === 'SCHEDULED' && (
-                        <button title={t('maintenance.actions.start')} disabled={updatingMaintenanceId === row.id}
-                          onClick={() => changeStatus(row.id, 'IN_PROGRESS')}
-                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-50 text-sm font-semibold text-brand-600 disabled:opacity-50">
-                          {updatingMaintenanceId === row.id ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />} {t('maintenance.actions.start')}
-                        </button>
+                        <Tooltip label={statusButtonTooltip(row.id, 'IN_PROGRESS', t('maintenance.actions.start'))}>
+                          <button disabled={updatingMaintenanceId === row.id}
+                            onClick={() => changeStatus(row.id, 'IN_PROGRESS')}
+                            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-50 text-sm font-semibold text-brand-600 disabled:opacity-50">
+                            <AnimatedStatusIcon phase={statusButtonPhase(row.id, 'IN_PROGRESS')} idleIcon={Play} size={15} /> {t('maintenance.actions.start')}
+                          </button>
+                        </Tooltip>
                       )}
                       {row.status === 'IN_PROGRESS' && (
-                        <button title={t('maintenance.actions.complete')} disabled={updatingMaintenanceId === row.id}
-                          onClick={() => changeStatus(row.id, 'COMPLETED')}
-                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-success-50 text-sm font-semibold text-success-600 disabled:opacity-50">
-                          {updatingMaintenanceId === row.id ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} {t('maintenance.actions.complete')}
-                        </button>
+                        <Tooltip label={statusButtonTooltip(row.id, 'COMPLETED', t('maintenance.actions.complete'))}>
+                          <button disabled={updatingMaintenanceId === row.id}
+                            onClick={() => changeStatus(row.id, 'COMPLETED')}
+                            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-success-50 text-sm font-semibold text-success-600 disabled:opacity-50">
+                            <AnimatedStatusIcon phase={statusButtonPhase(row.id, 'COMPLETED')} idleIcon={CheckCircle2} size={15} /> {t('maintenance.actions.complete')}
+                          </button>
+                        </Tooltip>
                       )}
-                      <button title={t('maintenance.actions.cancel')} disabled={updatingMaintenanceId === row.id}
-                        onClick={() => changeStatus(row.id, 'CANCELLED')}
-                        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-danger-50 text-red-500 disabled:opacity-50">
-                        {updatingMaintenanceId === row.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
-                      </button>
+                      <Tooltip label={statusButtonTooltip(row.id, 'CANCELLED', t('maintenance.actions.cancel'))}>
+                        <button disabled={updatingMaintenanceId === row.id}
+                          onClick={() => changeStatus(row.id, 'CANCELLED')}
+                          className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-danger-50 text-red-500 disabled:opacity-50">
+                          <AnimatedStatusIcon phase={statusButtonPhase(row.id, 'CANCELLED')} idleIcon={Ban} errorIcon={XCircle} size={16} />
+                        </button>
+                      </Tooltip>
                     </div>
                   )}
                 </div>
@@ -483,25 +493,31 @@ export default function Maintenance() {
                 <td className="pe-3">
                   <div className="flex justify-end gap-1">
                     {row.status === 'SCHEDULED' && (
-                      <button title={t('maintenance.actions.start')} disabled={updatingMaintenanceId === row.id}
-                        onClick={() => changeStatus(row.id, 'IN_PROGRESS')}
-                        className="p-2 text-brand-500 disabled:opacity-50">
-                        {updatingMaintenanceId === row.id ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-                      </button>
+                      <Tooltip label={statusButtonTooltip(row.id, 'IN_PROGRESS', t('maintenance.actions.start'))}>
+                        <button disabled={updatingMaintenanceId === row.id}
+                          onClick={() => changeStatus(row.id, 'IN_PROGRESS')}
+                          className="p-2 text-brand-500 disabled:opacity-50">
+                          <AnimatedStatusIcon phase={statusButtonPhase(row.id, 'IN_PROGRESS')} idleIcon={Play} size={16} />
+                        </button>
+                      </Tooltip>
                     )}
                     {row.status === 'IN_PROGRESS' && (
-                      <button title={t('maintenance.actions.complete')} disabled={updatingMaintenanceId === row.id}
-                        onClick={() => changeStatus(row.id, 'COMPLETED')}
-                        className="p-2 text-emerald-600 disabled:opacity-50">
-                        {updatingMaintenanceId === row.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                      </button>
+                      <Tooltip label={statusButtonTooltip(row.id, 'COMPLETED', t('maintenance.actions.complete'))}>
+                        <button disabled={updatingMaintenanceId === row.id}
+                          onClick={() => changeStatus(row.id, 'COMPLETED')}
+                          className="p-2 text-emerald-600 disabled:opacity-50">
+                          <AnimatedStatusIcon phase={statusButtonPhase(row.id, 'COMPLETED')} idleIcon={CheckCircle2} size={16} />
+                        </button>
+                      </Tooltip>
                     )}
                     {['SCHEDULED', 'IN_PROGRESS'].includes(row.status) && (
-                      <button title={t('maintenance.actions.cancel')} disabled={updatingMaintenanceId === row.id}
-                        onClick={() => changeStatus(row.id, 'CANCELLED')}
-                        className="p-2 text-red-500 disabled:opacity-50">
-                        {updatingMaintenanceId === row.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
-                      </button>
+                      <Tooltip label={statusButtonTooltip(row.id, 'CANCELLED', t('maintenance.actions.cancel'))}>
+                        <button disabled={updatingMaintenanceId === row.id}
+                          onClick={() => changeStatus(row.id, 'CANCELLED')}
+                          className="p-2 text-red-500 disabled:opacity-50">
+                          <AnimatedStatusIcon phase={statusButtonPhase(row.id, 'CANCELLED')} idleIcon={Ban} errorIcon={XCircle} size={16} />
+                        </button>
+                      </Tooltip>
                     )}
                   </div>
                 </td>
@@ -519,10 +535,20 @@ export default function Maintenance() {
         onClose={closeModal}
         title={t('maintenance.modal.title')}
         footer={
-          <button onClick={create} disabled={saving}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium disabled:opacity-70">
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Wrench size={16} />} {t('maintenance.modal.create')}
-          </button>
+          <Tooltip label={createError}>
+            <button onClick={create} disabled={saving}
+              className={cn(
+                'w-full flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium disabled:opacity-70',
+                createError && 'ring-2 ring-red-400',
+              )}>
+              <AnimatedStatusIcon
+                phase={saving ? 'loading' : createError ? 'error' : 'idle'}
+                idleIcon={Wrench}
+                size={16}
+              />
+              {t('maintenance.modal.create')}
+            </button>
+          </Tooltip>
         }
       >
         <div className="space-y-4">

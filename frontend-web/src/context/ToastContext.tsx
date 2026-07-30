@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, RefreshCw, WifiOff, X } from 'lucide-react';
 import { useNotificationSound } from './NotificationSoundContext';
 
 export type ToastType = 'success' | 'warning' | 'error' | 'info';
@@ -8,6 +8,8 @@ interface Toast {
   id: number;
   message: string;
   type: ToastType;
+  /** Only set for error toasts — swaps the icon for something more specific than a generic alert (spec: offline/retry/sync icons instead of raw "service unavailable" text). */
+  kind?: 'offline' | 'unavailable' | 'generic';
   paused?: boolean;
 }
 
@@ -19,12 +21,20 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-const duration: Record<ToastType, number> = {
-  success: 4000,
-  info: 4000,
-  warning: 6000,
-  error: 8000,
-};
+// Every toast auto-dismisses after 2 seconds — this is a lightweight ambient
+// signal now, not a message the user is expected to stop and read. Anything
+// that needs to stay visible longer (a specific action's outcome) belongs on
+// an inline icon-state component (see InlineActionButton), not a toast.
+const AUTO_DISMISS_MS = 2000;
+
+const OFFLINE_PATTERN = /(you appear to be offline|network error|no internet)/i;
+const UNAVAILABLE_PATTERN = /(temporarily unavailable|service unavailable|try again later)/i;
+
+function classify(message: string): Toast['kind'] {
+  if (OFFLINE_PATTERN.test(message)) return 'offline';
+  if (UNAVAILABLE_PATTERN.test(message)) return 'unavailable';
+  return 'generic';
+}
 
 /**
  * Infer toast type from message content.
@@ -134,6 +144,13 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const id = ++nextId.current;
     let inserted = false;
 
+    if (type === 'error' && rawMessage !== cleanMessage) {
+      // The user only ever sees the sanitized message — the original goes to
+      // the console so it's still traceable during development.
+      // eslint-disable-next-line no-console
+      console.error('[toast:error]', rawMessage);
+    }
+
     setToasts(current => {
       // Deduplication: prevent exact same message+type within current stack
       if (current.some(toast => toast.message === cleanMessage && toast.type === type)) {
@@ -142,7 +159,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       inserted = true;
       // Max 3 toasts visible at once (keep newest)
       const trimmed = current.slice(-2);
-      return [...trimmed, { id, message: cleanMessage, type }];
+      return [...trimmed, { id, message: cleanMessage, type, kind: type === 'error' ? classify(cleanMessage) : undefined }];
     });
 
     if (!inserted) return;
@@ -151,7 +168,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       playSound('error');
     }
 
-    armTimer(id, duration[type]);
+    armTimer(id, AUTO_DISMISS_MS);
   }, [armTimer, playSound]);
 
   const toast = useMemo<Record<ToastType, (message: string) => void>>(() => ({
@@ -192,7 +209,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }[item.type];
           const Icon = item.type === 'success' ? CheckCircle2
             : item.type === 'warning' ? AlertTriangle
-              : item.type === 'error' ? AlertCircle : Info;
+              : item.type === 'error'
+                ? (item.kind === 'offline' ? WifiOff : item.kind === 'unavailable' ? RefreshCw : AlertCircle)
+                : Info;
           return (
             <div
               key={item.id}
@@ -204,21 +223,23 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               onMouseLeave={() => resumeToast(item.id)}
               onFocus={() => pauseToast(item.id)}
               onBlur={() => resumeToast(item.id)}
+              onClick={() => dismiss(item.id)}
               style={{
                 background: 'var(--bg-card-solid)',
                 boxShadow: 'var(--shadow-elevated)',
-                borderInlineStart: `3px solid ${colorMap}`,
               }}
             >
-              <Icon size={18} className="mt-0.5 shrink-0" style={{ color: colorMap }} />
-              <span className="flex-1 text-sm font-semibold leading-5" style={{ color: 'var(--text-primary)' }}>{item.message}</span>
+              <span className="toast-icon-dot" style={{ background: `${colorMap}1a`, color: colorMap }}>
+                <Icon size={14} />
+              </span>
+              <span className="flex-1 text-[13px] font-medium leading-5" style={{ color: 'var(--text-primary)' }}>{item.message}</span>
               <button
-                onClick={() => dismiss(item.id)}
-                className="p-1 opacity-60 hover:opacity-100 transition-opacity shrink-0"
+                onClick={(e) => { e.stopPropagation(); dismiss(item.id); }}
+                className="p-1 opacity-50 hover:opacity-100 transition-opacity shrink-0"
                 aria-label="Dismiss"
                 style={{ color: 'var(--text-muted)' }}
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             </div>
           );

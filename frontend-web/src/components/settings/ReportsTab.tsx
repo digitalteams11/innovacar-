@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Loader2, Save, Archive } from 'lucide-react';
 import { useReportPreferences } from '../../hooks/useReports';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
-import { useToast } from '../../context/ToastContext';
+import { useInlineAction } from '../../hooks/useInlineAction';
+import AnimatedStatusIcon from '../shared/AnimatedStatusIcon';
+import Tooltip from '../shared/Tooltip';
 import LockedFeatureCard from '../LockedFeatureCard';
 
 export default function ReportsTab() {
   const { t } = useTranslation();
   const { hasFeature, getFeature, loading: featureLoading } = useFeatureAccess();
-  const { showToast } = useToast();
   const { preferences, loading, savePreferences } = useReportPreferences();
   const [form, setForm] = useState({
     reportEnabled: true,
@@ -22,7 +23,7 @@ export default function ReportsTab() {
     includeAiSummary: true,
     includeClientDebtDetail: true,
   });
-  const [saving, setSaving] = useState(false);
+  const save = useInlineAction(() => savePreferences(form), { context: 'save-report-preferences' });
 
   useEffect(() => {
     if (preferences) {
@@ -53,18 +54,6 @@ export default function ReportsTab() {
     };
     return <LockedFeatureCard feature={access} />;
   }
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await savePreferences(form);
-      showToast(t('settings.reports.saved', 'Report preferences saved'));
-    } catch {
-      showToast(t('settings.reports.saveFailed', 'Failed to save report preferences'), 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -153,10 +142,16 @@ export default function ReportsTab() {
           onChange={(e) => setForm({ ...form, includeClientDebtDetail: e.target.checked })} />
       </label>
 
-      <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg">
-        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-        {t('common.save', 'Save')}
-      </button>
+      <Tooltip label={save.phase === 'error' ? save.errorMessage : null}>
+        <button
+          onClick={() => save.run()}
+          disabled={save.phase === 'loading'}
+          className={`btn-primary flex items-center gap-2 px-4 py-2 rounded-lg ${save.phase === 'error' ? 'ring-2 ring-red-500' : ''}`}
+        >
+          <AnimatedStatusIcon phase={save.phase} idleIcon={Save} className="w-4 h-4" />
+          {t('common.save', 'Save')}
+        </button>
+      </Tooltip>
     </div>
   );
 }

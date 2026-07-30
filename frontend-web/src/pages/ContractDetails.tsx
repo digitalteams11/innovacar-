@@ -5,7 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { resolveMediaUrl } from '../lib/utils';
+import { resolveMediaUrl, cn } from '../lib/utils';
+import { useInlineAction } from '../hooks/useInlineAction';
+import AnimatedStatusIcon from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
 import SignaturePad from '../components/shared/SignaturePad';
 import QRCodeModal from '../components/shared/QRCodeModal';
 import VehicleInspection from '../components/shared/VehicleInspection';
@@ -156,7 +159,7 @@ export default function ContractDetails() {
   const [inspections, setInspections] = useState<any[]>([]);
   const [inspectionQr, setInspectionQr] = useState<any>(null);
   const [emailStatus, setEmailStatus] = useState<any>(null);
-  const [sendingEmail, setSendingEmail] = useState(false);
+  const [, setSendingEmail] = useState(false);
   const [showAddEmailModal, setShowAddEmailModal] = useState(false);
   const [savingClientEmail, setSavingClientEmail] = useState(false);
   const [generatingShareLink, setGeneratingShareLink] = useState(false);
@@ -281,59 +284,42 @@ export default function ContractDetails() {
     setContract(current => current ? { ...current, ...fallback } : current);
   };
 
-  const handleDownloadPdf = async () => {
+  const downloadPdfAction = useInlineAction(async () => {
     if (!contract) return;
-    setIsSubmitting(true);
-    try {
-      showToast(t('contractDetails.toasts.generatingPdf'), 'info');
-      const response = await api.get(`/contracts/${contract.id}/pdf`, { responseType: 'blob' });
-      if (!response.data || response.data.size === 0) {
-        showToast(t('contractDetails.toasts.pdfEmpty'), 'error');
-        return;
-      }
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = safePdfFileName(contract.contractNumber);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      showToast(t('contractDetails.toasts.pdfDownloaded'), 'success');
-    } catch (err: any) {
-      showToast((err as any).userMessage || t('contractDetails.toasts.pdfDownloadFailed'), 'error');
-    } finally {
-      setIsSubmitting(false);
+    const response = await api.get(`/contracts/${contract.id}/pdf`, { responseType: 'blob' });
+    if (!response.data || response.data.size === 0) {
+      throw new Error(t('contractDetails.toasts.pdfEmpty'));
     }
-  };
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = safePdfFileName(contract.contractNumber);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }, { context: 'contract-download-pdf' });
+  const handleDownloadPdf = () => downloadPdfAction.run();
 
-  const handleRegeneratePdf = async () => {
+  const regeneratePdfAction = useInlineAction(async () => {
     if (!contract) return;
-    setIsSubmitting(true);
-    try {
-      console.log('[CONTRACT_PDF_REGENERATE_DEBUG]', {
-        contractId: contract.id,
-        contractNumber: contract.contractNumber,
-        endpoint: `/contracts/${contract.id}/pdf/regenerate`,
-        method: 'POST',
-        currentAgencySettings: true,
-      });
-      showToast(t('contractDetails.toasts.regeneratingPdf'), 'info');
-      const response = await api.post(`/contracts/${contract.id}/pdf/regenerate`);
-      const refreshed = response.data?.data;
-      if (refreshed?.pdfUrl) {
-        setContract(c => c ? { ...c, pdfUrl: refreshed.pdfUrl } : c);
-      } else {
-        applyContractEnvelope(response.data, refreshed);
-      }
-      showToast(t('contractDetails.toasts.pdfRegenerated'), 'success');
-    } catch (err: any) {
-      showToast((err as any).userMessage || t('contractDetails.toasts.pdfRegenerateFailed'), 'error');
-    } finally {
-      setIsSubmitting(false);
+    console.log('[CONTRACT_PDF_REGENERATE_DEBUG]', {
+      contractId: contract.id,
+      contractNumber: contract.contractNumber,
+      endpoint: `/contracts/${contract.id}/pdf/regenerate`,
+      method: 'POST',
+      currentAgencySettings: true,
+    });
+    const response = await api.post(`/contracts/${contract.id}/pdf/regenerate`);
+    const refreshed = response.data?.data;
+    if (refreshed?.pdfUrl) {
+      setContract(c => c ? { ...c, pdfUrl: refreshed.pdfUrl } : c);
+    } else {
+      applyContractEnvelope(response.data, refreshed);
     }
-  };
+  }, { context: 'contract-regenerate-pdf' });
+  const handleRegeneratePdf = () => regeneratePdfAction.run();
 
   const handlePrintPdf = async () => {
     if (!contract) return;
@@ -596,6 +582,15 @@ export default function ContractDetails() {
     }
   };
 
+  const sendEmailAction = useInlineAction(async () => {
+    if (!contract) return;
+    const { data } = await api.post(`/contracts/${contract.id}/send-email`);
+    if (!data?.success) {
+      throw new Error(data?.message || t('contractDetails.toasts.sendEmailFailed'));
+    }
+    fetchEmailStatus(contract.id);
+  }, { context: 'contract-send-email' });
+
   const handleFinalize = async () => {
     if (!contract) return;
     setIsSubmitting(true);
@@ -717,20 +712,29 @@ export default function ContractDetails() {
             <Printer size={16} className="hidden sm:block" />
             <span className="hidden sm:inline">{t('contracts.print')}</span>
           </button>
-          <button onClick={handleDownloadPdf} disabled={isSubmitting}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
-            <Download size={14} className="sm:hidden" />
-            <Download size={16} className="hidden sm:block" />
-            <span className="hidden sm:inline">PDF</span>
-          </button>
-          {contract.pdfUrl && (
-            <button onClick={handleRegeneratePdf} disabled={isSubmitting}
-              title={t('contractDetails.regeneratePdfHint')}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
-              <RefreshCw size={14} className="sm:hidden" />
-              <RefreshCw size={16} className="hidden sm:block" />
-              <span className="hidden sm:inline">{t('contractDetails.regeneratePdf')}</span>
+          <Tooltip label={downloadPdfAction.phase === 'error' ? downloadPdfAction.errorMessage : null}>
+            <button onClick={handleDownloadPdf} disabled={isSubmitting || downloadPdfAction.phase === 'loading'}
+              className={cn(
+                'flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50',
+                downloadPdfAction.phase === 'error' && 'ring-2 ring-red-400',
+              )}>
+              <AnimatedStatusIcon phase={downloadPdfAction.phase} idleIcon={Download} size={16} className="sm:hidden" />
+              <AnimatedStatusIcon phase={downloadPdfAction.phase} idleIcon={Download} size={16} className="hidden sm:block" />
+              <span className="hidden sm:inline">PDF</span>
             </button>
+          </Tooltip>
+          {contract.pdfUrl && (
+            <Tooltip label={regeneratePdfAction.phase === 'error' ? regeneratePdfAction.errorMessage : t('contractDetails.regeneratePdfHint')}>
+              <button onClick={handleRegeneratePdf} disabled={isSubmitting || regeneratePdfAction.phase === 'loading'}
+                className={cn(
+                  'flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50',
+                  regeneratePdfAction.phase === 'error' && 'ring-2 ring-red-400',
+                )}>
+                <AnimatedStatusIcon phase={regeneratePdfAction.phase} idleIcon={RefreshCw} size={16} className="sm:hidden" />
+                <AnimatedStatusIcon phase={regeneratePdfAction.phase} idleIcon={RefreshCw} size={16} className="hidden sm:block" />
+                <span className="hidden sm:inline">{t('contractDetails.regeneratePdf')}</span>
+              </button>
+            </Tooltip>
           )}
           <button
             onClick={contract.ownerSigned ? handleGenerateQR : () => showToast(t('contractDetails.toasts.signBeforeQrShort'), 'warning')}
@@ -939,27 +943,19 @@ export default function ContractDetails() {
                         >
                           <Pencil size={13} /> {t('contractEmail.edit')}
                         </button>
-                        <button
-                          onClick={async () => {
-                            setSendingEmail(true);
-                            try {
-                              const { data } = await api.post(`/contracts/${contract.id}/send-email`);
-                              showToast(data?.message || t('contractEmail.emailSent'), data?.success ? 'success' : 'error');
-                              fetchEmailStatus(contract.id);
-                            } catch (err: any) {
-                              showToast(err?.response?.data?.message || t('contractDetails.toasts.sendEmailFailed'), 'error');
-                            } finally {
-                              setSendingEmail(false);
-                            }
-                          }}
-                          disabled={sendingEmail}
-                          className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl text-xs font-semibold hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-all disabled:opacity-50"
-                        >
-                          {sendingEmail
-                            ? <Loader2 size={13} className="animate-spin" />
-                            : <Send size={13} />}
-                          {emailStatus?.lastStatus === 'SENT' ? t('contractEmail.resend') : t('contractEmail.send')}
-                        </button>
+                        <Tooltip label={sendEmailAction.phase === 'error' ? sendEmailAction.errorMessage : null}>
+                          <button
+                            onClick={() => sendEmailAction.run()}
+                            disabled={sendEmailAction.phase === 'loading'}
+                            className={cn(
+                              'flex items-center gap-2 px-4 py-2 min-h-[44px] bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl text-xs font-semibold hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-all disabled:opacity-50',
+                              sendEmailAction.phase === 'error' && 'ring-2 ring-red-400',
+                            )}
+                          >
+                            <AnimatedStatusIcon phase={sendEmailAction.phase} idleIcon={Send} size={13} />
+                            {emailStatus?.lastStatus === 'SENT' ? t('contractEmail.resend') : t('contractEmail.send')}
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                     {!(contract.ownerSigned && contract.clientSigned) && (

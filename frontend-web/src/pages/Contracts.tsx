@@ -16,6 +16,9 @@ import { FilterChips } from '../components/FilterChips';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 import ActionMenu from '../components/shared/ActionMenu';
 import SendClientInfoRequestModal from '../components/shared/SendClientInfoRequestModal';
+import AnimatedStatusIcon from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
+import { cn } from '../lib/utils';
 import {
   Plus, Download, FileText, Trash2, CheckCircle2,
   Loader2, QrCode, Eye, User, Car, Shield, Fuel, Gauge,
@@ -282,6 +285,7 @@ export default function Contracts() {
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // New-client inline creation state
@@ -585,6 +589,7 @@ export default function Contracts() {
     } catch (err) {
       setReservations([]);
     }
+    setSaveError(null);
     setIsModalOpen(true);
   };
 
@@ -843,7 +848,6 @@ export default function Contracts() {
       if (clientMode === 'existing') {
         if (!clientData.clientId) {
           setFieldErrors((prev) => ({ ...prev, client: 'Client is required.' }));
-          showToast(t('contracts.toasts.selectSavedClient'), 'warning');
           return;
         }
       } else {
@@ -856,7 +860,6 @@ export default function Contracts() {
         }
         if (Object.keys(errs).length > 0) {
           setNewClientErrors(errs);
-          showToast(t('contracts.toasts.completeClientFields'), 'warning');
           return;
         }
         setNewClientErrors({});
@@ -869,7 +872,6 @@ export default function Contracts() {
         if (!endTime) errors.endTime = t('contracts.form.validationErrors.endTimeRequired');
         if (!selectedVehicle) errors.vehicle = t('contracts.form.validationErrors.vehicleRequired');
         setFieldErrors((prev) => ({ ...prev, ...errors }));
-        showToast(t('contracts.toasts.fillDatesAndVehicle'), 'warning');
         return;
       }
       setFieldErrors({});
@@ -938,12 +940,9 @@ export default function Contracts() {
       }
       const { data } = await api.post('/contracts/direct-create', payload);
       const contractId = data?.data?.contractId || data?.contractId || data?.id;
-      const isExisting = data?.data?.isNew === false;
-      const clientWasCreated = data?.data?.clientCreated === true;
-      const msg = clientWasCreated
-        ? `Contract created and new client "${data?.data?.clientName}" saved.`
-        : (isExisting ? t('contracts.fromReservation.alreadyExists') : (data?.message || t('contracts.toasts.createdWithReservation')));
-      showToast(msg, isExisting ? 'info' : 'success');
+      // Closing the modal and navigating straight to the new contract is the
+      // confirmation — no toast needed for the success path.
+      setSaveError(null);
       setIsModalOpen(false);
       fetchContracts();
       // No query-cache library in this app — cross-page freshness (vehicle
@@ -1013,7 +1012,7 @@ export default function Contracts() {
         return;
       }
 
-      showToast(contractErrorMessage(err), 'error');
+      setSaveError(contractErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -1562,14 +1561,17 @@ export default function Contracts() {
         title={t('contracts.form.createContractTitle')}
         maxWidth="5xl"
         footer={
-          <button onClick={saveContract} disabled={saving} className="w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-70">
-            {saving ? (
-              <span className="inline-flex items-center justify-center gap-2">
-                <Loader2 size={16} className="animate-spin" />
-                {t('contracts.form.creatingContract')}
-              </span>
-            ) : t('contracts.form.createContractTitle')}
-          </button>
+          <Tooltip label={saveError}>
+            <button onClick={saveContract} disabled={saving} className={cn(
+              'w-full py-3 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-70 flex items-center justify-center gap-2',
+              saveError && 'ring-2 ring-red-400',
+            )}>
+              {(saving || saveError) && (
+                <AnimatedStatusIcon phase={saving ? 'loading' : 'error'} idleIcon={Loader2} size={16} />
+              )}
+              {saving ? t('contracts.form.creatingContract') : t('contracts.form.createContractTitle')}
+            </button>
+          </Tooltip>
         }
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
