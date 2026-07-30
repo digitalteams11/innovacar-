@@ -1433,6 +1433,13 @@
     "generateSkipped": "لم يتم إنشاء التقرير: {{reason}}",
     "generateFailed": "فشل إنشاء التقرير",
     "empty": "لا توجد تقارير بعد.",
+    "generate": {
+      "generating": "جارٍ الإنشاء…",
+      "alreadyExistsTooltip": "تم إنشاء {{period}} بالفعل — انقر للعرض",
+      "viewExisting": "عرض {{period}}",
+      "locked": "قم بترقية باقتك لتفعيل التقارير الآلية.",
+      "failed": "تعذر إنشاء التقرير."
+    },
     "actions": {
       "download": "تحميل التقرير",
       "send": "إرسال التقرير بالبريد الإلكتروني",

@@ -1433,6 +1433,13 @@
     "generateSkipped": "Report not generated: {{reason}}",
     "generateFailed": "Failed to generate report",
     "empty": "No reports yet.",
+    "generate": {
+      "generating": "Generating…",
+      "alreadyExistsTooltip": "{{period}} was already generated — click to view it",
+      "viewExisting": "View {{period}}",
+      "locked": "Upgrade your plan to enable automated reports.",
+      "failed": "The report could not be generated."
+    },
     "actions": {
       "download": "Download report",
       "send": "Send report by email",

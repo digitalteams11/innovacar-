@@ -1433,6 +1433,13 @@
     "generateSkipped": "Rapport non généré : {{reason}}",
     "generateFailed": "Échec de la génération du rapport",
     "empty": "Aucun rapport pour le moment.",
+    "generate": {
+      "generating": "Génération en cours…",
+      "alreadyExistsTooltip": "{{period}} a déjà été généré — cliquez pour le consulter",
+      "viewExisting": "Voir {{period}}",
+      "locked": "Passez à un forfait supérieur pour activer les rapports automatisés.",
+      "failed": "Le rapport n'a pas pu être généré."
+    },
     "actions": {
       "download": "Télécharger le rapport",
       "send": "Envoyer le rapport par email",

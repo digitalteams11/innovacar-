@@ -73,10 +73,15 @@ public class ReportGenerationService {
     private final SmtpMailService smtpMailService;
     private final ObjectMapper objectMapper;
 
-    public enum SkipReason { NOT_ENTITLED, ACCOUNT_BLOCKED, DISABLED_BY_PREFERENCES, NO_RECIPIENT, ALREADY_EXISTS, TENANT_NOT_FOUND }
+    public enum SkipReason {
+        NOT_ENTITLED, ACCOUNT_BLOCKED, DISABLED_BY_PREFERENCES, NO_RECIPIENT, ALREADY_EXISTS,
+        TENANT_NOT_FOUND, PERIOD_NOT_CLOSED
+    }
 
     public record GenerationOutcome(Report report, SkipReason skipReason) {
         public static GenerationOutcome skipped(SkipReason reason) { return new GenerationOutcome(null, reason); }
+        /** Carries the conflicting/existing report along with the skip reason — used for ALREADY_EXISTS so the caller can link to it (spec section 5/9). */
+        public static GenerationOutcome skippedWithReport(SkipReason reason, Report report) { return new GenerationOutcome(report, reason); }
         public static GenerationOutcome of(Report report) { return new GenerationOutcome(report, null); }
     }
 
@@ -149,10 +154,20 @@ public class ReportGenerationService {
         ZoneId zone = periodResolver.resolveZone(preferences.getTimezone());
         ReportPeriodResolver.Period period = resolveManualPeriod(type, year, month, zone);
 
-        boolean alreadyExists = reportRepository.existsByTenantIdAndReportTypeAndPeriodStartAndPeriodEndAndStatusIn(
-                tenantId, type, period.start(), period.end(), ALREADY_DONE);
-        if (alreadyExists && !forceRegenerate) {
-            return GenerationOutcome.skipped(SkipReason.ALREADY_EXISTS);
+        // The period must be fully closed — never generate for the current
+        // incomplete month/year or a future one, even on an explicit request
+        // (spec sections 3/4/12).
+        if (period.end().isAfter(LocalDateTime.now(java.time.ZoneOffset.UTC))) {
+            return GenerationOutcome.skipped(SkipReason.PERIOD_NOT_CLOSED);
+        }
+
+        if (!forceRegenerate) {
+            Optional<Report> existing = reportRepository
+                    .findByTenantIdAndReportTypeAndPeriodStartAndPeriodEnd(tenantId, type, period.start(), period.end())
+                    .filter(r -> ALREADY_DONE.contains(r.getStatus()));
+            if (existing.isPresent()) {
+                return GenerationOutcome.skippedWithReport(SkipReason.ALREADY_EXISTS, existing.get());
+            }
         }
 
         Report report = generate(tenant, type, period, preferences, zone, generatedBy, userId, false);

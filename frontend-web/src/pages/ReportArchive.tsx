@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Archive, Download, Loader2, RefreshCw, AlertCircle, Plus } from 'lucide-react';
+import { Archive, Download, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { FilterChips } from '../components/FilterChips';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 import SendEmailButton from '../components/reports/SendEmailButton';
+import GenerateReportButton from '../components/reports/GenerateReportButton';
 import InlineActionButton from '../components/shared/InlineActionButton';
-import AnimatedStatusIcon from '../components/shared/AnimatedStatusIcon';
-import Tooltip from '../components/shared/Tooltip';
-import { useInlineAction } from '../hooks/useInlineAction';
 import { useReports, type ReportRow } from '../hooks/useReports';
 import { useFeatureAccess } from '../context/FeatureAccessContext';
+import { periodLabelFor, reportCoversPeriod, targetPeriodFor } from '../lib/reportPeriods';
+import type { ReportType } from '../types/reports';
 
 const STATUS_BADGE: Record<string, string> = {
   SENT: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
@@ -23,14 +23,24 @@ const STATUS_BADGE: Record<string, string> = {
   NOT_SENT: 'bg-slate-500/15 text-slate-500',
 };
 
+/** Reports whose status counts as "this period is already covered" — matches the backend's ALREADY_DONE set. */
+const ALREADY_DONE_STATUSES = new Set(['GENERATED', 'EMAIL_PENDING', 'SENT']);
+
 export default function ReportArchive() {
   const { t } = useTranslation();
   const { hasFeature } = useFeatureAccess();
   const { reports, loading, error, fetchReports, generateReport, sendReportEmail, downloadReport } = useReports();
   const [typeFilter, setTypeFilter] = useState('ALL');
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const rowRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canManualGenerate = hasFeature('MANUAL_REPORT_EXPORT');
   const canSendEmail = hasFeature('REPORT_ARCHIVE');
+
+  useEffect(() => () => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+  }, []);
 
   const filtered = useMemo(
     () => reports.filter((r) => typeFilter === 'ALL' || r.reportType === typeFilter),
@@ -43,19 +53,32 @@ export default function ReportArchive() {
     return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   };
 
-  // Each generate button owns its own icon-state instead of firing a toast —
-  // a rejected/skipped generation (e.g. plan doesn't allow it yet) shows as a
-  // shaking red icon with the precise reason on hover, not a banner.
-  const monthlyGenerate = useInlineAction(async () => {
-    const result = await generateReport('MONTHLY');
-    if (!result.success) throw new Error(result.reason || 'Report not generated');
-    return result;
-  }, { context: 'generate-monthly-report' });
-  const yearlyGenerate = useInlineAction(async () => {
-    const result = await generateReport('YEARLY');
-    if (!result.success) throw new Error(result.reason || 'Report not generated');
-    return result;
-  }, { context: 'generate-yearly-report' });
+  // The default target period each button would generate — computed the same
+  // way the backend resolves "the previous closed month/year" by default, so
+  // an already-present report can be detected *before* sending a duplicate
+  // POST (spec sections 3-5). The backend's 409 remains the authoritative
+  // guard for anything this client-side check misses (races, timezone edge
+  // cases, force-regenerate).
+  const monthlyTarget = useMemo(() => targetPeriodFor('MONTHLY'), []);
+  const yearlyTarget = useMemo(() => targetPeriodFor('YEARLY'), []);
+  const monthlyLabel = periodLabelFor('MONTHLY', monthlyTarget);
+  const yearlyLabel = periodLabelFor('YEARLY', yearlyTarget);
+
+  const existingReportFor = (type: ReportType, period: { year: number; month?: number }) =>
+    reports.find((r) => ALREADY_DONE_STATUSES.has(r.status) && reportCoversPeriod(r, type, period));
+
+  const existingMonthly = existingReportFor('MONTHLY', monthlyTarget);
+  const existingYearly = existingReportFor('YEARLY', yearlyTarget);
+
+  const handleViewExisting = (reportId: number) => {
+    setHighlightedId(reportId);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedId(null), 2500);
+    rowRefs.current.get(reportId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const generateMonthly = () => generateReport({ reportType: 'MONTHLY', ...monthlyTarget });
+  const generateYearly = () => generateReport({ reportType: 'YEARLY', year: yearlyTarget.year });
 
   const statusBadge = (status: string) => (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[status] || 'bg-slate-500/15 text-slate-500'}`}>
@@ -99,27 +122,21 @@ export default function ReportArchive() {
         subtitle={t('reports.archiveSubtitle', 'Monthly and yearly financial reports, generated automatically or on demand')}
         icon={Archive}
         actions={canManualGenerate ? (
-          <div className="flex gap-2">
-            <Tooltip label={monthlyGenerate.phase === 'error' ? monthlyGenerate.errorMessage : null}>
-              <button
-                onClick={() => monthlyGenerate.run()}
-                disabled={monthlyGenerate.phase === 'loading' || yearlyGenerate.phase === 'loading'}
-                className={`btn-primary flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${monthlyGenerate.phase === 'error' ? 'ring-2 ring-red-500' : ''}`}
-              >
-                <AnimatedStatusIcon phase={monthlyGenerate.phase} idleIcon={Plus} className="w-4 h-4" />
-                {t('reports.generateMonthly', 'Generate Monthly')}
-              </button>
-            </Tooltip>
-            <Tooltip label={yearlyGenerate.phase === 'error' ? yearlyGenerate.errorMessage : null}>
-              <button
-                onClick={() => yearlyGenerate.run()}
-                disabled={monthlyGenerate.phase === 'loading' || yearlyGenerate.phase === 'loading'}
-                className={`px-3 py-2 rounded-lg text-sm border flex items-center gap-2 ${yearlyGenerate.phase === 'error' ? 'border-red-500' : 'border-[var(--border-subtle)]'}`}
-              >
-                <AnimatedStatusIcon phase={yearlyGenerate.phase} idleIcon={Plus} className="w-4 h-4" />
-                {t('reports.generateYearly', 'Generate Yearly')}
-              </button>
-            </Tooltip>
+          <div className="flex flex-wrap gap-2">
+            <GenerateReportButton
+              reportType="MONTHLY"
+              periodLabel={monthlyLabel}
+              existingReportId={existingMonthly?.id}
+              onGenerate={generateMonthly}
+              onViewExisting={handleViewExisting}
+            />
+            <GenerateReportButton
+              reportType="YEARLY"
+              periodLabel={yearlyLabel}
+              existingReportId={existingYearly?.id}
+              onGenerate={generateYearly}
+              onViewExisting={handleViewExisting}
+            />
           </div>
         ) : undefined}
       />
@@ -174,7 +191,11 @@ export default function ReportArchive() {
                 </thead>
                 <tbody>
                   {filtered.map((r) => (
-                    <tr key={r.id} className="border-t border-[var(--border-subtle)]">
+                    <tr
+                      key={r.id}
+                      ref={(el) => { if (el) rowRefs.current.set(r.id, el); }}
+                      className={`border-t border-[var(--border-subtle)] transition-colors duration-500 ${highlightedId === r.id ? 'bg-brand-500/10' : ''}`}
+                    >
                       <td className="p-3 font-medium">{periodLabel(r)}</td>
                       <td className="p-3">{t(`reports.type.${r.reportType}`, r.reportType)}</td>
                       <td className="p-3">{statusBadge(r.status)}</td>
@@ -201,7 +222,11 @@ export default function ReportArchive() {
           mobile={
             <div className="space-y-3">
               {filtered.map((r) => (
-                <div key={r.id} className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
+                <div
+                  key={r.id}
+                  ref={(el) => { if (el) rowRefs.current.set(r.id, el); }}
+                  className={`p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] transition-colors duration-500 ${highlightedId === r.id ? 'ring-2 ring-brand-500 bg-brand-500/10' : ''}`}
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-semibold">{periodLabel(r)}</span>
                     {statusBadge(r.status)}

@@ -80,8 +80,16 @@ if (import.meta.env.DEV) {
  */
 export async function checkHealth(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(3000) });
-    return response.ok;
+    // Any response at all (even a non-2xx) proves the backend process is up
+    // and answering — only a thrown fetch (connection refused, DNS failure,
+    // the 3s timeout, or a browser-level network suspension such as
+    // ERR_NETWORK_IO_SUSPENDED/ERR_ADDRESS_UNREACHABLE) means "unreachable".
+    // Previously this returned `response.ok`, which would misreport the
+    // backend as down on a non-2xx response even though that's proof the
+    // server is reachable — real downtime and a real HTTP response should
+    // never be classified the same way.
+    await fetch(`${API_BASE_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(3000) });
+    return true;
   } catch {
     return false;
   }

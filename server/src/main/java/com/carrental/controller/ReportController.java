@@ -83,27 +83,121 @@ public class ReportController {
                 .body(pdfBytes);
     }
 
+    /**
+     * Validates the request contract strictly and returns structured JSON on
+     * every failure path — never an empty 400 (spec sections 1, 2, 9). The
+     * only two ways to reach a non-2xx response are (a) a malformed request
+     * (bad type/year/month — 400 with fieldErrors) or (b) a business-rule
+     * skip reason mapped to its own status/errorCode below; nothing falls
+     * through to a generic exception-mapped 400/500.
+     */
     @PostMapping("/reports/generate")
-    public ResponseEntity<Map<String, Object>> generateReport(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> generateReport(@RequestBody(required = false) Map<String, Object> rawBody) {
         Long tenantId = requireTenantId();
-        ReportType type = ReportType.valueOf(String.valueOf(body.getOrDefault("reportType", "MONTHLY")).toUpperCase());
-        Integer year = body.get("year") != null ? Integer.valueOf(String.valueOf(body.get("year"))) : null;
-        Integer month = body.get("month") != null ? Integer.valueOf(String.valueOf(body.get("month"))) : null;
+        Map<String, Object> body = rawBody != null ? rawBody : Map.of();
+
+        ReportType type;
+        String typeRaw = String.valueOf(body.getOrDefault("reportType", "MONTHLY")).toUpperCase();
+        try {
+            type = ReportType.valueOf(typeRaw);
+        } catch (IllegalArgumentException e) {
+            return validationError("REPORT_TYPE_INVALID", "reportType must be MONTHLY or YEARLY.",
+                    Map.of("reportType", "Must be MONTHLY or YEARLY."));
+        }
+
+        Integer year;
+        try {
+            year = parseIntOrNull(body.get("year"));
+        } catch (NumberFormatException e) {
+            return validationError("REPORT_PERIOD_INVALID", "year must be a whole number.", Map.of("year", "Must be a whole number."));
+        }
+        Integer month;
+        try {
+            month = parseIntOrNull(body.get("month"));
+        } catch (NumberFormatException e) {
+            return validationError("REPORT_PERIOD_INVALID", "month must be a whole number.", Map.of("month", "Must be a whole number."));
+        }
+
+        if (month != null && (month < 1 || month > 12)) {
+            return validationError("REPORT_PERIOD_INVALID", "Month must be between 1 and 12.",
+                    Map.of("month", "Must be between 1 and 12."));
+        }
+        if (type == ReportType.MONTHLY && (year == null) != (month == null)) {
+            // A closed month is identified by year+month together — accepting only one would
+            // silently resolve against the wrong year (see resolveManualPeriod), so require both
+            // or neither rather than guessing.
+            return validationError("REPORT_PERIOD_INVALID", "Provide both year and month, or neither to use the previous closed month.",
+                    Map.of(year == null ? "year" : "month", "Required when the other period field is provided."));
+        }
+        if (type == ReportType.YEARLY) {
+            month = null; // spec section 4 — a yearly request never carries a month
+        }
+
         boolean force = Boolean.TRUE.equals(body.get("forceRegenerate"));
 
         ReportGenerationService.GenerationOutcome outcome = reportGenerationService
                 .generateManual(tenantId, type, year, month, null, ReportGeneratedBy.MANUAL, force);
 
-        Map<String, Object> response = new LinkedHashMap<>();
         if (outcome.skipReason() != null) {
-            response.put("success", false);
-            response.put("reason", outcome.skipReason().name());
-            return ResponseEntity.status(outcome.skipReason() == ReportGenerationService.SkipReason.NOT_ENTITLED ? 403 : 400)
-                    .body(response);
+            return buildSkipResponse(outcome.skipReason(), outcome.report());
         }
+        Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
         response.put("report", toDetail(outcome.report()));
         return ResponseEntity.ok(response);
+    }
+
+    private record SkipSpec(int status, String errorCode, String message) {}
+
+    private ResponseEntity<Map<String, Object>> buildSkipResponse(ReportGenerationService.SkipReason reason, Report existingReport) {
+        SkipSpec spec = switch (reason) {
+            case NOT_ENTITLED -> new SkipSpec(402, "REPORTING_FEATURE_NOT_INCLUDED",
+                    "Your current plan does not include automated report generation.");
+            case ACCOUNT_BLOCKED -> new SkipSpec(403, "ACCOUNT_BLOCKED", "This account is currently blocked.");
+            case TENANT_NOT_FOUND -> new SkipSpec(403, "TENANT_NOT_FOUND", "Tenant could not be resolved.");
+            case DISABLED_BY_PREFERENCES -> new SkipSpec(400, "REPORT_DISABLED_BY_PREFERENCES",
+                    "Automated reports are disabled in your report settings.");
+            case NO_RECIPIENT -> new SkipSpec(400, "REPORT_RECIPIENT_MISSING", "No report recipient email is configured.");
+            case PERIOD_NOT_CLOSED -> new SkipSpec(400, "REPORT_PERIOD_INVALID",
+                    "Reports can only be generated for a fully completed period, not the current or a future one.");
+            case ALREADY_EXISTS -> new SkipSpec(409, "REPORT_ALREADY_EXISTS",
+                    "A report already exists for " + periodLabel(existingReport) + ".");
+        };
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        if (existingReport != null) data.put("reportId", existingReport.getId());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("errorCode", spec.errorCode());
+        response.put("message", spec.message());
+        response.put("data", data);
+        return ResponseEntity.status(spec.status()).body(response);
+    }
+
+    private ResponseEntity<Map<String, Object>> validationError(String errorCode, String message, Map<String, String> fieldErrors) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("errorCode", errorCode);
+        response.put("message", message);
+        response.put("fieldErrors", fieldErrors);
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    private String periodLabel(Report report) {
+        if (report == null || report.getPeriodStart() == null) return "this period";
+        java.time.LocalDate start = report.getPeriodStart().toLocalDate();
+        return report.getReportType() == ReportType.YEARLY
+                ? String.valueOf(start.getYear())
+                : start.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH) + " " + start.getYear();
+    }
+
+    private Integer parseIntOrNull(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number number) return number.intValue();
+        String text = String.valueOf(value).trim();
+        if (text.isEmpty()) return null;
+        return Integer.valueOf(text);
     }
 
     /**

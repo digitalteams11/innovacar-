@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../api/axios';
+import type { GenerateReportRequest, GenerateReportResult, ReportType } from '../types/reports';
 
 export interface ReportRow {
   id: number;
-  reportType: 'MONTHLY' | 'YEARLY';
+  reportType: ReportType;
   periodStart: string;
   periodEnd: string;
   status: 'PENDING' | 'GENERATING' | 'GENERATED' | 'EMAIL_PENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
@@ -73,10 +74,32 @@ export function useReports() {
     setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, ...patch } : r)));
   }, []);
 
-  const generateReport = useCallback(async (reportType: 'MONTHLY' | 'YEARLY', year?: number, month?: number) => {
-    const { data } = await api.post('/reports/generate', { reportType, year, month });
-    if (data.success) await fetchReports();
-    return data;
+  /**
+   * Always resolves to a structured {@link GenerateReportResult} — a thrown
+   * 4xx (409 already-exists, 402 not-entitled, 400 validation) is caught and
+   * normalized the same way as a 200, so the caller never has to special-case
+   * "thrown" vs "returned" failures. Only sends the fields the backend DTO
+   * actually reads (`reportType`/`year`/`month`/`forceRegenerate`) and never
+   * includes `month` for a YEARLY request.
+   */
+  const generateReport = useCallback(async (request: GenerateReportRequest): Promise<GenerateReportResult> => {
+    const body: GenerateReportRequest = {
+      reportType: request.reportType,
+      ...(request.year !== undefined ? { year: request.year } : {}),
+      ...(request.reportType === 'MONTHLY' && request.month !== undefined ? { month: request.month } : {}),
+      ...(request.forceRegenerate ? { forceRegenerate: true } : {}),
+    };
+    try {
+      const { data } = await api.post<GenerateReportResult>('/reports/generate', body);
+      if (data.success) await fetchReports();
+      return data;
+    } catch (err: any) {
+      const payload: GenerateReportResult | undefined = err?.response?.data;
+      if (payload && typeof payload.success === 'boolean') {
+        return payload;
+      }
+      return { success: false, errorCode: 'REPORT_GENERATION_FAILED', message: err?.userMessage || err?.message };
+    }
   }, [fetchReports]);
 
   /**

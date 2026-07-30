@@ -116,7 +116,7 @@ class ReportGenerationServiceTest {
         when(pdfStorage.save(eq(1L), eq(99L), any())).thenReturn(new ReportPdfStorage.StoredFile("key.pdf", 3L, "abc123"));
 
         ReportGenerationService.GenerationOutcome outcome = service()
-                .generateManual(1L, ReportType.MONTHLY, 2026, 7, 42L, ReportGeneratedBy.MANUAL, false);
+                .generateManual(1L, ReportType.MONTHLY, 2020, 1, 42L, ReportGeneratedBy.MANUAL, false);
 
         assertThat(outcome.skipReason()).isNull();
         assertThat(outcome.report().getStatus()).isEqualTo(ReportStatus.GENERATED);
@@ -136,6 +136,92 @@ class ReportGenerationServiceTest {
 
         assertThat(outcome.skipReason()).isEqualTo(ReportGenerationService.SkipReason.NOT_ENTITLED);
         verifyNoInteractions(calculationService, pdfGenerator, pdfStorage);
+    }
+
+    @Test
+    void generateManual_currentIncompleteMonth_isRejectedAsPeriodNotClosed() {
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant()));
+        when(featureAccessService.isEnabledForTenant(1L, ReportGenerationService.FEATURE_MANUAL_EXPORT)).thenReturn(true);
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.empty());
+
+        LocalDate now = LocalDate.now();
+        ReportGenerationService.GenerationOutcome outcome = service()
+                .generateManual(1L, ReportType.MONTHLY, now.getYear(), now.getMonthValue(), null, ReportGeneratedBy.MANUAL, false);
+
+        assertThat(outcome.skipReason()).isEqualTo(ReportGenerationService.SkipReason.PERIOD_NOT_CLOSED);
+        verifyNoInteractions(calculationService, pdfGenerator, pdfStorage);
+    }
+
+    @Test
+    void generateManual_futurePeriod_isRejectedAsPeriodNotClosed() {
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant()));
+        when(featureAccessService.isEnabledForTenant(1L, ReportGenerationService.FEATURE_MANUAL_EXPORT)).thenReturn(true);
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.empty());
+
+        LocalDate future = LocalDate.now().plusYears(1);
+        ReportGenerationService.GenerationOutcome outcome = service()
+                .generateManual(1L, ReportType.MONTHLY, future.getYear(), future.getMonthValue(), null, ReportGeneratedBy.MANUAL, false);
+
+        assertThat(outcome.skipReason()).isEqualTo(ReportGenerationService.SkipReason.PERIOD_NOT_CLOSED);
+        verifyNoInteractions(calculationService, pdfGenerator, pdfStorage);
+    }
+
+    @Test
+    void generateManual_duplicatePeriod_returnsAlreadyExistsWithTheExistingReport() {
+        Tenant tenant = tenant();
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
+        when(featureAccessService.isEnabledForTenant(1L, ReportGenerationService.FEATURE_MANUAL_EXPORT)).thenReturn(true);
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.empty());
+
+        Report existing = Report.builder().id(555L).tenant(tenant).reportType(ReportType.MONTHLY)
+                .status(ReportStatus.GENERATED).periodStart(LocalDateTime.of(2020, 1, 1, 0, 0))
+                .periodEnd(LocalDateTime.of(2020, 2, 1, 0, 0)).calculationVersion(1).build();
+        when(reportRepository.findByTenantIdAndReportTypeAndPeriodStartAndPeriodEnd(
+                eq(1L), eq(ReportType.MONTHLY), eq(LocalDateTime.of(2020, 1, 1, 0, 0)), eq(LocalDateTime.of(2020, 2, 1, 0, 0))))
+                .thenReturn(Optional.of(existing));
+
+        ReportGenerationService.GenerationOutcome outcome = service()
+                .generateManual(1L, ReportType.MONTHLY, 2020, 1, null, ReportGeneratedBy.MANUAL, false);
+
+        assertThat(outcome.skipReason()).isEqualTo(ReportGenerationService.SkipReason.ALREADY_EXISTS);
+        assertThat(outcome.report()).isNotNull();
+        assertThat(outcome.report().getId()).isEqualTo(555L);
+        verifyNoInteractions(calculationService, pdfGenerator, pdfStorage);
+    }
+
+    @Test
+    void generateManual_validYearlyRequest_generatesReport() {
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant()));
+        when(featureAccessService.isEnabledForTenant(1L, ReportGenerationService.FEATURE_MANUAL_EXPORT)).thenReturn(true);
+        when(preferencesRepository.findByTenantId(1L)).thenReturn(Optional.empty());
+        when(reportRepository.findByTenantIdAndReportTypeAndPeriodStartAndPeriodEnd(eq(1L), eq(ReportType.YEARLY), any(), any()))
+                .thenReturn(Optional.empty());
+        when(reportRepository.save(any(Report.class))).thenAnswer(inv -> {
+            Report r = inv.getArgument(0);
+            if (r.getId() == null) r.setId(200L);
+            return r;
+        });
+        when(calculationService.calculate(any(), eq(ReportType.YEARLY), any(), any())).thenReturn(sampleDataset());
+        when(deterministicSummaryService.buildSummary(any())).thenReturn(List.of("All good."));
+        when(pdfGenerator.generate(any(), any(), any(), anyList(), anyBoolean())).thenReturn(new byte[]{1});
+        when(pdfStorage.save(eq(1L), eq(200L), any())).thenReturn(new ReportPdfStorage.StoredFile("k.pdf", 1L, "cs"));
+
+        ReportGenerationService.GenerationOutcome outcome = service()
+                .generateManual(1L, ReportType.YEARLY, 2020, null, null, ReportGeneratedBy.MANUAL, false);
+
+        assertThat(outcome.skipReason()).isNull();
+        assertThat(outcome.report().getStatus()).isEqualTo(ReportStatus.GENERATED);
+        assertThat(outcome.report().getReportType()).isEqualTo(ReportType.YEARLY);
+    }
+
+    @Test
+    void generateManual_unknownTenant_isRejectedAsTenantNotFound() {
+        when(tenantRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ReportGenerationService.GenerationOutcome outcome = service()
+                .generateManual(999L, ReportType.MONTHLY, 2020, 1, null, ReportGeneratedBy.MANUAL, false);
+
+        assertThat(outcome.skipReason()).isEqualTo(ReportGenerationService.SkipReason.TENANT_NOT_FOUND);
     }
 
     @Test
@@ -165,7 +251,7 @@ class ReportGenerationServiceTest {
         when(pdfStorage.save(eq(1L), eq(77L), any())).thenReturn(new ReportPdfStorage.StoredFile("k.pdf", 1L, "cs"));
 
         ReportGenerationService.GenerationOutcome outcome = service()
-                .generateManual(1L, ReportType.MONTHLY, 2026, 7, null, ReportGeneratedBy.MANUAL, false);
+                .generateManual(1L, ReportType.MONTHLY, 2020, 1, null, ReportGeneratedBy.MANUAL, false);
 
         assertThat(outcome.report().getStatus()).isEqualTo(ReportStatus.GENERATED);
         assertThat(outcome.report().isAiSummaryUsed()).isFalse();
