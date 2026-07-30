@@ -9,7 +9,7 @@ import {
   Save, ShieldCheck, Briefcase, FileText, Globe,
   Palette, Signature, Stamp, Image, FileCheck,
   Bell, Server, Settings as SettingsIcon, Lock, CreditCard, Database,
-  HelpCircle, ArrowRight,
+  HelpCircle, ArrowRight, Archive,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import SignaturePad from '../components/shared/SignaturePad';
@@ -18,6 +18,7 @@ import SecurityTab from '../components/settings/SecurityTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
 import BillingTab from '../components/settings/BillingTab';
 import PrivacyTab from '../components/settings/PrivacyTab';
+import ReportsTab from '../components/settings/ReportsTab';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { resolveMediaUrl } from '../lib/utils';
 
@@ -53,9 +54,9 @@ interface OperationalSettings {
   inspectionRetentionDays: number;
 }
 
-type SettingsTab = 'profile' | 'security' | 'agency' | 'operations' | 'appearance' | 'notifications' | 'billing' | 'privacy';
+type SettingsTab = 'profile' | 'security' | 'agency' | 'operations' | 'appearance' | 'notifications' | 'billing' | 'privacy' | 'reports';
 
-const VALID_TABS: SettingsTab[] = ['profile', 'security', 'agency', 'operations', 'appearance', 'notifications', 'billing', 'privacy'];
+const VALID_TABS: SettingsTab[] = ['profile', 'security', 'agency', 'operations', 'appearance', 'notifications', 'billing', 'privacy', 'reports'];
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -280,6 +281,7 @@ export default function Settings() {
     { key: 'notifications', label: t('settings.tabs.notifications'), icon: Bell },
     { key: 'billing', label: t('settings.tabs.billing'), icon: CreditCard },
     { key: 'privacy', label: t('settings.tabs.privacy'), icon: Database },
+    { key: 'reports', label: t('settings.tabs.reports', 'Reports'), icon: Archive },
   ];
 
   return (
@@ -756,6 +758,8 @@ export default function Settings() {
       {activeTab === 'billing' && <BillingTab />}
 
       {activeTab === 'privacy' && <PrivacyTab inspectionRetentionDays={operations.inspectionRetentionDays} />}
+
+      {activeTab === 'reports' && <ReportsTab />}
     </div>
   );
 }

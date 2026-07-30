@@ -164,4 +164,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("statuses") List<ReservationStatus> statuses,
             @Param("today") LocalDate today,
             @Param("time") LocalTime time);
+
+    /** Non-deleted reservations created within a reporting period — used for reservation-count metrics. */
+    @Query("SELECT r FROM Reservation r WHERE r.tenant.id = :tenantId " +
+           "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "AND r.dateStart >= :periodStartDate AND r.dateStart < :periodEndDate")
+    List<Reservation> findAllStartingInPeriod(@Param("tenantId") Long tenantId,
+                                               @Param("periodStartDate") LocalDate periodStartDate,
+                                               @Param("periodEndDate") LocalDate periodEndDate);
 }

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -24,4 +25,12 @@ public interface VehicleMaintenanceRepository extends JpaRepository<VehicleMaint
 
     @Query(value = "SELECT vehicle_id FROM vehicle_maintenance WHERE id = :id", nativeQuery = true)
     Long findVehicleIdById(@Param("id") Long id);
+
+    /** Maintenance orders created within a reporting period — order counts/upcoming-scheduled metrics. */
+    List<VehicleMaintenance> findAllByTenantIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Long tenantId, LocalDateTime start, LocalDateTime end);
+
+    /** Maintenance completed within a reporting period — this is when the cost is recognized as an expense. */
+    List<VehicleMaintenance> findAllByTenantIdAndStatusAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+            Long tenantId, MaintenanceStatus status, LocalDateTime start, LocalDateTime end);
 }

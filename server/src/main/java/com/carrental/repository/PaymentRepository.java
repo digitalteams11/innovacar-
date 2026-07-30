@@ -154,4 +154,16 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     /** Count failed subscription payments. */
     @Query("SELECT COUNT(p) FROM Payment p WHERE p.status IN ('FAILED', 'EXPIRED') AND p.type = 'SUBSCRIPTION'")
     long countFailedSubscriptionPayments();
+
+    /**
+     * Every non-subscription payment recorded within a closed reporting period,
+     * regardless of status/type — the reporting calculation engine classifies
+     * revenue/expense/refund recognition itself so it stays testable in Java
+     * rather than baked into ad-hoc SQL per metric.
+     */
+    @Query("SELECT p FROM Payment p WHERE p.tenant.id = :tenantId AND p.type <> 'SUBSCRIPTION' " +
+           "AND p.paymentDate >= :start AND p.paymentDate < :end")
+    List<Payment> findAllForReportingPeriod(@Param("tenantId") Long tenantId,
+                                             @Param("start") LocalDateTime start,
+                                             @Param("end") LocalDateTime end);
 }

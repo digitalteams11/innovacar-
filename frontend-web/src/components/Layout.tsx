@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  BarChart3, Bell, Calendar, Car, ChevronDown, CreditCard, FileText, HelpCircle,
+  Archive, BarChart3, Bell, Calendar, Car, ChevronDown, CreditCard, FileText, HelpCircle,
   Info, LayoutDashboard, LockKeyhole, MapPin, MoreHorizontal,
   Palette, PanelLeftClose, PanelLeftOpen, Settings, ShieldCheck,
   Sparkles, Users, Wrench,
@@ -90,6 +90,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/gps-tracking', icon: MapPin, label: t('nav.gps'), feature: 'GPS_TRACKING', permission: 'GPS_ACCESS' },
     { to: '/gps-alerts', icon: Bell, label: t('nav.gpsAlerts', 'GPS Alerts'), feature: 'GPS_TRACKING', permission: 'GPS_ACCESS' },
     { to: '/reports', icon: BarChart3, label: t('nav.reports'), feature: 'REPORTS_BASIC', permission: 'VIEW_REPORTS' },
+    { to: '/report-archive', icon: Archive, label: t('nav.reportArchive', 'Report Archive'), feature: 'REPORT_ARCHIVE' },
     { to: '/employees', icon: Users, label: t('nav.employees'), feature: 'MULTI_EMPLOYEE', permission: 'MANAGE_EMPLOYEES' },
     { to: '/settings', icon: Settings, label: t('nav.settings') },
   ], [t]);

@@ -41,7 +41,6 @@ const Invoices = React.lazy(() => import('./pages/Invoices'));
 const Agency = React.lazy(() => import('./pages/Agency'));
 const Employees = React.lazy(() => import('./pages/Employees'));
 const Reports = React.lazy(() => import('./pages/Reports'));
-const ReportArchive = React.lazy(() => import('./pages/ReportArchive'));
 const GpsSettingsPage = React.lazy(() => import('./pages/GpsSettings'));
 const GpsDashboard = React.lazy(() => import('./pages/GpsDashboard'));
 const GpsAlerts = React.lazy(() => import('./pages/GpsAlerts'));
@@ -248,7 +247,6 @@ function AppRoutes() {
       <Route path="/agency" element={<ProtectedRoute><Agency /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><FeatureGate feature="MULTI_EMPLOYEE"><Employees /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><PermissionGate permission="VIEW_REPORTS"><FeatureGate feature="REPORTS_BASIC"><Reports /></FeatureGate></PermissionGate></ProtectedRoute>} />
-      <Route path="/report-archive" element={<ProtectedRoute><FeatureGate feature="REPORT_ARCHIVE"><ReportArchive /></FeatureGate></ProtectedRoute>} />
       <Route path="/gps-settings" element={<ProtectedRoute><PermissionGate permission="GPS_ACCESS"><FeatureGate feature="GPS_TRACKING"><GpsSettingsPage /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/gps-tracking" element={<ProtectedRoute><PermissionGate permission="GPS_ACCESS"><FeatureGate feature="GPS_TRACKING"><GpsDashboard /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/gps-alerts" element={<ProtectedRoute><PermissionGate permission="GPS_ACCESS"><FeatureGate feature="GPS_TRACKING"><GpsAlerts /></FeatureGate></PermissionGate></ProtectedRoute>} />

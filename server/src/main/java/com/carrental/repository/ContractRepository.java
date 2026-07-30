@@ -164,4 +164,24 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
      */
     @Query(value = "SELECT EXISTS(SELECT 1 FROM contracts WHERE vehicle_id = :vehicleId)", nativeQuery = true)
     boolean existsAnyContractForVehicleId(@Param("vehicleId") Long vehicleId);
+
+    /** Contracts whose rental period overlaps a reporting period — used for occupancy/utilization/fleet metrics. */
+    @Query("SELECT c FROM Contract c WHERE c.tenant.id = :tenantId " +
+           "AND c.startDate < :periodEndDate AND c.endDate >= :periodStartDate")
+    List<Contract> findAllOverlappingPeriod(@Param("tenantId") Long tenantId,
+                                             @Param("periodStartDate") LocalDate periodStartDate,
+                                             @Param("periodEndDate") LocalDate periodEndDate);
+
+    /** Contracts created within a reporting period — used for "new contracts this period" counts. */
+    List<Contract> findAllByTenantIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Long tenantId, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Earliest contract start date per client for a tenant — used to classify a
+     * client as "new" (first contract falls within the reporting period) vs.
+     * "returning" without loading every historical Contract row into memory.
+     */
+    @Query("SELECT c.client.id, MIN(c.startDate) FROM Contract c " +
+           "WHERE c.tenant.id = :tenantId AND c.client.id IS NOT NULL GROUP BY c.client.id")
+    List<Object[]> findFirstContractStartDateByClient(@Param("tenantId") Long tenantId);
 }
