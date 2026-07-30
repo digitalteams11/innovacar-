@@ -46,6 +46,8 @@ class AuthServiceForgotPasswordTest {
     private final EmailOtpService emailOtpService = mock(EmailOtpService.class);
     private final EmployeeRepository employeeRepository = mock(EmployeeRepository.class);
     private final RolePermissionService rolePermissionService = mock(RolePermissionService.class);
+    private final SubscriptionPlanRepository subscriptionPlanRepository = mock(SubscriptionPlanRepository.class);
+    private final SubscriptionService subscriptionService = mock(SubscriptionService.class);
 
     private AuthService authService;
     private User user;
@@ -57,7 +59,7 @@ class AuthServiceForgotPasswordTest {
                 emailVerificationTokenRepository, passwordEncoder, jwtTokenProvider, authenticationManager,
                 rateLimitService, refreshTokenService, emailService, smtpMailService, sessionService,
                 passwordPolicyService, deviceSecurityService, twoFactorService, emailOtpService,
-                employeeRepository, rolePermissionService,
+                employeeRepository, rolePermissionService, subscriptionPlanRepository, subscriptionService,
                 // Synchronous "executor" so the async email dispatch runs inline and
                 // stays deterministically verifiable within the test method.
                 Runnable::run);
@@ -175,7 +177,8 @@ class AuthServiceForgotPasswordTest {
                 emailVerificationTokenRepository, passwordEncoder, jwtTokenProvider, authenticationManager,
                 rateLimitService, refreshTokenService, emailService, smtpMailService, sessionService,
                 passwordPolicyService, deviceSecurityService, twoFactorService, emailOtpService,
-                employeeRepository, rolePermissionService, trackingExecutor);
+                employeeRepository, rolePermissionService, subscriptionPlanRepository, subscriptionService,
+                trackingExecutor);
 
         when(passwordResetTokenRepository.findFirstByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
         when(passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(0L);

@@ -10,6 +10,7 @@ import java.util.Optional;
 @Repository
 public interface SubscriptionPlanRepository extends JpaRepository<SubscriptionPlan, Long> {
     Optional<SubscriptionPlan> findByCode(String code);
+    Optional<SubscriptionPlan> findByCodeIgnoreCase(String code);
     Optional<SubscriptionPlan> findByName(String name);
     List<SubscriptionPlan> findAllByIsActiveTrueOrderByDisplayOrderAsc();
 }

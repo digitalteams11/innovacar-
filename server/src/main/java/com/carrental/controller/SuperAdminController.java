@@ -69,6 +69,7 @@ public class SuperAdminController {
     private final TrustedDeviceRepository trustedDeviceRepository;
     private final OnboardingProgressRepository onboardingProgressRepository;
     private final SystemHealthService systemHealthService;
+    private final com.carrental.service.SubscriptionService subscriptionService;
     private final NotificationReadRepository notificationReadRepository;
     private final AgencyBalanceTransactionRepository balanceTransactionRepository;
     private final AnnouncementRepository announcementRepository;
@@ -408,7 +409,7 @@ public class SuperAdminController {
     }
 
     @PutMapping("/plans/{id}")
-    public ResponseEntity<SubscriptionPlan> updatePlan(@PathVariable Long id, @RequestBody SubscriptionPlan updates) {
+    public ResponseEntity<SubscriptionPlan> updatePlan(@PathVariable Long id, @Valid @RequestBody SubscriptionPlan updates) {
         SubscriptionPlan plan = planRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Plan not found"));
         if (updates.getName() != null) plan.setName(updates.getName());
@@ -434,6 +435,7 @@ public class SuperAdminController {
         if (updates.getWhopPriceId() != null) plan.setWhopPriceId(updates.getWhopPriceId());
         if (updates.getCurrency() != null) plan.setCurrency(updates.getCurrency());
         if (updates.getTrialDays() != null) plan.setTrialDays(updates.getTrialDays());
+        if (updates.getIsTrialEnabled() != null) plan.setIsTrialEnabled(updates.getIsTrialEnabled());
         if (updates.getClientLimit() != null) plan.setClientLimit(updates.getClientLimit());
         if (updates.getContractLimit() != null) plan.setContractLimit(updates.getContractLimit());
         if (updates.getBillingCycleAllowedMonthly() != null) plan.setBillingCycleAllowedMonthly(updates.getBillingCycleAllowedMonthly());
@@ -476,7 +478,10 @@ public class SuperAdminController {
                 .orElseThrow(() -> new IllegalArgumentException("Agency not found"));
         int days = body.getOrDefault("days", 30);
         LocalDate previousEndDate = t.getTrialEndDate();
-        t.setTrialEndDate(LocalDate.now().plusDays(days));
+        LocalDateTime newEndsAt = LocalDateTime.now().plusDays(days);
+        t.setTrialEndDate(newEndsAt.toLocalDate());
+        t.setTrialEndsAt(newEndsAt);
+        if (t.getTrialStartedAt() == null) t.setTrialStartedAt(LocalDateTime.now());
         t.setStatus("TRIAL");
         tenantRepository.save(t);
         logAgencyAction(t, "TRIAL_MANUALLY_EXTENDED",
@@ -1201,6 +1206,9 @@ public class SuperAdminController {
 
     @PostMapping("/agencies")
     public ResponseEntity<Map<String, Object>> createAgency(@RequestBody Map<String, Object> body) {
+        LocalDateTime now = LocalDateTime.now();
+        SubscriptionPlan trialPlan = planRepository.findByCodeIgnoreCase("TRIAL").orElse(null);
+        com.carrental.service.SubscriptionService.TrialWindow trial = subscriptionService.beginTrial(trialPlan, now);
         Tenant t = Tenant.builder()
                 .name((String) body.get("name"))
                 .email((String) body.get("email"))
@@ -1209,10 +1217,12 @@ public class SuperAdminController {
                 .city((String) body.get("city"))
                 .country((String) body.get("country"))
                 .taxId((String) body.get("taxId"))
-                .status("TRIAL")
+                .status(trial.hasTrial() ? "TRIAL" : "ACTIVE")
                 .subscriptionActive(false)
-                .trialStartDate(LocalDate.now())
-                .trialEndDate(LocalDate.now().plusMonths(Tenant.TRIAL_PERIOD_MONTHS))
+                .trialStartDate(trial.hasTrial() ? trial.startedAt().toLocalDate() : null)
+                .trialEndDate(trial.hasTrial() ? trial.endsAt().toLocalDate() : null)
+                .trialStartedAt(trial.startedAt())
+                .trialEndsAt(trial.endsAt())
                 .planName("Trial")
                 .build();
         tenantRepository.save(t);

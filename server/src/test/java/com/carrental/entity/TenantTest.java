@@ -81,4 +81,62 @@ class TenantTest {
         Tenant endsTomorrow = Tenant.builder().trialEndDate(LocalDate.now().plusDays(1)).build();
         assertThat(endsTomorrow.isTrialExpired()).isFalse();
     }
+
+    // Regression coverage: isSubscriptionValid() used to ignore trial expiry
+    // entirely for a tenant whose status was still "TRIAL" — subscriptionActive
+    // is set true and subscriptionEndDate is left null at trial signup (those
+    // fields describe a *paid* renewal window), so the pre-fix implementation
+    // reported a trial tenant as permanently valid even long after its exact
+    // trialEndsAt instant had passed, until a scheduled job got around to
+    // flipping status to "EXPIRED". Access control must be correct in real
+    // time, independent of that job (see TrialExpiryJob).
+
+    @Test
+    void isSubscriptionValid_trueWhileTrialStillRunning() {
+        Tenant tenant = Tenant.builder()
+                .status("TRIAL")
+                .subscriptionActive(true)
+                .trialStartedAt(java.time.LocalDateTime.now().minusHours(1))
+                .trialEndsAt(java.time.LocalDateTime.now().plusHours(23))
+                .build();
+
+        assertThat(tenant.isSubscriptionValid()).isTrue();
+    }
+
+    @Test
+    void isSubscriptionValid_falseTheInstantTrialEndsAtPasses_evenIfStatusStillSaysTrial() {
+        Tenant tenant = Tenant.builder()
+                .status("TRIAL")
+                .subscriptionActive(true)
+                .trialStartedAt(java.time.LocalDateTime.now().minusHours(25))
+                .trialEndsAt(java.time.LocalDateTime.now().minusHours(1))
+                .build();
+
+        assertThat(tenant.isSubscriptionValid()).isFalse();
+    }
+
+    @Test
+    void isSubscriptionValid_paidActiveTenantUnaffectedByTrialFields() {
+        Tenant tenant = Tenant.builder()
+                .status("ACTIVE")
+                .subscriptionActive(true)
+                .subscriptionEndDate(LocalDate.now().plusMonths(1))
+                .build();
+
+        assertThat(tenant.isSubscriptionValid()).isTrue();
+    }
+
+    @Test
+    void isSubscriptionValid_employeeOfExpiredTrialAgencyIsBlocked() {
+        // Employees don't have their own subscription state — they inherit the
+        // tenant's, so this same method call is what gates an employee's access too.
+        Tenant expiredTrialAgency = Tenant.builder()
+                .status("TRIAL")
+                .subscriptionActive(true)
+                .trialStartedAt(java.time.LocalDateTime.now().minusDays(15))
+                .trialEndsAt(java.time.LocalDateTime.now().minusDays(1))
+                .build();
+
+        assertThat(expiredTrialAgency.isSubscriptionValid()).isFalse();
+    }
 }

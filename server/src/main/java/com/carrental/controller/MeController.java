@@ -53,7 +53,13 @@ public class MeController {
             boolean blocked = tenant.isAccountBlocked();
             boolean subscriptionValid = tenant.isSubscriptionValid();
             String agencyStatus = tenant.getStatus();
+            boolean wasTrial = "TRIAL".equalsIgnoreCase(agencyStatus);
+            // A trial tenant must report TRIAL while active and EXPIRED once its
+            // exact trialEndsAt has passed — reporting "ACTIVE" here (the old
+            // behavior) was indistinguishable from a genuine paid subscription
+            // and never surfaced the expired-trial state to the frontend gate.
             String subscriptionStatus = blocked ? agencyStatus
+                    : wasTrial ? (subscriptionValid ? "TRIAL" : "EXPIRED")
                     : subscriptionValid ? "ACTIVE"
                     : (tenant.getSubscriptionEndDate() != null
                             && java.time.LocalDate.now().isAfter(tenant.getSubscriptionEndDate()))
@@ -74,6 +80,8 @@ public class MeController {
             body.put("agencyId", tenant.getId());
             body.put("agencyStatus", agencyStatus);
             body.put("subscriptionStatus", subscriptionStatus);
+            body.put("wasTrial", wasTrial);
+            body.put("trialEndsAt", tenant.getTrialEndsAt());
             body.put("planCode", tenant.getPlanName());
             body.put("planName", tenant.getPlanName());
             body.put("features", List.of());

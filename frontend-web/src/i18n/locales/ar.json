@@ -2666,7 +2666,28 @@
   "trialBanner": {
     "trialEndsIn": "ينتهي الإصدار التجريبي خلال {{count}} يوم. قم بالترقية لفتح كامل الإمكانات.",
     "trialEndsInPlural": "ينتهي الإصدار التجريبي خلال {{count}} يوم. قم بالترقية لفتح كامل الإمكانات.",
+    "trialEndsInHour": "ينتهي الإصدار التجريبي خلال {{count}} ساعة. قم بالترقية لفتح كامل الإمكانات.",
+    "trialEndsInHourPlural": "ينتهي الإصدار التجريبي خلال {{count}} ساعة. قم بالترقية لفتح كامل الإمكانات.",
+    "trialEndsInMinute": "ينتهي الإصدار التجريبي خلال {{count}} دقيقة. قم بالترقية لفتح كامل الإمكانات.",
+    "trialEndsInMinutePlural": "ينتهي الإصدار التجريبي خلال {{count}} دقيقة. قم بالترقية لفتح كامل الإمكانات.",
+    "trialExpired": "انتهت الفترة التجريبية. قم بالترقية الآن لمواصلة استخدام إنوفاكار.",
     "viewPlans": "عرض الخطط"
+  },
+  "accountSuspended": {
+    "title": "الحساب موقوف",
+    "description": "حساب وكالتك حاليًا {{status}} من قبل Innovax Technologies.",
+    "blocked": "محظور",
+    "suspended": "موقوف",
+    "plan": "الخطة",
+    "status": "الحالة",
+    "openBilling": "فتح الفوترة",
+    "contactSupport": "الاتصال بالدعم",
+    "logout": "تسجيل الخروج"
+  },
+  "trialExpiredScreen": {
+    "title": "انتهت فترتك التجريبية المجانية",
+    "description": "اختر اشتراكًا لمواصلة استخدام إنوفاكار.",
+    "viewSubscriptionOptions": "عرض خيارات الاشتراك"
   },
   "subscription": {
     "title": "الاشتراك والفوترة",

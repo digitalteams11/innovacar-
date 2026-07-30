@@ -3,6 +3,7 @@ package com.carrental.service;
 import com.carrental.dto.AuthResponse;
 import com.carrental.entity.*;
 import com.carrental.repository.PhoneOtpRepository;
+import com.carrental.repository.SubscriptionPlanRepository;
 import com.carrental.repository.TenantRepository;
 import com.carrental.repository.UserRepository;
 import com.carrental.security.JwtTokenProvider;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Random;
@@ -36,6 +36,8 @@ public class PhoneAuthService {
     private final RefreshTokenService refreshTokenService;
     private final SessionService sessionService;
     private final EmailService emailService;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final SubscriptionService subscriptionService;
 
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final int MAX_ATTEMPTS = 3;
@@ -127,18 +129,22 @@ public class PhoneAuthService {
     @Transactional
     protected User createUserFromPhone(String phoneNumber) {
         String tenantName = "Agency " + phoneNumber;
-        LocalDate today = LocalDate.now();
-        // Same one-calendar-month trial as the email signup flow (AuthService) — trial
+        LocalDateTime now = LocalDateTime.now();
+        // Same plan-driven trial as the email signup flow (AuthService) — trial
         // fields/status must be set explicitly here too, otherwise this tenant never
         // registers as "in trial" even though @PrePersist defaults status to TRIAL.
+        SubscriptionPlan trialPlan = subscriptionPlanRepository.findByCodeIgnoreCase("TRIAL").orElse(null);
+        SubscriptionService.TrialWindow trial = subscriptionService.beginTrial(trialPlan, now);
         Tenant tenant = tenantRepository.save(Tenant.builder()
                 .name(tenantName)
                 .email("phone-" + phoneNumber + "@placeholder.com")
                 .subscriptionActive(true)
-                .trialStartDate(today)
-                .trialEndDate(today.plusMonths(Tenant.TRIAL_PERIOD_MONTHS))
+                .trialStartDate(trial.hasTrial() ? trial.startedAt().toLocalDate() : null)
+                .trialEndDate(trial.hasTrial() ? trial.endsAt().toLocalDate() : null)
+                .trialStartedAt(trial.startedAt())
+                .trialEndsAt(trial.endsAt())
                 .planName("Trial")
-                .status("TRIAL")
+                .status(trial.hasTrial() ? "TRIAL" : "ACTIVE")
                 .build());
 
         User user = userRepository.save(User.builder()

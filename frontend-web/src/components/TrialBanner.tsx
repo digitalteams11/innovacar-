@@ -14,8 +14,10 @@ export default function TrialBanner() {
 
   if (!subscription.isTrial) return null;
 
+  const secondsRemaining = subscription.trialSecondsRemaining;
   const daysRemaining = subscription.trialDaysRemaining;
   const isUrgent = daysRemaining <= 7;
+  const isExpired = secondsRemaining <= 0;
 
   const urgentStyle = {
     background: 'rgba(245,158,11,0.1)',
@@ -36,7 +38,26 @@ export default function TrialBanner() {
 
   const s = isUrgent ? urgentStyle : normalStyle;
 
-  const messageKey = daysRemaining === 1 ? 'trialBanner.trialEndsIn' : 'trialBanner.trialEndsInPlural';
+  // Backend trialSecondsRemaining is the exact-instant source of truth, so once a
+  // trial has less than a day left this switches to hours/minutes instead of
+  // ever showing a misleading "0 days remaining".
+  let messageKey: string;
+  let messageCount: number;
+  if (isExpired) {
+    messageKey = 'trialBanner.trialExpired';
+    messageCount = 0;
+  } else if (secondsRemaining < 3600) {
+    const minutes = Math.max(1, Math.floor(secondsRemaining / 60));
+    messageKey = minutes === 1 ? 'trialBanner.trialEndsInMinute' : 'trialBanner.trialEndsInMinutePlural';
+    messageCount = minutes;
+  } else if (secondsRemaining < 86400) {
+    const hours = Math.floor(secondsRemaining / 3600);
+    messageKey = hours === 1 ? 'trialBanner.trialEndsInHour' : 'trialBanner.trialEndsInHourPlural';
+    messageCount = hours;
+  } else {
+    messageKey = daysRemaining === 1 ? 'trialBanner.trialEndsIn' : 'trialBanner.trialEndsInPlural';
+    messageCount = daysRemaining;
+  }
 
   return (
     <div style={{ background: s.background, borderBottom: s.borderBottom }}>
@@ -44,7 +65,7 @@ export default function TrialBanner() {
         <div className="flex items-center gap-3 min-w-0">
           <Clock size={18} className="shrink-0" style={{ color: s.iconColor }} />
           <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-            {t(messageKey, { count: daysRemaining })}
+            {t(messageKey, { count: messageCount })}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">

@@ -109,13 +109,24 @@ public class SubscriptionFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response);
                     return;
                 }
-                boolean expired = tenant.getSubscriptionEndDate() != null
-                        && LocalDate.now().isAfter(tenant.getSubscriptionEndDate());
+                boolean wasTrial = "TRIAL".equalsIgnoreCase(tenant.getStatus());
+                // A trial tenant never has a subscriptionEndDate (that field describes
+                // a paid renewal window) — checking it here misclassified every expired
+                // trial as SUBSCRIPTION_SUSPENDED instead of SUBSCRIPTION_EXPIRED.
+                boolean expired = wasTrial
+                        ? tenant.isTrialExpired()
+                        : tenant.getSubscriptionEndDate() != null
+                            && LocalDate.now().isAfter(tenant.getSubscriptionEndDate());
                 String errorCode = expired ? "SUBSCRIPTION_EXPIRED" : "SUBSCRIPTION_SUSPENDED";
+                String message = wasTrial && expired
+                        ? "Your free trial has ended."
+                        : "Your subscription is expired. Please renew your plan to continue.";
                 Map<String, Object> data = new LinkedHashMap<>();
+                data.put("status", expired ? "EXPIRED" : "SUSPENDED");
                 data.put("subscriptionStatus", expired ? "EXPIRED" : "SUSPENDED");
-                writeJson(response, HttpServletResponse.SC_PAYMENT_REQUIRED, errorCode,
-                        "Your subscription is expired. Please renew your plan to continue.", data);
+                data.put("trialEndedAt", wasTrial && tenant.getTrialEndsAt() != null ? tenant.getTrialEndsAt().toString() : null);
+                data.put("subscriptionUrl", "/subscription");
+                writeJson(response, HttpServletResponse.SC_PAYMENT_REQUIRED, errorCode, message, data);
                 return;
             }
         }

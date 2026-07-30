@@ -58,6 +58,8 @@ public class AuthService {
     private final EmailOtpService          emailOtpService;
     private final EmployeeRepository       employeeRepository;
     private final RolePermissionService    rolePermissionService;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final SubscriptionService      subscriptionService;
 
     @org.springframework.beans.factory.annotation.Qualifier("emailDispatchExecutor")
     private final java.util.concurrent.Executor emailDispatchExecutor;
@@ -969,20 +971,25 @@ public class AuthService {
         String baseName = buildAgencyName(request);
         String tenantName = uniqueTenantName(baseName);
         String tenantEmail = uniqueTenantEmail(email);
-        // Every new agency gets exactly one calendar month of free trial, starting
-        // from account creation. subscriptionEndDate is deliberately left null here —
-        // it means "paid-plan renewal date" and populating it with the trial end date
+        // Trial duration comes from the TRIAL plan's own trialDays (Super Admin
+        // configurable — see SubscriptionService#beginTrial), never a hardcoded
+        // constant. subscriptionEndDate is deliberately left null here — it means
+        // "paid-plan renewal date" and populating it with the trial end date
         // caused the billing UI to show a stale "Renews on ..." line once the tenant's
         // status ever drifted away from "TRIAL" (e.g. after a block/unblock cycle).
-        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
+        SubscriptionPlan trialPlan = subscriptionPlanRepository.findByCodeIgnoreCase("TRIAL").orElse(null);
+        SubscriptionService.TrialWindow trial = subscriptionService.beginTrial(trialPlan, now);
         Tenant tenant = tenantRepository.save(Tenant.builder()
                 .name(tenantName)
                 .email(tenantEmail)
                 .subscriptionActive(true)
-                .trialStartDate(today)
-                .trialEndDate(today.plusMonths(Tenant.TRIAL_PERIOD_MONTHS))
+                .trialStartDate(trial.hasTrial() ? trial.startedAt().toLocalDate() : null)
+                .trialEndDate(trial.hasTrial() ? trial.endsAt().toLocalDate() : null)
+                .trialStartedAt(trial.startedAt())
+                .trialEndsAt(trial.endsAt())
                 .planName("Trial")
-                .status("TRIAL")
+                .status(trial.hasTrial() ? "TRIAL" : "ACTIVE")
                 .verificationStatus("PENDING_VERIFICATION")
                 .build());
         return tenant;

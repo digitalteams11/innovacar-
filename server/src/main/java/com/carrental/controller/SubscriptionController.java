@@ -75,6 +75,14 @@ public class SubscriptionController {
                 && tenant.getTrialEndDate() != null
                 && !tenant.isTrialExpired();
         long remainingTrialDays = inTrial ? tenant.trialDaysRemaining() : 0;
+        // Precise instant (falls back to the legacy date-only value for a tenant
+        // created before trialEndsAt existed) — the frontend needs this, not just
+        // a whole-day count, to show an accurate "18 hours remaining"/"35 minutes
+        // remaining" countdown instead of only ever showing whole days.
+        java.time.LocalDateTime preciseTrialEnd = tenant.getTrialEndsAt() != null
+                ? tenant.getTrialEndsAt()
+                : tenant.getTrialEndDate() != null ? tenant.getTrialEndDate().atTime(23, 59, 59) : null;
+        long trialSecondsRemaining = inTrial ? tenant.trialTimeRemaining().getSeconds() : 0;
         long daysRemaining = inTrial ? remainingTrialDays : tenant.getSubscriptionEndDate() == null
                 ? 0
                 : Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), tenant.getSubscriptionEndDate()));
@@ -85,10 +93,11 @@ public class SubscriptionController {
         result.put("status", tenant.getStatus());
         result.put("subscriptionStatus", tenant.getStatus());
         result.put("isTrial", inTrial);
-        result.put("trialEndsAt", inTrial ? tenant.getTrialEndDate() : null);
+        result.put("trialEndsAt", inTrial ? preciseTrialEnd : null);
+        result.put("trialSecondsRemaining", trialSecondsRemaining);
         result.put("remainingTrialDays", remainingTrialDays);
         result.put("trialDaysRemaining", remainingTrialDays);
-        result.put("trialStartDate", tenant.getTrialStartDate());
+        result.put("trialStartDate", tenant.getTrialStartedAt() != null ? tenant.getTrialStartedAt() : tenant.getTrialStartDate());
         result.put("trialExpired", tenant.isTrialExpired() && !"ACTIVE".equalsIgnoreCase(tenant.getStatus()));
         result.put("currentPeriodEnd", tenant.getSubscriptionEndDate());
         result.put("subscriptionActive", tenant.isSubscriptionValid());
@@ -96,7 +105,7 @@ public class SubscriptionController {
         result.put("hasFreeAccess", tenant.hasActiveFreeAccess());
         result.put("freeAccessUntil", tenant.getFreeAccessUntil());
         result.put("freeAccessReason", tenant.getFreeAccessReason());
-        result.put("trialEndDate", inTrial ? tenant.getTrialEndDate() : null);
+        result.put("trialEndDate", inTrial ? preciseTrialEnd : null);
         result.put("inTrial", inTrial);
         result.put("daysRemaining", daysRemaining);
         result.put("remainingDays", daysRemaining);
@@ -131,7 +140,10 @@ public class SubscriptionController {
     // ── GET /api/subscriptions/plans ─────────────────────────────────────────
     private Map<String, Object> defaultSubscriptionStatus() {
         Map<String, Object> result = new LinkedHashMap<>();
-        LocalDate defaultTrialEnd = LocalDate.now().plusMonths(Tenant.TRIAL_PERIOD_MONTHS);
+        SubscriptionPlan trialPlan = planRepository.findByCodeIgnoreCase("TRIAL").orElse(null);
+        int trialDays = trialPlan != null && trialPlan.getTrialDays() != null && trialPlan.getTrialDays() > 0
+                ? trialPlan.getTrialDays() : 30;
+        LocalDate defaultTrialEnd = LocalDate.now().plusDays(trialDays);
         long defaultDaysRemaining = ChronoUnit.DAYS.between(LocalDate.now(), defaultTrialEnd);
         result.put("planCode", "TRIAL");
         result.put("planName", "TRIAL");
@@ -177,19 +189,24 @@ public class SubscriptionController {
             tenant.setStatus(trialPlan ? "TRIAL" : "ACTIVE");
             changed = true;
         }
-        if (trialPlan && tenant.getTrialStartDate() == null) {
+        if (trialPlan && tenant.getTrialStartedAt() == null) {
             // The trial start is the account's actual creation date, not "now" — using
-            // "now" here would silently grant a fresh month to a tenant that's merely
-            // missing this field (e.g. created before it existed), instead of the
-            // month it was actually always entitled to.
-            LocalDate start = tenant.getCreatedAt() != null
-                    ? tenant.getCreatedAt().toLocalDate()
-                    : LocalDate.now();
-            tenant.setTrialStartDate(start);
+            // "now" here would silently grant a fresh trial window to a tenant that's
+            // merely missing this field (e.g. created before it existed), instead of
+            // the window it was actually always entitled to.
+            LocalDateTime start = tenant.getCreatedAt() != null ? tenant.getCreatedAt() : LocalDateTime.now();
+            tenant.setTrialStartedAt(start);
+            if (tenant.getTrialStartDate() == null) tenant.setTrialStartDate(start.toLocalDate());
             changed = true;
         }
-        if (trialPlan && tenant.getTrialEndDate() == null) {
-            tenant.setTrialEndDate(tenant.getTrialStartDate().plusMonths(Tenant.TRIAL_PERIOD_MONTHS));
+        if (trialPlan && tenant.getTrialEndsAt() == null) {
+            SubscriptionPlan currentTrialPlan = planRepository.findByCodeIgnoreCase("TRIAL").orElse(null);
+            int days = currentTrialPlan != null && currentTrialPlan.getTrialDays() != null && currentTrialPlan.getTrialDays() > 0
+                    ? currentTrialPlan.getTrialDays()
+                    : 30;
+            LocalDateTime end = tenant.getTrialStartedAt().plusDays(days);
+            tenant.setTrialEndsAt(end);
+            if (tenant.getTrialEndDate() == null) tenant.setTrialEndDate(end.toLocalDate());
             changed = true;
         }
         if (tenant.getMaxVehicles() == null || tenant.getMaxVehicles() <= 0) {
@@ -225,6 +242,7 @@ public class SubscriptionController {
         data.put("status", status.get("status"));
         data.put("isTrial", status.get("isTrial"));
         data.put("trialEndsAt", status.get("trialEndsAt"));
+        data.put("trialSecondsRemaining", status.get("trialSecondsRemaining"));
         data.put("remainingTrialDays", status.get("remainingTrialDays"));
         data.put("currentPeriodEnd", status.get("currentPeriodEnd"));
         data.put("remainingDays", status.get("daysRemaining"));

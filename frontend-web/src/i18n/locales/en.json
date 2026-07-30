@@ -2666,7 +2666,28 @@
   "trialBanner": {
     "trialEndsIn": "Trial ends in {{count}} day. Upgrade anytime to unlock your full potential.",
     "trialEndsInPlural": "Trial ends in {{count}} days. Upgrade anytime to unlock your full potential.",
+    "trialEndsInHour": "Trial ends in {{count}} hour. Upgrade anytime to unlock your full potential.",
+    "trialEndsInHourPlural": "Trial ends in {{count}} hours. Upgrade anytime to unlock your full potential.",
+    "trialEndsInMinute": "Trial ends in {{count}} minute. Upgrade anytime to unlock your full potential.",
+    "trialEndsInMinutePlural": "Trial ends in {{count}} minutes. Upgrade anytime to unlock your full potential.",
+    "trialExpired": "Trial expired. Upgrade now to keep using Innovacar.",
     "viewPlans": "View Plans"
+  },
+  "accountSuspended": {
+    "title": "Account suspended",
+    "description": "Your agency account is currently {{status}} by Innovax Technologies.",
+    "blocked": "blocked",
+    "suspended": "suspended",
+    "plan": "Plan",
+    "status": "Status",
+    "openBilling": "Open Billing",
+    "contactSupport": "Contact Support",
+    "logout": "Logout"
+  },
+  "trialExpiredScreen": {
+    "title": "Your free trial has ended",
+    "description": "Choose a subscription to continue using Innovacar.",
+    "viewSubscriptionOptions": "View subscription options"
   },
   "subscription": {
     "title": "Subscription & Billing",

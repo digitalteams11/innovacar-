@@ -3,6 +3,7 @@ package com.carrental.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -125,13 +126,29 @@ public class Tenant {
     @Column(name = "storage_limit_mb")
     private Integer storageLimitMb;
 
-    /** Trial start date — the agency/account creation date. */
+    /** Trial start date — the agency/account creation date. Legacy, date-only; see trialStartedAt for the precise timestamp. */
     @Column(name = "trial_start_date")
     private LocalDate trialStartDate;
 
-    /** Trial end date — always exactly {@link #TRIAL_PERIOD_MONTHS} calendar month(s) after trialStartDate. */
+    /** Trial end date — legacy, date-only; see trialEndsAt for the precise timestamp that actually governs expiry. */
     @Column(name = "trial_end_date")
     private LocalDate trialEndDate;
+
+    /**
+     * Precise trial start instant. A day-count trial (trialDays = 1, 7, 14...)
+     * cannot be correctly enforced with date-only columns — comparing against
+     * a plain LocalDate only flips to expired at the next midnight, silently
+     * granting up to one extra day regardless of the exact signup time. This
+     * (and trialEndsAt) is the real source of truth for isInTrial/isTrialExpired;
+     * trialStartDate/trialEndDate are kept in sync for legacy/display readers
+     * but never consulted for the actual expiry decision once this is set.
+     */
+    @Column(name = "trial_started_at")
+    private LocalDateTime trialStartedAt;
+
+    /** Precise trial end instant — {@code trialStartedAt + plan.trialDays}. See {@link #trialStartedAt}. */
+    @Column(name = "trial_ends_at")
+    private LocalDateTime trialEndsAt;
 
     /** Dedup marker: trial-ends-in-7-days reminder already sent (null = not yet sent). */
     @Column(name = "trial_reminder_7_sent_at")
@@ -226,33 +243,71 @@ public class Tenant {
      * Checks if the subscription is currently active and not expired.
      * A deliberate Super-Admin block/suspend/deactivate always wins; a live
      * free-access grant overrides normal plan/payment state otherwise.
+     *
+     * <p>A tenant whose status is still "TRIAL" is validated against the exact
+     * trialEndsAt instant (via isInTrial()), never against subscriptionActive/
+     * subscriptionEndDate — those two fields describe a *paid* subscription
+     * window and are deliberately left true/null for a brand-new trial tenant
+     * (see AuthService#createTrialTenant), so checking them here previously
+     * meant a trial tenant was reported "valid" forever, even hours/days after
+     * its precise trialEndsAt had passed and regardless of whether the nightly
+     * repair job had gotten around to flipping status to "EXPIRED" yet. This
+     * is the real-time check the product requires independent of that job
+     * (see SubscriptionService#repairSubscriptionState).
      */
     public boolean isSubscriptionValid() {
         if (isAccountBlocked()) return false;
         if (hasActiveFreeAccess()) return true;
         // CANCEL_SCHEDULED: paid access continues until cancelEffectiveAt
         if (isCancelScheduled() && cancelEffectiveAt != null && LocalDateTime.now().isBefore(cancelEffectiveAt)) return true;
+        if ("TRIAL".equalsIgnoreCase(status)) return isInTrial();
         if (!subscriptionActive) return false;
         if (subscriptionEndDate != null && LocalDate.now().isAfter(subscriptionEndDate)) return false;
         return true;
     }
 
     /**
-     * Checks if the tenant is currently in trial period.
+     * Checks if the tenant is currently in trial period. Prefers the precise
+     * trialEndsAt timestamp (exact-instant expiry); falls back to the legacy
+     * date-only trialEndDate for tenants created before trialEndsAt existed.
      */
     public boolean isInTrial() {
+        if (trialEndsAt != null) return LocalDateTime.now().isBefore(trialEndsAt);
         if (trialEndDate == null) return false;
-        return LocalDate.now().isBefore(trialEndDate) || LocalDate.now().isEqual(trialEndDate);
+        return !LocalDate.now().isAfter(trialEndDate);
     }
 
     /** Whole calendar days left in the trial, floored at 0 — never negative, never null-unsafe. */
     public long trialDaysRemaining() {
+        if (trialEndsAt != null) {
+            Duration remaining = Duration.between(LocalDateTime.now(), trialEndsAt);
+            return remaining.isNegative() ? 0 : remaining.toDays();
+        }
         if (trialEndDate == null) return 0;
         return Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), trialEndDate));
     }
 
-    /** True once trialEndDate has passed (day-granularity: the end date itself still counts as active). */
+    /**
+     * Exact remaining trial duration, never negative — the source for an
+     * hours/minutes-accurate countdown display (a whole-day count alone can't
+     * distinguish "18 hours left" from "13 days left" the way the product
+     * requires). Zero once the trial has expired, never negative.
+     */
+    public Duration trialTimeRemaining() {
+        LocalDateTime end = trialEndsAt != null ? trialEndsAt : (trialEndDate != null ? trialEndDate.atTime(23, 59, 59) : null);
+        if (end == null) return Duration.ZERO;
+        Duration remaining = Duration.between(LocalDateTime.now(), end);
+        return remaining.isNegative() ? Duration.ZERO : remaining;
+    }
+
+    /**
+     * True once the trial has passed. Prefers the precise trialEndsAt instant
+     * (>= comparison, per "now >= trialEndsAt is expired"); falls back to the
+     * legacy date-only trialEndDate (day-granularity: the end date itself
+     * still counts as active) for tenants without a precise timestamp.
+     */
     public boolean isTrialExpired() {
+        if (trialEndsAt != null) return !LocalDateTime.now().isBefore(trialEndsAt);
         return trialEndDate != null && LocalDate.now().isAfter(trialEndDate);
     }
 

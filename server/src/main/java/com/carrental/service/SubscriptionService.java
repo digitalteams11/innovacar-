@@ -33,6 +33,31 @@ public class SubscriptionService {
     private final NotificationService notificationService;
     private final PlatformEmailService platformEmailService;
 
+    /** A resolved trial window for a new tenant — {@code hasTrial() == false} means no trial should be granted at all (plan.trialDays == 0 or trial disabled). */
+    public record TrialWindow(LocalDateTime startedAt, LocalDateTime endsAt, boolean hasTrial) {
+        public static TrialWindow none() {
+            return new TrialWindow(null, null, false);
+        }
+    }
+
+    /**
+     * The single source of truth for "how long should this new tenant's trial
+     * last": reads the plan's own isTrialEnabled + trialDays, never a
+     * hardcoded constant and never a plan-name/code comparison (see class
+     * Javadoc on SubscriptionPlan.isTrialEnabled). Every trial-creation call
+     * site (registration, phone signup, Super Admin manual agency creation,
+     * legacy-tenant backfill) must go through this so a Super Admin's edit to
+     * a plan's Trial Days actually controls real trial duration going
+     * forward — without touching any tenant whose trial already started.
+     */
+    public TrialWindow beginTrial(SubscriptionPlan plan, LocalDateTime now) {
+        if (plan == null || !Boolean.TRUE.equals(plan.getIsTrialEnabled())
+                || plan.getTrialDays() == null || plan.getTrialDays() <= 0) {
+            return TrialWindow.none();
+        }
+        return new TrialWindow(now, now.plusDays(plan.getTrialDays()), true);
+    }
+
     @Transactional
     public Tenant repairSubscriptionState(Tenant tenant, SubscriptionPlan plan) {
         String planCode = planCode(plan, tenant.getPlanName());
@@ -47,9 +72,7 @@ public class SubscriptionService {
             return tenant;
         }
 
-        if (trialPlan && "TRIAL".equalsIgnoreCase(tenant.getStatus())
-                && tenant.getTrialEndDate() != null
-                && LocalDate.now().isAfter(tenant.getTrialEndDate())) {
+        if (trialPlan && "TRIAL".equalsIgnoreCase(tenant.getStatus()) && tenant.isTrialExpired()) {
             tenant.setStatus("EXPIRED");
             tenant.setSubscriptionActive(false);
             changed = true;
@@ -64,6 +87,14 @@ public class SubscriptionService {
         }
         if (!trialPlan && tenant.getTrialEndDate() != null) {
             tenant.setTrialEndDate(null);
+            changed = true;
+        }
+        if (!trialPlan && tenant.getTrialStartedAt() != null) {
+            tenant.setTrialStartedAt(null);
+            changed = true;
+        }
+        if (!trialPlan && tenant.getTrialEndsAt() != null) {
+            tenant.setTrialEndsAt(null);
             changed = true;
         }
         if (!trialPlan && !tenant.isSubscriptionActive()) {
@@ -92,6 +123,8 @@ public class SubscriptionService {
         tenant.setStatus("ACTIVE");
         tenant.setTrialStartDate(null);
         tenant.setTrialEndDate(null);
+        tenant.setTrialStartedAt(null);
+        tenant.setTrialEndsAt(null);
         tenant.setSubscriptionEndDate(today.plusMonths(Math.max(1, months)));
         tenant.setMaxVehicles(plan.getMaxVehicles());
         tenant.setMaxEmployees(plan.getMaxEmployees());

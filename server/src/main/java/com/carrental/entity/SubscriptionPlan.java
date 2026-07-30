@@ -1,6 +1,8 @@
 package com.carrental.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -110,9 +112,21 @@ public class SubscriptionPlan {
     @Column(length = 10)
     private String currency;
 
-    /** Free trial period in days (0 = no trial) */
+    /** Free trial period in days (0 = no trial). Bean Validation @Min/@Max skip a null value, so this still allows a partial update ("this field is unchanged") while rejecting a real out-of-range or negative value. */
+    @Min(value = 0, message = "Trial days must be 0 or greater")
+    @Max(value = 365, message = "Trial days must be 365 or fewer")
     @Column(name = "trial_days")
     private Integer trialDays;
+
+    /**
+     * Whether this plan currently offers a trial at all — independent of the
+     * trialDays number itself, so a trial can be toggled off without losing
+     * the configured day count. Check both together (see
+     * SubscriptionService#beginTrial): a plan is never assumed to be "the"
+     * trial plan by name/code comparison.
+     */
+    @Column(name = "is_trial_enabled")
+    private Boolean isTrialEnabled;
 
     /** Max clients (contacts) allowed */
     @Column(name = "client_limit")
@@ -150,6 +164,7 @@ public class SubscriptionPlan {
         if (prioritySupport == null) prioritySupport = false;
         if (currency == null || currency.isBlank()) currency = "MAD";
         if (trialDays == null) trialDays = 0;
+        if (isTrialEnabled == null) isTrialEnabled = trialDays > 0;
         if (billingCycleAllowedMonthly == null) billingCycleAllowedMonthly = true;
         if (billingCycleAllowedYearly == null) billingCycleAllowedYearly = true;
     }

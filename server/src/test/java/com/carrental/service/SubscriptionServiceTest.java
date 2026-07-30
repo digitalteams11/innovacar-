@@ -13,7 +13,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -111,6 +113,107 @@ class SubscriptionServiceTest {
                 eq(Notification.NotificationType.SUCCESS),
                 isNull(),
                 eq(1L));
+    }
+
+    // Regression coverage for the production bug where Super Admin's "Trial
+    // Days" field was fully persisted/editable but had zero real effect —
+    // every trial-creation code path hardcoded exactly one calendar month
+    // (Tenant.TRIAL_PERIOD_MONTHS), completely ignoring the plan's own
+    // trialDays value. SubscriptionService#beginTrial is now the single
+    // source of truth every trial-creation call site goes through.
+
+    @Test
+    void beginTrial_withTrialDaysOne_createsExactlyA24HourWindow() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 29, 15, 0, 0);
+        SubscriptionPlan plan = trialPlan(1);
+
+        SubscriptionService.TrialWindow trial = subscriptionService.beginTrial(plan, now);
+
+        assertThat(trial.hasTrial()).isTrue();
+        assertThat(trial.startedAt()).isEqualTo(now);
+        assertThat(trial.endsAt()).isEqualTo(LocalDateTime.of(2026, 7, 30, 15, 0, 0));
+        assertThat(Duration.between(trial.startedAt(), trial.endsAt())).isEqualTo(Duration.ofHours(24));
+    }
+
+    @Test
+    void beginTrial_withTrialDaysFourteen_createsExactlyFourteenDays() {
+        LocalDateTime now = LocalDateTime.of(2026, 1, 1, 9, 30, 0);
+        SubscriptionPlan plan = trialPlan(14);
+
+        SubscriptionService.TrialWindow trial = subscriptionService.beginTrial(plan, now);
+
+        assertThat(trial.hasTrial()).isTrue();
+        assertThat(Duration.between(trial.startedAt(), trial.endsAt())).isEqualTo(Duration.ofDays(14));
+        assertThat(trial.endsAt()).isEqualTo(LocalDateTime.of(2026, 1, 15, 9, 30, 0));
+    }
+
+    @Test
+    void beginTrial_withTrialDaysZero_grantsNoTrial() {
+        SubscriptionService.TrialWindow trial = subscriptionService.beginTrial(trialPlan(0), LocalDateTime.now());
+
+        assertThat(trial.hasTrial()).isFalse();
+        assertThat(trial.startedAt()).isNull();
+        assertThat(trial.endsAt()).isNull();
+    }
+
+    @Test
+    void beginTrial_whenTrialDisabledOnPlan_grantsNoTrialEvenWithPositiveTrialDays() {
+        SubscriptionPlan plan = trialPlan(14);
+        plan.setIsTrialEnabled(false);
+
+        SubscriptionService.TrialWindow trial = subscriptionService.beginTrial(plan, LocalDateTime.now());
+
+        assertThat(trial.hasTrial()).isFalse();
+    }
+
+    @Test
+    void beginTrial_withNullPlan_grantsNoTrial() {
+        assertThat(subscriptionService.beginTrial(null, LocalDateTime.now()).hasTrial()).isFalse();
+    }
+
+    @Test
+    void tenantIsTrialExpired_usesExactTimestampNotJustCalendarDay() {
+        LocalDateTime now = LocalDateTime.now();
+        Tenant tenant = Tenant.builder().id(1L).name("A").email("a@test.com")
+                .trialStartedAt(now.minusHours(23))
+                .trialEndsAt(now.plusHours(1))
+                .build();
+        assertThat(tenant.isTrialExpired()).isFalse();
+        assertThat(tenant.isInTrial()).isTrue();
+
+        Tenant expiring = Tenant.builder().id(2L).name("B").email("b@test.com")
+                .trialStartedAt(now.minusHours(25))
+                .trialEndsAt(now.minusHours(1))
+                .build();
+        assertThat(expiring.isTrialExpired()).isTrue();
+        assertThat(expiring.isInTrial()).isFalse();
+    }
+
+    @Test
+    void editingPlanTrialDays_doesNotChangeAnAlreadyStartedTenantsTrialWindow() {
+        // Agency A started when trialDays was 14.
+        LocalDateTime start = LocalDateTime.of(2026, 1, 1, 10, 0, 0);
+        SubscriptionPlan originalPlan = trialPlan(14);
+        SubscriptionService.TrialWindow original = subscriptionService.beginTrial(originalPlan, start);
+        Tenant agencyA = Tenant.builder().id(1L).name("Agency A").email("a@test.com")
+                .trialStartedAt(original.startedAt())
+                .trialEndsAt(original.endsAt())
+                .status("TRIAL")
+                .build();
+
+        // Super Admin later changes the plan to 1 day — beginTrial is only ever
+        // called again for a *new* tenant; an already-started tenant's stored
+        // trialEndsAt must never be recomputed just because the plan changed.
+        originalPlan.setTrialDays(1);
+
+        assertThat(agencyA.getTrialEndsAt()).isEqualTo(LocalDateTime.of(2026, 1, 15, 10, 0, 0));
+    }
+
+    private SubscriptionPlan trialPlan(int trialDays) {
+        return SubscriptionPlan.builder()
+                .id(1L).name("Trial").code("TRIAL")
+                .trialDays(trialDays).isTrialEnabled(trialDays > 0)
+                .build();
     }
 
     private Tenant paidTenantMarkedAsTrial() {

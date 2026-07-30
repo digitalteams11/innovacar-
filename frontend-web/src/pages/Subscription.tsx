@@ -634,9 +634,10 @@ export default function Subscription() {
 
       {/* Cancel Subscription Modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-elevated w-full max-w-md p-6">
+          <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
                 <AlertTriangle size={18} className="text-rose-500" />
@@ -686,32 +687,37 @@ export default function Subscription() {
                 className="w-full border border-[#e8e6e1] rounded-xl px-3 py-2.5 text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 resize-none"
               />
             </div>
+          </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              >
-                Keep Subscription
-              </button>
-              <button
-                onClick={handleCancelSubmit}
-                disabled={cancelling || !cancelReason}
-                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-              >
-                {cancelling ? <Loader2 size={14} className="animate-spin" /> : null}
-                {cancelling ? 'Scheduling...' : 'Schedule Cancellation'}
-              </button>
-            </div>
+          <div
+            className="shrink-0 flex gap-3 border-t border-[#e8e6e1] p-6"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button
+              onClick={() => setShowCancelModal(false)}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            >
+              Keep Subscription
+            </button>
+            <button
+              onClick={handleCancelSubmit}
+              disabled={cancelling || !cancelReason}
+              className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+            >
+              {cancelling ? <Loader2 size={14} className="animate-spin" /> : null}
+              {cancelling ? 'Scheduling...' : 'Schedule Cancellation'}
+            </button>
+          </div>
           </div>
         </div>
       )}
 
       {/* Confirm Upgrade Modal */}
       {showConfirmModal && selectedPlan && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowConfirmModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-elevated w-full max-w-md p-6">
+          <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
             <h3 className="text-lg font-bold text-[#1e293b] mb-2">Confirm Subscription</h3>
             <p className="text-sm text-slate-500 mb-4">
               You are subscribing to <span className="font-semibold text-[#1e293b]">{selectedPlan.name}</span> with{' '}
@@ -734,23 +740,28 @@ export default function Subscription() {
               </div>
             </div>
             {checkoutUrlMissing && (
-              <p className="text-sm text-rose-600 mb-4">Checkout is not configured for this plan yet. Please contact support.</p>
+              <p className="text-sm text-rose-600">Checkout is not configured for this plan yet. Please contact support.</p>
             )}
-            <div className="flex gap-3">
-              <button
-                onClick={handleUpgrade}
-                disabled={upgrading || checkoutUrlMissing}
-                className="flex-1 bg-[var(--brand-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--brand-primary-foreground)] py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              >
-                {upgrading ? 'Redirecting...' : 'Continue to Checkout'}
-              </button>
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+          </div>
+
+          <div
+            className="shrink-0 flex gap-3 border-t border-[#e8e6e1] p-6"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button
+              onClick={handleUpgrade}
+              disabled={upgrading || checkoutUrlMissing}
+              className="flex-1 bg-[var(--brand-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--brand-primary-foreground)] py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            >
+              {upgrading ? 'Redirecting...' : 'Continue to Checkout'}
+            </button>
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
           </div>
         </div>
       )}

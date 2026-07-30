@@ -10,6 +10,8 @@ interface SubscriptionStatus {
   trialEndsAt: string | null;
   remainingTrialDays: number;
   trialDaysRemaining: number;
+  /** Exact seconds left (backend source of truth) — lets the UI show hours/minutes once under 24h instead of only ever "0 days remaining". */
+  trialSecondsRemaining: number;
   trialStartDate: string | null;
   trialExpired: boolean;
   currentPeriodEnd: string | null;
@@ -38,6 +40,7 @@ const unavailableSubscriptionStatus: SubscriptionStatus = {
   trialEndsAt: null,
   remainingTrialDays: 0,
   trialDaysRemaining: 0,
+  trialSecondsRemaining: 0,
   trialStartDate: null,
   trialExpired: false,
   currentPeriodEnd: null,
@@ -74,6 +77,12 @@ function normalizeSubscriptionStatus(payload: any): SubscriptionStatus {
   const trialDaysRemaining = isTrial
     ? Number(source.trialDaysRemaining ?? source.remainingTrialDays ?? source.remainingDays ?? 0)
     : 0;
+  // Never negative, never a stale/impossible value — always derived fresh from
+  // the backend's own trialSecondsRemaining (computed from trialEndsAt), not
+  // accumulated or estimated client-side.
+  const trialSecondsRemaining = isTrial
+    ? Math.max(0, Number(source.trialSecondsRemaining ?? 0))
+    : 0;
 
   return {
     ...unavailableSubscriptionStatus,
@@ -90,6 +99,7 @@ function normalizeSubscriptionStatus(payload: any): SubscriptionStatus {
     trialExpired: Boolean(source.trialExpired) || (status === 'EXPIRED'),
     remainingTrialDays: trialDaysRemaining,
     trialDaysRemaining,
+    trialSecondsRemaining,
     daysRemaining: Number(source.daysRemaining ?? source.remainingDays ?? 0),
     currentPeriodEnd: source.currentPeriodEnd || source.subscriptionEndDate || null,
   };

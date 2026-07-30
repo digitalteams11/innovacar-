@@ -45,6 +45,8 @@ export interface User {
   avatarUrl?: string;
   agencyStatus?: string;
   subscriptionStatus?: string;
+  wasTrial?: boolean;
+  trialEndsAt?: string | null;
   planCode?: string;
   planName?: string;
   accountAccess?: AccountAccess;
@@ -237,6 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...current,
           agencyStatus: detail.data?.agencyStatus || current.agencyStatus,
           subscriptionStatus: detail.data?.subscriptionStatus || current.subscriptionStatus,
+          wasTrial: detail.data?.trialEndedAt != null ? true : current.wasTrial,
+          trialEndsAt: detail.data?.trialEndedAt ?? current.trialEndsAt,
           accountAccess: {
             canUsePlatform: false,
             canCreateContracts: false,
@@ -303,6 +307,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     avatarUrl: data.avatarUrl,
     agencyStatus: data.agencyStatus,
     subscriptionStatus: data.subscriptionStatus,
+    wasTrial: data.wasTrial,
+    trialEndsAt: data.trialEndsAt,
     planCode: data.planCode,
     planName: data.planName,
     accountAccess: data.accountAccess,

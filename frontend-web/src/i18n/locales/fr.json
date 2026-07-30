@@ -2666,7 +2666,28 @@
   "trialBanner": {
     "trialEndsIn": "Votre essai se termine dans {{count}} jour. Passez à la version complète pour débloquer tout le potentiel.",
     "trialEndsInPlural": "Votre essai se termine dans {{count}} jours. Passez à la version complète pour débloquer tout le potentiel.",
+    "trialEndsInHour": "Votre essai se termine dans {{count}} heure. Passez à la version complète pour débloquer tout le potentiel.",
+    "trialEndsInHourPlural": "Votre essai se termine dans {{count}} heures. Passez à la version complète pour débloquer tout le potentiel.",
+    "trialEndsInMinute": "Votre essai se termine dans {{count}} minute. Passez à la version complète pour débloquer tout le potentiel.",
+    "trialEndsInMinutePlural": "Votre essai se termine dans {{count}} minutes. Passez à la version complète pour débloquer tout le potentiel.",
+    "trialExpired": "Votre essai a expiré. Passez à la version complète pour continuer à utiliser Innovacar.",
     "viewPlans": "Voir les forfaits"
+  },
+  "accountSuspended": {
+    "title": "Compte suspendu",
+    "description": "Votre compte agence est actuellement {{status}} par Innovax Technologies.",
+    "blocked": "bloqué",
+    "suspended": "suspendu",
+    "plan": "Forfait",
+    "status": "Statut",
+    "openBilling": "Ouvrir la facturation",
+    "contactSupport": "Contacter le support",
+    "logout": "Déconnexion"
+  },
+  "trialExpiredScreen": {
+    "title": "Votre essai gratuit est terminé",
+    "description": "Choisissez un abonnement pour continuer à utiliser Innovacar.",
+    "viewSubscriptionOptions": "Voir les options d'abonnement"
   },
   "subscription": {
     "title": "Abonnement & Facturation",

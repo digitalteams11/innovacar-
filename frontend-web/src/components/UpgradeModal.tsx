@@ -24,11 +24,11 @@ export default function UpgradeModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[var(--bg-card)] rounded-2xl shadow-elevated w-full max-w-md overflow-hidden animate-fade">
+      <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-[var(--bg-card)] shadow-elevated animate-fade sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
         {/* Header — always brand-navy regardless of theme (fixed CTA identity, same as .premium-action) */}
-        <div className="bg-[var(--brand-primary)] px-6 py-8 text-center relative overflow-hidden">
+        <div className="shrink-0 bg-[var(--brand-primary)] px-6 py-8 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5" />
           <div className="relative z-10">
             <div className="w-14 h-14 rounded-2xl bg-accent-400/20 flex items-center justify-center mx-auto mb-4">
@@ -45,7 +45,7 @@ export default function UpgradeModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 space-y-4">
           <div className="flex items-center gap-3 p-4 bg-[var(--bg-hover)] rounded-xl">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
               <Zap size={18} className="text-amber-500" />
@@ -76,21 +76,24 @@ export default function UpgradeModal({
               ))}
             </ul>
           </div>
+        </div>
 
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={onUpgrade}
-              className="flex-1 bg-[var(--brand-primary)] hover:opacity-90 text-[var(--brand-primary-foreground)] py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-            >
-              {t('subscription.upgradeNow')} <ArrowRight size={16} />
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 bg-[var(--bg-hover)] hover:bg-[var(--bg-active)] text-[var(--text-primary)] py-3 rounded-xl text-sm font-semibold transition-colors"
-            >
-              {t('subscription.maybeLater')}
-            </button>
-          </div>
+        <div
+          className="shrink-0 flex gap-3 border-t p-6"
+          style={{ borderColor: 'var(--border-subtle)', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        >
+          <button
+            onClick={onUpgrade}
+            className="flex-1 bg-[var(--brand-primary)] hover:opacity-90 text-[var(--brand-primary-foreground)] py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+          >
+            {t('subscription.upgradeNow')} <ArrowRight size={16} />
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-[var(--bg-hover)] hover:bg-[var(--bg-active)] text-[var(--text-primary)] py-3 rounded-xl text-sm font-semibold transition-colors"
+          >
+            {t('subscription.maybeLater')}
+          </button>
         </div>
       </div>
     </div>
