@@ -3,12 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../../../i18n';
 import GenerateReportButton from '../GenerateReportButton';
+import type { GenerateReportResult } from '../../../types/reports';
 
 describe('GenerateReportButton', () => {
   it('idle: clicking calls onGenerate exactly once even on a rapid double click (no duplicate POST)', async () => {
     const user = userEvent.setup();
-    let resolveGenerate: (value: any) => void = () => {};
-    const onGenerate = vi.fn(() => new Promise((resolve) => { resolveGenerate = resolve; }));
+    let resolveGenerate: (value: GenerateReportResult) => void = () => {};
+    const onGenerate = vi.fn(() => new Promise<GenerateReportResult>((resolve) => { resolveGenerate = resolve; }));
 
     render(
       <GenerateReportButton
