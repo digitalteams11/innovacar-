@@ -50,6 +50,28 @@ export interface OperationsCenterData {
   } | null;
 }
 
+/**
+ * Distinguishes *why* the request failed so the widget can show an accurate
+ * message and only offer Retry when trying again could actually help:
+ *  - 401: session expired — the global axios interceptor already handles
+ *    refresh/redirect, this is just the label if one slips through.
+ *  - 403: the user's role/plan doesn't include this data — retrying changes
+ *    nothing, so no Retry button.
+ *  - 404: the endpoint/resource isn't available in this environment — also
+ *    not retriable.
+ *  - 500/network/timeout: transient — Retry is offered.
+ */
+export interface OperationsCenterError {
+  status: number | null;
+  retriable: boolean;
+}
+
+function classifyError(err: any): OperationsCenterError {
+  const status: number | null = err?.response?.status ?? null;
+  if (status === 401 || status === 403 || status === 404) return { status, retriable: false };
+  return { status, retriable: true }; // 5xx, network error, timeout — worth retrying
+}
+
 // Module-level cache/dedup — several widgets on the same dashboard render at
 // once and all need this same payload; without this every one of them would
 // fire its own request for identical data (spec section 26: "avoid duplicate
@@ -77,14 +99,14 @@ export function invalidateOperationsCenter() {
 export function useOperationsCenter() {
   const [data, setData] = useState<OperationsCenterData | null>(cached);
   const [loading, setLoading] = useState(!cached);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<OperationsCenterError | null>(null);
 
   const load = useCallback((force = false) => {
     setLoading(true);
-    setError(false);
+    setError(null);
     fetchOperationsCenter(force)
       .then((result) => setData(result))
-      .catch(() => setError(true))
+      .catch((err) => setError(classifyError(err)))
       .finally(() => setLoading(false));
   }, []);
 

@@ -2,7 +2,7 @@
 -- V82 — Persist dashboard widget customization server-side.
 --
 -- The "Customize Dashboard" feature previously stored its WidgetConfig[]
--- array only in localStorage (rentcar_dashboard_layout_${userId}) — it did
+-- array only in localStorage (rentcar_dashboard_layout_<userId>) — it did
 -- not survive a new browser, a new device, or a fresh profile. This table is
 -- keyed per-user (not per-tenant, since layout is a personal preference, not
 -- an agency setting) and stores the widget order/visibility as a JSON array

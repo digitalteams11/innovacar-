@@ -477,7 +477,11 @@
       "negative": "مساهمة سلبية",
       "empty": "نشاط تأجير غير كافٍ لحساب الربحية."
     },
-    "widgetLoadError": "تعذر تحميل هذا العنصر."
+    "widgetLoadError": "تعذر تحميل هذا العنصر.",
+    "widgetErrorSessionExpired": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
+    "widgetErrorForbidden": "ليس لديك صلاحية لعرض هذا العنصر.",
+    "widgetErrorNotFound": "هذه البيانات غير متاحة حالياً.",
+    "widgetErrorServer": "تعذر تحميل هذا العنصر. يرجى المحاولة مرة أخرى."
   },
   "clients": {
     "title": "دليل العملاء",

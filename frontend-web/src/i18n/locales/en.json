@@ -500,7 +500,11 @@
       "negative": "Negative contribution",
       "empty": "Not enough rental activity yet to compute profitability."
     },
-    "widgetLoadError": "This widget could not load."
+    "widgetLoadError": "This widget could not load.",
+    "widgetErrorSessionExpired": "Your session has expired. Please sign in again.",
+    "widgetErrorForbidden": "You do not have permission to view this widget.",
+    "widgetErrorNotFound": "This data is not available right now.",
+    "widgetErrorServer": "This widget could not load. Please try again."
   },
   "clients": {
     "title": "Client Directory",

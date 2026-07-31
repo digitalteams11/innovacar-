@@ -34,6 +34,7 @@ class DashboardIntelligenceServiceTest {
     @Mock private TenantRepository tenantRepository;
     @Mock private ReportCalculationService reportCalculationService;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private FeatureAccessService featureAccessService;
 
     @InjectMocks private DashboardIntelligenceService service;
 
@@ -83,6 +84,30 @@ class DashboardIntelligenceServiceTest {
                 "paymentRisk", "maintenanceIntelligence", "fleetHealth", "contractPipeline", "reservationFunnel");
         assertThat((List<?>) result.get("todayOperations")).isEmpty();
         assertThat((List<?>) result.get("actionQueue")).isEmpty();
+    }
+
+    // ── Vehicle Profitability is gated server-side by ADVANCED_REPORTS, not just hidden in the UI ──
+
+    @Test
+    void operationsCenter_withoutAdvancedReportsFeature_omitsVehicleProfitability() {
+        stubEmptyBaseData();
+        when(featureAccessService.isEnabledForCurrentTenant("ADVANCED_REPORTS")).thenReturn(false);
+
+        Map<String, Object> result = service.operationsCenter();
+
+        assertThat(result.get("vehicleProfitability")).isNull();
+    }
+
+    @Test
+    void operationsCenter_withAdvancedReportsFeature_computesVehicleProfitability() {
+        stubEmptyBaseData();
+        when(featureAccessService.isEnabledForCurrentTenant("ADVANCED_REPORTS")).thenReturn(true);
+
+        Map<String, Object> result = service.operationsCenter();
+
+        // Empty tenant has no vehicle performance rows either way, but the section must at
+        // least be attempted (a Map with hasData=false), never silently skipped like the gated case.
+        assertThat(result.get("vehicleProfitability")).isEqualTo(Map.of("hasData", false));
     }
 
     // ── Contract pipeline: cancelled contracts never counted, unpaid only for real debt ──

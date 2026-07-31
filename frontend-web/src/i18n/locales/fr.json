@@ -500,7 +500,11 @@
       "negative": "Contribution negative",
       "empty": "Activite de location insuffisante pour calculer la rentabilite."
     },
-    "widgetLoadError": "Ce widget n'a pas pu se charger."
+    "widgetLoadError": "Ce widget n'a pas pu se charger.",
+    "widgetErrorSessionExpired": "Votre session a expire. Veuillez vous reconnecter.",
+    "widgetErrorForbidden": "Vous n'avez pas la permission de voir ce widget.",
+    "widgetErrorNotFound": "Ces donnees ne sont pas disponibles pour le moment.",
+    "widgetErrorServer": "Ce widget n'a pas pu se charger. Veuillez reessayer."
   },
   "clients": {
     "title": "Répertoire des Clients",

@@ -44,6 +44,7 @@ public class DashboardIntelligenceService {
     private final TenantRepository tenantRepository;
     private final ReportCalculationService reportCalculationService;
     private final PaymentRepository paymentRepository;
+    private final FeatureAccessService featureAccessService;
 
     private static final Set<PaymentType> REVENUE_TYPES = EnumSet.of(
             PaymentType.RENTAL, PaymentType.DAMAGE_FEE, PaymentType.EXTRA_CHARGE, PaymentType.OTHER);
@@ -72,7 +73,14 @@ public class DashboardIntelligenceService {
         result.put("todayOperations", safe("todayOperations", List.of(), () -> todayOperations(reservations, contracts, maintenance, vehicles, today)));
         result.put("actionQueue", safe("actionQueue", List.of(), () -> actionQueue(tenant, reservations, contracts, maintenance, vehicles, clientsSafe(tenantId), today)));
         result.put("financial", safe("financial", null, () -> financialControlCenter(tenantId, zone, today)));
-        result.put("vehicleProfitability", safe("vehicleProfitability", null, () -> vehicleProfitability(tenantId, zone, today)));
+        // Server-side enforced, not just hidden in the widget registry — a client that calls this
+        // endpoint directly must never receive Vehicle Profitability data for a plan that doesn't
+        // include ADVANCED_REPORTS, even though the frontend already omits the widget itself.
+        boolean advancedReports = safe("advancedReportsFeatureCheck", false,
+                () -> featureAccessService.isEnabledForCurrentTenant("ADVANCED_REPORTS"));
+        result.put("vehicleProfitability", advancedReports
+                ? safe("vehicleProfitability", null, () -> vehicleProfitability(tenantId, zone, today))
+                : null);
         result.put("paymentRisk", safe("paymentRisk", null, () -> paymentRisk(contracts, today)));
         result.put("maintenanceIntelligence", safe("maintenanceIntelligence", null, () -> maintenanceIntelligence(maintenance, today)));
         result.put("fleetHealth", safe("fleetHealth", null, () -> fleetHealth(vehicles, maintenance, today)));

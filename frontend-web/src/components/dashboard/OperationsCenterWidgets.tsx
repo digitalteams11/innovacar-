@@ -4,19 +4,31 @@ import {
   RefreshCw, AlertTriangle, Clock, CheckCircle2, TrendingUp, TrendingDown,
   Wallet, Car,
 } from 'lucide-react';
-import { useOperationsCenter, type OperationItem, type ActionItem } from '../../hooks/useOperationsCenter';
+import { useOperationsCenter, type OperationItem, type ActionItem, type OperationsCenterError } from '../../hooks/useOperationsCenter';
 
 /* ── Shared small pieces ─────────────────────────────────────────────────── */
 
-/** Compact inline error — never a giant global toast (spec section 25): a small retry icon + short text, local to this one card. */
-function WidgetError({ onRetry }: { onRetry: () => void }) {
+/** 401/403/404/500/network never share one message — each names the real reason. */
+function widgetErrorMessage(t: ReturnType<typeof useTranslation>['t'], error: OperationsCenterError): string {
+  switch (error.status) {
+    case 401: return t('dashboard.widgetErrorSessionExpired', 'Your session has expired. Please sign in again.');
+    case 403: return t('dashboard.widgetErrorForbidden', 'You do not have permission to view this widget.');
+    case 404: return t('dashboard.widgetErrorNotFound', 'This data is not available right now.');
+    default: return t('dashboard.widgetErrorServer', 'This widget could not load. Please try again.');
+  }
+}
+
+/** Compact inline error — never a giant global toast (spec section 25): a small retry icon + short text, local to this one card. Retry only shows for genuinely retriable failures (5xx/network) — retrying a 401/403/404 changes nothing. */
+function WidgetError({ error, onRetry }: { error: OperationsCenterError; onRetry: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-xs text-rose-600">
-      <span>{t('dashboard.widgetLoadError', 'This widget could not load.')}</span>
-      <button type="button" onClick={onRetry} className="flex items-center gap-1 font-semibold hover:underline" title={t('common.retry', 'Retry')}>
-        <RefreshCw size={12} /> {t('common.retry', 'Retry')}
-      </button>
+      <span>{widgetErrorMessage(t, error)}</span>
+      {error.retriable && (
+        <button type="button" onClick={onRetry} className="flex items-center gap-1 font-semibold hover:underline" title={t('common.retry', 'Retry')}>
+          <RefreshCw size={12} /> {t('common.retry', 'Retry')}
+        </button>
+      )}
     </div>
   );
 }
@@ -122,7 +134,7 @@ export function TodayOperationsWidget() {
 
   return (
     <WidgetShell title={t('dashboard.ops.title', "Today's Operations")} icon={Clock} count={data?.todayOperations.length}>
-      {error ? <WidgetError onRetry={retry} /> : loading ? <WidgetSkeleton /> : (
+      {error ? <WidgetError error={error} onRetry={retry} /> : loading ? <WidgetSkeleton /> : (
         data && data.todayOperations.length > 0 ? (
           <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
             {data.todayOperations.slice(0, 8).map((item, i) => <OperationRow key={i} item={item} />)}
@@ -174,7 +186,7 @@ export function ActionQueueWidget() {
 
   return (
     <WidgetShell title={t('dashboard.actionQueue.title', 'Action Required')} icon={AlertTriangle} count={data?.actionQueue.length}>
-      {error ? <WidgetError onRetry={retry} /> : loading ? <WidgetSkeleton /> : (
+      {error ? <WidgetError error={error} onRetry={retry} /> : loading ? <WidgetSkeleton /> : (
         data && data.actionQueue.length > 0 ? (
           <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
             {data.actionQueue.slice(0, 8).map((item, i) => <ActionRow key={i} item={item} />)}
@@ -214,7 +226,7 @@ export function FinancialControlCenterWidget() {
 
   return (
     <WidgetShell title={t('dashboard.financial.title', 'Financial Control Center')} icon={Wallet}>
-      {error ? <WidgetError onRetry={retry} /> : loading ? <WidgetSkeleton rows={4} /> : !f ? (
+      {error ? <WidgetError error={error} onRetry={retry} /> : loading ? <WidgetSkeleton rows={4} /> : !f ? (
         <p className="py-4 text-xs" style={{ color: 'var(--text-muted)' }}>{t('dashboard.financial.empty', 'No payments recorded for this period.')}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -276,7 +288,7 @@ export function VehicleProfitabilityWidget() {
 
   return (
     <WidgetShell title={t('dashboard.profitability.title', 'Vehicle Profitability')} icon={Car}>
-      {error ? <WidgetError onRetry={retry} /> : loading ? <WidgetSkeleton /> : rows.length === 0 ? (
+      {error ? <WidgetError error={error} onRetry={retry} /> : loading ? <WidgetSkeleton /> : rows.length === 0 ? (
         <p className="py-4 text-xs" style={{ color: 'var(--text-muted)' }}>{t('dashboard.profitability.empty', 'Not enough rental activity yet to compute profitability.')}</p>
       ) : (
         <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
