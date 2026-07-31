@@ -11,6 +11,7 @@ import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
 import ActionMenu from '../components/shared/ActionMenu';
+import EmployeeAccessTab from '../components/EmployeeAccessTab';
 
 interface Employee {
   id: number;
@@ -60,6 +61,7 @@ export default function Employees() {
   const [saving, setSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -113,6 +115,7 @@ export default function Employees() {
 
   const openCreate = () => {
     setEditingId(null);
+    setEditingUserId(null);
     setForm(emptyForm());
     setFormError('');
     setFieldErrors({});
@@ -121,6 +124,7 @@ export default function Employees() {
 
   const openEdit = (emp: Employee) => {
     setEditingId(emp.id);
+    setEditingUserId(emp.userId ?? null);
     setForm({
       fullName: emp.name || '',
       email: emp.email || '',
@@ -436,6 +440,7 @@ export default function Employees() {
             </div>
           )}
         </form>
+        {editingUserId != null && <EmployeeAccessTab userId={editingUserId} />}
       </Modal>
     </div>
   );

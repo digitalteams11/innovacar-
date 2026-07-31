@@ -160,6 +160,19 @@ public class User implements UserDetails {
     @JoinColumn(name = "super_admin_role_id")
     private SuperAdminRole superAdminRole;
 
+    // ── Dynamic RBAC (agency-defined custom roles) ───────────────────────────
+
+    /**
+     * Set when this user's real access is defined by an agency-authored
+     * {@link CustomRole} rather than a system {@link Role}. {@code role}
+     * itself is still set (conventionally to {@code Role.CUSTOM}) so every
+     * pre-existing {@code Role.X} comparison in the codebase keeps resolving
+     * to something sane; permission resolution consults this field first.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "custom_role_id")
+    private CustomRole customRole;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

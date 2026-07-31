@@ -29,6 +29,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** All users of a given role within a tenant. */
     List<User> findAllByTenantIdAndRole(Long tenantId, Role role);
 
+    /** All users assigned a given custom role within a tenant. */
+    List<User> findAllByTenantIdAndCustomRoleId(Long tenantId, Long customRoleId);
+
+    long countByTenantIdAndCustomRoleId(Long tenantId, Long customRoleId);
+
     boolean existsByEmailAndTenantId(String email, Long tenantId);
 
     /** Tenant-scoped existence check by id — prevents cross-tenant access. */

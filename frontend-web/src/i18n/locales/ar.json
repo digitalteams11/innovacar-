@@ -1404,7 +1404,10 @@
       "generated": "تاريخ الإنشاء",
       "actions": "الإجراءات"
     },
-    "type": { "MONTHLY": "شهري", "YEARLY": "سنوي" },
+    "type": {
+      "MONTHLY": "شهري",
+      "YEARLY": "سنوي"
+    },
     "status": {
       "PENDING": "قيد الانتظار",
       "GENERATING": "قيد الإنشاء",
@@ -2746,7 +2749,8 @@
     "select": "اختيار",
     "saveChanges": "حفظ التغييرات",
     "notAvailable": "غير متاح",
-    "vehicleActionInvalidId": "تعذر فتح هذا الإجراء — مرجع المركبة مفقود."
+    "vehicleActionInvalidId": "تعذر فتح هذا الإجراء — مرجع المركبة مفقود.",
+    "discard": "تجاهل"
   },
   "trialBanner": {
     "trialEndsIn": "ينتهي الإصدار التجريبي خلال {{count}} يوم. قم بالترقية لفتح كامل الإمكانات.",
@@ -3651,8 +3655,8 @@
     "loadError": "تعذّر تحميل مركز الأتمتة. يرجى المحاولة مرة أخرى."
   },
   "roleAccess": {
-    "title": "صلاحيات الأدوار",
-    "subtitle": "تحكّم في صلاحيات كل دور اعتمادًا على الصلاحيات المحفوظة للوكالة.",
+    "title": "الأدوار والصلاحيات",
+    "subtitle": "تحكم فيما يمكن لكل دور رؤيته والقيام به في إنوفاكار.",
     "permissionColumn": "الصلاحية",
     "loadError": "صلاحيات الأدوار غير متوفرة.",
     "updateSuccess": "تم تحديث صلاحيات الدور بنجاح.",
@@ -3671,7 +3675,8 @@
       "reports": "التقارير",
       "analytics": "التحليلات",
       "administration": "الإدارة",
-      "security": "الأمان"
+      "security": "الأمان",
+      "employees": "الموظفون"
     },
     "roles": {
       "customRole": "دور مخصص",
@@ -3758,7 +3763,87 @@
       "viewSecurity": "عرض الأمان",
       "manageSecurity": "إدارة الأمان",
       "unknown": "صلاحية"
-    }
+    },
+    "searchRoles": "البحث عن دور",
+    "createRole": "إنشاء دور",
+    "duplicateRole": "نسخ",
+    "deleteRole": "حذف",
+    "systemRole": "دور نظامي",
+    "customRole": "دور مخصص",
+    "usersCount": "{{count}} مستخدم",
+    "usersCount_plural": "{{count}} مستخدمين",
+    "noUsers": "لا يوجد مستخدمون معينون",
+    "searchPermissions": "البحث عن صلاحية",
+    "filterModule": "الوحدة",
+    "allModules": "كل الوحدات",
+    "enabledOnly": "المفعّلة فقط",
+    "dangerousOnly": "الحساسة فقط",
+    "newOnly": "الجديدة فقط",
+    "selectAll": "تحديد الكل",
+    "clearAll": "إلغاء تحديد الكل",
+    "resetToDefault": "إعادة الضبط الافتراضي",
+    "moduleAccess": "تفعيل الوصول إلى الوحدة",
+    "permissionCount": "{{enabled}} من {{total}} مفعّلة",
+    "dangerous": "حساس",
+    "newPermission": "جديد",
+    "unsavedChanges": "لديك تغييرات غير محفوظة",
+    "saveChanges": "حفظ التغييرات",
+    "discardChanges": "تجاهل التغييرات",
+    "saveSuccess": "تم حفظ الصلاحيات بنجاح.",
+    "saveError": "تعذر حفظ التغييرات. حاول مرة أخرى.",
+    "leaveConfirm": "لديك تغييرات في الصلاحيات غير محفوظة. هل تريد المغادرة دون حفظ؟",
+    "dependencyEnabled": "تم أيضًا تفعيل \"{{dependency}}\" لأنه مطلوب من قبل \"{{permission}}\".",
+    "dependencyWarning": "سيؤدي تعطيل هذا إلى تعطيل الصلاحيات المعتمدة عليه: {{dependents}}.",
+    "createRoleTitle": "إنشاء دور جديد",
+    "roleName": "اسم الدور",
+    "roleDescription": "الوصف",
+    "baseTemplate": "البدء من قالب",
+    "reviewPermissions": "مراجعة الصلاحيات",
+    "createRoleSuccess": "تم إنشاء الدور بنجاح.",
+    "createRoleError": "تعذر إنشاء الدور.",
+    "deleteRoleConfirm": "حذف هذا الدور؟ لا يمكن التراجع عن هذا الإجراء.",
+    "deleteRoleBlocked": "هذا الدور معيّن لـ {{count}} مستخدم(ين). أعد تعيينهم قبل الحذف.",
+    "deleteRoleSuccess": "تم حذف الدور.",
+    "duplicateOf": "نسخة من {{name}}",
+    "usageCount": "يستخدمه {{count}} مستخدم(ين)",
+    "accessDeniedTitle": "الوصول مرفوض",
+    "accessDeniedDescription": "لا تملك الصلاحية المطلوبة لعرض هذه الصفحة.",
+    "accessDeniedPermission": "الصلاحية المطلوبة: {{permission}}",
+    "accessDeniedBack": "رجوع",
+    "accessAndRoleTab": "الوصول والدور",
+    "currentRole": "الدور الحالي",
+    "changeRole": "تغيير الدور",
+    "effectivePermissionsCount": "{{count}} صلاحية فعلية",
+    "additionalPermissions": "صلاحيات إضافية",
+    "restrictedPermissions": "صلاحيات مقيدة",
+    "addAccess": "إضافة وصول محدد",
+    "removeAccess": "إزالة",
+    "lastChangedBy": "آخر تعديل بواسطة {{name}}",
+    "previewAccess": "معاينة الوصول الفعلي",
+    "canDo": "يمكن لهذا المستخدم",
+    "cannotDo": "لا يمكن لهذا المستخدم",
+    "noAdditionalPermissions": "لا توجد صلاحيات إضافية ممنوحة",
+    "noRestrictedPermissions": "لا توجد صلاحيات مقيدة",
+    "auditLog": "سجل التدقيق",
+    "auditLogEmpty": "لم يتم تسجيل أي تغييرات بعد.",
+    "roleUsedBy": "{{count}}",
+    "cannotDeleteAssigned": "هذا الدور معيّن لمستخدمين — أعد تعيينهم أولاً.",
+    "cascadeDisabled": "تم أيضًا تعطيل: {{names}}",
+    "customBadge": "مخصص",
+    "createFailed": "تعذر إنشاء هذا الدور.",
+    "deleteFailed": "تعذر حذف هذا الدور.",
+    "lockoutBlocked": "كان هذا التغيير سيؤدي إلى استبعاد المسؤولين وتم حظره.",
+    "nameAndCodeRequired": "الاسم والرمز مطلوبان.",
+    "newBadge": "جديد",
+    "newRole": "دور جديد",
+    "noPermissionsFound": "لا توجد صلاحيات تطابق بحثك.",
+    "noRolesFound": "لم يتم العثور على أدوار.",
+    "pickTemplate": "ابدأ من قالب دور موجود، ثم قم بتخصيصه.",
+    "roleCode": "رمز الدور",
+    "roleCreated": "تم إنشاء الدور.",
+    "roleDeleted": "تم حذف الدور.",
+    "saveFailed": "تعذر حفظ صلاحيات الدور.",
+    "unsavedChangesWarning": "احفظ التغييرات أو تجاهلها قبل تبديل الدور."
   },
   "announcements": {
     "useNow": {
@@ -3927,6 +4012,175 @@
     "seo": {
       "title": "توقيع العقد",
       "description": "رابط آمن لتوقيع العقد."
+    }
+  },
+  "permissions": {
+    "dashboard": {
+      "view": "عرض لوحة التحكم"
+    },
+    "vehicle": {
+      "view": "عرض المركبات",
+      "create": "إنشاء مركبة",
+      "update": "تعديل مركبة",
+      "delete": "حذف مركبة",
+      "archive": "أرشفة مركبة",
+      "status_update": "تغيير حالة مركبة"
+    },
+    "maintenance": {
+      "view": "عرض سجلات الصيانة",
+      "create": "إنشاء سجل الصيانة",
+      "update": "تعديل سجل الصيانة",
+      "complete": "إكمال سجل الصيانة",
+      "manage": "إدارة سجلات الصيانة",
+      "delete": "حذف سجل الصيانة"
+    },
+    "client": {
+      "view": "عرض العملاء",
+      "create": "إنشاء عميل",
+      "update": "تعديل عميل",
+      "delete": "حذف عميل"
+    },
+    "reservation": {
+      "view": "عرض الحجوزات",
+      "create": "إنشاء حجز",
+      "update": "تعديل حجز",
+      "confirm": "تأكيد حجز",
+      "cancel": "إلغاء حجز",
+      "delete": "حذف حجز"
+    },
+    "contract": {
+      "view": "عرض العقود",
+      "create": "إنشاء عقد",
+      "update": "تعديل عقد",
+      "sign": "توقيع عقد",
+      "send_email": "إرسال بالبريد الإلكتروني عقد",
+      "download_pdf": "تنزيل PDF لـ عقد",
+      "restore": "استعادة عقد",
+      "delete": "حذف عقد",
+      "purge": "حذف نهائي لـ عقد"
+    },
+    "payment": {
+      "view": "عرض المدفوعات",
+      "create": "إنشاء دفعة",
+      "update": "تعديل دفعة",
+      "refund": "استرداد دفعة"
+    },
+    "invoice": {
+      "view": "عرض الفواتير",
+      "export": "تصدير الفواتير"
+    },
+    "report": {
+      "view": "عرض التقارير",
+      "generate": "إنشاء تقرير",
+      "download": "تنزيل التقارير",
+      "send_email": "إرسال بالبريد الإلكتروني تقرير",
+      "financial": "عرض التقارير",
+      "advanced": "عرض التقارير"
+    },
+    "gps": {
+      "view": "عرض نظام تحديد المواقع",
+      "manage": "إدارة نظام تحديد المواقع"
+    },
+    "gps_alert": {
+      "view": "عرض تنبيه GPS",
+      "manage": "إدارة تنبيه GPS"
+    },
+    "employee": {
+      "view": "عرض الموظفين",
+      "create": "إنشاء موظف",
+      "update": "تعديل موظف",
+      "delete": "حذف موظف",
+      "reset_password": "إعادة تعيين كلمة المرور لـ موظف"
+    },
+    "settings": {
+      "view": "عرض إعدادات الوكالة",
+      "update": "تعديل إعدادات الوكالة"
+    },
+    "role": {
+      "manage": "إدارة صلاحيات الأدوار"
+    },
+    "security": {
+      "view": "عرض الأمان",
+      "manage": "إدارة الأمان"
+    },
+    "descriptions": {
+      "dashboardView": "يسمح للمستخدم بـ عرض لوحة التحكم.",
+      "vehicleView": "يسمح للمستخدم بـ عرض المركبات.",
+      "vehicleCreate": "يسمح للمستخدم بـ إنشاء مركبة.",
+      "vehicleUpdate": "يسمح للمستخدم بـ تعديل مركبة.",
+      "vehicleDelete": "يسمح للمستخدم بـ حذف مركبة.",
+      "vehicleArchive": "يسمح للمستخدم بـ أرشفة مركبة.",
+      "vehicleStatusUpdate": "يسمح للمستخدم بـ تغيير حالة مركبة.",
+      "maintenanceView": "يسمح للمستخدم بـ عرض سجلات الصيانة.",
+      "maintenanceCreate": "يسمح للمستخدم بـ إنشاء سجل الصيانة.",
+      "maintenanceUpdate": "يسمح للمستخدم بـ تعديل سجل الصيانة.",
+      "maintenanceComplete": "يسمح للمستخدم بـ إكمال سجل الصيانة.",
+      "vehicleMaintenanceManage": "يسمح للمستخدم بـ إدارة سجلات الصيانة.",
+      "maintenanceDelete": "يسمح للمستخدم بـ حذف سجل الصيانة.",
+      "clientView": "يسمح للمستخدم بـ عرض العملاء.",
+      "clientCreate": "يسمح للمستخدم بـ إنشاء عميل.",
+      "clientUpdate": "يسمح للمستخدم بـ تعديل عميل.",
+      "clientDelete": "يسمح للمستخدم بـ حذف عميل.",
+      "reservationView": "يسمح للمستخدم بـ عرض الحجوزات.",
+      "reservationCreate": "يسمح للمستخدم بـ إنشاء حجز.",
+      "reservationUpdate": "يسمح للمستخدم بـ تعديل حجز.",
+      "reservationConfirm": "يسمح للمستخدم بـ تأكيد حجز.",
+      "reservationCancel": "يسمح للمستخدم بـ إلغاء حجز.",
+      "reservationDelete": "يسمح للمستخدم بـ حذف حجز.",
+      "contractView": "يسمح للمستخدم بـ عرض العقود.",
+      "contractCreate": "يسمح للمستخدم بـ إنشاء عقد.",
+      "contractUpdate": "يسمح للمستخدم بـ تعديل عقد.",
+      "contractSign": "يسمح للمستخدم بـ توقيع عقد.",
+      "contractSendEmail": "يسمح للمستخدم بـ إرسال بالبريد الإلكتروني عقد.",
+      "contractDownloadPdf": "يسمح للمستخدم بـ تنزيل PDF لـ عقد.",
+      "contractRestore": "يسمح للمستخدم بـ استعادة عقد.",
+      "contractDelete": "يسمح للمستخدم بـ حذف عقد.",
+      "contractPurge": "يسمح للمستخدم بـ حذف نهائي لـ عقد.",
+      "paymentView": "يسمح للمستخدم بـ عرض المدفوعات.",
+      "paymentCreate": "يسمح للمستخدم بـ إنشاء دفعة.",
+      "paymentUpdate": "يسمح للمستخدم بـ تعديل دفعة.",
+      "paymentRefund": "يسمح للمستخدم بـ استرداد دفعة.",
+      "invoiceView": "يسمح للمستخدم بـ عرض الفواتير.",
+      "invoiceExport": "يسمح للمستخدم بـ تصدير الفواتير.",
+      "reportView": "يسمح للمستخدم بـ عرض التقارير.",
+      "reportGenerate": "يسمح للمستخدم بـ إنشاء تقرير.",
+      "reportDownload": "يسمح للمستخدم بـ تنزيل التقارير.",
+      "reportSendEmail": "يسمح للمستخدم بـ إرسال بالبريد الإلكتروني تقرير.",
+      "reportFinancial": "يسمح للمستخدم بـ عرض التقارير.",
+      "reportAdvanced": "يسمح للمستخدم بـ عرض التقارير.",
+      "gpsView": "يسمح للمستخدم بـ عرض نظام تحديد المواقع.",
+      "gpsAlertsView": "يسمح للمستخدم بـ عرض تنبيه GPS.",
+      "gpsAlertsManage": "يسمح للمستخدم بـ إدارة تنبيه GPS.",
+      "gpsSettings": "يسمح للمستخدم بـ إدارة نظام تحديد المواقع.",
+      "employeeView": "يسمح للمستخدم بـ عرض الموظفين.",
+      "employeeCreate": "يسمح للمستخدم بـ إنشاء موظف.",
+      "employeeUpdate": "يسمح للمستخدم بـ تعديل موظف.",
+      "employeeDelete": "يسمح للمستخدم بـ حذف موظف.",
+      "employeeResetPassword": "يسمح للمستخدم بـ إعادة تعيين كلمة المرور لـ موظف.",
+      "agencySettingsView": "يسمح للمستخدم بـ عرض إعدادات الوكالة.",
+      "agencySettingsUpdate": "يسمح للمستخدم بـ تعديل إعدادات الوكالة.",
+      "roleAccessManage": "يسمح للمستخدم بـ إدارة صلاحيات الأدوار.",
+      "securityView": "يسمح للمستخدم بـ عرض الأمان.",
+      "securityManage": "يسمح للمستخدم بـ إدارة الأمان."
+    },
+    "modules": {
+      "DASHBOARD": "لوحة التحكم",
+      "FLEET": "الأسطول",
+      "MAINTENANCE": "الصيانة",
+      "CLIENTS": "العملاء",
+      "RESERVATIONS": "الحجوزات",
+      "CONTRACTS": "العقود",
+      "PAYMENTS": "المدفوعات",
+      "REPORTS": "التقارير",
+      "GPS": "نظام تحديد المواقع",
+      "EMPLOYEES": "الموظفون",
+      "SETTINGS": "الإعدادات",
+      "SECURITY": "الأمان"
+    },
+    "risk": {
+      "NORMAL": "عادي",
+      "ELEVATED": "مرتفع",
+      "DANGEROUS": "حساس"
     }
   }
 }

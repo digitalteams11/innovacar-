@@ -11,4 +11,8 @@ public interface PermissionDefinitionRepository extends JpaRepository<Permission
     // silently fails to retrofit onto a table that already has duplicates), an
     // Optional-returning query throws IncorrectResultSizeDataAccessException and 500s.
     List<PermissionDefinition> findAllByCode(String code);
+
+    List<PermissionDefinition> findAllByActiveTrue();
+
+    List<PermissionDefinition> findAllByActiveTrueAndDeprecatedFalse();
 }

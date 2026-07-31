@@ -28,6 +28,13 @@ public class RolePermissionController {
         return ResponseEntity.ok(permissionService.matrix());
     }
 
+    /** The dynamic permission catalog (spec section 3/27) — full metadata per permission, source of truth for the role editor UI. */
+    @GetMapping("/catalog")
+    @PreAuthorize("@rolePermissionService.has('ROLE_ACCESS_MANAGE')")
+    public ResponseEntity<List<com.carrental.dto.rbac.PermissionCatalogEntryDto>> catalog() {
+        return ResponseEntity.ok(permissionService.catalog());
+    }
+
     @PutMapping("/{role}/{permissionCode}")
     @PreAuthorize("@rolePermissionService.has('ROLE_ACCESS_MANAGE')")
     public ResponseEntity<RolePermission> setPermission(

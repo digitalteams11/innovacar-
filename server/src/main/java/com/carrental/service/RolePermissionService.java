@@ -27,81 +27,32 @@ public class RolePermissionService {
     private final PermissionDefinitionRepository definitionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final TenantRepository tenantRepository;
+    private final PermissionSyncService permissionSyncService;
+    private final com.carrental.repository.UserPermissionOverrideRepository overrideRepository;
+    private final com.carrental.repository.CustomRolePermissionRepository customRolePermissionRepository;
 
     @org.springframework.context.annotation.Lazy
     @org.springframework.beans.factory.annotation.Autowired
     private RolePermissionService self;
 
-    private static final String[][] DEFINITIONS = {
-            {"DASHBOARD_VIEW", "View Dashboard", "Dashboard"},
-            {"VEHICLE_VIEW", "View Vehicles", "Fleet"}, {"VEHICLE_CREATE", "Create Vehicle", "Fleet"},
-            {"VEHICLE_UPDATE", "Update Vehicle", "Fleet"}, {"VEHICLE_DELETE", "Delete Vehicle", "Fleet"},
-            {"VEHICLE_ARCHIVE", "Archive Vehicle", "Fleet"}, {"VEHICLE_MAINTENANCE_MANAGE", "Manage Vehicle Maintenance", "Fleet"},
-            {"CLIENT_VIEW", "View Clients", "Clients"}, {"CLIENT_CREATE", "Create Client", "Clients"},
-            {"CLIENT_UPDATE", "Update Client", "Clients"}, {"CLIENT_DELETE", "Delete Client", "Clients"},
-            {"RESERVATION_VIEW", "View Reservations", "Reservations"}, {"RESERVATION_CREATE", "Create Reservation", "Reservations"},
-            {"RESERVATION_UPDATE", "Update Reservation", "Reservations"}, {"RESERVATION_CANCEL", "Cancel Reservation", "Reservations"},
-            {"RESERVATION_DELETE", "Delete Reservation", "Reservations"},
-            {"CONTRACT_VIEW", "View Contracts", "Contracts"}, {"CONTRACT_CREATE", "Create Contract", "Contracts"},
-            {"CONTRACT_UPDATE", "Update Contract", "Contracts"}, {"CONTRACT_DELETE", "Delete Contract", "Contracts"},
-            {"CONTRACT_RESTORE", "Restore Contract", "Contracts"}, {"CONTRACT_PURGE", "Purge Contract", "Contracts"},
-            {"CONTRACT_EXPORT_PDF", "Export Contract PDF", "Contracts"}, {"CONTRACT_QR_SIGNATURE", "QR Signature", "Contracts"},
-            {"CONTRACT_INSPECTION_MEDIA", "Inspection Media", "Contracts"},
-            {"PAYMENT_VIEW", "View Payments", "Finance"}, {"PAYMENT_CREATE", "Create Payment", "Finance"},
-            {"PAYMENT_UPDATE", "Update Payment", "Finance"}, {"PAYMENT_REFUND", "Refund Payment", "Finance"},
-            {"PAYMENT_STATS_VIEW", "View Payment Statistics", "Finance"},
-            {"INVOICE_VIEW", "View Invoices", "Finance"}, {"INVOICE_EXPORT", "Export Invoices", "Finance"},
-            {"REPORT_VIEW", "View Reports", "Analytics"}, {"REPORT_FINANCIAL", "Financial Reports", "Analytics"},
-            {"REPORT_ADVANCED", "Advanced Reports", "Analytics"},
-            {"GPS_VIEW", "View GPS", "Fleet"}, {"GPS_SETTINGS", "Manage GPS Settings", "Fleet"},
-            {"GPS_ALERTS_VIEW", "View GPS Alerts", "Fleet"}, {"GPS_ALERTS_MANAGE", "Manage GPS Alerts", "Fleet"},
-            {"EMPLOYEE_VIEW", "View Employees", "Administration"}, {"EMPLOYEE_CREATE", "Create Employee", "Administration"},
-            {"EMPLOYEE_UPDATE", "Update Employee", "Administration"}, {"EMPLOYEE_DELETE", "Delete Employee", "Administration"},
-            {"EMPLOYEE_RESET_PASSWORD", "Reset Employee Password", "Administration"},
-            {"AGENCY_SETTINGS_VIEW", "View Agency Settings", "Administration"}, {"AGENCY_SETTINGS_UPDATE", "Update Agency Settings", "Administration"},
-            {"ROLE_ACCESS_MANAGE", "Manage Role Access", "Administration"},
-            {"SECURITY_VIEW", "View Security", "Security"}, {"SECURITY_MANAGE", "Manage Security", "Security"},
-            {"VIEW_VEHICLES", "View Vehicles", "Fleet"}, {"CREATE_VEHICLE", "Create Vehicle", "Fleet"},
-            {"EDIT_VEHICLE", "Edit Vehicle", "Fleet"}, {"DELETE_VEHICLE", "Delete Vehicle", "Fleet"},
-            {"VIEW_CLIENTS", "View Clients", "Clients"}, {"CREATE_CLIENT", "Create Client", "Clients"},
-            {"EDIT_CLIENT", "Edit Client", "Clients"}, {"DELETE_CLIENT", "Delete Client", "Clients"},
-            {"VIEW_CLIENT_DOCUMENTS_FULL", "View Full Identity Document Numbers", "Clients"},
-            {"VIEW_RESERVATIONS", "View Reservations", "Reservations"}, {"CREATE_RESERVATION", "Create Reservation", "Reservations"},
-            {"EDIT_RESERVATION", "Edit Reservation", "Reservations"}, {"CANCEL_RESERVATION", "Cancel Reservation", "Reservations"},
-            {"VIEW_CONTRACTS", "View Contracts", "Contracts"}, {"CREATE_CONTRACT", "Create Contract", "Contracts"},
-            {"EDIT_CONTRACT", "Edit Contract", "Contracts"}, {"DELETE_CONTRACT", "Delete Contract", "Contracts"},
-            {"SIGN_CONTRACT", "Sign Contract", "Contracts"}, {"COMPLETE_CONTRACT", "Complete Contract", "Contracts"},
-            {"VIEW_PAYMENTS", "View Payments", "Finance"}, {"RECORD_PAYMENT", "Record Payment", "Finance"},
-            {"VIEW_DEPOSITS", "View Deposits", "Finance"}, {"MANAGE_DEPOSITS", "Manage Deposits", "Finance"},
-            {"VIEW_INVOICES", "View Invoices", "Finance"}, {"MANAGE_INVOICES", "Manage Invoices", "Finance"},
-            {"VIEW_REPORTS", "View Reports", "Analytics"}, {"GPS_ACCESS", "GPS Access", "Fleet"},
-            {"MANAGE_GPS", "Manage GPS Settings", "Fleet"}, {"GPS_SETTINGS_VIEW", "View GPS Settings", "Fleet"},
-            {"GPS_SETTINGS_UPDATE", "Update GPS Settings", "Fleet"}, {"GPS_CREDENTIALS_DELETE", "Delete GPS Credentials", "Fleet"},
-            {"GPS_TEST_CONNECTION", "Test GPS Connection", "Fleet"}, {"GPS_SYNC_DEVICES", "Sync GPS Devices", "Fleet"},
-            {"VIEW_MAINTENANCE", "View Maintenance", "Fleet"}, {"MANAGE_MAINTENANCE", "Manage Maintenance", "Fleet"},
-            {"MANAGE_EMPLOYEES", "Manage Employees", "Administration"},
-            {"MANAGE_SETTINGS", "Manage Settings", "Administration"}
-    };
-
     private static final Map<String, Set<String>> ALIASES = buildAliases();
 
+    /** Every permission code this codebase currently recognizes (modern + legacy) — used by RoleManagementService when seeding/updating a custom role's full permission set. */
+    public List<String> allCatalogCodes() {
+        return permissionSyncService.allCodes();
+    }
+
     public void ensureTenantDefaults(Long tenantId) {
-        for (String[] row : DEFINITIONS) self.ensureDefinitionExists(row[0], row[1], row[2]);
+        // PermissionSyncService.sync() is the real source of truth for permission_definitions
+        // metadata now (see PermissionCatalog) — it's a fast no-op after the first call this
+        // process lifetime, so calling it defensively here (as this method always has been
+        // called before every matrix read/write) costs nothing once warmed up.
+        permissionSyncService.sync();
         if (tenantId == null) return;
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
         for (Role role : configurableRoles()) {
-            for (String[] row : DEFINITIONS) self.ensureRolePermissionExists(tenant, role, row[0]);
-        }
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void ensureDefinitionExists(String code, String name, String category) {
-        if (!definitionRepository.findAllByCode(code).isEmpty()) return;
-        try {
-            definitionRepository.save(PermissionDefinition.builder().code(code).name(name).category(category).build());
-        } catch (DataIntegrityViolationException ex) {
-            log.debug("Permission definition '{}' was already created concurrently", code);
+            for (String code : permissionSyncService.allCodes()) self.ensureRolePermissionExists(tenant, role, code);
         }
     }
 
@@ -132,8 +83,7 @@ public class RolePermissionService {
     @Transactional(readOnly = true)
     public List<String> permissionsFor(User user) {
         if (user == null || user.getRole() == null) return List.of();
-        return Arrays.stream(DEFINITIONS)
-                .map(row -> row[0])
+        return permissionSyncService.allCodes().stream()
                 .filter(code -> hasResolvedPermission(user, code))
                 .distinct()
                 .toList();
@@ -220,6 +170,25 @@ public class RolePermissionService {
         }
     }
 
+    /**
+     * The new backend permission catalog, DTO-shaped (spec section 27: "Do not
+     * expose entity graphs directly") — full module/resource/action/risk/
+     * dependency metadata for the role-editor UI. Only the current, non-legacy
+     * permission set is returned; deprecated alias codes (still active for
+     * backward-compatible grants) are intentionally omitted here since the new
+     * UI only ever displays/edits the modern codes.
+     */
+    @Transactional
+    public List<com.carrental.dto.rbac.PermissionCatalogEntryDto> catalog() {
+        try { ensureTenantDefaults(TenantContext.getCurrentTenantId()); } catch (Exception ex) {
+            log.warn("Permission catalog default repair failed: {}", ex.getMessage());
+        }
+        return definitionRepository.findAllByActiveTrueAndDeprecatedFalse().stream()
+                .map(com.carrental.dto.rbac.PermissionCatalogEntryDto::from)
+                .sorted(Comparator.comparingInt(com.carrental.dto.rbac.PermissionCatalogEntryDto::getSortOrder))
+                .toList();
+    }
+
     @Transactional
     public Map<String, Object> matrix() {
         Long tenantId = TenantContext.getCurrentTenantId();
@@ -267,8 +236,7 @@ public class RolePermissionService {
                 Role role;
                 try { role = Role.valueOf(entry.getKey()); } catch (IllegalArgumentException ex) { continue; }
                 Set<String> enabledCodes = new HashSet<>(entry.getValue() == null ? List.of() : entry.getValue());
-                for (String[] row : DEFINITIONS) {
-                    String code = row[0];
+                for (String code : permissionSyncService.allCodes()) {
                     self.ensureRolePermissionExists(tenant, role, code);
                     List<RolePermission> existing = rolePermissionRepository
                             .findAllByTenantIdAndRoleAndPermissionCode(tenantId, role, code);
@@ -289,8 +257,36 @@ public class RolePermissionService {
         return user;
     }
 
+    /**
+     * Resolution order (spec section 2):
+     * 1. Super Admin / agency-owner-tier bypass (ADMIN and AGENCY_OWNER have
+     *    always had unconditional access in this product — unchanged here).
+     * 2. Deactivated permission (removed from the catalog) — hard deny,
+     *    regardless of any stored grant (spec: "deleted/inactive permission
+     *    no longer grants access").
+     * 3. Explicit user-level DENY override — always wins over the role.
+     * 4. Explicit user-level GRANT override — grants even if the role denies.
+     * 5. If the user has an agency-defined custom role assigned, that role's
+     *    own configured permission (default deny if unset for that role).
+     * 6. Otherwise the system role's own configured/default permission.
+     */
     private boolean hasResolvedPermission(User user, String permissionCode) {
         if (user.getRole() == Role.SUPER_ADMIN || user.getRole() == Role.AGENCY_OWNER || user.getRole() == Role.ADMIN) return true;
+        if (!self.isActiveCode(permissionCode)) return false;
+
+        Optional<Boolean> override = resolveOverride(user, permissionCode);
+        if (override.isPresent()) return override.get();
+
+        if (user.getCustomRole() != null) {
+            for (String code : equivalentCodes(permissionCode)) {
+                Optional<Boolean> configured = customRolePermissionRepository
+                        .findByCustomRoleIdAndPermissionCode(user.getCustomRole().getId(), code)
+                        .map(CustomRolePermission::getEnabled);
+                if (configured.isPresent()) return Boolean.TRUE.equals(configured.get());
+            }
+            return false;
+        }
+
         if (user.getTenant() == null) return defaultEnabled(user.getRole(), permissionCode);
         Long tenantId = user.getTenant().getId();
         for (String code : equivalentCodes(permissionCode)) {
@@ -300,6 +296,26 @@ public class RolePermissionService {
             if (configured.isPresent()) return Boolean.TRUE.equals(configured.get());
         }
         return defaultEnabled(user.getRole(), permissionCode);
+    }
+
+    /** True if the code (or a still-active alias of it) is a currently-recognized, non-deactivated permission. */
+    @Transactional(readOnly = true)
+    public boolean isActiveCode(String permissionCode) {
+        for (String code : equivalentCodes(permissionCode)) {
+            List<PermissionDefinition> defs = definitionRepository.findAllByCode(code);
+            if (defs.stream().anyMatch(d -> Boolean.TRUE.equals(d.getActive()))) return true;
+        }
+        return false;
+    }
+
+    private Optional<Boolean> resolveOverride(User user, String permissionCode) {
+        if (user.getId() == null) return Optional.empty();
+        for (String code : equivalentCodes(permissionCode)) {
+            Optional<Boolean> override = overrideRepository.findByUserIdAndPermissionCode(user.getId(), code)
+                    .map(o -> o.getOverrideType() == PermissionOverrideType.GRANT);
+            if (override.isPresent()) return override;
+        }
+        return Optional.empty();
     }
 
     private boolean defaultEnabled(Role role, String code) {
@@ -327,7 +343,7 @@ public class RolePermissionService {
         return false;
     }
 
-    private List<Role> configurableRoles() {
+    public List<Role> configurableRoles() {
         return List.of(Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT, Role.FLEET_MANAGER,
                 Role.DRIVER, Role.VIEWER, Role.RECEPTIONIST, Role.EMPLOYEE, Role.CUSTOM);
     }

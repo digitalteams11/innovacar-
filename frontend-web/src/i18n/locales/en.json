@@ -1404,7 +1404,10 @@
       "generated": "Generated",
       "actions": "Actions"
     },
-    "type": { "MONTHLY": "Monthly", "YEARLY": "Yearly" },
+    "type": {
+      "MONTHLY": "Monthly",
+      "YEARLY": "Yearly"
+    },
     "status": {
       "PENDING": "Pending",
       "GENERATING": "Generating",
@@ -2746,7 +2749,8 @@
     "select": "Select",
     "saveChanges": "Save Changes",
     "notAvailable": "N/A",
-    "vehicleActionInvalidId": "Unable to open this action — the vehicle reference is missing."
+    "vehicleActionInvalidId": "Unable to open this action — the vehicle reference is missing.",
+    "discard": "Discard"
   },
   "trialBanner": {
     "trialEndsIn": "Trial ends in {{count}} day. Upgrade anytime to unlock your full potential.",
@@ -3639,8 +3643,8 @@
     "loadError": "Unable to load the Automation Center. Please try again."
   },
   "roleAccess": {
-    "title": "Role Access",
-    "subtitle": "Control every role from stored tenant permissions.",
+    "title": "Roles & Permissions",
+    "subtitle": "Control what each role can see and do across Innovacar.",
     "permissionColumn": "Permission",
     "loadError": "Role permissions are unavailable.",
     "updateSuccess": "Role access updated successfully.",
@@ -3659,7 +3663,8 @@
       "reports": "Reports",
       "analytics": "Analytics",
       "administration": "Administration",
-      "security": "Security"
+      "security": "Security",
+      "employees": "Employees"
     },
     "roles": {
       "customRole": "Custom Role",
@@ -3746,7 +3751,87 @@
       "viewSecurity": "View Security",
       "manageSecurity": "Manage Security",
       "unknown": "Permission"
-    }
+    },
+    "searchRoles": "Search roles",
+    "createRole": "Create role",
+    "duplicateRole": "Duplicate",
+    "deleteRole": "Delete",
+    "systemRole": "System role",
+    "customRole": "Custom role",
+    "usersCount": "{{count}} user",
+    "usersCount_plural": "{{count}} users",
+    "noUsers": "No users assigned",
+    "searchPermissions": "Search permissions",
+    "filterModule": "Module",
+    "allModules": "All modules",
+    "enabledOnly": "Enabled only",
+    "dangerousOnly": "Dangerous only",
+    "newOnly": "New only",
+    "selectAll": "Select all",
+    "clearAll": "Clear all",
+    "resetToDefault": "Reset to default",
+    "moduleAccess": "Enable module access",
+    "permissionCount": "{{enabled}} of {{total}} enabled",
+    "dangerous": "Sensitive",
+    "newPermission": "New",
+    "unsavedChanges": "You have unsaved changes",
+    "saveChanges": "Save changes",
+    "discardChanges": "Discard changes",
+    "saveSuccess": "Permissions saved successfully.",
+    "saveError": "Unable to save changes. Please try again.",
+    "leaveConfirm": "You have unsaved permission changes. Leave without saving?",
+    "dependencyEnabled": "\"{{dependency}}\" was also enabled because it is required by \"{{permission}}\".",
+    "dependencyWarning": "Disabling this will also disable permissions that depend on it: {{dependents}}.",
+    "createRoleTitle": "Create a new role",
+    "roleName": "Role name",
+    "roleDescription": "Description",
+    "baseTemplate": "Start from a template",
+    "reviewPermissions": "Review permissions",
+    "createRoleSuccess": "Role created successfully.",
+    "createRoleError": "Unable to create the role.",
+    "deleteRoleConfirm": "Delete this role? This cannot be undone.",
+    "deleteRoleBlocked": "This role is assigned to {{count}} user(s). Reassign them before deleting it.",
+    "deleteRoleSuccess": "Role deleted.",
+    "duplicateOf": "Copy of {{name}}",
+    "usageCount": "Used by {{count}} user(s)",
+    "accessDeniedTitle": "Access denied",
+    "accessDeniedDescription": "You don't have the permission required to view this page.",
+    "accessDeniedPermission": "Required permission: {{permission}}",
+    "accessDeniedBack": "Go back",
+    "accessAndRoleTab": "Access & Role",
+    "currentRole": "Current role",
+    "changeRole": "Change role",
+    "effectivePermissionsCount": "{{count}} effective permissions",
+    "additionalPermissions": "Additional permissions",
+    "restrictedPermissions": "Restricted permissions",
+    "addAccess": "Add specific access",
+    "removeAccess": "Remove",
+    "lastChangedBy": "Last changed by {{name}}",
+    "previewAccess": "Preview effective access",
+    "canDo": "This user can",
+    "cannotDo": "This user cannot",
+    "noAdditionalPermissions": "No additional permissions granted",
+    "noRestrictedPermissions": "No permissions restricted",
+    "auditLog": "Audit log",
+    "auditLogEmpty": "No changes recorded yet.",
+    "roleUsedBy": "{{count}}",
+    "cannotDeleteAssigned": "This role is assigned to users — reassign them first.",
+    "cascadeDisabled": "Also disabled: {{names}}",
+    "customBadge": "Custom",
+    "createFailed": "Unable to create this role.",
+    "deleteFailed": "Unable to delete this role.",
+    "lockoutBlocked": "This change would lock administrators out and was blocked.",
+    "nameAndCodeRequired": "Name and code are required.",
+    "newBadge": "New",
+    "newRole": "New role",
+    "noPermissionsFound": "No permissions match your search.",
+    "noRolesFound": "No roles found.",
+    "pickTemplate": "Start from an existing role template, then customize.",
+    "roleCode": "Role code",
+    "roleCreated": "Role created.",
+    "roleDeleted": "Role deleted.",
+    "saveFailed": "Unable to save role permissions.",
+    "unsavedChangesWarning": "Save or discard your changes before switching roles."
   },
   "announcements": {
     "useNow": {
@@ -3888,6 +3973,175 @@
     "seo": {
       "title": "Contract Signing",
       "description": "Secure contract signing link."
+    }
+  },
+  "permissions": {
+    "dashboard": {
+      "view": "View dashboard"
+    },
+    "vehicle": {
+      "view": "View vehicles",
+      "create": "Create vehicle",
+      "update": "Edit vehicle",
+      "delete": "Delete vehicle",
+      "archive": "Archive vehicle",
+      "status_update": "Change status of vehicle"
+    },
+    "maintenance": {
+      "view": "View maintenance records",
+      "create": "Create maintenance record",
+      "update": "Edit maintenance record",
+      "complete": "Complete maintenance record",
+      "manage": "Manage maintenance records",
+      "delete": "Delete maintenance record"
+    },
+    "client": {
+      "view": "View clients",
+      "create": "Create client",
+      "update": "Edit client",
+      "delete": "Delete client"
+    },
+    "reservation": {
+      "view": "View reservations",
+      "create": "Create reservation",
+      "update": "Edit reservation",
+      "confirm": "Confirm reservation",
+      "cancel": "Cancel reservation",
+      "delete": "Delete reservation"
+    },
+    "contract": {
+      "view": "View contracts",
+      "create": "Create contract",
+      "update": "Edit contract",
+      "sign": "Sign contract",
+      "send_email": "Email contract",
+      "download_pdf": "Download PDF for contract",
+      "restore": "Restore contract",
+      "delete": "Delete contract",
+      "purge": "Permanently delete contract"
+    },
+    "payment": {
+      "view": "View payments",
+      "create": "Create payment",
+      "update": "Edit payment",
+      "refund": "Refund a payment"
+    },
+    "invoice": {
+      "view": "View invoices",
+      "export": "Export invoices"
+    },
+    "report": {
+      "view": "View reports",
+      "generate": "Generate a report",
+      "download": "Download reports",
+      "send_email": "Email report",
+      "financial": "View financial reports",
+      "advanced": "View advanced reports"
+    },
+    "gps": {
+      "view": "View GPS",
+      "manage": "Manage GPS"
+    },
+    "gps_alert": {
+      "view": "View GPS alert",
+      "manage": "Manage GPS alert"
+    },
+    "employee": {
+      "view": "View employees",
+      "create": "Create employee",
+      "update": "Edit employee",
+      "delete": "Delete employee",
+      "reset_password": "Reset password for an employee"
+    },
+    "settings": {
+      "view": "View agency settings",
+      "update": "Edit agency settings"
+    },
+    "role": {
+      "manage": "Manage role access"
+    },
+    "security": {
+      "view": "View security",
+      "manage": "Manage security"
+    },
+    "descriptions": {
+      "dashboardView": "Allows a user to view dashboard.",
+      "vehicleView": "Allows a user to view vehicles.",
+      "vehicleCreate": "Allows a user to create vehicle.",
+      "vehicleUpdate": "Allows a user to edit vehicle.",
+      "vehicleDelete": "Allows a user to delete vehicle.",
+      "vehicleArchive": "Allows a user to archive vehicle.",
+      "vehicleStatusUpdate": "Allows a user to change status of vehicle.",
+      "maintenanceView": "Allows a user to view maintenance records.",
+      "maintenanceCreate": "Allows a user to create maintenance record.",
+      "maintenanceUpdate": "Allows a user to edit maintenance record.",
+      "maintenanceComplete": "Allows a user to complete maintenance record.",
+      "vehicleMaintenanceManage": "Allows a user to manage maintenance records.",
+      "maintenanceDelete": "Allows a user to delete maintenance record.",
+      "clientView": "Allows a user to view clients.",
+      "clientCreate": "Allows a user to create client.",
+      "clientUpdate": "Allows a user to edit client.",
+      "clientDelete": "Allows a user to delete client.",
+      "reservationView": "Allows a user to view reservations.",
+      "reservationCreate": "Allows a user to create reservation.",
+      "reservationUpdate": "Allows a user to edit reservation.",
+      "reservationConfirm": "Allows a user to confirm reservation.",
+      "reservationCancel": "Allows a user to cancel reservation.",
+      "reservationDelete": "Allows a user to delete reservation.",
+      "contractView": "Allows a user to view contracts.",
+      "contractCreate": "Allows a user to create contract.",
+      "contractUpdate": "Allows a user to edit contract.",
+      "contractSign": "Allows a user to sign contract.",
+      "contractSendEmail": "Allows a user to email contract.",
+      "contractDownloadPdf": "Allows a user to download PDF for contract.",
+      "contractRestore": "Allows a user to restore contract.",
+      "contractDelete": "Allows a user to delete contract.",
+      "contractPurge": "Allows a user to permanently delete contract.",
+      "paymentView": "Allows a user to view payments.",
+      "paymentCreate": "Allows a user to create payment.",
+      "paymentUpdate": "Allows a user to edit payment.",
+      "paymentRefund": "Allows a user to refund a payment.",
+      "invoiceView": "Allows a user to view invoices.",
+      "invoiceExport": "Allows a user to export invoices.",
+      "reportView": "Allows a user to view reports.",
+      "reportGenerate": "Allows a user to generate a report.",
+      "reportDownload": "Allows a user to download reports.",
+      "reportSendEmail": "Allows a user to email report.",
+      "reportFinancial": "Allows a user to view financial reports.",
+      "reportAdvanced": "Allows a user to view advanced reports.",
+      "gpsView": "Allows a user to view GPS.",
+      "gpsAlertsView": "Allows a user to view GPS alert.",
+      "gpsAlertsManage": "Allows a user to manage GPS alert.",
+      "gpsSettings": "Allows a user to manage GPS.",
+      "employeeView": "Allows a user to view employees.",
+      "employeeCreate": "Allows a user to create employee.",
+      "employeeUpdate": "Allows a user to edit employee.",
+      "employeeDelete": "Allows a user to delete employee.",
+      "employeeResetPassword": "Allows a user to reset password for an employee.",
+      "agencySettingsView": "Allows a user to view agency settings.",
+      "agencySettingsUpdate": "Allows a user to edit agency settings.",
+      "roleAccessManage": "Allows a user to manage role access.",
+      "securityView": "Allows a user to view security.",
+      "securityManage": "Allows a user to manage security."
+    },
+    "modules": {
+      "DASHBOARD": "Dashboard",
+      "FLEET": "Fleet",
+      "MAINTENANCE": "Maintenance",
+      "CLIENTS": "Clients",
+      "RESERVATIONS": "Reservations",
+      "CONTRACTS": "Contracts",
+      "PAYMENTS": "Payments",
+      "REPORTS": "Reports",
+      "GPS": "GPS",
+      "EMPLOYEES": "Employees",
+      "SETTINGS": "Settings",
+      "SECURITY": "Security"
+    },
+    "risk": {
+      "NORMAL": "Normal",
+      "ELEVATED": "Elevated",
+      "DANGEROUS": "Sensitive"
     }
   }
 }

@@ -1404,7 +1404,10 @@
       "generated": "Généré",
       "actions": "Actions"
     },
-    "type": { "MONTHLY": "Mensuel", "YEARLY": "Annuel" },
+    "type": {
+      "MONTHLY": "Mensuel",
+      "YEARLY": "Annuel"
+    },
     "status": {
       "PENDING": "En attente",
       "GENERATING": "Génération",
@@ -2746,7 +2749,8 @@
     "select": "Sélectionner",
     "saveChanges": "Enregistrer les modifications",
     "notAvailable": "N/A",
-    "vehicleActionInvalidId": "Impossible d'ouvrir cette action — la référence du véhicule est manquante."
+    "vehicleActionInvalidId": "Impossible d'ouvrir cette action — la référence du véhicule est manquante.",
+    "discard": "Annuler"
   },
   "trialBanner": {
     "trialEndsIn": "Votre essai se termine dans {{count}} jour. Passez à la version complète pour débloquer tout le potentiel.",
@@ -3639,8 +3643,8 @@
     "loadError": "Impossible de charger le centre d'automatisation. Veuillez réessayer."
   },
   "roleAccess": {
-    "title": "Accès par rôle",
-    "subtitle": "Contrôlez les autorisations de chaque rôle à partir des permissions enregistrées du locataire.",
+    "title": "Roles et permissions",
+    "subtitle": "Controlez ce que chaque role peut voir et faire dans Innovacar.",
     "permissionColumn": "Permission",
     "loadError": "Les permissions de rôle ne sont pas disponibles.",
     "updateSuccess": "Accès par rôle mis à jour avec succès.",
@@ -3659,7 +3663,8 @@
       "reports": "Rapports",
       "analytics": "Analytique",
       "administration": "Administration",
-      "security": "Sécurité"
+      "security": "Sécurité",
+      "employees": "Employes"
     },
     "roles": {
       "customRole": "Rôle personnalisé",
@@ -3746,7 +3751,87 @@
       "viewSecurity": "Voir la sécurité",
       "manageSecurity": "Gérer la sécurité",
       "unknown": "Permission"
-    }
+    },
+    "searchRoles": "Rechercher un role",
+    "createRole": "Creer un role",
+    "duplicateRole": "Dupliquer",
+    "deleteRole": "Supprimer",
+    "systemRole": "Role systeme",
+    "customRole": "Role personnalise",
+    "usersCount": "{{count}} utilisateur",
+    "usersCount_plural": "{{count}} utilisateurs",
+    "noUsers": "Aucun utilisateur assigne",
+    "searchPermissions": "Rechercher une permission",
+    "filterModule": "Module",
+    "allModules": "Tous les modules",
+    "enabledOnly": "Activees uniquement",
+    "dangerousOnly": "Sensibles uniquement",
+    "newOnly": "Nouvelles uniquement",
+    "selectAll": "Tout selectionner",
+    "clearAll": "Tout desactiver",
+    "resetToDefault": "Reinitialiser par defaut",
+    "moduleAccess": "Activer l'acces au module",
+    "permissionCount": "{{enabled}} sur {{total}} activees",
+    "dangerous": "Sensible",
+    "newPermission": "Nouveau",
+    "unsavedChanges": "Vous avez des modifications non enregistrees",
+    "saveChanges": "Enregistrer les modifications",
+    "discardChanges": "Annuler les modifications",
+    "saveSuccess": "Permissions enregistrees avec succes.",
+    "saveError": "Impossible d'enregistrer les modifications. Veuillez reessayer.",
+    "leaveConfirm": "Vous avez des modifications de permissions non enregistrees. Quitter sans enregistrer ?",
+    "dependencyEnabled": "\"{{dependency}}\" a egalement ete active car requis par \"{{permission}}\".",
+    "dependencyWarning": "Desactiver ceci desactivera aussi les permissions qui en dependent : {{dependents}}.",
+    "createRoleTitle": "Creer un nouveau role",
+    "roleName": "Nom du role",
+    "roleDescription": "Description",
+    "baseTemplate": "Partir d'un modele",
+    "reviewPermissions": "Verifier les permissions",
+    "createRoleSuccess": "Role cree avec succes.",
+    "createRoleError": "Impossible de creer le role.",
+    "deleteRoleConfirm": "Supprimer ce role ? Cette action est irreversible.",
+    "deleteRoleBlocked": "Ce role est assigne a {{count}} utilisateur(s). Reassignez-les avant de le supprimer.",
+    "deleteRoleSuccess": "Role supprime.",
+    "duplicateOf": "Copie de {{name}}",
+    "usageCount": "Utilise par {{count}} utilisateur(s)",
+    "accessDeniedTitle": "Acces refuse",
+    "accessDeniedDescription": "Vous n'avez pas la permission requise pour voir cette page.",
+    "accessDeniedPermission": "Permission requise : {{permission}}",
+    "accessDeniedBack": "Retour",
+    "accessAndRoleTab": "Acces et role",
+    "currentRole": "Role actuel",
+    "changeRole": "Changer de role",
+    "effectivePermissionsCount": "{{count}} permissions effectives",
+    "additionalPermissions": "Permissions additionnelles",
+    "restrictedPermissions": "Permissions restreintes",
+    "addAccess": "Ajouter un acces specifique",
+    "removeAccess": "Retirer",
+    "lastChangedBy": "Dernieres modifications par {{name}}",
+    "previewAccess": "Previsualiser l'acces effectif",
+    "canDo": "Cet utilisateur peut",
+    "cannotDo": "Cet utilisateur ne peut pas",
+    "noAdditionalPermissions": "Aucune permission additionnelle accordee",
+    "noRestrictedPermissions": "Aucune permission restreinte",
+    "auditLog": "Journal d'audit",
+    "auditLogEmpty": "Aucune modification enregistree pour le moment.",
+    "roleUsedBy": "{{count}}",
+    "cannotDeleteAssigned": "Ce role est assigne a des utilisateurs — reassignez-les d'abord.",
+    "cascadeDisabled": "Egalement desactive : {{names}}",
+    "customBadge": "Personnalise",
+    "createFailed": "Impossible de creer ce role.",
+    "deleteFailed": "Impossible de supprimer ce role.",
+    "lockoutBlocked": "Cette modification aurait verrouille les administrateurs et a ete bloquee.",
+    "nameAndCodeRequired": "Le nom et le code sont requis.",
+    "newBadge": "Nouveau",
+    "newRole": "Nouveau role",
+    "noPermissionsFound": "Aucune permission ne correspond a votre recherche.",
+    "noRolesFound": "Aucun role trouve.",
+    "pickTemplate": "Partez d'un modele de role existant, puis personnalisez-le.",
+    "roleCode": "Code du role",
+    "roleCreated": "Role cree.",
+    "roleDeleted": "Role supprime.",
+    "saveFailed": "Impossible d'enregistrer les permissions du role.",
+    "unsavedChangesWarning": "Enregistrez ou annulez vos modifications avant de changer de role."
   },
   "announcements": {
     "useNow": {
@@ -3888,6 +3973,175 @@
     "seo": {
       "title": "Signature du contrat",
       "description": "Lien sécurisé de signature de contrat."
+    }
+  },
+  "permissions": {
+    "dashboard": {
+      "view": "Voir les tableau de bord"
+    },
+    "vehicle": {
+      "view": "Voir les vehicules",
+      "create": "Creer un vehicule",
+      "update": "Modifier un vehicule",
+      "delete": "Supprimer un vehicule",
+      "archive": "Archiver un vehicule",
+      "status_update": "Changer le statut d un vehicule"
+    },
+    "maintenance": {
+      "view": "Voir les fiches de maintenance",
+      "create": "Creer un fiche de maintenance",
+      "update": "Modifier un fiche de maintenance",
+      "complete": "Terminer une fiche de maintenance",
+      "manage": "Gerer les fiches de maintenance",
+      "delete": "Supprimer un fiche de maintenance"
+    },
+    "client": {
+      "view": "Voir les clients",
+      "create": "Creer un client",
+      "update": "Modifier un client",
+      "delete": "Supprimer un client"
+    },
+    "reservation": {
+      "view": "Voir les reservations",
+      "create": "Creer un reservation",
+      "update": "Modifier un reservation",
+      "confirm": "Confirmer une reservation",
+      "cancel": "Annuler une reservation",
+      "delete": "Supprimer un reservation"
+    },
+    "contract": {
+      "view": "Voir les contrats",
+      "create": "Creer un contrat",
+      "update": "Modifier un contrat",
+      "sign": "Signer un contrat",
+      "send_email": "Envoyer par e-mail un contrat",
+      "download_pdf": "Telecharger le PDF d un contrat",
+      "restore": "Restaurer un contrat",
+      "delete": "Supprimer un contrat",
+      "purge": "Supprimer definitivement un contrat"
+    },
+    "payment": {
+      "view": "Voir les paiements",
+      "create": "Creer un paiement",
+      "update": "Modifier un paiement",
+      "refund": "Rembourser un paiement"
+    },
+    "invoice": {
+      "view": "Voir les factures",
+      "export": "Exporter les factures"
+    },
+    "report": {
+      "view": "Voir les rapports",
+      "generate": "Generer un rapport",
+      "download": "Telecharger les rapports",
+      "send_email": "Envoyer par e-mail un rapport",
+      "financial": "Voir les rapports",
+      "advanced": "Voir les rapports"
+    },
+    "gps": {
+      "view": "Voir les GPS",
+      "manage": "Gerer les GPS"
+    },
+    "gps_alert": {
+      "view": "Voir les alerte GPS",
+      "manage": "Gerer les alerte GPS"
+    },
+    "employee": {
+      "view": "Voir les employes",
+      "create": "Creer un employe",
+      "update": "Modifier un employe",
+      "delete": "Supprimer un employe",
+      "reset_password": "Reinitialiser le mot de passe d un employe"
+    },
+    "settings": {
+      "view": "Voir les parametres de l agence",
+      "update": "Modifier un parametres de l agence"
+    },
+    "role": {
+      "manage": "Gerer les acces aux roles"
+    },
+    "security": {
+      "view": "Voir les securite",
+      "manage": "Gerer les securite"
+    },
+    "descriptions": {
+      "dashboardView": "Permet a un utilisateur de voir les tableau de bord.",
+      "vehicleView": "Permet a un utilisateur de voir les vehicules.",
+      "vehicleCreate": "Permet a un utilisateur de creer un vehicule.",
+      "vehicleUpdate": "Permet a un utilisateur de modifier un vehicule.",
+      "vehicleDelete": "Permet a un utilisateur de supprimer un vehicule.",
+      "vehicleArchive": "Permet a un utilisateur de archiver un vehicule.",
+      "vehicleStatusUpdate": "Permet a un utilisateur de changer le statut d un vehicule.",
+      "maintenanceView": "Permet a un utilisateur de voir les fiches de maintenance.",
+      "maintenanceCreate": "Permet a un utilisateur de creer un fiche de maintenance.",
+      "maintenanceUpdate": "Permet a un utilisateur de modifier un fiche de maintenance.",
+      "maintenanceComplete": "Permet a un utilisateur de terminer une fiche de maintenance.",
+      "vehicleMaintenanceManage": "Permet a un utilisateur de gerer les fiches de maintenance.",
+      "maintenanceDelete": "Permet a un utilisateur de supprimer un fiche de maintenance.",
+      "clientView": "Permet a un utilisateur de voir les clients.",
+      "clientCreate": "Permet a un utilisateur de creer un client.",
+      "clientUpdate": "Permet a un utilisateur de modifier un client.",
+      "clientDelete": "Permet a un utilisateur de supprimer un client.",
+      "reservationView": "Permet a un utilisateur de voir les reservations.",
+      "reservationCreate": "Permet a un utilisateur de creer un reservation.",
+      "reservationUpdate": "Permet a un utilisateur de modifier un reservation.",
+      "reservationConfirm": "Permet a un utilisateur de confirmer une reservation.",
+      "reservationCancel": "Permet a un utilisateur de annuler une reservation.",
+      "reservationDelete": "Permet a un utilisateur de supprimer un reservation.",
+      "contractView": "Permet a un utilisateur de voir les contrats.",
+      "contractCreate": "Permet a un utilisateur de creer un contrat.",
+      "contractUpdate": "Permet a un utilisateur de modifier un contrat.",
+      "contractSign": "Permet a un utilisateur de signer un contrat.",
+      "contractSendEmail": "Permet a un utilisateur de envoyer par e-mail un contrat.",
+      "contractDownloadPdf": "Permet a un utilisateur de telecharger le PDF d un contrat.",
+      "contractRestore": "Permet a un utilisateur de restaurer un contrat.",
+      "contractDelete": "Permet a un utilisateur de supprimer un contrat.",
+      "contractPurge": "Permet a un utilisateur de supprimer definitivement un contrat.",
+      "paymentView": "Permet a un utilisateur de voir les paiements.",
+      "paymentCreate": "Permet a un utilisateur de creer un paiement.",
+      "paymentUpdate": "Permet a un utilisateur de modifier un paiement.",
+      "paymentRefund": "Permet a un utilisateur de rembourser un paiement.",
+      "invoiceView": "Permet a un utilisateur de voir les factures.",
+      "invoiceExport": "Permet a un utilisateur de exporter les factures.",
+      "reportView": "Permet a un utilisateur de voir les rapports.",
+      "reportGenerate": "Permet a un utilisateur de generer un rapport.",
+      "reportDownload": "Permet a un utilisateur de telecharger les rapports.",
+      "reportSendEmail": "Permet a un utilisateur de envoyer par e-mail un rapport.",
+      "reportFinancial": "Permet a un utilisateur de voir les rapports.",
+      "reportAdvanced": "Permet a un utilisateur de voir les rapports.",
+      "gpsView": "Permet a un utilisateur de voir les GPS.",
+      "gpsAlertsView": "Permet a un utilisateur de voir les alerte GPS.",
+      "gpsAlertsManage": "Permet a un utilisateur de gerer les alerte GPS.",
+      "gpsSettings": "Permet a un utilisateur de gerer les GPS.",
+      "employeeView": "Permet a un utilisateur de voir les employes.",
+      "employeeCreate": "Permet a un utilisateur de creer un employe.",
+      "employeeUpdate": "Permet a un utilisateur de modifier un employe.",
+      "employeeDelete": "Permet a un utilisateur de supprimer un employe.",
+      "employeeResetPassword": "Permet a un utilisateur de reinitialiser le mot de passe d un employe.",
+      "agencySettingsView": "Permet a un utilisateur de voir les parametres de l agence.",
+      "agencySettingsUpdate": "Permet a un utilisateur de modifier un parametres de l agence.",
+      "roleAccessManage": "Permet a un utilisateur de gerer les acces aux roles.",
+      "securityView": "Permet a un utilisateur de voir les securite.",
+      "securityManage": "Permet a un utilisateur de gerer les securite."
+    },
+    "modules": {
+      "DASHBOARD": "Tableau de bord",
+      "FLEET": "Flotte",
+      "MAINTENANCE": "Maintenance",
+      "CLIENTS": "Clients",
+      "RESERVATIONS": "Reservations",
+      "CONTRACTS": "Contrats",
+      "PAYMENTS": "Paiements",
+      "REPORTS": "Rapports",
+      "GPS": "GPS",
+      "EMPLOYEES": "Employes",
+      "SETTINGS": "Parametres",
+      "SECURITY": "Securite"
+    },
+    "risk": {
+      "NORMAL": "Normal",
+      "ELEVATED": "Elevee",
+      "DANGEROUS": "Sensible"
     }
   }
 }
