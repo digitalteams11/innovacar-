@@ -447,7 +447,60 @@
     "totalClientsLabel": "Total Clients",
     "pickupLabel": "Pickup",
     "returnLabel": "Return",
-    "rentalsCount": "{{count}} rentals"
+    "rentalsCount": "{{count}} rentals",
+    "ops": {
+      "title": "Today's Operations",
+      "empty": "No pickups or returns scheduled today.",
+      "pickupToday": "Pickup today",
+      "returnToday": "Return today",
+      "overdueReturn": "Overdue return",
+      "waitingConfirmation": "Waiting for confirmation",
+      "waitingSignature": "Waiting for signature",
+      "paymentDueToday": "Payment due today",
+      "maintenanceToday": "Maintenance starting today",
+      "vehicleAvailableToday": "Vehicle available today",
+      "confirmReservation": "Confirm",
+      "viewReservation": "View",
+      "createContract": "Create contract",
+      "startReturn": "Start return",
+      "openContract": "Open contract",
+      "recordPayment": "Record payment",
+      "openMaintenance": "Open maintenance",
+      "viewVehicle": "View vehicle"
+    },
+    "actionQueue": {
+      "title": "Action Required",
+      "empty": "Everything is under control."
+    },
+    "priority": {
+      "CRITICAL": "Critical",
+      "HIGH": "High",
+      "NORMAL": "Normal"
+    },
+    "financial": {
+      "title": "Financial Control Center",
+      "collectedToday": "Collected today",
+      "collectedMonth": "Collected this month",
+      "unpaid": "Unpaid balance",
+      "overdue": "Overdue",
+      "maintenanceExpenses": "Maintenance expenses",
+      "netProfit": "Net profit (est.)",
+      "avgRental": "Avg. rental value",
+      "refunds": "Refunds",
+      "empty": "No payments recorded for this period.",
+      "vsYesterday": "vs yesterday",
+      "vsLastMonth": "vs last month"
+    },
+    "profitability": {
+      "title": "Vehicle Profitability",
+      "topRevenue": "Top revenue",
+      "bestUtilization": "Best utilization",
+      "highestMaintenance": "Highest maintenance cost",
+      "lowestUtilization": "Lowest utilization",
+      "negative": "Negative contribution",
+      "empty": "Not enough rental activity yet to compute profitability."
+    },
+    "widgetLoadError": "This widget could not load."
   },
   "clients": {
     "title": "Client Directory",

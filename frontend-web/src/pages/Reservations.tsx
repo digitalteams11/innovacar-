@@ -308,6 +308,25 @@ export default function Reservations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Opens the exact reservation record when arriving from a dashboard deep
+  // link (Today's Operations / Action Queue) — never just the generic list.
+  const consumedReservationIdParamRef = useRef<string | null>(null);
+  useEffect(() => {
+    const raw = searchParams.get('reservationId');
+    if (!raw || consumedReservationIdParamRef.current === raw) return;
+    if (data.length === 0) return; // wait for the list to finish loading
+    consumedReservationIdParamRef.current = raw;
+    setSearchParams({}, { replace: true });
+    const id = Number(raw);
+    const found = data.find((r) => r.id === id);
+    if (found) {
+      openEdit(found);
+    } else {
+      showToast(t('reservations.notFound', 'Reservation not found.'), 'error');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, data]);
+
   const openEdit = (res: Reservation) => {
     if (res.readOnly) {
       showToast(t('reservations.convertedReadOnly'), 'warning');

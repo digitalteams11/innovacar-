@@ -23,6 +23,9 @@ import AiAssistantButton from '../components/shared/AiAssistantButton';
 import DashboardVehicleCard, { type VehicleCardData } from '../components/shared/DashboardVehicleCard';
 import ContractReturnModal from '../components/shared/ContractReturnModal';
 import DashboardCustomizeModal from '../components/dashboard/DashboardCustomizeModal';
+import {
+  TodayOperationsWidget, ActionQueueWidget, FinancialControlCenterWidget, VehicleProfitabilityWidget,
+} from '../components/dashboard/OperationsCenterWidgets';
 import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import { formatMonthYear, formatShortDate, getWeekdayLabels, resolveLocale } from '../utils/dateFormat';
 import { translateReservationStatus, translateFleetHealthStatus } from '../utils/statusLabels';
@@ -72,6 +75,44 @@ const unwrapApiArray = <T,>(payload: unknown): T[] => {
   return [];
 };
 const fmt = (n: number | undefined) => (n ?? 0).toLocaleString('fr-MA');
+
+/**
+ * Every alert/action-queue item carries entityType+entityId — this is the one
+ * place that turns that into a real deep link, so a click always opens the
+ * exact record it's about instead of a generic list page. Each target page
+ * already reads the matching query param on mount to auto-open that record
+ * (Vehicles.tsx: vehicleId, Clients.tsx: viewClientId, Reservations.tsx:
+ * reservationId, Maintenance.tsx: vehicleId) — Contracts has a real detail route.
+ */
+function navigateToEntity(navigate: ReturnType<typeof useNavigate>, entityType: unknown, entityId: unknown) {
+  if (entityId == null) return;
+  switch (entityType) {
+    case 'CONTRACT':
+      navigate(`/contracts/${entityId}`);
+      return;
+    case 'VEHICLE':
+      navigate(`/vehicles?vehicleId=${entityId}`);
+      return;
+    case 'RESERVATION':
+      navigate(`/reservations?reservationId=${entityId}`);
+      return;
+    case 'MAINTENANCE':
+      // Maintenance.tsx doesn't yet have a single-record detail view — it
+      // supports opening its create/edit form preselected to a vehicle, so
+      // the backend sends the vehicle's id here rather than the maintenance
+      // record's own id (see DashboardIntelligenceService).
+      navigate(`/maintenance?vehicleId=${entityId}`);
+      return;
+    case 'CLIENT':
+      navigate(`/clients?viewClientId=${entityId}`);
+      return;
+    case 'SUBSCRIPTION':
+      navigate('/settings?tab=billing');
+      return;
+    default:
+      return;
+  }
+}
 
 /* ─── Shimmer ─────────────────────────────────────────────────────── */
 function Shimmer({ className = '' }: { className?: string }) {
@@ -1181,7 +1222,11 @@ export default function Dashboard() {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25, delay: idx * 0.04 }}
-              className="flex items-start gap-3 p-3 rounded-xl border"
+              role={alert.entityId != null ? 'button' : undefined}
+              tabIndex={alert.entityId != null ? 0 : undefined}
+              onClick={() => navigateToEntity(navigate, alert.entityType, alert.entityId)}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigateToEntity(navigate, alert.entityType, alert.entityId); }}
+              className={`flex items-start gap-3 p-3 rounded-xl border ${alert.entityId != null ? 'cursor-pointer hover:brightness-95 dark:hover:brightness-110' : ''}`}
               style={{
                 backgroundColor: 'var(--bg-card)',
                 borderColor: alert.severity === 'danger' ? 'var(--mobile-alert-danger-border)'
@@ -1471,7 +1516,7 @@ export default function Dashboard() {
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
           {vehicles.slice(0, 5).map(v => (
-            <div key={v.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors group cursor-pointer" onClick={() => navigate('/vehicles')}>
+            <div key={v.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors group cursor-pointer" onClick={() => navigate(`/vehicles?vehicleId=${v.id}`)}>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform" style={{ backgroundColor: 'var(--bg-hover)' }}>
                 <Car size={18} style={{ color: 'var(--text-muted)' }} />
               </div>
@@ -1512,7 +1557,7 @@ export default function Dashboard() {
           {clients.slice(0, 5).map(c => {
             const name = c.fullName || `${c.firstName || ''} ${c.lastName || ''}`.trim() || '—';
             return (
-              <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => navigate('/clients')}>
+              <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => navigate(`/clients?viewClientId=${c.id}`)}>
                 <Avatar name={name} gender={c.gender} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{name}</p>
@@ -1558,7 +1603,10 @@ export default function Dashboard() {
             const priColor = pri === 'HIGH' || pri === 'CRITICAL' ? '#ef4444' : pri === 'MEDIUM' ? '#f59e0b' : '#3b82f6';
             const priLabel = pri === 'HIGH' || pri === 'CRITICAL' ? 'High' : pri === 'MEDIUM' ? 'Medium' : 'Low';
             return (
-              <div key={m.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => navigate('/maintenance')}>
+              <div key={m.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => {
+                const vehicleId = (m.vehicle as { id?: number } | undefined)?.id;
+                navigate(vehicleId ? `/maintenance?vehicleId=${vehicleId}` : '/maintenance');
+              }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${priColor}15` }}>
                   <Wrench size={17} style={{ color: priColor }} />
                 </div>
@@ -1599,7 +1647,7 @@ export default function Dashboard() {
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
           {upcoming7.map(r => (
-            <div key={r.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => navigate('/reservations')}>
+            <div key={r.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => navigate(`/reservations?reservationId=${r.id}`)}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10">
                 <Car size={15} className="text-emerald-500" />
               </div>
@@ -1639,7 +1687,7 @@ export default function Dashboard() {
         </div>
         <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
           {upcomingReturns7.map(r => (
-            <div key={r.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => navigate('/reservations')}>
+            <div key={r.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" onClick={() => navigate(`/reservations?reservationId=${r.id}`)}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/10">
                 <ArrowRight size={15} className="text-orange-500" />
               </div>
@@ -1767,11 +1815,15 @@ export default function Dashboard() {
 
   /* Section map: id → render function */
   const sectionMap: Record<string, () => React.ReactNode | null> = {
+    operationsCenter: () => <TodayOperationsWidget key="operationsCenter" />,
+    actionQueue: () => <ActionQueueWidget key="actionQueue" />,
     stats:   renderStats,
+    financialCenter: () => <FinancialControlCenterWidget key="financialCenter" />,
     setup:   renderSetup,
     actions: renderActions,
     alerts:  renderAlerts,
     fleet:   renderFleet,
+    vehicleProfitability: () => <VehicleProfitabilityWidget key="vehicleProfitability" />,
     charts:  renderCharts,
     lower:   renderLower,
     pickups: renderPickups,

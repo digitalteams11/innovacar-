@@ -424,7 +424,60 @@
     "totalClientsLabel": "إجمالي العملاء",
     "pickupLabel": "الاستلام",
     "returnLabel": "الإرجاع",
-    "rentalsCount": "{{count}} تأجيرات"
+    "rentalsCount": "{{count}} تأجيرات",
+    "ops": {
+      "title": "عمليات اليوم",
+      "empty": "لا توجد استلامات أو إرجاعات مجدولة اليوم.",
+      "pickupToday": "استلام اليوم",
+      "returnToday": "إرجاع اليوم",
+      "overdueReturn": "إرجاع متأخر",
+      "waitingConfirmation": "في انتظار التأكيد",
+      "waitingSignature": "في انتظار التوقيع",
+      "paymentDueToday": "دفعة مستحقة اليوم",
+      "maintenanceToday": "صيانة تبدأ اليوم",
+      "vehicleAvailableToday": "مركبة متاحة اليوم",
+      "confirmReservation": "تأكيد",
+      "viewReservation": "عرض",
+      "createContract": "إنشاء عقد",
+      "startReturn": "بدء الإرجاع",
+      "openContract": "فتح العقد",
+      "recordPayment": "تسجيل دفعة",
+      "openMaintenance": "فتح الصيانة",
+      "viewVehicle": "عرض المركبة"
+    },
+    "actionQueue": {
+      "title": "إجراءات مطلوبة",
+      "empty": "كل شيء تحت السيطرة."
+    },
+    "priority": {
+      "CRITICAL": "حرج",
+      "HIGH": "مرتفع",
+      "NORMAL": "عادي"
+    },
+    "financial": {
+      "title": "مركز التحكم المالي",
+      "collectedToday": "المحصّل اليوم",
+      "collectedMonth": "المحصّل هذا الشهر",
+      "unpaid": "الرصيد غير المدفوع",
+      "overdue": "متأخر",
+      "maintenanceExpenses": "مصاريف الصيانة",
+      "netProfit": "صافي الربح (تقديري)",
+      "avgRental": "متوسط قيمة الإيجار",
+      "refunds": "المبالغ المستردة",
+      "empty": "لا توجد مدفوعات مسجلة لهذه الفترة.",
+      "vsYesterday": "مقارنة بالأمس",
+      "vsLastMonth": "مقارنة بالشهر الماضي"
+    },
+    "profitability": {
+      "title": "ربحية المركبات",
+      "topRevenue": "أعلى إيراد",
+      "bestUtilization": "أفضل استخدام",
+      "highestMaintenance": "أعلى تكلفة صيانة",
+      "lowestUtilization": "أقل استخدام",
+      "negative": "مساهمة سلبية",
+      "empty": "نشاط تأجير غير كافٍ لحساب الربحية."
+    },
+    "widgetLoadError": "تعذر تحميل هذا العنصر."
   },
   "clients": {
     "title": "دليل العملاء",

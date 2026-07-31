@@ -447,7 +447,60 @@
     "totalClientsLabel": "Total clients",
     "pickupLabel": "Prise en charge",
     "returnLabel": "Retour",
-    "rentalsCount": "{{count}} locations"
+    "rentalsCount": "{{count}} locations",
+    "ops": {
+      "title": "Operations du jour",
+      "empty": "Aucun depart ou retour prevu aujourd'hui.",
+      "pickupToday": "Depart aujourd'hui",
+      "returnToday": "Retour aujourd'hui",
+      "overdueReturn": "Retour en retard",
+      "waitingConfirmation": "En attente de confirmation",
+      "waitingSignature": "En attente de signature",
+      "paymentDueToday": "Paiement du aujourd'hui",
+      "maintenanceToday": "Maintenance debutant aujourd'hui",
+      "vehicleAvailableToday": "Vehicule disponible aujourd'hui",
+      "confirmReservation": "Confirmer",
+      "viewReservation": "Voir",
+      "createContract": "Creer un contrat",
+      "startReturn": "Demarrer le retour",
+      "openContract": "Ouvrir le contrat",
+      "recordPayment": "Enregistrer un paiement",
+      "openMaintenance": "Ouvrir la maintenance",
+      "viewVehicle": "Voir le vehicule"
+    },
+    "actionQueue": {
+      "title": "Actions requises",
+      "empty": "Tout est sous controle."
+    },
+    "priority": {
+      "CRITICAL": "Critique",
+      "HIGH": "Elevee",
+      "NORMAL": "Normale"
+    },
+    "financial": {
+      "title": "Centre de controle financier",
+      "collectedToday": "Encaisse aujourd'hui",
+      "collectedMonth": "Encaisse ce mois-ci",
+      "unpaid": "Solde impaye",
+      "overdue": "En retard",
+      "maintenanceExpenses": "Depenses de maintenance",
+      "netProfit": "Profit net (est.)",
+      "avgRental": "Valeur moyenne de location",
+      "refunds": "Remboursements",
+      "empty": "Aucun paiement enregistre pour cette periode.",
+      "vsYesterday": "vs hier",
+      "vsLastMonth": "vs mois dernier"
+    },
+    "profitability": {
+      "title": "Rentabilite des vehicules",
+      "topRevenue": "Meilleur revenu",
+      "bestUtilization": "Meilleure utilisation",
+      "highestMaintenance": "Cout de maintenance le plus eleve",
+      "lowestUtilization": "Utilisation la plus faible",
+      "negative": "Contribution negative",
+      "empty": "Activite de location insuffisante pour calculer la rentabilite."
+    },
+    "widgetLoadError": "Ce widget n'a pas pu se charger."
   },
   "clients": {
     "title": "Répertoire des Clients",
