@@ -26,6 +26,31 @@ import java.util.Arrays;
  * begin/complete/failed line with duration, so a hang or failure is always
  * visible and attributable to a specific version instead of a silent gap in
  * the startup log.
+ *
+ * <p>Startup order is deliberately log → migrate (which validates internally,
+ * per {@code spring.flyway.validate-on-migrate=true}) → fail fast. Note this
+ * does <em>not</em> call {@code flyway.validate()} as a separate step before
+ * {@code migrate()}: standalone {@code validate()} treats a merely-{@code
+ * PENDING} migration as a validation failure by default (it exists to check
+ * "is the schema history internally consistent", not "is there work to do"),
+ * which would reject completely normal startups that simply have a new
+ * migration to run. {@code migrate()}'s own internal validation (via
+ * {@code validate-on-migrate}) correctly excludes plain pending migrations
+ * while still catching the real problems (checksum mismatches, out-of-order).
+ *
+ * <p>{@link org.flywaydb.core.api.MigrationInfoService#pending()} only counts
+ * migrations that will actually run in the upcoming <em>ordered</em>
+ * migrate() — a resolved-but-{@code OUT_OF_ORDER} migration (its version is
+ * below the highest already-applied version, which is exactly what "Detected
+ * resolved migration not applied to database: N" means) is invisible to
+ * {@code pending()}, which is why that log line could previously read
+ * {@code pendingCount=0 next=none} in the same startup where {@code migrate()}
+ * then threw a validate exception a few lines later — a genuinely confusing,
+ * contradictory-looking pair of log lines. {@link #logProblemResolvedMigrations}
+ * scans every resolved migration's state up front and logs anything that
+ * isn't a clean SUCCESS/PENDING/BASELINE by name, so an out-of-order,
+ * missing, or future migration is named in the log the moment Flyway sees
+ * it — never only discoverable from the exception several lines later.
  */
 @Slf4j
 @Configuration
@@ -51,6 +76,8 @@ public class FlywayConfig {
                 flyway.repair();
             }
 
+            logProblemResolvedMigrations(flyway);
+
             int pendingCount = -1;
             String next = "unknown";
             try {
@@ -65,6 +92,11 @@ public class FlywayConfig {
 
             long startNanos = System.nanoTime();
             try {
+                // migrate() validates internally (spring.flyway.validate-on-migrate=true) — a
+                // checksum mismatch or out-of-order migration surfaces here as a
+                // FlywayValidateException, distinguishable from a real SQL execution failure
+                // by exceptionClass alone, without needing a separate validate() call that
+                // would incorrectly reject plain pending migrations (see class javadoc).
                 flyway.migrate();
                 log.info("[FLYWAY_MIGRATION_COMPLETE] durationMs={}", elapsedMs(startNanos));
             } catch (Exception e) {
@@ -75,6 +107,32 @@ public class FlywayConfig {
                 throw e;
             }
         };
+    }
+
+    /**
+     * Names every resolved migration whose state isn't a clean SUCCESS/PENDING/BASELINE —
+     * most importantly OUT_OF_ORDER, which is exactly what "Detected resolved migration not
+     * applied to database: N" means and which {@code info().pending()} never surfaces (see
+     * class javadoc). Purely diagnostic: never blocks or alters the migration itself.
+     */
+    private void logProblemResolvedMigrations(org.flywaydb.core.Flyway flyway) {
+        try {
+            MigrationInfo[] all = flyway.info().all();
+            for (MigrationInfo mi : all) {
+                MigrationState state = mi.getState();
+                if (state == MigrationState.SUCCESS || state == MigrationState.PENDING
+                        || state == MigrationState.BASELINE || state == MigrationState.BELOW_BASELINE) {
+                    continue;
+                }
+                log.warn("[FLYWAY_PROBLEM_MIGRATION] version={} description={} state={} script={} — "
+                        + "this migration will not run in the normal ordered migrate() and validate() "
+                        + "will likely fail because of it.",
+                        mi.getVersion(), mi.getDescription(), state, mi.getScript());
+            }
+        } catch (Exception e) {
+            log.warn("[FLYWAY_INFO_CHECK_FAILED] Could not scan resolved migrations for problem states: {}",
+                    e.getMessage());
+        }
     }
 
     private static long elapsedMs(long startNanos) {

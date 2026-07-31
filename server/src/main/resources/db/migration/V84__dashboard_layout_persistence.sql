@@ -1,5 +1,13 @@
 -- ============================================================
--- V82 — Persist dashboard widget customization server-side.
+-- V84 — Persist dashboard widget customization server-side.
+--
+-- Originally authored as V82, but that version number was already recorded
+-- as applied in production by the time this migration reached main (V83
+-- shipped and deployed first — see MigrationOrderingTest for the same class
+-- of incident) — Flyway rejected it with "Detected resolved migration not
+-- applied to database: 82" since out-of-order is intentionally disabled.
+-- Renumbered to V84, the next version above everything already resolved;
+-- the SQL itself is unchanged.
 --
 -- The "Customize Dashboard" feature previously stored its WidgetConfig[]
 -- array only in localStorage (rentcar_dashboard_layout_<userId>) — it did

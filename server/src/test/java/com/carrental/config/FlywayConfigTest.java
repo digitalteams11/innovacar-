@@ -75,6 +75,21 @@ class FlywayConfigTest {
     }
 
     @Test
+    void neverCallsValidateAsASeparateStepBeforeMigrate() {
+        // Regression: flyway.validate() called standalone (not as part of migrate()'s own
+        // validate-on-migrate check) treats a merely-PENDING migration as a validation
+        // failure by default — it would reject the completely normal case of "there's a new
+        // migration to run" and crash startup every single time there's pending work.
+        // migrate() must be the only validation entry point; see class/FlywayConfig javadoc.
+        Flyway flyway = mockFlyway(MigrationState.SUCCESS, MigrationState.PENDING);
+
+        strategy.migrate(flyway);
+
+        verify(flyway, never()).validate();
+        verify(flyway).migrate();
+    }
+
+    @Test
     void infoCheckFails_doesNotRepairBlindly_migrateStillRuns() {
         Flyway flyway = mock(Flyway.class);
         // Every call to flyway.info() fails (e.g. connection issue) — neither the
