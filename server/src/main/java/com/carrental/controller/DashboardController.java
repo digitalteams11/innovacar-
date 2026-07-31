@@ -22,6 +22,86 @@ import java.util.Map;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final com.carrental.service.DashboardIntelligenceService dashboardIntelligenceService;
+    private final com.carrental.repository.DashboardLayoutRepository dashboardLayoutRepository;
+
+    /**
+     * Server-persisted "Customize Dashboard" layout (spec section 16) — keyed on
+     * the authenticated user's own id, never a client-supplied id, so a user can
+     * never read/overwrite another user's layout. localStorage remains an
+     * instant-paint cache on the frontend; this is the source of truth.
+     */
+    @GetMapping("/layout")
+    public ResponseEntity<Map<String, Object>> getLayout(@org.springframework.security.core.annotation.AuthenticationPrincipal com.carrental.entity.User user) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        dashboardLayoutRepository.findByUserId(user.getId()).ifPresentOrElse(
+                layout -> {
+                    data.put("widgetsJson", layout.getWidgetsJson());
+                    data.put("updatedAt", layout.getUpdatedAt());
+                },
+                () -> data.put("widgetsJson", null));
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("data", data);
+        return ResponseEntity.ok(response);
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/layout")
+    public ResponseEntity<Map<String, Object>> saveLayout(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.carrental.entity.User user,
+            @org.springframework.web.bind.annotation.RequestBody Map<String, Object> body) {
+        Object widgets = body.get("widgets");
+        String widgetsJson = widgets == null ? "[]" : new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(widgets).toString();
+        com.carrental.entity.DashboardLayout layout = dashboardLayoutRepository.findByUserId(user.getId())
+                .orElseGet(() -> com.carrental.entity.DashboardLayout.builder().userId(user.getId()).widgetsJson("[]").build());
+        layout.setWidgetsJson(widgetsJson);
+        layout.setUpdatedAt(java.time.LocalDateTime.now());
+        dashboardLayoutRepository.save(layout);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Dashboard layout saved");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Real operational intelligence: today's operations, the prioritized action
+     * queue, the financial control center, vehicle profitability, payment risk,
+     * and maintenance intelligence — see spec sections 1-4/10/11. One call
+     * (not six) to keep the dashboard's initial paint fast; each section is
+     * independently null-safe if its own computation fails.
+     */
+    @GetMapping("/operations-center")
+    public ResponseEntity<Map<String, Object>> getOperationsCenter() {
+        Map<String, Object> data = dashboardIntelligenceService.operationsCenter();
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Operations center loaded");
+        response.put("data", data);
+        return ResponseEntity.ok(response);
+    }
+
+    /** Real, aggregated daily revenue-trend series for the Revenue Trend chart (spec section 7). */
+    @GetMapping("/revenue-trend")
+    public ResponseEntity<Map<String, Object>> getRevenueTrend(@org.springframework.web.bind.annotation.RequestParam(defaultValue = "30d") String range) {
+        List<Map<String, Object>> series = dashboardIntelligenceService.revenueTrend(range);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Revenue trend loaded");
+        response.put("data", series);
+        return ResponseEntity.ok(response);
+    }
+
+    /** Deterministic (no invented numbers) insight sentence — Complete-pack "AI Insights" widget's safe baseline. */
+    @GetMapping("/insight")
+    @org.springframework.security.access.prepost.PreAuthorize("@featureAccessService.isEnabledForCurrentTenant('AI_REPORTS')")
+    public ResponseEntity<Map<String, Object>> getInsight() {
+        Map<String, Object> data = dashboardIntelligenceService.insight();
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Insight computed");
+        response.put("data", data);
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping({"", "/", "/summary"})
     public ResponseEntity<Map<String, Object>> getDashboardMetrics() {

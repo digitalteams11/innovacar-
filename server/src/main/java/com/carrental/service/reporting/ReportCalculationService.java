@@ -71,10 +71,24 @@ public class ReportCalculationService {
                 comparison);
     }
 
-    private record PeriodFigures(
+    /**
+     * Exposed (not just an internal implementation detail of {@link #calculate})
+     * so callers that need the same real, exclusion-correct figures for an
+     * arbitrary live window — e.g. the dashboard's "today" / "this month so far"
+     * cards — can reuse this exact math instead of re-deriving it. Never invent
+     * a second revenue/expense calculation; always go through this.
+     */
+    public record PeriodFigures(
             FinancialSummary financial, OperationsSummary operations, FleetSummary fleet,
             List<VehiclePerformance> topVehicles, List<VehiclePerformance> lowVehicles,
-            ClientsSummary clients, MaintenanceSummary maintenance) {}
+            ClientsSummary clients, MaintenanceSummary maintenance,
+            List<VehiclePerformance> allVehiclePerformance) {}
+
+    /** Public entry point for an arbitrary (not necessarily "closed") period — see {@link PeriodFigures}. */
+    @Transactional(readOnly = true)
+    public PeriodFigures computeFigures(Long tenantId, LocalDateTime start, LocalDateTime end, ZoneId zone) {
+        return computePeriodFigures(tenantId, new ReportPeriodResolver.Period(start, end), zone);
+    }
 
     private PeriodFigures computePeriodFigures(Long tenantId, ReportPeriodResolver.Period period, ZoneId zone) {
         LocalDate periodStartDate = period.start().atZone(ZoneOffset.UTC).withZoneSameInstant(zone).toLocalDate();
@@ -184,7 +198,7 @@ public class ReportCalculationService {
 
         MaintenanceSummary maintenance = computeMaintenanceSummary(maintenanceCreated, maintenanceCompleted, maintenanceCost);
 
-        return new PeriodFigures(financial, operations, fleet, topVehicles, lowVehicles, clients, maintenance);
+        return new PeriodFigures(financial, operations, fleet, topVehicles, lowVehicles, clients, maintenance, vehiclePerformances);
     }
 
     private List<VehiclePerformance> computeVehiclePerformance(List<Contract> contracts, List<VehicleMaintenance> maintenance,
