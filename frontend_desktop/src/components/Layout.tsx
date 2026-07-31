@@ -233,7 +233,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="w-8 h-8 rounded-lg bg-[var(--brand-primary)] flex items-center justify-center">
               <Car size={16} className="text-[#171817]" />
             </span>
-            <strong className="hidden min-[375px]:block text-sm">RentCar</strong>
+            <strong className="hidden min-[375px]:block text-sm">Innovacar</strong>
           </Link>
 
           <label className="surface-control hidden md:flex h-9 w-full max-w-[420px] items-center gap-2 px-3">

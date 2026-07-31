@@ -110,7 +110,7 @@ export default function SuperAdminBackups() {
       const url = URL.createObjectURL(response.data);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = backup.fileName || `rentcar-backup-${backup.id}.dump`;
+      anchor.download = backup.fileName || `innovacar-backup-${backup.id}.dump`;
       anchor.click();
       URL.revokeObjectURL(url);
       showToast('Backup downloaded successfully', 'success');

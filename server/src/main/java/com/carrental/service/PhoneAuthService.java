@@ -171,7 +171,7 @@ public class PhoneAuthService {
         log.info("╔══════════════════════════════════════════════════════╗");
         log.info("║                 SMS SENT TO {}                 ║", phoneNumber);
         log.info("║                                                      ║");
-        log.info("║  Your RentCar verification code is: {}          ║", otpCode);
+        log.info("║  Your Innovacar verification code is: {}          ║", otpCode);
         log.info("║  Expires in {} minutes.                              ║", OTP_EXPIRY_MINUTES);
         log.info("╚══════════════════════════════════════════════════════╝");
     }

@@ -1,0 +1,11 @@
+<!--
+  Shared branded CTA button fragment — green gradient, degrades to a plain
+  link if a client strips inline styles.
+  Usage: th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}"
+-->
+<div th:fragment="button(label, url)" style="text-align:center;margin:28px 0;">
+  <a th:href="${url}" th:text="${label}"
+     style="display:inline-block;padding:14px 34px;background:linear-gradient(135deg,#0f766e,#10b981);
+            color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;
+            letter-spacing:0.02em;box-shadow:0 4px 14px rgba(15,118,110,0.35);">Open dashboard</a>
+</div>

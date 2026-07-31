@@ -71,6 +71,7 @@ public class ReportGenerationService {
     private final ReportPdfGenerator pdfGenerator;
     private final ReportPdfStorage pdfStorage;
     private final SmtpMailService smtpMailService;
+    private final com.carrental.service.EmailTemplateRenderer emailTemplateRenderer;
     private final ObjectMapper objectMapper;
 
     public enum SkipReason {
@@ -394,10 +395,11 @@ public class ReportGenerationService {
     }
 
     private String emailBody(Tenant tenant, Report report) {
-        return "<p>" + (tenant != null ? tenant.getName() : "") + "</p>"
-                + "<p>" + ReportLabels.get("cover.period", report.getLanguage()) + ": "
-                + report.getPeriodStart().toLocalDate() + " - " + report.getPeriodEnd().toLocalDate().minusDays(1) + "</p>"
-                + "<p>Please find your report attached as a secure PDF.</p>";
+        String periodLabel = report.getPeriodStart().toLocalDate() + " - " + report.getPeriodEnd().toLocalDate().minusDays(1);
+        String templateName = report.getReportType() == ReportType.MONTHLY ? "monthly-report" : "yearly-report";
+        return emailTemplateRenderer.render(templateName, java.util.Map.of(
+                "tenantName", tenant != null && tenant.getName() != null ? tenant.getName() : "there",
+                "periodLabel", periodLabel));
     }
 
     private String safeMessage(Exception e) {

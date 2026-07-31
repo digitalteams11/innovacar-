@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<!--
+  Variables: tenantName, periodLabel, dashboardUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Your monthly report is ready'}, subtitle=${'Financial and operational summary for your agency.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${tenantName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Your monthly Innovacar report is ready and attached to this email as a secure PDF.</p>
+
+  <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+    <p style="margin:2px 0;font-size:14px;">Period: <strong th:text="${periodLabel}">—</strong></p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}" th:if="${dashboardUrl}"></div>
+</div>
+</body>
+</html>

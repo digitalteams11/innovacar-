@@ -1,4 +1,4 @@
-# RentCar SaaS — Core Flow Manual Test Plan
+# Innovacar — Core Flow Manual Test Plan
 
 Precondition: Backend on port 8082, frontend on port 5173/5174. Clean database (business tables empty, config tables seeded via Flyway).
 

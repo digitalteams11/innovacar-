@@ -113,11 +113,11 @@
     "forgot": "Oublié?",
     "rememberMe": "Se souvenir de moi pendant 30 jours",
     "signIn": "Se connecter",
-    "secureAccess": "Accès administrateur sécurisé par RentCar SaaS"
+    "secureAccess": "Accès administrateur sécurisé par Innovacar"
   },
   "register": {
     "title": "Créer un compte",
-    "subtitle": "Rejoignez votre équipe sur RentCar SaaS",
+    "subtitle": "Rejoignez votre équipe sur Innovacar",
     "firstName": "Prénom",
     "lastName": "Nom",
     "tenantId": "ID Tenant",
@@ -200,7 +200,7 @@
     "fleet": "Flotte",
     "activeRentals": "Locations actives",
     "monthlyRevenue": "Revenu mensuel",
-    "healthScoreTitle": "Score de santé SaaS",
+    "healthScoreTitle": "Score de santé de la plateforme",
     "healthy": "Sain",
     "reservationsToday": "Réservations aujourd'hui",
     "upcomingReservations": "Réservations à venir",
@@ -703,7 +703,7 @@
       "deactivationInfo": "La demande de désactivation du compte ouvre un ticket support examiné par notre équipe. Nous ne supprimons pas automatiquement vos données, afin d’éviter toute perte accidentelle.",
       "deactivationModalDesc": "Cela ouvrira un ticket support pour que notre équipe examine et traite votre demande de désactivation. Vos données ne seront pas supprimées automatiquement.",
       "reasonOptional": "Raison (optionnel)",
-      "deactivationConfirm": "Je comprends que cette demande sera examinée par l’équipe RentCar avant toute action.",
+      "deactivationConfirm": "Je comprends que cette demande sera examinée par l’équipe Innovacar avant toute action.",
       "submitting": "Envoi...",
       "submitRequest": "Envoyer la demande",
       "cancel": "Annuler"
@@ -738,7 +738,7 @@
       "email": "Notifications par e-mail",
       "emailDesc": "Recevez une copie des alertes importantes par e-mail",
       "browserPush": "Notifications push du navigateur",
-      "browserPushDesc": "Recevez des notifications même lorsque RentCar est en arrière-plan",
+      "browserPushDesc": "Recevez des notifications même lorsque Innovacar est en arrière-plan",
       "saveSettings": "Enregistrer les paramètres"
     },
     "agencyLogo": "Logo de l’agence",
@@ -834,7 +834,7 @@
     },
     "dashboard": {
       "title": "Vue d'ensemble de la plateforme",
-      "subtitle": "Informations en temps réel sur votre écosystème SaaS",
+      "subtitle": "Informations en temps réel sur votre écosystème Innovacar",
       "live": "En direct",
       "totalAgencies": "Total Agences",
       "activeUsers": "Total Utilisateurs",
@@ -889,7 +889,7 @@
     },
     "subscriptions": {
       "title": "Plans d'Abonnement",
-      "subtitle": "Gérer les plans SaaS et la facturation",
+      "subtitle": "Gérer les plans d.abonnement et la facturation",
       "newPlan": "Nouveau Plan",
       "editPlan": "Modifier le Plan",
       "planName": "Nom du Plan",
@@ -1080,7 +1080,7 @@
     "skipTour": "Ignorer la visite",
     "completed": "Terminé",
     "welcome": {
-      "title": "Bienvenue sur RentCar",
+      "title": "Bienvenue sur Innovacar",
       "description": "Votre plateforme de gestion de location est prête. Configurons votre agence en quelques étapes simples.",
       "start": "Commencer",
       "skip": "Plus tard"

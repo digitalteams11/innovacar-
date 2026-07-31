@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--
+  Variables: firstName, planName, trialEndDate, dashboardUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Your trial has started'}, subtitle=${'Explore everything Innovacar has to offer.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+    Your <strong th:text="${planName}">Trial</strong> plan is now active. You have full access to Innovacar until your trial ends.
+  </p>
+
+  <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+    <p style="margin:2px 0;font-size:14px;">Plan: <strong th:text="${planName}">Trial</strong></p>
+    <p style="margin:2px 0;font-size:14px;">Trial ends: <strong th:text="${trialEndDate}">—</strong></p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}"></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!--
+  Variables: clientName, contractNumber, agencyName, downloadUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Your contract is signed'}, subtitle=${'A copy of your rental contract is ready.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${clientName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+    Your rental contract with <strong th:text="${agencyName}">your agency</strong> has been signed successfully.
+  </p>
+
+  <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+    <p style="margin:2px 0;font-size:14px;">Contract number: <strong th:text="${contractNumber}">—</strong></p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Download contract'}, url=${downloadUrl})}" th:if="${downloadUrl}"></div>
+</div>
+</body>
+</html>

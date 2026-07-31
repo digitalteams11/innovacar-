@@ -6,6 +6,7 @@ import com.carrental.repository.ReportEmailAttemptRepository;
 import com.carrental.repository.ReportPreferencesRepository;
 import com.carrental.repository.ReportRepository;
 import com.carrental.repository.TenantRepository;
+import com.carrental.service.EmailTemplateRenderer;
 import com.carrental.service.FeatureAccessService;
 import com.carrental.service.SmtpMailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,15 +42,17 @@ class ReportGenerationServiceTest {
     @Mock private ReportPdfGenerator pdfGenerator;
     @Mock private ReportPdfStorage pdfStorage;
     @Mock private SmtpMailService smtpMailService;
+    @Mock private EmailTemplateRenderer emailTemplateRenderer;
 
     private final ReportPeriodResolver periodResolver = new ReportPeriodResolver();
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     private ReportGenerationService service() {
+        lenient().when(emailTemplateRenderer.render(anyString(), any())).thenReturn("<p>stub report email body</p>");
         return new ReportGenerationService(tenantRepository, reportRepository, preferencesRepository,
                 emailAttemptRepository, featureAccessService, periodResolver, calculationService,
                 deterministicSummaryService, aiReportSummaryService, pdfGenerator, pdfStorage, smtpMailService,
-                objectMapper);
+                emailTemplateRenderer, objectMapper);
     }
 
     private Tenant tenant() {

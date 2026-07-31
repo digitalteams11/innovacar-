@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<!--
+  Variables: firstName, code, expiresInMinutes, verificationUrl (optional link variant)
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Verify your email'}, subtitle=${'One quick step to activate your Innovacar account.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Use the code below to verify your email address and activate your Innovacar account.</p>
+
+  <div th:if="${code}" style="background:#f0fdf9;border:2px dashed #0f766e;border-radius:14px;padding:26px 20px;text-align:center;margin:24px 0;">
+    <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#0f766e;">Your verification code</p>
+    <span style="font-size:40px;font-weight:800;letter-spacing:10px;color:#071827;font-family:'Courier New',Courier,monospace;" th:text="${code}">000000</span>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Verify email'}, url=${verificationUrl})}" th:if="${verificationUrl}"></div>
+
+  <p th:if="${expiresInMinutes}" style="margin:16px 0 0;font-size:13px;color:#64748b;">
+    This code expires in <strong th:text="${expiresInMinutes} + ' minutes'">15 minutes</strong>. If you didn't request this, you can safely ignore this email.
+  </p>
+</div>
+</body>
+</html>

@@ -2559,7 +2559,7 @@ public class SuperAdminController {
         result.put("endDate", rangeEnd);
         result.put("generatedAt", LocalDateTime.now());
         result.put("format", "csv");
-        result.put("filename", "rentcar-" + type + "-" + rangeStart + "-to-" + rangeEnd + ".csv");
+        result.put("filename", "innovacar-" + type + "-" + rangeStart + "-to-" + rangeEnd + ".csv");
         result.put("columns", columns);
         result.put("rows", rows);
         result.put("rowCount", rows.size());

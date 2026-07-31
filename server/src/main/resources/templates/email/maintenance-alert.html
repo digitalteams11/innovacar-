@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--
+  Variables: vehicleName, maintenanceType, dueDate, dashboardUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Maintenance alert'}, subtitle=${'A vehicle in your fleet needs attention.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+    <strong th:text="${vehicleName}">This vehicle</strong> has upcoming or overdue maintenance.
+  </p>
+
+  <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:10px;padding:18px 20px;margin:20px 0;">
+    <p th:if="${maintenanceType}" style="margin:2px 0;font-size:14px;">Type: <strong th:text="${maintenanceType}">—</strong></p>
+    <p th:if="${dueDate}" style="margin:2px 0;font-size:14px;">Due date: <strong th:text="${dueDate}">—</strong></p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'View maintenance'}, url=${dashboardUrl})}" th:if="${dashboardUrl}"></div>
+</div>
+</body>
+</html>

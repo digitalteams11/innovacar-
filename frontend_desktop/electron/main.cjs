@@ -33,7 +33,7 @@ function createWindow() {
     height: 900,
     minWidth: 1200,
     minHeight: 700,
-    title: 'RentCar Desktop',
+    title: 'Innovacar Desktop',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

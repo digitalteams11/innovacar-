@@ -1161,7 +1161,7 @@ function TermsPage() {
         {
           heading: '1. Objet',
           paragraphs: [
-            "Les présentes conditions régissent l'utilisation d'Innovacar, plateforme SaaS de gestion pour agences de location de voitures éditée par Innovax Technologies. En créant un compte ou en utilisant le service, votre agence accepte ces conditions.",
+            "Les présentes conditions régissent l'utilisation d'Innovacar, plateforme de gestion pour agences de location de voitures éditée par Innovax Technologies. En créant un compte ou en utilisant le service, votre agence accepte ces conditions.",
           ],
         },
         {

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--
+  Variables: clientName, vehicleName, returnDate, agencyName
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Vehicle returned'}, subtitle=${'Thank you for choosing Innovacar.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${clientName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+    We confirm that your vehicle has been returned to <strong th:text="${agencyName}">your agency</strong>.
+  </p>
+
+  <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+    <p style="margin:2px 0;font-size:14px;">Vehicle: <strong th:text="${vehicleName}">—</strong></p>
+    <p style="margin:2px 0;font-size:14px;">Return date: <strong th:text="${returnDate}">—</strong></p>
+  </div>
+
+  <p style="margin:0;font-size:14px;line-height:1.7;">Thank you for renting with us — we hope to see you again soon.</p>
+</div>
+</body>
+</html>

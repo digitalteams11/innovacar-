@@ -64,7 +64,7 @@ interface ThemeContextType {
 const STORAGE_KEY = 'rentcar_appearance';
 
 /**
- * Each 2026 SaaS theme preset defines its own primary/secondary/accent (fixed
+ * Each 2026 platform theme preset defines its own primary/secondary/accent (fixed
  * across modes — these are the brand identity) plus a background/surface/
  * sidebar pairing per mode. Body/sidebar text is never stored here: it's
  * computed at apply-time from the actual background/sidebar luminance, so a
@@ -89,7 +89,7 @@ interface PresetDefinition {
 export const presetCatalog: Record<ThemePreset, PresetDefinition> = {
   'neo-emerald': {
     label: 'Neo Emerald',
-    description: 'Modern green SaaS, clean and fresh.',
+    description: 'Modern green palette, clean and fresh.',
     primaryColor: '#10B981',
     secondaryColor: '#0F766E',
     accentColor: '#F59E0B',
@@ -143,7 +143,7 @@ export const presetCatalog: Record<ThemePreset, PresetDefinition> = {
   },
   'purple-slate': {
     label: 'Purple Slate',
-    description: 'Modern SaaS, creative but professional.',
+    description: 'Modern palette, creative but professional.',
     primaryColor: '#7C3AED',
     secondaryColor: '#4F46E5',
     accentColor: '#A78BFA',

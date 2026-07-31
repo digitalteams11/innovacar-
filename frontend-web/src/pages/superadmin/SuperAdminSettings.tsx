@@ -156,7 +156,7 @@ export default function SuperAdminSettings() {
       console.error(err);
       setUsingFallbackSettings(true);
       setSettings((current: any) => Object.keys(current || {}).length > 0 ? current : {
-        platformName: 'RentCar',
+        platformName: 'Innovacar',
         primaryColor: '#0a0f2c',
         maintenanceMode: false,
         themePresetsJson: '[]',

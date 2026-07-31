@@ -118,7 +118,7 @@ public class TenantSettingsService {
 
     private Map<String, Object> toResponse(TenantSettings settings) {
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("agencyName", settings.getTenant() != null ? settings.getTenant().getName() : "RentCar");
+        response.put("agencyName", settings.getTenant() != null ? settings.getTenant().getName() : "Innovacar");
         response.put("logo", null);
         response.put("currency", settings.getCurrency());
         response.put("language", settings.getLanguage());
@@ -261,7 +261,7 @@ public class TenantSettingsService {
     private Map<String, Object> defaultSettingsData(Tenant tenant) {
         Map<String, Object> data = new LinkedHashMap<>();
         Map<String, Object> appearance = defaultAppearance();
-        data.put("agencyName", tenant != null ? tenant.getName() : "RentCar");
+        data.put("agencyName", tenant != null ? tenant.getName() : "Innovacar");
         data.put("logo", null);
         data.put("currency", "MAD");
         data.put("language", "en");

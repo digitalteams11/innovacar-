@@ -294,7 +294,7 @@ app:
     # fallback in case that's what's actually set on Railway.
     api-token: "${ZEPTOMAIL_API_TOKEN:${EMAIL_API_TOKEN:}}"
     from-email: "${EMAIL_FROM_EMAIL:}"
-    from-name: "${EMAIL_FROM_NAME:RentCar}"
+    from-name: "${EMAIL_FROM_NAME:Innovacar}"
 
   # ── AI / Gemini ──────────────────────────────────────────────────────────────
   # Backend-only. Used only to seed the AiSettings row the first time it is

@@ -54,13 +54,13 @@ function RecoveryCodesPanel({
 
   const download = () => {
     const blob = new Blob(
-      [`RentCar — 2FA Recovery Codes\nGenerated: ${new Date().toISOString()}\n\n${codes.join('\n')}\n\nEach code can only be used once.`],
+      [`Innovacar — 2FA Recovery Codes\nGenerated: ${new Date().toISOString()}\n\n${codes.join('\n')}\n\nEach code can only be used once.`],
       { type: 'text/plain' }
     );
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'rentcar-recovery-codes.txt';
+    a.download = 'innovacar-recovery-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
   };

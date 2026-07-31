@@ -308,7 +308,7 @@ function MaintenanceScreen({ onRetryNow }: { onRetryNow: () => void }) {
         </div>
         <h1 className="text-xl font-bold text-[#1e293b] dark:text-white">{t('app.serviceUnavailable', 'Service temporarily unavailable')}</h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
-          {t('app.serviceUnavailableDesc', "We can't reach the RentCar server right now. We'll keep retrying automatically.")}
+          {t('app.serviceUnavailableDesc', "We can't reach the Innovacar server right now. We'll keep retrying automatically.")}
         </p>
         <button
           type="button"

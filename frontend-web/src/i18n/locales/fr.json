@@ -4,7 +4,7 @@
     "underDevelopment": "Section en développement",
     "underDevelopmentDesc": "Ce module est actuellement en cours de construction par notre équipe.",
     "serviceUnavailable": "Service temporairement indisponible",
-    "serviceUnavailableDesc": "Impossible de joindre le serveur RentCar pour le moment. Nouvelle tentative automatique en cours.",
+    "serviceUnavailableDesc": "Impossible de joindre le serveur Innovacar pour le moment. Nouvelle tentative automatique en cours.",
     "retryNow": "Réessayer maintenant",
     "reconnecting": "Reconnexion…",
     "offline": "Vous êtes hors ligne",
@@ -180,7 +180,7 @@
     "forgot": "Oublié?",
     "rememberMe": "Se souvenir de moi pendant 30 jours",
     "signIn": "Se connecter",
-    "secureAccess": "Accès administrateur sécurisé par RentCar SaaS",
+    "secureAccess": "Accès administrateur sécurisé par Innovacar",
     "twoFactorTitle": "Authentification à deux facteurs",
     "authenticatorTab": "Application d'authentification",
     "emailOtpTab": "Code par email",
@@ -210,7 +210,7 @@
   },
   "register": {
     "title": "Créer un compte",
-    "subtitle": "Rejoignez votre équipe sur RentCar SaaS",
+    "subtitle": "Rejoignez votre équipe sur Innovacar",
     "firstName": "Prénom",
     "lastName": "Nom",
     "tenantId": "ID Tenant",
@@ -311,7 +311,7 @@
     "fleet": "Flotte",
     "activeRentals": "Locations actives",
     "monthlyRevenue": "Revenu mensuel",
-    "healthScoreTitle": "Score de santé SaaS",
+    "healthScoreTitle": "Score de santé de la plateforme",
     "healthy": "Sain",
     "reservationsToday": "Réservations aujourd'hui",
     "upcomingReservations": "Réservations à venir",
@@ -1507,7 +1507,7 @@
     "oneDevicePerVehicle": "Chaque appareil doit être lié à un seul véhicule.",
     "whereToFindIt": "Où le trouver",
     "example": "Exemple",
-    "howRentCarUsesThis": "Comment RentCar utilise cette information",
+    "howRentCarUsesThis": "Comment Innovacar utilise cette information",
     "security": "Sécurité",
     "markAllRead": "Tout marquer comme lu",
     "allRead": "Tout est lu",
@@ -1588,7 +1588,7 @@
     "authPrefixPlaceholder": "Bearer",
     "authPrefixHelp": "Préfixe avant la valeur de la clé API (par défaut : Bearer)",
     "apiHost": "Hôte API",
-    "iopgpsApiHostHint": "RentCar se connecte toujours à l'hôte API officiel d'IOPGPS. Cette valeur ne peut pas être modifiée.",
+    "iopgpsApiHostHint": "Innovacar se connecte toujours à l'hôte API officiel d'IOPGPS. Cette valeur ne peut pas être modifiée.",
     "connectionSuccessful": "Connexion réussie",
     "connectionFailedTitle": "Échec de la connexion",
     "devicesFoundCount": "{{count}} appareils trouvés",
@@ -1864,7 +1864,7 @@
       "deactivationInfo": "La demande de désactivation du compte ouvre un ticket support examiné par notre équipe. Nous ne supprimons pas automatiquement vos données, afin d’éviter toute perte accidentelle.",
       "deactivationModalDesc": "Cela ouvrira un ticket support pour que notre équipe examine et traite votre demande de désactivation. Vos données ne seront pas supprimées automatiquement.",
       "reasonOptional": "Raison (optionnel)",
-      "deactivationConfirm": "Je comprends que cette demande sera examinée par l’équipe RentCar avant toute action.",
+      "deactivationConfirm": "Je comprends que cette demande sera examinée par l’équipe Innovacar avant toute action.",
       "submitting": "Envoi...",
       "submitRequest": "Envoyer la demande",
       "cancel": "Annuler"
@@ -1877,7 +1877,7 @@
       "email": "Notifications par e-mail",
       "emailDesc": "Recevez une copie des alertes importantes par e-mail",
       "browserPush": "Notifications push du navigateur",
-      "browserPushDesc": "Recevez des notifications même lorsque RentCar est en arrière-plan",
+      "browserPushDesc": "Recevez des notifications même lorsque Innovacar est en arrière-plan",
       "saveSettings": "Enregistrer les paramètres"
     },
     "teamAccess": "Équipe & accès",
@@ -2246,7 +2246,7 @@
     },
     "dashboard": {
       "title": "Vue d'ensemble de la plateforme",
-      "subtitle": "Informations en temps réel sur votre écosystème SaaS",
+      "subtitle": "Informations en temps réel sur votre écosystème Innovacar",
       "live": "En direct",
       "totalAgencies": "Total Agences",
       "activeUsers": "Total Utilisateurs",
@@ -2301,7 +2301,7 @@
     },
     "subscriptions": {
       "title": "Plans d'Abonnement",
-      "subtitle": "Gérer les plans SaaS et la facturation",
+      "subtitle": "Gérer les plans d.abonnement et la facturation",
       "newPlan": "Nouveau Plan",
       "editPlan": "Modifier le Plan",
       "planName": "Nom du Plan",
@@ -2493,7 +2493,7 @@
     "skipTour": "Ignorer la visite",
     "completed": "Terminé",
     "welcome": {
-      "title": "Bienvenue sur RentCar",
+      "title": "Bienvenue sur Innovacar",
       "description": "Votre plateforme de gestion de location est prête. Configurons votre agence en quelques étapes simples.",
       "start": "Commencer",
       "skip": "Plus tard"
@@ -2893,7 +2893,7 @@
     "modeDark": "Sombre",
     "modeAuto": "Système",
     "themePreset": "Thème prédéfini",
-    "themePresetDesc": "Palettes SaaS premium 2026 — chacune avec un mode sombre assorti",
+    "themePresetDesc": "Palettes premium 2026 — chacune avec un mode sombre assorti",
     "brandColors": "Couleurs de marque",
     "brandColorsDesc": "Ajustez le thème actif selon l'identité de votre agence",
     "colorPrimary": "Primaire",
@@ -2924,7 +2924,7 @@
     "themes": {
       "neo-emerald": {
         "label": "Néo Émeraude",
-        "description": "SaaS vert moderne, sobre et frais."
+        "description": "Palette verte moderne, sobre et fraîche."
       },
       "carbon-lime": {
         "label": "Carbone Citron Vert",
@@ -2948,7 +2948,7 @@
       },
       "purple-slate": {
         "label": "Violet Ardoise",
-        "description": "SaaS moderne, créatif tout en restant professionnel."
+        "description": "Palette moderne, créative tout en restant professionnelle."
       },
       "clean-white-pro": {
         "label": "Blanc Épuré Pro",

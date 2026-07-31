@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!--
+  Variables: firstName, amount, invoiceNumber, paidDate, invoiceUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Payment received'}, subtitle=${'Thank you — your payment was successful.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">We've successfully processed your payment.</p>
+
+  <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+    <p style="margin:2px 0;font-size:14px;">Amount: <strong th:text="${amount}">—</strong></p>
+    <p th:if="${invoiceNumber}" style="margin:2px 0;font-size:14px;">Invoice: <strong th:text="${invoiceNumber}">—</strong></p>
+    <p th:if="${paidDate}" style="margin:2px 0;font-size:14px;">Date: <strong th:text="${paidDate}">—</strong></p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'View invoice'}, url=${invoiceUrl})}" th:if="${invoiceUrl}"></div>
+</div>
+</body>
+</html>

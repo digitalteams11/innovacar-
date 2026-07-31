@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!--
+  Variables: firstName, planName, trialEndDate, dashboardUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Welcome to Innovacar'}, subtitle=${'Manage your fleet, reservations, contracts, payments and GPS in one platform.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Your account has been created successfully.</p>
+
+  <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#071827;">You can now:</p>
+  <div style="background:#f0fdf9;border-radius:14px;padding:18px 20px;margin:0 0 20px;">
+    <p style="margin:6px 0;font-size:14px;">&#9989;&nbsp; Manage your vehicles</p>
+    <p style="margin:6px 0;font-size:14px;">&#9989;&nbsp; Track reservations</p>
+    <p style="margin:6px 0;font-size:14px;">&#9989;&nbsp; Create contracts</p>
+    <p style="margin:6px 0;font-size:14px;">&#9989;&nbsp; Manage payments</p>
+    <p style="margin:6px 0;font-size:14px;">&#9989;&nbsp; Monitor GPS</p>
+    <p style="margin:6px 0;font-size:14px;">&#9989;&nbsp; Generate reports</p>
+  </div>
+
+  <div th:if="${planName}" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#0f766e;">Trial information</p>
+    <p style="margin:2px 0;font-size:14px;">Plan: <strong th:text="${planName}">Trial</strong></p>
+    <p th:if="${trialEndDate}" style="margin:2px 0;font-size:14px;">Trial ends: <strong th:text="${trialEndDate}">—</strong></p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}"></div>
+</div>
+</body>
+</html>

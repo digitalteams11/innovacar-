@@ -35,7 +35,7 @@ public class AiReportSummaryService {
 
     public SummaryResult buildSummary(ReportDataset dataset, String language) {
         try {
-            String systemInstruction = "You are a financial reporting assistant for a car-rental SaaS. "
+            String systemInstruction = "You are a financial reporting assistant for the Innovacar car-rental platform. "
                     + "You are given verified, already-calculated business figures for one reporting period. "
                     + "Write a short executive summary (4-6 bullet points, plain text, one per line, no markdown) "
                     + "covering: overall financial health, notable changes vs. the previous period, risks, and "

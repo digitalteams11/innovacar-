@@ -196,7 +196,7 @@ export default function AiChatPanel({ module, onClose, onThinkingChange, variant
         {messages.length === 0 ? (
           <div className="space-y-3">
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              Ask about how to use RentCar, troubleshoot issues, or learn about any feature.
+              Ask about how to use Innovacar, troubleshoot issues, or learn about any feature.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {QUICK_PROMPTS.map((prompt) => (

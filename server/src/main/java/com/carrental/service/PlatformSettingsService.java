@@ -96,7 +96,7 @@ public class PlatformSettingsService {
 
     public BrandingSettingsDto resetToDefault() {
         PlatformSettings settings = loadOrCreate();
-        settings.setPlatformName("RentCar");
+        settings.setPlatformName("Innovacar");
         settings.setCompanyName("Innovax Technologies");
         settings.setPrimaryColor("#0a0f2c");
         settings.setSecondaryColor("#b69152");

@@ -1,6 +1,6 @@
 # SEO route inventory
 
-Audited directly from `frontend-web/src/App.tsx` (the actual `<Routes>` table) on 2026-07-16 — not from assumed marketing-site routes. **This app has no marketing website today.** `innovacar.app` serves the SaaS product itself: `/` is the authenticated Dashboard (`ProtectedRoute` → redirects to `/login` when unauthenticated). There is no landing page, `/features`, `/pricing`, `/about`, `/security`, `/privacy`, `/terms`, or `/faq` page anywhere in this codebase or in the Electron `frontend_desktop` app.
+Audited directly from `frontend-web/src/App.tsx` (the actual `<Routes>` table) on 2026-07-16 — not from assumed marketing-site routes. **This app has no marketing website today.** `innovacar.app` serves the Innovacar product itself: `/` is the authenticated Dashboard (`ProtectedRoute` → redirects to `/login` when unauthenticated). There is no landing page, `/features`, `/pricing`, `/about`, `/security`, `/privacy`, `/terms`, or `/faq` page anywhere in this codebase or in the Electron `frontend_desktop` app.
 
 Routing is `HashRouter` end-to-end (`frontend-web/src/main.tsx`). Every real URL path returns the identical `index.html` shell — react-router only reads the `#/...` fragment, which the server/CDN never sees. This has two consequences used throughout this inventory:
 - A path like `https://innovacar.app/login` does **not** render the login page today — it renders whatever `/` (real pathname) resolves to, i.e. the dashboard-or-redirect-to-login shell. Only `https://innovacar.app/#/login` renders it.

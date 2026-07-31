@@ -35,7 +35,7 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-const APP_TITLE = 'RentCar';
+const APP_TITLE = 'Innovacar';
 const POLL_INTERVAL_MS = 30_000;
 // At capped 30s backoff intervals, this is ~10 minutes of continuous failure
 // before giving up on the real-time channel entirely (the 30s notifications

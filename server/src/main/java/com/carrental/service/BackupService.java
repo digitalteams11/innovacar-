@@ -255,7 +255,7 @@ public class BackupService {
             }
             Path directory = backupDirectory();
             String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(LocalDateTime.now());
-            String fileName = "rentcar-" + type.name().toLowerCase(Locale.ROOT) + "-" + timestamp + "-" + record.getId() + ".dump";
+            String fileName = "innovacar-" + type.name().toLowerCase(Locale.ROOT) + "-" + timestamp + "-" + record.getId() + ".dump";
             Path destination = directory.resolve(fileName).normalize();
             ensureInsideBackupDirectory(destination);
             temporary = directory.resolve(fileName + ".partial");

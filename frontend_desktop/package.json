@@ -58,7 +58,7 @@
   },
   "build": {
     "appId": "com.rentcar.desktop",
-    "productName": "RentCar Desktop",
+    "productName": "Innovacar Desktop",
     "directories": {
       "output": "release"
     },

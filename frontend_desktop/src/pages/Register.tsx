@@ -195,7 +195,7 @@ export default function Register() {
           <div className="relative z-10">
             <div className="text-center mb-8">
               <h1 className="text-xl font-bold mb-1.5" style={{ color: 'var(--text-primary)' }}>{t('register.title', 'Create Account')}</h1>
-              <p className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>{t('register.subtitle', 'Join your team on RentCar SaaS')}</p>
+              <p className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>{t('register.subtitle', 'Join your team on Innovacar')}</p>
             </div>
 
             {/* Error */}

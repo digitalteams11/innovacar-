@@ -105,7 +105,7 @@ export default function AppearanceCustomizer() {
       </section>
 
       <section>
-        <SettingLabel title={t('appearance.themePreset', 'Theme preset')} description={t('appearance.themePresetDesc', 'Premium 2026 SaaS palettes — each one ships with a matching dark mode')} />
+        <SettingLabel title={t('appearance.themePreset', 'Theme preset')} description={t('appearance.themePresetDesc', 'Premium 2026 platform palettes — each one ships with a matching dark mode')} />
         <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           {presetOrder.map((key) => {
             const definition = presetCatalog[key];

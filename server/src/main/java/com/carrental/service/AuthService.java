@@ -304,7 +304,10 @@ public class AuthService {
                 user.getId(), user.getEmail(), tenant.getId(), user.getRole());
 
         sendVerificationEmail(user);
-        emailService.sendWelcomeEmail(user.getEmail(), user.getFirstName());
+        emailService.sendWelcomeEmail(user.getEmail(), user.getFirstName(),
+                tenant.getPlanName(),
+                tenant.getTrialEndDate() != null ? tenant.getTrialEndDate().toString() : null,
+                frontendUrl + "/dashboard");
 
         return buildAuthResponse(user);
     }
@@ -608,7 +611,7 @@ public class AuthService {
                 .used(false)
                 .build());
 
-        emailService.sendVerificationEmail(user.getEmail(), rawToken, frontendUrl);
+        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), rawToken, frontendUrl);
         log.info("Verification email sent to user [id={}] '{}'", user.getId(), user.getEmail());
     }
 

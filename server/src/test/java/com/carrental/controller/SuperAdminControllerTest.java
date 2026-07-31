@@ -265,7 +265,7 @@ class SuperAdminControllerTest {
         assertThat(report)
                 .containsEntry("type", "revenue")
                 .containsEntry("rowCount", 1)
-                .containsEntry("filename", "rentcar-revenue-2026-06-01-to-2026-06-30.csv");
+                .containsEntry("filename", "innovacar-revenue-2026-06-01-to-2026-06-30.csv");
         List<Map<String, Object>> rows = (List<Map<String, Object>>) report.get("rows");
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0))

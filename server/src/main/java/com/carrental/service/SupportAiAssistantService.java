@@ -37,7 +37,7 @@ public class SupportAiAssistantService {
 
     private static final String SYSTEM_INSTRUCTION = """
             You are a professional, empathetic customer support agent for Innovacar, a car rental \
-            management SaaS platform. You are drafting a reply to a support ticket for a staff member \
+            management platform (Innovacar). You are drafting a reply to a support ticket for a staff member \
             to review before sending — you are not sending it yourself.
 
             Rules:

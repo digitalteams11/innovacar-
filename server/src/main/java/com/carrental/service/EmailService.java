@@ -6,6 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * Email service for sending transactional emails.
  * <p>
@@ -20,6 +23,21 @@ import org.springframework.util.StringUtils;
 public class EmailService {
 
     private final SmtpMailService smtpMailService;
+    private final EmailTemplateRenderer emailTemplateRenderer;
+
+    /** Builds a template-variable map, silently skipping any null values (Thymeleaf treats a missing key as null anyway). */
+    private static Map<String, Object> vars(Object... keyValuePairs) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            Object value = keyValuePairs[i + 1];
+            if (value != null) map.put((String) keyValuePairs[i], value);
+        }
+        return map;
+    }
+
+    private static String displayName(String name) {
+        return (name != null && !name.isBlank()) ? name : "there";
+    }
 
     public void sendCustomerSuccessEmail(String toEmail, String subject, String message) {
         if (toEmail == null || toEmail.isBlank()) {
@@ -45,11 +63,17 @@ public class EmailService {
                                                                    int expiresInMinutes, String language) {
         String lang = normalizeLanguage(language);
         String subject = switch (lang) {
-            case "fr" -> "Code de réinitialisation du mot de passe RentCar";
-            case "ar" -> "رمز إعادة تعيين كلمة مرور RentCar";
-            default   -> "RentCar Password Reset Code";
+            case "fr" -> "Code de réinitialisation du mot de passe Innovacar";
+            case "ar" -> "رمز إعادة تعيين كلمة مرور Innovacar";
+            default   -> "Reset your Innovacar password";
         };
-        String body = buildPasswordResetCodeEmail(userName, code, expiresInMinutes, lang);
+        // English renders through the new branded Thymeleaf template; fr/ar keep the
+        // existing inline-HTML builder below (still de-branded) until those get their
+        // own localized templates — not expanding template scope beyond what's asked.
+        String body = "en".equals(lang)
+                ? emailTemplateRenderer.render("reset-password", vars(
+                        "firstName", displayName(userName), "code", code, "expiresInMinutes", expiresInMinutes))
+                : buildPasswordResetCodeEmail(userName, code, expiresInMinutes, lang);
         SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, body);
         deliver(result, toEmail, subject);
         return result;
@@ -68,7 +92,7 @@ public class EmailService {
      * Sends a confirmation email after a successful password reset.
      */
     public void sendPasswordChangedEmail(String toEmail, String userName) {
-        String subject = "Your RentCar password was changed";
+        String subject = "Your Innovacar password was changed";
         String body = buildPasswordChangedEmail(userName);
         deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
     }
@@ -89,9 +113,17 @@ public class EmailService {
      * Sends an email verification email with a verification link.
      */
     public void sendVerificationEmail(String toEmail, String verificationToken, String frontendUrl) {
+        sendVerificationEmail(toEmail, null, verificationToken, frontendUrl);
+    }
+
+    /**
+     * Sends an email verification email with a verification link, addressed by name.
+     */
+    public void sendVerificationEmail(String toEmail, String firstName, String verificationToken, String frontendUrl) {
         String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
         String subject = "Verify your email address - Innovacar";
-        String htmlBody = buildVerificationEmail(verifyLink);
+        String htmlBody = emailTemplateRenderer.render("verify-email", vars(
+                "firstName", displayName(firstName), "verificationUrl", verifyLink));
         String plainBody = buildVerificationEmailPlainText(verifyLink);
         deliver(smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody), toEmail, subject);
     }
@@ -113,7 +145,8 @@ public class EmailService {
     public SmtpMailService.SmtpResult sendEmailVerificationCodeEmail(String toEmail, String userName, String code,
                                                                        int expirationMinutes) {
         String subject = "Verify your email address - Innovacar";
-        String htmlBody = buildEmailVerificationCodeEmail(userName, code, expirationMinutes);
+        String htmlBody = emailTemplateRenderer.render("verify-email", vars(
+                "firstName", displayName(userName), "code", formatCodeForDisplay(code), "expiresInMinutes", expirationMinutes));
         String plainBody = buildEmailVerificationCodePlainText(userName, code, expirationMinutes);
         SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, htmlBody, plainBody);
         deliver(result, toEmail, subject);
@@ -126,7 +159,7 @@ public class EmailService {
      */
     public void sendEmailOtpCode(String toEmail, String userName, String code,
                                   int expiresInMinutes, Object purpose) {
-        String subject = "Your RentCar verification code";
+        String subject = "Your Innovacar verification code";
         String purposeLabel = purpose != null ? purpose.toString() : "VERIFICATION";
         String body = buildEmailOtpCodeEmail(userName, code, expiresInMinutes, purposeLabel);
         SmtpMailService.SmtpResult result = smtpMailService.sendPlatform(toEmail, subject, body);
@@ -142,8 +175,20 @@ public class EmailService {
      * Sends a welcome email after successful registration.
      */
     public void sendWelcomeEmail(String toEmail, String firstName) {
-        String subject = "Welcome to RentCar SaaS";
-        String body = buildWelcomeEmail(firstName);
+        sendWelcomeEmail(toEmail, firstName, null, null, null);
+    }
+
+    /**
+     * Sends a welcome email after successful registration, including trial plan
+     * details and a direct dashboard link when available.
+     */
+    public void sendWelcomeEmail(String toEmail, String firstName, String planName, String trialEndDate, String dashboardUrl) {
+        String subject = "Welcome to Innovacar";
+        String body = emailTemplateRenderer.render("welcome", vars(
+                "firstName", displayName(firstName),
+                "planName", planName,
+                "trialEndDate", trialEndDate,
+                "dashboardUrl", dashboardUrl));
         deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
     }
 
@@ -253,7 +298,8 @@ public class EmailService {
             return;
         }
         String subject = agencyName + " — Your Contract Has Been Fully Signed";
-        String body = buildContractSignedEmail(clientName, contractNumber, agencyName);
+        String body = emailTemplateRenderer.render("contract-signed", vars(
+                "clientName", displayName(clientName), "contractNumber", contractNumber, "agencyName", agencyName));
         deliver(smtpMailService.sendForTenant(TenantContext.getCurrentTenantId(), toEmail, subject, body),
                 toEmail, subject);
     }
@@ -274,22 +320,22 @@ public class EmailService {
         Copy c = switch (lang) {
             case "fr" -> new Copy("fr", "ltr", "Bonjour",
                     "Réinitialisez votre mot de passe",
-                    "Nous avons reçu une demande de réinitialisation de votre mot de passe RentCar. Utilisez le code de vérification ci-dessous :",
+                    "Nous avons reçu une demande de réinitialisation de votre mot de passe Innovacar. Utilisez le code de vérification ci-dessous :",
                     "Ce code expire dans <strong>%d minutes</strong>. Ne le partagez avec personne.",
                     "Si vous n'avez pas demandé de réinitialisation, vous pouvez ignorer cet e-mail en toute sécurité. Votre mot de passe ne sera pas modifié.",
-                    "&copy; 2025 RentCar SaaS — Innovacar. Tous droits réservés.");
+                    "&copy; 2025 Innovacar. Tous droits réservés.");
             case "ar" -> new Copy("ar", "rtl", "مرحباً",
                     "إعادة تعيين كلمة المرور",
-                    "تلقينا طلبًا لإعادة تعيين كلمة مرور حساب RentCar الخاص بك. استخدم رمز التحقق أدناه:",
+                    "تلقينا طلبًا لإعادة تعيين كلمة مرور حساب Innovacar الخاص بك. استخدم رمز التحقق أدناه:",
                     "تنتهي صلاحية هذا الرمز خلال <strong>%d دقيقة</strong>. لا تشاركه مع أي شخص.",
                     "إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذا البريد الإلكتروني بأمان. لن يتم تغيير كلمة المرور الخاصة بك.",
-                    "&copy; 2025 RentCar SaaS — Innovacar. جميع الحقوق محفوظة.");
+                    "&copy; 2025 Innovacar. جميع الحقوق محفوظة.");
             default -> new Copy("en", "ltr", "Hi",
                     "Reset your password",
-                    "We received a request to reset your RentCar password. Use the verification code below:",
+                    "We received a request to reset your Innovacar password. Use the verification code below:",
                     "This code expires in <strong>%d minutes</strong>. Do not share it with anyone.",
                     "If you did not request a password reset, you can safely ignore this email. Your password will not change.",
-                    "&copy; 2025 RentCar SaaS — Innovacar. All rights reserved.");
+                    "&copy; 2025 Innovacar. All rights reserved.");
         };
         String name = (userName != null && !userName.isBlank()) ? userName : (lang.equals("fr") ? "cher utilisateur" : lang.equals("ar") ? "عزيزي المستخدم" : "there");
         String expiryLine = c.expiry().formatted(expiresInMinutes);
@@ -302,7 +348,7 @@ public class EmailService {
                 <tr><td align="center">
                   <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
                     <tr><td style="background:#1a56db;padding:32px 40px;">
-                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Innovacar</h1>
                     </td></tr>
                     <tr><td style="padding:40px;">
                       <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">%s</h2>
@@ -344,13 +390,13 @@ public class EmailService {
                 <tr><td align="center">
                   <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
                     <tr><td style="background:#059669;padding:32px 40px;">
-                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Innovacar</h1>
                     </td></tr>
                     <tr><td style="padding:40px;">
                       <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Password changed successfully</h2>
                       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">Hi %s,</p>
                       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
-                        Your RentCar account password was changed successfully.
+                        Your Innovacar account password was changed successfully.
                       </p>
                       <div style="background:#f0fdf4;border-left:4px solid #059669;padding:16px 20px;border-radius:4px;margin:0 0 24px;">
                         <p style="margin:0;color:#065f46;font-size:14px;">
@@ -363,7 +409,7 @@ public class EmailService {
                     </td></tr>
                     <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
                       <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
-                        &copy; 2025 RentCar SaaS. All rights reserved.
+                        &copy; 2025 Innovacar. All rights reserved.
                       </p>
                     </td></tr>
                   </table>
@@ -380,7 +426,7 @@ public class EmailService {
             Password Reset Request
             ======================
 
-            You recently requested to reset your password for your RentCar account.
+            You recently requested to reset your password for your Innovacar account.
             Click the link below to reset it:
 
             %s
@@ -388,26 +434,8 @@ public class EmailService {
             This link will expire in 1 hour.
             If you did not request a password reset, please ignore this email.
 
-            — RentCar Security Team
+            — Innovacar Security Team
             """, resetLink);
-    }
-
-    private String buildEmailVerificationCodeEmail(String userName, String code, int expirationMinutes) {
-        String name = (userName != null && !userName.isBlank()) ? userName : "there";
-        String formattedCode = formatCodeForDisplay(code);
-        String body =
-              "<h2 style=\"margin:0 0 16px;color:#0f172a;font-size:20px;\">Verify Your Email Address</h2>"
-            + "<p style=\"margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;\">Hi " + escape(name) + ",</p>"
-            + "<p style=\"margin:0 0 4px;color:#374151;font-size:15px;line-height:1.6;\">"
-            + "Use the code below to verify your email address and finish setting up your Innovacar account.</p>"
-            + BrandedEmailLayout.codeBox("Your verification code", formattedCode)
-            + "<p style=\"margin:0 0 8px;color:#6b7280;font-size:14px;line-height:1.6;\">"
-            + "This code is valid for <strong>" + expirationMinutes + " minutes</strong>. Enter it in the app to verify your email address.</p>"
-            + BrandedEmailLayout.alertBox(
-                "<strong>Security note:</strong> if you did not request this, you can safely ignore this email — no changes will be made to your account.")
-            ;
-        return BrandedEmailLayout.document("Verify Your Email Address",
-                "Confirm it's really you so we can activate your account.", body);
     }
 
     private String buildEmailVerificationCodePlainText(String userName, String code, int expirationMinutes) {
@@ -430,22 +458,6 @@ public class EmailService {
             """.formatted(name, code, expirationMinutes);
     }
 
-    private String buildVerificationEmail(String verifyLink) {
-        String body =
-              "<h2 style=\"margin:0 0 16px;color:#0f172a;font-size:20px;\">Verify Your Email Address</h2>"
-            + "<p style=\"margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;\">"
-            + "Welcome to Innovacar! Please confirm your email address to activate your account.</p>"
-            + BrandedEmailLayout.cta("Verify Email Address", verifyLink)
-            + "<p style=\"margin:0 0 20px;color:#6b7280;font-size:13px;line-height:1.6;word-break:break-all;\">"
-            + "Or copy this link into your browser: <a href=\"" + verifyLink + "\" style=\"color:#0f766e;\">" + verifyLink + "</a></p>"
-            + "<p style=\"margin:0 0 8px;color:#6b7280;font-size:14px;line-height:1.6;\">This link will expire in 24 hours.</p>"
-            + BrandedEmailLayout.alertBox(
-                "<strong>Security note:</strong> if you did not create an account, you can safely ignore this email.")
-            ;
-        return BrandedEmailLayout.document("Verify Your Email Address",
-                "Confirm it's really you so we can activate your account.", body);
-    }
-
     private String buildVerificationEmailPlainText(String verifyLink) {
         return """
             Verify your email address - Innovacar
@@ -463,7 +475,7 @@ public class EmailService {
     }
 
     /** Splits a numeric code into "271 888"-style groups of 3 for readability; falls back to the raw code otherwise. */
-    private String formatCodeForDisplay(String code) {
+    private static String formatCodeForDisplay(String code) {
         if (code == null || !code.matches("\\d{6}")) return code;
         return code.substring(0, 3) + " " + code.substring(3);
     }
@@ -471,23 +483,6 @@ public class EmailService {
     private static String escape(String value) {
         if (value == null) return "";
         return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-    }
-
-    private String buildWelcomeEmail(String firstName) {
-        return String.format("""
-            Welcome to RentCar SaaS, %s!
-            ====================================
-
-            Your account has been created successfully. You can now:
-            - Manage your vehicle fleet
-            - Track reservations and contracts
-            - Handle payments and invoicing
-            - Monitor GPS tracking
-
-            Get started by logging in at your dashboard.
-
-            — RentCar Team
-            """, firstName != null ? firstName : "there");
     }
 
     private String buildContractReadyEmail(String clientName, String contractNumber,
@@ -558,7 +553,7 @@ public class EmailService {
                 <tr><td align="center">
                   <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
                     <tr><td style="background:#1a56db;padding:32px 40px;">
-                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Innovacar</h1>
                       <p style="margin:6px 0 0;color:#93c5fd;font-size:13px;">Secure Verification Code</p>
                     </td></tr>
                     <tr><td style="padding:40px;">
@@ -578,13 +573,13 @@ public class EmailService {
                       </p>
                       <div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:4px;padding:12px 16px;">
                         <p style="margin:0;color:#92400e;font-size:13px;line-height:1.5;">
-                          <strong>Security tip:</strong> RentCar will never ask you to share this code via email, phone, or chat.
+                          <strong>Security tip:</strong> Innovacar will never ask you to share this code via email, phone, or chat.
                         </p>
                       </div>
                     </td></tr>
                     <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
                       <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
-                        &copy; 2025 RentCar &mdash; Innovacar. All rights reserved.
+                        &copy; 2025 Innovacar. All rights reserved.
                       </p>
                     </td></tr>
                   </table>
@@ -595,22 +590,4 @@ public class EmailService {
             """.formatted(name, purposeText, code, expiresInMinutes);
     }
 
-    private String buildContractSignedEmail(String clientName, String contractNumber, String agencyName) {
-        return String.format("""
-            Dear %s,
-
-            Great news! Your rental contract (%s) has been fully signed by both parties.
-
-            The contract is now active and legally binding. A signed copy of the contract
-            is available in your account.
-
-            Thank you for choosing %s.
-
-            — %s
-            """,
-            clientName != null ? clientName : "Valued Client",
-            contractNumber,
-            agencyName,
-            agencyName);
-    }
 }

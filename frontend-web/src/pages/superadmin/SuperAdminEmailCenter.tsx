@@ -87,7 +87,7 @@ const EXAMPLE_VARS: Record<string, string> = {
   totalAmount: '2400 MAD', paidAmount: '1200 MAD', remainingAmount: '1200 MAD',
   dashboardUrl: 'https://app.innovacar.app', contractPdfUrl: 'https://app.innovacar.app/contracts/pdf/demo',
   planName: 'Pro', trialEndDate: '2026-08-01', currentYear: new Date().getFullYear().toString(),
-  companyName: 'Innovax Technologies', fromName: 'RentCar',
+  companyName: 'Innovax Technologies', fromName: 'Innovacar',
   resetPasswordUrl: 'https://app.innovacar.app/reset/demo', supportUrl: 'https://app.innovacar.app/support',
   ticketNumber: 'TKT-2026-00001', paymentUrl: 'https://app.innovacar.app/billing',
   location: '33.5731° N, 7.5898° W', alertTime: '2026-07-01 14:30',
@@ -728,8 +728,8 @@ function TemplateEditModal({ open, onClose, template, form, setForm, vars, editT
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-4xl my-6 bg-white dark:bg-[#1a2332] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-start sm:overflow-y-auto sm:p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-h-[100dvh] sm:max-w-4xl sm:my-6 bg-white dark:bg-[#1a2332] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col sm:max-h-[90dvh]">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[#e8e6e1]/60 dark:border-white/5 shrink-0">
           <h2 className="text-base font-bold text-[#1e293b] dark:text-white">{template ? 'Edit Template' : 'New Template'}</h2>
@@ -813,7 +813,10 @@ function TemplateEditModal({ open, onClose, template, form, setForm, vars, editT
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-5 border-t border-[#e8e6e1]/60 dark:border-white/5 shrink-0">
+        <div
+          className="flex gap-3 p-5 border-t border-[#e8e6e1]/60 dark:border-white/5 shrink-0"
+          style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        >
           <button onClick={onSave} disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white rounded-xl text-sm font-semibold disabled:opacity-60 transition-colors">
             {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}

@@ -52,7 +52,7 @@ public class TwoFactorService {
         // Standard otpauth URI per Google Authenticator Key Uri Format spec.
         // Issuer has no spaces so no encoding needed; email is safe in path when @/. left as-is
         // but we encode it to be strict. Spaces must be %20 not + (+ is query-string only).
-        String issuer  = "RentCar";
+        String issuer  = "Innovacar";
         String account = user.getEmail();
         String label   = issuer + ":" + urlEncodeComponent(account);
         return "otpauth://totp/" + label
@@ -215,7 +215,7 @@ public class TwoFactorService {
         if (hasFreshPending) {
             // Reuse the same pending secret — the QR code shown to the user stays valid.
             secret = encryptionUtil.decrypt(user.getPendingTwoFactorSecretEncrypted());
-            log.debug("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=false existingPendingSecret=true issuer=RentCar account={} period=30 digits=6 algorithm=SHA1",
+            log.debug("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=false existingPendingSecret=true issuer=Innovacar account={} period=30 digits=6 algorithm=SHA1",
                     user.getId(), user.getEmail(), user.getRole(), user.getEmail());
         } else {
             // Generate a new secret and store it in the pending fields.
@@ -223,14 +223,14 @@ public class TwoFactorService {
             user.setPendingTwoFactorSecretEncrypted(encryptionUtil.encrypt(secret));
             user.setPendingTwoFactorSetupAt(java.time.LocalDateTime.now());
             userRepository.save(user);
-            log.debug("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=true existingPendingSecret=false issuer=RentCar account={} period=30 digits=6 algorithm=SHA1",
+            log.debug("[TWO_FA_SETUP_DEBUG] userId={} email={} role={} secretGenerated=true existingPendingSecret=false issuer=Innovacar account={} period=30 digits=6 algorithm=SHA1",
                     user.getId(), user.getEmail(), user.getRole(), user.getEmail());
         }
 
         java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
         result.put("provisioningUri", provisioningUri(user, secret));
         result.put("manualSecret", formatSecret(secret));
-        result.put("issuer", "RentCar");
+        result.put("issuer", "Innovacar");
         result.put("account", user.getEmail());
         return result;
     }

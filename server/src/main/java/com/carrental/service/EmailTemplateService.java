@@ -218,7 +218,7 @@ public class EmailTemplateService {
         Map<String, String> enriched = new HashMap<>(vars != null ? vars : Map.of());
         enriched.putIfAbsent("currentYear", String.valueOf(Year.now().getValue()));
         enriched.putIfAbsent("companyName", "Innovax Technologies");
-        enriched.putIfAbsent("fromName", "RentCar");
+        enriched.putIfAbsent("fromName", "Innovacar");
         return enriched;
     }
 
@@ -306,10 +306,10 @@ public class EmailTemplateService {
     // A. WELCOME_AGENCY ───────────────────────────────────────────────────────
     private EmailTemplate buildWelcomeAgency() {
         String body = shell(
-            "Welcome to RentCar!",
+            "Welcome to Innovacar!",
             "Your agency workspace is ready to use.",
             para("Hello " + bold("{{userName}}") + ",")
-          + para("Your agency account " + bold("{{agencyName}}") + " has been successfully created on RentCar."
+          + para("Your agency account " + bold("{{agencyName}}") + " has been successfully created on Innovacar."
               + " You can now manage your vehicles, clients, reservations, contracts, payments, invoices, and more from one secure dashboard.")
           + infoBox(
               "&#128198; " + bold("Plan:") + " {{planName}}",
@@ -323,7 +323,7 @@ public class EmailTemplateService {
         String plain = """
 Hello {{userName}},
 
-Your agency account {{agencyName}} has been created on RentCar.
+Your agency account {{agencyName}} has been created on Innovacar.
 
 Plan: {{planName}}
 Trial ends: {{trialEndDate}}
@@ -333,11 +333,11 @@ Open your dashboard: {{dashboardUrl}}
 
 If you did not create this account, please contact support immediately.
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_WELCOME_AGENCY, CAT_AUTH,
                 "Welcome — New Agency Account",
-                "Welcome to RentCar — Your agency workspace is ready",
+                "Welcome to Innovacar — Your agency workspace is ready",
                 body, plain);
     }
 
@@ -345,21 +345,21 @@ If you did not create this account, please contact support immediately.
     private EmailTemplate buildWelcomeEmployee() {
         String body = shell(
             "You've Been Invited",
-            "You now have access to your agency's RentCar workspace.",
+            "You now have access to your agency's Innovacar workspace.",
             para("Hello " + bold("{{employeeName}}") + ",")
-          + para("You have been added as a team member at " + bold("{{agencyName}}") + " on RentCar.")
+          + para("You have been added as a team member at " + bold("{{agencyName}}") + " on Innovacar.")
           + infoBox(
               "&#128100; " + bold("Role:") + " {{roleName}}",
               "&#128231; " + bold("Login email:") + " {{loginEmail}}",
               "&#128274; " + bold("Temporary password:") + " {{temporaryPassword}}"
             )
           + dangerBox("&#128274; Please change your password immediately after your first login.")
-          + cta("Login to RentCar", "{{dashboardUrl}}")
+          + cta("Login to Innovacar", "{{dashboardUrl}}")
         );
         String plain = """
 Hello {{employeeName}},
 
-You have been invited to join {{agencyName}} on RentCar.
+You have been invited to join {{agencyName}} on Innovacar.
 
 Role: {{roleName}}
 Login email: {{loginEmail}}
@@ -369,11 +369,11 @@ IMPORTANT: Please change your password after your first login.
 
 Login here: {{dashboardUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_WELCOME_EMPLOYEE, CAT_AUTH,
                 "Welcome — New Employee Invitation",
-                "You have been invited to RentCar",
+                "You have been invited to Innovacar",
                 body, plain);
     }
 
@@ -381,7 +381,7 @@ Login here: {{dashboardUrl}}
     private EmailTemplate buildResetPassword() {
         String body = shell(
             "Reset Your Password",
-            "We received a request to reset your RentCar password.",
+            "We received a request to reset your Innovacar password.",
             para("Hello " + bold("{{userName}}") + ",")
           + para("Click the button below to set a new password. This link expires in 30 minutes.")
           + cta("Reset My Password", "{{resetPasswordUrl}}")
@@ -392,18 +392,18 @@ Login here: {{dashboardUrl}}
         String plain = """
 Hello {{userName}},
 
-We received a request to reset your RentCar password.
+We received a request to reset your Innovacar password.
 
 Reset your password here (valid 30 min):
 {{resetPasswordUrl}}
 
 If you did not request this, ignore this email.
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_RESET_PASSWORD, CAT_AUTH,
                 "Reset Password",
-                "Reset your RentCar password",
+                "Reset your Innovacar password",
                 body, plain);
     }
 
@@ -413,7 +413,7 @@ If you did not request this, ignore this email.
             "New Login Detected",
             "A new device signed in to your account.",
             para("Hello " + bold("{{userName}}") + ",")
-          + para("We detected a new login to your RentCar account from an unrecognized device.")
+          + para("We detected a new login to your Innovacar account from an unrecognized device.")
           + infoBox(
               "&#128187; " + bold("Device:") + " {{deviceName}}",
               "&#127758; " + bold("IP address:") + " {{ipAddress}}",
@@ -426,7 +426,7 @@ If you did not request this, ignore this email.
         String plain = """
 Hello {{userName}},
 
-A new login was detected on your RentCar account.
+A new login was detected on your Innovacar account.
 
 Device: {{deviceName}}
 IP: {{ipAddress}}
@@ -434,11 +434,11 @@ Time: {{loginTime}}
 
 If this was not you, please secure your account: {{securityUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_NEW_DEVICE_LOGIN, CAT_AUTH,
                 "Security — New Device Login",
-                "New login detected on your RentCar account",
+                "New login detected on your Innovacar account",
                 body, plain);
     }
 
@@ -473,7 +473,7 @@ Total: {{totalAmount}}
 
 Thank you for choosing {{agencyName}}.
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_CONTRACT_SIGNED_CLIENT, CAT_CONTRACT,
                 "Contract Signed — Client Confirmation",
@@ -509,7 +509,7 @@ Until: {{endDate}}
 
 Please bring your ID and driver's license.
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_RESERVATION_CONFIRMED, CAT_RESERVATION,
                 "Reservation Confirmed",
@@ -542,7 +542,7 @@ Amount paid: {{paidAmount}}
 Total: {{totalAmount}}
 Remaining: {{remainingAmount}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_PAYMENT_RECEIVED, CAT_PAYMENT,
                 "Payment Received",
@@ -554,7 +554,7 @@ Remaining: {{remainingAmount}}
     private EmailTemplate buildSubscriptionTrialEnding() {
         String body = shell(
             "Trial Ending Soon",
-            "Your RentCar free trial is almost over.",
+            "Your Innovacar free trial is almost over.",
             para("Hello " + bold("{{agencyName}}") + ",")
           + para("Your free trial of " + bold("{{planName}}") + " ends on " + bold("{{trialEndDate}}") + ".")
           + para("After this date, access will be restricted unless you subscribe to a plan.")
@@ -569,17 +569,17 @@ Remaining: {{remainingAmount}}
         String plain = """
 Hello {{agencyName}},
 
-Your RentCar free trial ({{planName}}) ends on {{trialEndDate}}.
+Your Innovacar free trial ({{planName}}) ends on {{trialEndDate}}.
 
 Upgrade your plan before the trial ends to keep full access.
 
 Manage subscription: {{dashboardUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_SUBSCRIPTION_TRIAL_ENDING, CAT_PAYMENT,
                 "Subscription — Trial Ending",
-                "Your RentCar trial ends soon",
+                "Your Innovacar trial ends soon",
                 body, plain);
     }
 
@@ -608,7 +608,7 @@ Please update your payment method: {{paymentUrl}}
 
 Need help? {{supportUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_SUBSCRIPTION_PAYMENT_FAILED, CAT_PAYMENT,
                 "Subscription Payment Failed",
@@ -622,7 +622,7 @@ Need help? {{supportUrl}}
             "We Got Your Message",
             "Our support team will respond shortly.",
             para("Hello " + bold("{{userName}}") + ",")
-          + para("Thank you for contacting RentCar support. We have received your request and will respond as soon as possible.")
+          + para("Thank you for contacting Innovacar support. We have received your request and will respond as soon as possible.")
           + infoBox(
               "&#127916; " + bold("Ticket:") + " {{ticketNumber}}",
               "&#128336; " + bold("Estimated response:") + " within 24 hours"
@@ -637,7 +637,7 @@ Our team will respond within 24 hours.
 
 View your ticket: {{supportUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_SUPPORT_TICKET_CREATED, CAT_SUPPORT,
                 "Support Ticket Created",
@@ -686,7 +686,7 @@ Open in dashboard: {{dashboardUrl}}
     private EmailTemplate buildSupportReply() {
         String body = shell(
             "New Reply from Support",
-            "RentCar support has responded to your ticket.",
+            "Innovacar support has responded to your ticket.",
             para("Hello " + bold("{{userName}}") + ",")
           + para("Our support team has replied to your ticket " + bold("{{ticketNumber}}") + ".")
           + infoBox("&#128172; " + bold("Reply:") + " {{replyMessage}}")
@@ -695,17 +695,17 @@ Open in dashboard: {{dashboardUrl}}
         String plain = """
 Hello {{userName}},
 
-RentCar support replied to ticket {{ticketNumber}}:
+Innovacar support replied to ticket {{ticketNumber}}:
 
 {{replyMessage}}
 
 View the full conversation: {{supportUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_SUPPORT_REPLY, CAT_SUPPORT,
                 "Support Ticket Reply",
-                "New reply from RentCar Support — {{ticketNumber}}",
+                "New reply from Innovacar Support — {{ticketNumber}}",
                 body, plain);
     }
 
@@ -727,7 +727,7 @@ We received your message. Our team will get back to you shortly.
 
 Support center: {{supportUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_CONTACT_FORM_RECEIVED, CAT_SUPPORT,
                 "Contact Form Confirmation",
@@ -748,7 +748,7 @@ Support center: {{supportUrl}}
               "&#128336; " + bold("Time:") + " {{alertTime}}"
             )
           + cta("Open GPS Dashboard", "{{dashboardUrl}}")
-          + para("<span style=\"font-size:13px;color:#94a3b8;\">This is an automated GPS alert from RentCar.</span>")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">This is an automated GPS alert from Innovacar.</span>")
         );
         String plain = """
 GEOFENCE ALERT — {{agencyName}}
@@ -760,7 +760,7 @@ Time: {{alertTime}}
 
 View on GPS dashboard: {{dashboardUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_GPS_GEOFENCE_ALERT, CAT_GPS,
                 "GPS — Geofence Alert",
@@ -781,7 +781,7 @@ View on GPS dashboard: {{dashboardUrl}}
               "&#128336; " + bold("Detected at:") + " {{alertTime}}"
             )
           + cta("Open GPS Dashboard", "{{dashboardUrl}}")
-          + para("<span style=\"font-size:13px;color:#94a3b8;\">This is an automated GPS alert from RentCar.</span>")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">This is an automated GPS alert from Innovacar.</span>")
         );
         String plain = """
 MOVEMENT ALERT — {{agencyName}}
@@ -793,7 +793,7 @@ Time: {{alertTime}}
 
 View on GPS dashboard: {{dashboardUrl}}
 
-— RentCar / Innovax Technologies
+— Innovacar / Innovax Technologies
 """;
         return tpl(KEY_GPS_MOVEMENT_ALERT, CAT_GPS,
                 "GPS — Movement Alert",

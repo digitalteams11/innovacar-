@@ -1,5 +1,5 @@
 -- ============================================================
--- RENTCAR SAAS — Contract Delete / Restore Status Debug Queries
+-- INNOVACAR — Contract Delete / Restore Status Debug Queries
 -- ============================================================
 -- Run these manually against your PostgreSQL database to verify
 -- the delete/restore/cancel logic is working correctly.

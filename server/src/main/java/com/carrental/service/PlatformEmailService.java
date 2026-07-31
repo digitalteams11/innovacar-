@@ -58,6 +58,7 @@ public class PlatformEmailService {
     private final SupportTicketRepository   supportTicketRepository;
     private final ContactRequestRepository  contactRequestRepository;
     private final com.carrental.repository.TenantSettingsRepository tenantSettingsRepository;
+    private final EmailTemplateRenderer emailTemplateRenderer;
     private final Environment environment;
 
     @Value("${app.frontend-url:http://localhost:5173}")
@@ -217,9 +218,9 @@ public class PlatformEmailService {
     public SmtpMailService.SmtpResult sendTestEmail(String toEmail) {
         String subject = "Innovacar Email Test";
         String plainBody =
-                "This is a test email sent from the Innovacar / RentCar SaaS platform email configuration (ZeptoMail).\n\n" +
+                "This is a test email sent from the Innovacar platform email configuration (ZeptoMail).\n\n" +
                 "If you received this email, your email settings are working correctly.\n\n" +
-                "— RentCar / Innovax Technologies";
+                "— Innovacar / Innovax Technologies";
         String htmlBody = """
             <!DOCTYPE html>
             <html lang="en">
@@ -229,12 +230,12 @@ public class PlatformEmailService {
                 <tr><td align="center">
                   <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
                     <tr><td style="background:#1a56db;padding:32px 40px;">
-                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">RentCar</h1>
+                      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Innovacar</h1>
                     </td></tr>
                     <tr><td style="padding:40px;">
                       <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">Email Test Successful</h2>
                       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
-                        This is a test email sent from the Innovacar / RentCar SaaS platform email configuration (ZeptoMail).
+                        This is a test email sent from the Innovacar platform email configuration (ZeptoMail).
                       </p>
                       <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;">
                         If you received this email, your email settings are working correctly.
@@ -242,7 +243,7 @@ public class PlatformEmailService {
                     </td></tr>
                     <tr><td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
                       <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
-                        &copy; 2025 RentCar SaaS &mdash; Innovax Technologies. All rights reserved.
+                        &copy; 2025 Innovacar &mdash; Innovax Technologies. All rights reserved.
                       </p>
                     </td></tr>
                   </table>
@@ -615,10 +616,10 @@ public class PlatformEmailService {
                 Changed your mind? You can undo this cancellation anytime before %s
                 by visiting Subscription & Billing in your dashboard.
 
-                Thank you for being a RentCar customer.
+                Thank you for being an Innovacar customer.
 
                 ─────────────────────────────
-                This email was sent automatically by RentCar / Innovax Technologies.
+                This email was sent automatically by Innovacar / Innovax Technologies.
                 """, tenantName, effectiveDateStr, effectiveDateStr);
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
@@ -648,7 +649,7 @@ public class PlatformEmailService {
                 No further action is needed.
 
                 ─────────────────────────────
-                This email was sent automatically by RentCar / Innovax Technologies.
+                This email was sent automatically by Innovacar / Innovax Technologies.
                 """, tenantName);
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
@@ -673,14 +674,14 @@ public class PlatformEmailService {
         String body = String.format("""
                 Hello %s,
 
-                Your RentCar subscription has now ended.
+                Your Innovacar subscription has now ended.
 
                 Your account data is preserved and you can still log in to view your existing records.
                 To reactivate your subscription and regain full access, visit Subscription & Billing
                 in your dashboard and choose a plan.
 
                 ─────────────────────────────
-                This email was sent automatically by RentCar / Innovax Technologies.
+                This email was sent automatically by Innovacar / Innovax Technologies.
                 """, tenantName);
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
@@ -705,21 +706,11 @@ public class PlatformEmailService {
         }
         String dayWord = daysRemaining == 1 ? "day" : "days";
         String subject = "Your Innovacar trial ends in " + daysRemaining + " " + dayWord;
-        String body = String.format("""
-                Hello %s,
-
-                Your Innovacar free trial ends in %d %s.
-
-                ─────────────────────────────
-                To keep full access to your agency's reservations, contracts, vehicles,
-                and reports without interruption, choose a plan before your trial ends.
-                ─────────────────────────────
-
-                Visit Subscription & Billing in your dashboard to upgrade anytime.
-
-                ─────────────────────────────
-                This email was sent automatically by Innovacar / Innovax Technologies.
-                """, tenantName, daysRemaining, dayWord);
+        String body = emailTemplateRenderer.render("trial-expiring", Map.of(
+                "firstName", StringUtils.hasText(tenantName) ? tenantName : "there",
+                "daysRemaining", daysRemaining,
+                "trialEndDate", LocalDate.now().plusDays(daysRemaining).toString(),
+                "upgradeUrl", frontendUrl + "/subscription"));
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
         String status = result.sent() ? "SENT" : "FAILED";
@@ -740,20 +731,9 @@ public class PlatformEmailService {
             return;
         }
         String subject = "Your Innovacar free trial has ended — " + tenantName;
-        String body = String.format("""
-                Hello %s,
-
-                Your Innovacar free trial has ended.
-
-                Your account data is preserved and you can still log in, but premium
-                business operations (reservations, contracts, invoices, GPS) are now
-                paused until you choose a plan.
-
-                Visit Subscription & Billing in your dashboard to reactivate your account.
-
-                ─────────────────────────────
-                This email was sent automatically by Innovacar / Innovax Technologies.
-                """, tenantName);
+        String body = emailTemplateRenderer.render("trial-expired", Map.of(
+                "firstName", StringUtils.hasText(tenantName) ? tenantName : "there",
+                "upgradeUrl", frontendUrl + "/subscription"));
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
         String status = result.sent() ? "SENT" : "FAILED";
@@ -949,7 +929,7 @@ public class PlatformEmailService {
 
         var rendered = emailTemplateService.render(EmailTemplateService.KEY_SUPPORT_REPLY, resolveTenantEmailLanguage(ticket.getTenant()), vars);
         String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
-                .orElse("New reply from RentCar Support — " + ticket.getTicketNumber());
+                .orElse("New reply from Innovacar Support — " + ticket.getTicketNumber());
         String htmlBody = rendered.map(EmailTemplateService.RenderedEmail::htmlBody).filter(StringUtils::hasText).orElse(null);
         String plainBody = rendered.map(EmailTemplateService.RenderedEmail::plainBody).filter(StringUtils::hasText)
                 .orElse(message.getMessage());

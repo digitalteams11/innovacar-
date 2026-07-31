@@ -299,7 +299,7 @@ export default function Dashboard() {
         if (healthRes.status === 'fulfilled') {
           setHealth(unwrapApiData<HealthScore>(healthRes.value.data, { score: 20, label: 'Getting Started', risk: 'GETTING_STARTED' }));
         } else {
-          console.error('Failed to fetch SaaS health for dashboard', healthRes.reason);
+          console.error('Failed to fetch platform health for dashboard', healthRes.reason);
           setHealth({ score: 20, label: 'Getting Started', risk: 'GETTING_STARTED' });
         }
 

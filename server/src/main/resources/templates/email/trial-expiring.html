@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--
+  Variables: firstName, daysRemaining, trialEndDate, upgradeUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Your trial is ending soon'}, subtitle=${'Keep your fleet, reservations and contracts without interruption.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+    Your Innovacar trial ends in <strong th:text="${daysRemaining}">3</strong> day(s), on <strong th:text="${trialEndDate}">—</strong>.
+    Upgrade now to keep uninterrupted access to your fleet, reservations, contracts, payments and GPS data.
+  </p>
+
+  <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:10px;padding:18px 20px;margin:20px 0;">
+    <p style="margin:0;font-size:14px;">After your trial ends, access to your dashboard will be paused until you choose a plan.</p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Choose a plan'}, url=${upgradeUrl})}"></div>
+</div>
+</body>
+</html>

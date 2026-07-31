@@ -585,7 +585,7 @@ export default function GpsSettingsPage() {
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
-                RentCar always connects to the official IOPGPS API host. This value cannot be changed.
+                Innovacar always connects to the official IOPGPS API host. This value cannot be changed.
               </p>
             </div>
           )}

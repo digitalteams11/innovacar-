@@ -57,7 +57,7 @@ public class HttpEmailProvider implements EmailProvider {
     @Value("${app.email.from-email:}")
     private String fromEmail;
 
-    @Value("${app.email.from-name:RentCar}")
+    @Value("${app.email.from-name:Innovacar}")
     private String fromName;
 
     @Override

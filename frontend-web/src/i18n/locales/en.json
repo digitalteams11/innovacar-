@@ -4,7 +4,7 @@
     "underDevelopment": "Section Under Development",
     "underDevelopmentDesc": "This module is currently being built by our team.",
     "serviceUnavailable": "Service temporarily unavailable",
-    "serviceUnavailableDesc": "We can't reach the RentCar server right now. We'll keep retrying automatically.",
+    "serviceUnavailableDesc": "We can't reach the Innovacar server right now. We'll keep retrying automatically.",
     "retryNow": "Retry now",
     "reconnecting": "Reconnecting…",
     "offline": "You're offline",
@@ -180,7 +180,7 @@
     "forgot": "Forgot?",
     "rememberMe": "Remember me for 30 days",
     "signIn": "Sign In",
-    "secureAccess": "Secure admin access enabled by RentCar SaaS",
+    "secureAccess": "Secure admin access enabled by Innovacar",
     "twoFactorTitle": "Two-factor authentication",
     "authenticatorTab": "Authenticator App",
     "emailOtpTab": "Email OTP",
@@ -210,7 +210,7 @@
   },
   "register": {
     "title": "Create Account",
-    "subtitle": "Join your team on RentCar SaaS",
+    "subtitle": "Join your team on Innovacar",
     "firstName": "First Name",
     "lastName": "Last Name",
     "tenantId": "Tenant ID",
@@ -311,7 +311,7 @@
     "fleet": "Fleet",
     "activeRentals": "Active rentals",
     "monthlyRevenue": "Monthly revenue",
-    "healthScoreTitle": "SaaS Health Score",
+    "healthScoreTitle": "Platform Health Score",
     "healthy": "Healthy",
     "reservationsToday": "Reservations today",
     "upcomingReservations": "Upcoming reservations",
@@ -1507,7 +1507,7 @@
     "oneDevicePerVehicle": "Each device should be linked to one vehicle.",
     "whereToFindIt": "Where to find it",
     "example": "Example",
-    "howRentCarUsesThis": "How RentCar uses this",
+    "howRentCarUsesThis": "How Innovacar uses this",
     "security": "Security",
     "markAllRead": "Mark all read",
     "allRead": "All read",
@@ -1588,7 +1588,7 @@
     "authPrefixPlaceholder": "Bearer",
     "authPrefixHelp": "Prefix before the API key value (default: Bearer)",
     "apiHost": "API Host",
-    "iopgpsApiHostHint": "RentCar always connects to the official IOPGPS API host. This value cannot be changed.",
+    "iopgpsApiHostHint": "Innovacar always connects to the official IOPGPS API host. This value cannot be changed.",
     "connectionSuccessful": "Connection Successful",
     "connectionFailedTitle": "Connection Failed",
     "devicesFoundCount": "{{count}} devices found",
@@ -1864,7 +1864,7 @@
       "deactivationInfo": "Requesting account deactivation opens a support ticket reviewed by our team. We do not delete your data automatically — this protects you from accidental loss.",
       "deactivationModalDesc": "This will open a support ticket with our team to review and process your deactivation request. Your data will not be deleted automatically.",
       "reasonOptional": "Reason (optional)",
-      "deactivationConfirm": "I understand this request will be reviewed by the RentCar team before any action is taken.",
+      "deactivationConfirm": "I understand this request will be reviewed by the Innovacar team before any action is taken.",
       "submitting": "Submitting...",
       "submitRequest": "Submit Request",
       "cancel": "Cancel"
@@ -1877,7 +1877,7 @@
       "email": "Email notifications",
       "emailDesc": "Receive a copy of important alerts by email",
       "browserPush": "Browser push notifications",
-      "browserPushDesc": "Get notified even when RentCar is in the background",
+      "browserPushDesc": "Get notified even when Innovacar is in the background",
       "saveSettings": "Save Settings"
     },
     "teamAccess": "Team & access",
@@ -2246,7 +2246,7 @@
     },
     "dashboard": {
       "title": "Platform Overview",
-      "subtitle": "Real-time insights into your SaaS ecosystem",
+      "subtitle": "Real-time insights into your Innovacar ecosystem",
       "live": "Live",
       "totalAgencies": "Total Agencies",
       "activeUsers": "Total Users",
@@ -2301,7 +2301,7 @@
     },
     "subscriptions": {
       "title": "Subscription Plans",
-      "subtitle": "Manage SaaS plans and billing",
+      "subtitle": "Manage subscription plans and billing",
       "newPlan": "New Plan",
       "editPlan": "Edit Plan",
       "planName": "Plan Name",
@@ -2493,7 +2493,7 @@
     "skipTour": "Skip tour",
     "completed": "Completed",
     "welcome": {
-      "title": "Welcome to RentCar",
+      "title": "Welcome to Innovacar",
       "description": "Your rental management platform is ready. Let us configure your agency in a few simple steps.",
       "start": "Start setup",
       "skip": "Skip for now"
@@ -2893,7 +2893,7 @@
     "modeDark": "Dark",
     "modeAuto": "System",
     "themePreset": "Theme preset",
-    "themePresetDesc": "Premium 2026 SaaS palettes — each one ships with a matching dark mode",
+    "themePresetDesc": "Premium 2026 platform palettes — each one ships with a matching dark mode",
     "brandColors": "Brand colors",
     "brandColorsDesc": "Tune the active preset to match your agency identity",
     "colorPrimary": "Primary",
@@ -2924,7 +2924,7 @@
     "themes": {
       "neo-emerald": {
         "label": "Neo Emerald",
-        "description": "Modern green SaaS, clean and fresh."
+        "description": "Modern green palette, clean and fresh."
       },
       "carbon-lime": {
         "label": "Carbon Lime",
@@ -2948,7 +2948,7 @@
       },
       "purple-slate": {
         "label": "Purple Slate",
-        "description": "Modern SaaS, creative but professional."
+        "description": "Modern palette, creative but professional."
       },
       "clean-white-pro": {
         "label": "Clean White Pro",

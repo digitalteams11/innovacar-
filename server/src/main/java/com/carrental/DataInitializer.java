@@ -456,7 +456,7 @@ public class DataInitializer implements CommandLineRunner {
                     .title("Create your first reservation")
                     .category("Getting Started")
                     .summary("Connect a client and an available vehicle with conflict-safe rental dates.")
-                    .content("Open Reservations, choose a client and an available vehicle, then set pickup and return dates and times. RentCar checks availability before saving and keeps the vehicle, contract, invoice and payment workflow connected.")
+                    .content("Open Reservations, choose a client and an available vehicle, then set pickup and return dates and times. Innovacar checks availability before saving and keeps the vehicle, contract, invoice and payment workflow connected.")
                     .published(true)
                     .build());
             knowledgeArticleRepository.save(KnowledgeArticle.builder()
@@ -472,7 +472,7 @@ public class DataInitializer implements CommandLineRunner {
                     .title("Record full or partial payments")
                     .category("Payments")
                     .summary("Keep balances and related statuses synchronized from one transaction.")
-                    .content("Record the payment from Payments or the related contract. RentCar recalculates the paid and remaining amounts, then synchronizes the invoice, reservation, contract, dashboard and reports.")
+                    .content("Record the payment from Payments or the related contract. Innovacar recalculates the paid and remaining amounts, then synchronizes the invoice, reservation, contract, dashboard and reports.")
                     .published(true)
                     .build());
         }
@@ -482,14 +482,14 @@ public class DataInitializer implements CommandLineRunner {
                     .code("TERMS_OF_SERVICE")
                     .title("Terms of Service")
                     .version("2026.1")
-                    .content("These terms govern authorized business use of the RentCar platform. Agencies remain responsible for the accuracy of rental, client, vehicle and payment information entered into their workspace.")
+                    .content("These terms govern authorized business use of the Innovacar platform. Agencies remain responsible for the accuracy of rental, client, vehicle and payment information entered into their workspace.")
                     .active(true)
                     .build());
             legalDocumentRepository.save(LegalDocument.builder()
                     .code("PRIVACY_POLICY")
                     .title("Privacy Policy")
                     .version("2026.1")
-                    .content("RentCar processes account and operational data to provide the service, secure tenant workspaces, maintain audit history and support legal obligations. Tenant data remains logically isolated by agency.")
+                    .content("Innovacar processes account and operational data to provide the service, secure tenant workspaces, maintain audit history and support legal obligations. Tenant data remains logically isolated by agency.")
                     .active(true)
                     .build());
             legalDocumentRepository.save(LegalDocument.builder()

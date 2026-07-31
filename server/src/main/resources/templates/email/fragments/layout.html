@@ -1,0 +1,54 @@
+<!--
+  Shared full-document email shell: head, 600px rounded card, branded
+  header, a content slot, branded footer. Every concrete template
+  (welcome.html, verify-email.html, ...) replaces its own <html> root with
+  this fragment's <html> root, so the whole product's emails share one
+  layout without repeating the outer table markup in every file.
+
+  Usage from a concrete template:
+    <!DOCTYPE html>
+    <html th:replace="~{email/fragments/layout :: page(title=${title}, subtitle=${subtitle}, content=~{::div.email-content})}">
+    <body><div class="email-content"> ...body... </div></body>
+    </html>
+
+  Table-based layout with fully inlined CSS on purpose: Gmail, Outlook and
+  most mobile mail clients strip <style> blocks and ignore flexbox/grid.
+  Mobile responsive via the 100% width outer table + 600px max-width card
+  (shrinks naturally on narrow viewports). Dark mode is honored via
+  "prefers-color-scheme" where the client supports it (Apple Mail, some
+  Outlook.com); clients that don't support it render the light palette.
+-->
+<!DOCTYPE html>
+<html lang="en" th:fragment="page(title, subtitle, content)" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
+  <title th:text="${title}">Innovacar</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .email-bg { background:#0b1220 !important; }
+      .email-card { background:#0f172a !important; box-shadow:none !important; }
+      .email-footer { background:#0b1220 !important; border-top-color:#1e293b !important; }
+      .email-text { color:#e2e8f0 !important; }
+      .email-muted { color:#94a3b8 !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;">
+  <div class="email-bg" style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               class="email-card"
+               style="max-width:600px;background:#ffffff;border-radius:22px;overflow:hidden;box-shadow:0 20px 45px rgba(15,23,42,0.10);">
+          <tr><td th:replace="~{email/fragments/header :: header(title=${title}, subtitle=${subtitle})}"></td></tr>
+          <tr><td class="email-text" style="padding:32px;" th:insert="${content}"></td></tr>
+          <tr><td class="email-footer" th:replace="~{email/fragments/footer :: footer}"></td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</body>
+</html>

@@ -90,11 +90,11 @@
     "forgot": "نسيت؟",
     "rememberMe": "تذكرني لمدة 30 يوماً",
     "signIn": "تسجيل الدخول",
-    "secureAccess": "وصول إداري آمن مقدم من RentCar SaaS"
+    "secureAccess": "وصول إداري آمن مقدم من Innovacar"
   },
   "register": {
     "title": "إنشاء حساب",
-    "subtitle": "انضم إلى فريقك على RentCar SaaS",
+    "subtitle": "انضم إلى فريقك على Innovacar",
     "firstName": "الاسم الأول",
     "lastName": "اسم العائلة",
     "tenantId": "معرف المستأجر",
@@ -687,7 +687,7 @@
       "deactivationInfo": "طلب تعطيل الحساب يفتح تذكرة دعم يراجعها فريقنا. لا نحذف بياناتك تلقائياً، وذلك لحمايتك من الفقدان غير المقصود.",
       "deactivationModalDesc": "سيؤدي هذا إلى فتح تذكرة دعم لفريقنا لمراجعة طلب التعطيل ومعالجته. لن يتم حذف بياناتك تلقائياً.",
       "reasonOptional": "السبب (اختياري)",
-      "deactivationConfirm": "أفهم أن هذا الطلب ستتم مراجعته من طرف فريق RentCar قبل اتخاذ أي إجراء.",
+      "deactivationConfirm": "أفهم أن هذا الطلب ستتم مراجعته من طرف فريق Innovacar قبل اتخاذ أي إجراء.",
       "submitting": "جارٍ الإرسال...",
       "submitRequest": "إرسال الطلب",
       "cancel": "إلغاء"
@@ -722,7 +722,7 @@
       "email": "إشعارات البريد الإلكتروني",
       "emailDesc": "استلم نسخة من التنبيهات المهمة عبر البريد الإلكتروني",
       "browserPush": "إشعارات المتصفح الفورية",
-      "browserPushDesc": "تلقَّ إشعارات حتى عندما يكون RentCar في الخلفية",
+      "browserPushDesc": "تلقَّ إشعارات حتى عندما يكون Innovacar في الخلفية",
       "saveSettings": "حفظ الإعدادات"
     },
     "agencyLogo": "شعار الوكالة",
@@ -818,7 +818,7 @@
     },
     "dashboard": {
       "title": "نظرة عامة على المنصة",
-      "subtitle": "رؤى في الوقت الفعلي لنظام SaaS الخاص بك",
+      "subtitle": "رؤى في الوقت الفعلي لنظام Innovacar الخاص بك",
       "live": "مباشر",
       "totalAgencies": "إجمالي الوكالات",
       "activeUsers": "إجمالي المستخدمين",
@@ -873,7 +873,7 @@
     },
     "subscriptions": {
       "title": "خطط الاشتراك",
-      "subtitle": "إدارة خطط SaaS والفوترة",
+      "subtitle": "إدارة خطط الاشتراك والفوترة",
       "newPlan": "خطة جديدة",
       "editPlan": "تعديل الخطة",
       "planName": "اسم الخطة",
@@ -1064,7 +1064,7 @@
     "skipTour": "تخطي الجولة",
     "completed": "مكتمل",
     "welcome": {
-      "title": "مرحباً بك في RentCar",
+      "title": "مرحباً بك في Innovacar",
       "description": "منصة إدارة التأجير جاهزة. لنقم بإعداد وكالتك في خطوات بسيطة.",
       "start": "بدء الإعداد",
       "skip": "لاحقاً"

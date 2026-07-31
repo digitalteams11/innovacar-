@@ -291,11 +291,11 @@ export const helpCenterContent: Record<string, ModuleHelpContent> = {
   },
 
   general: {
-    title: 'RentCar Platform',
+    title: 'Innovacar Platform',
     videoUrl: null,
     walkthrough: defaultWalkthrough,
     documentation: {
-      overview: 'RentCar helps you manage your rental agency: vehicles, clients, reservations, contracts, and payments in one place.',
+      overview: 'Innovacar helps you manage your rental agency: vehicles, clients, reservations, contracts, and payments in one place.',
       keyActions: ['Navigate using the sidebar', 'Use the Help Center on any page for module-specific guidance'],
       workflow: [
         { heading: 'Get started', steps: ['Complete your agency setup from the onboarding wizard.', 'Add your first vehicle and client.', 'Create a reservation and convert it to a contract.'] },

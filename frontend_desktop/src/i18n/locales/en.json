@@ -113,11 +113,11 @@
     "forgot": "Forgot?",
     "rememberMe": "Remember me for 30 days",
     "signIn": "Sign In",
-    "secureAccess": "Secure admin access enabled by RentCar SaaS"
+    "secureAccess": "Secure admin access enabled by Innovacar"
   },
   "register": {
     "title": "Create Account",
-    "subtitle": "Join your team on RentCar SaaS",
+    "subtitle": "Join your team on Innovacar",
     "firstName": "First Name",
     "lastName": "Last Name",
     "tenantId": "Tenant ID",
@@ -200,7 +200,7 @@
     "fleet": "Fleet",
     "activeRentals": "Active rentals",
     "monthlyRevenue": "Monthly revenue",
-    "healthScoreTitle": "SaaS Health Score",
+    "healthScoreTitle": "Platform Health Score",
     "healthy": "Healthy",
     "reservationsToday": "Reservations today",
     "upcomingReservations": "Upcoming reservations",
@@ -703,7 +703,7 @@
       "deactivationInfo": "Requesting account deactivation opens a support ticket reviewed by our team. We do not delete your data automatically — this protects you from accidental loss.",
       "deactivationModalDesc": "This will open a support ticket with our team to review and process your deactivation request. Your data will not be deleted automatically.",
       "reasonOptional": "Reason (optional)",
-      "deactivationConfirm": "I understand this request will be reviewed by the RentCar team before any action is taken.",
+      "deactivationConfirm": "I understand this request will be reviewed by the Innovacar team before any action is taken.",
       "submitting": "Submitting...",
       "submitRequest": "Submit Request",
       "cancel": "Cancel"
@@ -738,7 +738,7 @@
       "email": "Email notifications",
       "emailDesc": "Receive a copy of important alerts by email",
       "browserPush": "Browser push notifications",
-      "browserPushDesc": "Get notified even when RentCar is in the background",
+      "browserPushDesc": "Get notified even when Innovacar is in the background",
       "saveSettings": "Save Settings"
     },
     "agencyLogo": "Agency Logo",
@@ -834,7 +834,7 @@
     },
     "dashboard": {
       "title": "Platform Overview",
-      "subtitle": "Real-time insights into your SaaS ecosystem",
+      "subtitle": "Real-time insights into your Innovacar ecosystem",
       "live": "Live",
       "totalAgencies": "Total Agencies",
       "activeUsers": "Total Users",
@@ -889,7 +889,7 @@
     },
     "subscriptions": {
       "title": "Subscription Plans",
-      "subtitle": "Manage SaaS plans and billing",
+      "subtitle": "Manage subscription plans and billing",
       "newPlan": "New Plan",
       "editPlan": "Edit Plan",
       "planName": "Plan Name",
@@ -1080,7 +1080,7 @@
     "skipTour": "Skip tour",
     "completed": "Completed",
     "welcome": {
-      "title": "Welcome to RentCar",
+      "title": "Welcome to Innovacar",
       "description": "Your rental management platform is ready. Let us configure your agency in a few simple steps.",
       "start": "Start setup",
       "skip": "Skip for now"

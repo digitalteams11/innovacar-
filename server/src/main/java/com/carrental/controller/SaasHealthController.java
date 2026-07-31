@@ -113,7 +113,7 @@ public class SaasHealthController {
     private Map<String, Object> withEnvelope(Map<String, Object> data) {
         Map<String, Object> response = new LinkedHashMap<>(data);
         response.put("success", true);
-        response.put("message", "SaaS health loaded successfully");
+        response.put("message", "Platform health loaded successfully");
         response.put("data", data);
         return response;
     }

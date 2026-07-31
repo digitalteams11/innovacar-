@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!--
+  Variables: firstName, planName, amount, nextBillingDate, dashboardUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Subscription activated'}, subtitle=${'Thank you for upgrading with Innovacar.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Your <strong th:text="${planName}">plan</strong> subscription is now active. Thank you for choosing Innovacar.</p>
+
+  <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+    <p style="margin:2px 0;font-size:14px;">Plan: <strong th:text="${planName}">—</strong></p>
+    <p th:if="${amount}" style="margin:2px 0;font-size:14px;">Amount: <strong th:text="${amount}">—</strong></p>
+    <p th:if="${nextBillingDate}" style="margin:2px 0;font-size:14px;">Next billing date: <strong th:text="${nextBillingDate}">—</strong></p>
+  </div>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}"></div>
+</div>
+</body>
+</html>

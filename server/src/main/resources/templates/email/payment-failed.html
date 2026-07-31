@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--
+  Variables: firstName, amount, reason, retryUrl
+-->
+<html th:replace="~{email/fragments/layout :: page(title=${'Payment failed'}, subtitle=${'We could not process your latest payment.'}, content=~{::div.email-content})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="email-content">
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">We attempted to charge your payment method but it was declined.</p>
+
+  <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:10px;padding:18px 20px;margin:20px 0;">
+    <p th:if="${amount}" style="margin:2px 0;font-size:14px;">Amount: <strong th:text="${amount}">—</strong></p>
+    <p th:if="${reason}" style="margin:2px 0;font-size:14px;">Reason: <strong th:text="${reason}">—</strong></p>
+  </div>
+
+  <p style="margin:0 0 16px;font-size:14px;line-height:1.7;">Please update your payment details to avoid any interruption to your Innovacar subscription.</p>
+
+  <div th:replace="~{email/fragments/button :: button(label=${'Update payment method'}, url=${retryUrl})}"></div>
+</div>
+</body>
+</html>
