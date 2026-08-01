@@ -1,0 +1,79 @@
+name: Build Innovacar Desktop (Windows)
+
+# Builds the Windows NSIS installer on a real windows-latest GitHub-hosted
+# runner. This exists because electron-builder's Windows packaging step
+# needs the SeCreateSymbolicLinkPrivilege (granted to Administrators, or via
+# Developer Mode) to extract its winCodeSign vendor tools — GitHub's
+# windows-latest runner has this by default; a restricted local/sandboxed
+# machine without admin rights does not, which is why this can't be built
+# from just any dev machine.
+#
+# Produces an UNSIGNED installer (no code-signing certificate is configured
+# — see CODE_SIGNING secrets below, currently absent on purpose). Do not
+# publish the resulting .exe as a production release until:
+#   1. A real Windows code-signing certificate is added as repo secrets
+#      (CSC_LINK, CSC_KEY_PASSWORD) and this workflow is updated to use them.
+#   2. The installer has been manually tested end-to-end on a clean Windows
+#      machine (see frontend_desktop/DESKTOP_FEATURE_INVENTORY.md).
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: frontend_desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install frontend-web dependencies
+        working-directory: frontend-web
+        run: npm ci
+
+      - name: Install frontend_desktop dependencies
+        run: npm ci
+
+      - name: Build production renderer
+        run: npm run build
+
+      - name: Verify no localhost URL leaked into the production bundle
+        shell: bash
+        run: |
+          if grep -rl "localhost:8082\|127.0.0.1:8082" dist/ 2>/dev/null; then
+            echo "::error::Production bundle references a localhost API URL — aborting."
+            exit 1
+          fi
+          if ! grep -rl "api.innovacar.app" dist/ 2>/dev/null; then
+            echo "::error::Production bundle does not reference api.innovacar.app — aborting."
+            exit 1
+          fi
+
+      - name: Package Windows installer (unsigned — see header comment)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder --win --publish=never
+
+      - name: Compute SHA-256 of installer
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path release -Filter "Innovacar-Setup-*.exe" | Select-Object -First 1
+          $hash = Get-FileHash -Algorithm SHA256 -Path $exe.FullName
+          "$($hash.Hash)  $($exe.Name)" | Out-File -FilePath release/SHA256SUMS.txt -Encoding utf8
+          Write-Host "SHA-256: $($hash.Hash)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: innovacar-desktop-windows
+          path: |
+            frontend_desktop/release/Innovacar-Setup-*.exe
+            frontend_desktop/release/SHA256SUMS.txt
+          retention-days: 30

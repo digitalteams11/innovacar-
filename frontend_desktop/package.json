@@ -2,6 +2,8 @@
   "name": "frontend-desktop",
   "private": true,
   "version": "1.0.0",
+  "description": "Innovacar desktop client for Windows",
+  "author": "Innovax Technologies",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -61,6 +63,9 @@
     "productName": "Innovacar",
     "copyright": "Copyright © Innovax Technologies",
     "icon": "build/icon.png",
+    "toolsets": {
+      "winCodeSign": "1.1.0"
+    },
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -77,9 +82,9 @@
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "publisherName": "Innovax Technologies",
       "artifactName": "Innovacar-Setup-${version}.exe",
-      "executableName": "Innovacar"
+      "executableName": "Innovacar",
+      "legalTrademarks": "Innovax Technologies"
     },
     "nsis": {
       "shortcutName": "Innovacar",
