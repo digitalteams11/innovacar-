@@ -136,31 +136,23 @@ export default function Login() {
     else navigate('/dashboard');
   };
 
-  // Second leg of the server-side Google OAuth2 redirect flow: the backend
-  // (OAuth2LoginSuccessHandler / OAuth2LoginFailureHandler) always lands the
-  // browser back here with either a one-time exchange code or a friendly
-  // error code in the query string. Runs once on mount; the code/error is
-  // stripped from the URL immediately after, so a page refresh never re-tries
-  // an already-consumed code or re-shows a stale error.
-  useEffect(() => {
-    const oauth2code = searchParams.get('oauth2code');
-    const oauth2error = searchParams.get('oauth2error');
-    if (!oauth2code && !oauth2error) return;
-
-    setSearchParams((params) => {
-      params.delete('oauth2code');
-      params.delete('oauth2error');
-      return params;
-    }, { replace: true });
-
-    if (oauth2error) {
-      setError(t(`errors.${oauth2error}`, t('errors.OAUTH2_LOGIN_FAILED', 'Google sign-in failed. Please try again.') as string) as string);
+  // Shared second leg for both Google OAuth2 round trips this page can
+  // receive: the web flow (OAuth2LoginSuccessHandler/FailureHandler
+  // redirecting the browser back here with ?oauth2code=/?oauth2error=) and
+  // the desktop flow (main.cjs forwarding an innovacar://auth/callback deep
+  // link with the same code/error, see the effect below). Both hand off the
+  // same single-use exchange code to the same backend endpoint — the desktop
+  // app never gets its own separate auth mechanism.
+  const applyOAuth2Result = (code: string | null, errorCode: string | null) => {
+    if (errorCode) {
+      setError(t(`errors.${errorCode}`, t('errors.OAUTH2_LOGIN_FAILED', 'Google sign-in failed. Please try again.') as string) as string);
       return;
     }
+    if (!code) return;
 
     setGoogleExchanging(true);
     setError('');
-    exchangeOAuth2Code(oauth2code as string)
+    exchangeOAuth2Code(code)
       .then((userData: any) => {
         if (userData?.twoFactorRequired) {
           const methods: string[] = userData.availableTwoFactorMethods ?? ['AUTHENTICATOR'];
@@ -185,6 +177,43 @@ export default function Login() {
       })
       .catch((err: any) => setError(translateApiError(err, t)))
       .finally(() => setGoogleExchanging(false));
+  };
+
+  // Web leg: the backend always lands the browser back here with either a
+  // one-time exchange code or a friendly error code in the query string.
+  // Runs once on mount; the code/error is stripped from the URL immediately
+  // after, so a page refresh never re-tries an already-consumed code or
+  // re-shows a stale error.
+  useEffect(() => {
+    const oauth2code = searchParams.get('oauth2code');
+    const oauth2error = searchParams.get('oauth2error');
+    if (!oauth2code && !oauth2error) return;
+
+    setSearchParams((params) => {
+      params.delete('oauth2code');
+      params.delete('oauth2error');
+      return params;
+    }, { replace: true });
+
+    applyOAuth2Result(oauth2code, oauth2error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Desktop leg: main.cjs forwards a validated innovacar://auth/callback deep
+  // link over the preload bridge (window.electronAPI is only ever defined
+  // inside Electron — a no-op everywhere else, including the web build).
+  useEffect(() => {
+    const electronAPI = (window as unknown as { electronAPI?: { onOAuthCallback?: (cb: (url: string) => void) => () => void } }).electronAPI;
+    if (!electronAPI?.onOAuthCallback) return;
+
+    return electronAPI.onOAuthCallback((url) => {
+      try {
+        const parsed = new URL(url);
+        applyOAuth2Result(parsed.searchParams.get('code'), parsed.searchParams.get('error'));
+      } catch {
+        setError(t('errors.OAUTH2_LOGIN_FAILED', 'Google sign-in failed. Please try again.') as string);
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

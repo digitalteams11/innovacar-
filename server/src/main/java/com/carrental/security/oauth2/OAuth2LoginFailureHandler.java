@@ -31,6 +31,11 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${app.auth.cookies.secure:false}")
+    private boolean cookiesSecure;
+
+    private static final String DESKTOP_CALLBACK_URL = "innovacar://auth/callback";
+
     // Our own GoogleAuthException/CustomOidcUserService error codes are already
     // frontend-safe (see GoogleAuthException) — pass them through unchanged
     // rather than re-mapping them to a generic code.
@@ -46,10 +51,18 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
         boolean authRequestCookiePresent = request.getCookies() != null
                 && java.util.Arrays.stream(request.getCookies())
                         .anyMatch(c -> CookieOAuth2AuthorizationRequestRepository.COOKIE_NAME.equals(c.getName()));
-        log.warn("[OAUTH2_LOGIN_FAILURE] code={} authRequestCookiePresent={} requestUri={} message={}",
-                code, authRequestCookiePresent, request.getRequestURI(), exception.getMessage());
-        String redirectTarget = FrontendUrls.canonicalize(frontendUrl)
-                + "/#/login?oauth2error=" + URLEncoder.encode(code, StandardCharsets.UTF_8);
+        boolean desktop = DesktopOAuthOriginFilter.isDesktopOrigin(request);
+        log.warn("[OAUTH2_LOGIN_FAILURE] code={} authRequestCookiePresent={} desktop={} requestUri={} message={}",
+                code, authRequestCookiePresent, desktop, request.getRequestURI(), exception.getMessage());
+
+        String redirectTarget;
+        if (desktop) {
+            DesktopOAuthOriginFilter.clearCookie(response, cookiesSecure);
+            redirectTarget = DESKTOP_CALLBACK_URL + "?error=" + URLEncoder.encode(code, StandardCharsets.UTF_8);
+        } else {
+            redirectTarget = FrontendUrls.canonicalize(frontendUrl)
+                    + "/#/login?oauth2error=" + URLEncoder.encode(code, StandardCharsets.UTF_8);
+        }
         response.sendRedirect(redirectTarget);
     }
 

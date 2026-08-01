@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import { installLazyLoadRecovery } from './lazyLoadRecovery';
 import { MARKETING_PATHS } from './marketing/pages';
 import './index.css';
@@ -38,11 +39,17 @@ if (shouldRenderMarketingSite()) {
 } else {
   root.render(
     <React.StrictMode>
-      <HashRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </HashRouter>
+      {/* Wraps AuthProvider too, not just what's inside App() (which has its
+          own internal boundary) — a synchronous crash during AuthProvider's
+          own render would otherwise unmount the whole tree with no fallback,
+          a blank white page with no way to see what went wrong. */}
+      <ErrorBoundary>
+        <HashRouter>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </HashRouter>
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }

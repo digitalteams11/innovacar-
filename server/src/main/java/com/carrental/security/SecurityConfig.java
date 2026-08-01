@@ -2,6 +2,7 @@ package com.carrental.security;
 
 import com.carrental.security.oauth2.CookieOAuth2AuthorizationRequestRepository;
 import com.carrental.security.oauth2.CustomOidcUserService;
+import com.carrental.security.oauth2.DesktopOAuthOriginFilter;
 import com.carrental.security.oauth2.OAuth2LoginFailureHandler;
 import com.carrental.security.oauth2.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -48,8 +49,19 @@ public class SecurityConfig {
     private final CustomOidcUserService   customOidcUserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
+    private final DesktopOAuthOriginFilter desktopOAuthOriginFilter;
 
-    @Value("${app.cors.allowed-origins:https://innovacar.app,https://www.innovacar.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174}")
+    // "null" is the literal Origin header value Chromium sends for a
+    // file://-loaded page — exactly how the packaged Windows/Electron app
+    // (frontend_desktop) serves its production build (see main.cjs's
+    // mainWindow.loadFile). Without it, every withCredentials:true request
+    // (see api/axios.ts) from the installed app would be blocked by CORS
+    // even with a valid JWT, since allowCredentials(true) below requires an
+    // exact Origin match, never a wildcard. Electron's contextIsolation +
+    // disabled nodeIntegration (see main.cjs) keep that file:// origin from
+    // ever running attacker-controlled script, so this is safe to allow
+    // without broadening it to arbitrary local files opened in a real browser.
+    @Value("${app.cors.allowed-origins:https://innovacar.app,https://www.innovacar.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://192.168.*.*:5173,http://192.168.*.*:5174,http://192.168.194.1:5174,null}")
     private String allowedOrigins;
 
     // ── Authentication provider ─────────────────────────────────────────────
@@ -154,6 +166,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/super-admin/**").hasRole("SUPER_ADMIN")
                 // Everything else requires a valid JWT
                 .anyRequest().authenticated())
+
+            // Marks a Google login as desktop-originated (see GoogleAuthButton.tsx's
+            // ?desktop=true) before Spring's own OAuth2 redirect filter runs, so
+            // OAuth2LoginSuccessHandler/OAuth2LoginFailureHandler know to hand the
+            // result back via the innovacar:// deep link instead of the web frontend.
+            .addFilterBefore(desktopOAuthOriginFilter,
+                             org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.class)
 
             // Plug in the JWT filter before Spring's username/password filter
             .addFilterBefore(jwtAuthenticationFilter,

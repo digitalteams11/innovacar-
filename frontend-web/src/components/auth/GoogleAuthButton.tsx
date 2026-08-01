@@ -15,13 +15,27 @@ function GoogleGlyph() {
   );
 }
 
+interface DesktopBridge {
+  isElectron?: boolean;
+  openExternalUrl?: (url: string) => Promise<boolean>;
+}
+
 /**
- * Redirects the browser to the server-side Google OAuth2 Authorization Code
- * flow (GET /oauth2/authorization/google — Spring Security's own filter
- * chain, not an API call). Never touches a Client ID/Secret or ID token on
- * the frontend; the whole exchange happens between the browser, Google and
- * the backend. See server/.../security/oauth2/* and AuthController's
+ * Redirects to the server-side Google OAuth2 Authorization Code flow
+ * (GET /oauth2/authorization/google — Spring Security's own filter chain,
+ * not an API call). Never touches a Client ID/Secret or ID token on the
+ * frontend; the whole exchange happens between the browser, Google and the
+ * backend. See server/.../security/oauth2/* and AuthController's
  * POST /api/auth/oauth2/exchange (the second leg, handled on the Login page).
+ *
+ * On desktop (Electron), this must never navigate the app window itself to
+ * that URL — Google's consent screen requires a real browser context, and
+ * the backend's redirect back afterward needs to hand off to the OS via the
+ * innovacar:// deep link, not land inside the Electron window. Appending
+ * ?desktop=true tells DesktopOAuthOriginFilter (backend) to mark this login
+ * as desktop-originated so OAuth2LoginSuccessHandler/OAuth2LoginFailureHandler
+ * redirect to innovacar://auth/callback instead of the web frontend once
+ * Google's round trip completes — see Login.tsx's onOAuthCallback listener.
  */
 export default function GoogleAuthButton({
   label,
@@ -38,10 +52,16 @@ export default function GoogleAuthButton({
   const handleClick = () => {
     if (redirecting || disabled) return;
     setRedirecting(true);
+    const desktop = (window as unknown as { electronAPI?: DesktopBridge }).electronAPI;
+    const authUrl = `${API_ORIGIN}/oauth2/authorization/google${desktop?.isElectron ? '?desktop=true' : ''}`;
+    if (desktop?.isElectron && desktop.openExternalUrl) {
+      desktop.openExternalUrl(authUrl).finally(() => setRedirecting(false));
+      return;
+    }
     // Full top-level browser navigation — never fetch/axios. A same-origin
     // XHR/fetch call here would follow the 302 to accounts.google.com under
     // CORS rules instead of actually navigating the browser there.
-    window.location.assign(`${API_ORIGIN}/oauth2/authorization/google`);
+    window.location.assign(authUrl);
   };
 
   const busy = redirecting || disabled;

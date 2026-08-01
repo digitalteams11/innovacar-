@@ -34,6 +34,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${app.auth.cookies.secure:false}")
+    private boolean cookiesSecure;
+
+    /** Registered as this exact scheme in the Windows/NSIS installer — see
+     * frontend_desktop's electron-builder "protocols" config and main.cjs's
+     * app.setAsDefaultProtocolClient. Never registered as Google's own OAuth
+     * redirect URI (see class Javadoc on DesktopOAuthOriginFilter) — only
+     * this final backend-to-desktop handoff uses it. */
+    private static final String DESKTOP_CALLBACK_URL = "innovacar://auth/callback";
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                          Authentication authentication) throws IOException {
@@ -51,11 +61,19 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         AuthResponse authResponse = principal.getAuthResponse();
         String code = exchangeCodeStore.store(authResponse);
-        String base = FrontendUrls.canonicalize(frontendUrl);
-        String redirectTarget = base + "/#/login?oauth2code=" + urlEncode(code);
-        log.info("[OAUTH2_LOGIN_SUCCESS] userId={} tenantId={} twoFactorRequired={} redirectHost={}",
+        boolean desktop = DesktopOAuthOriginFilter.isDesktopOrigin(request);
+
+        String redirectTarget;
+        if (desktop) {
+            DesktopOAuthOriginFilter.clearCookie(response, cookiesSecure);
+            redirectTarget = DESKTOP_CALLBACK_URL + "?code=" + urlEncode(code);
+        } else {
+            String base = FrontendUrls.canonicalize(frontendUrl);
+            redirectTarget = base + "/#/login?oauth2code=" + urlEncode(code);
+        }
+        log.info("[OAUTH2_LOGIN_SUCCESS] userId={} tenantId={} twoFactorRequired={} desktop={}",
                 authResponse.getUserId(), authResponse.getTenantId(),
-                Boolean.TRUE.equals(authResponse.getTwoFactorRequired()), base);
+                Boolean.TRUE.equals(authResponse.getTwoFactorRequired()), desktop);
         response.sendRedirect(redirectTarget);
     }
 

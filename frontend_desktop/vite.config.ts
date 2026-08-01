@@ -24,9 +24,34 @@ const singletonDeps = [
   'recharts',
 ];
 
+// Injects a real Content-Security-Policy into the packaged production build
+// only — dev needs Vite's HMR client (a websocket + eval-based module
+// runtime) unrestricted, and Electron's own "Insecure CSP" console warning
+// already documents that it disappears once packaged, so this is the actual
+// fix rather than silencing that warning without any policy at all. `file:`
+// is required for 'self' here because that's the packaged app's own origin
+// (see main.cjs's loadFile) — never any other scheme.
+function productionCsp() {
+  return {
+    name: 'innovacar-desktop-csp',
+    apply: 'build' as const,
+    transformIndexHtml(html: string) {
+      const csp = [
+        "default-src 'self' file:",
+        "script-src 'self' file:",
+        "style-src 'self' file: 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' file: https://fonts.gstatic.com",
+        "img-src 'self' file: data: https:",
+        "connect-src 'self' https://api.innovacar.app",
+      ].join('; ');
+      return html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp}" />`);
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), productionCsp()],
   base: './',
   resolve: {
     alias: Object.fromEntries(
@@ -43,5 +68,15 @@ export default defineConfig({
     // duplicated) — the dev server must be allowed to serve files from
     // outside this project's own root to reach it.
     fs: { allow: ['..'] },
+    // strictPort: Electron's main.cjs scans 5173-5177 for whichever port
+    // answers first (see findDevServer()). If this dev server silently
+    // drifted to another port because 5173 was already held by an unrelated
+    // process (e.g. frontend-web's own `npm run dev`), that scan could latch
+    // onto the wrong server's response on 5173 and load an entirely
+    // different app — a real, reproduced cause of a blank/wrong Electron
+    // window. Failing loudly here instead forces freeing the port rather
+    // than silently drifting.
+    port: 5173,
+    strictPort: true,
   },
 })

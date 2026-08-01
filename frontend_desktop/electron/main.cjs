@@ -1,22 +1,68 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// Custom protocol for the Google OAuth round-trip: the backend's OAuth2
-// success handler needs to be configured to redirect desktop-originated
-// logins to `innovacar://oauth-callback?oauth2code=...` (a separate,
-// backend-side change — file:// has no origin the backend can redirect to
-// directly, unlike the web app's real https origin). Until that redirect_uri
-// is configured server-side, Google sign-in opens correctly in the system
-// browser but the user lands on the web app afterward, not back in this app.
+// Only these hosts may ever be opened in the system browser from this app —
+// the Google OAuth authorization start URL (which itself 302s the *system*
+// browser to accounts.google.com — Electron never navigates there directly)
+// and the marketing/support surfaces linked from within the app. Blocks
+// javascript:, file:, data:, and any renderer-controlled/unknown origin.
+const ALLOWED_EXTERNAL_HOSTS = new Set([
+  'api.innovacar.app',
+  'innovacar.app',
+  'www.innovacar.app',
+]);
+// Dev-only: frontend-web/src/lib/api.ts falls back to http://<host>:8082/api
+// whenever VITE_API_URL isn't set, which is the normal case for
+// `npm run electron:dev` — without allowing this too, the Google button
+// would be silently blocked in every local dev run.
+const DEV_ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1']);
+const DEV_ALLOWED_PORT = '8082';
+
+function isAllowedExternalUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol === 'https:' && ALLOWED_EXTERNAL_HOSTS.has(url.hostname)) return true;
+    if (isDev && url.protocol === 'http:' && DEV_ALLOWED_HOSTS.has(url.hostname) && url.port === DEV_ALLOWED_PORT) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// Custom protocol for the Google OAuth round-trip: GoogleAuthButton.tsx
+// appends ?desktop=true when running in Electron, DesktopOAuthOriginFilter
+// (backend) marks the login as desktop-originated from that, and
+// OAuth2LoginSuccessHandler/OAuth2LoginFailureHandler redirect the system
+// browser to innovacar://auth/callback?code=... (or ?error=...) once Google's
+// round trip completes. See DESKTOP_FEATURE_INVENTORY.md for the full flow.
 const OAUTH_PROTOCOL = 'innovacar';
+const OAUTH_CALLBACK_PREFIX = `${OAUTH_PROTOCOL}://auth/callback`;
 let pendingOAuthUrl = null;
 let mainWindowRef = null;
 
+/** Only a well-formed innovacar://auth/callback?code=...|error=... URL is
+ * ever forwarded to the renderer — anything else (a malformed/foreign deep
+ * link, or another app registering the same scheme) is silently dropped. */
+function isValidOAuthCallbackUrl(url) {
+  if (typeof url !== 'string' || !url.startsWith(OAUTH_CALLBACK_PREFIX)) return false;
+  try {
+    const parsed = new URL(url);
+    return Boolean(parsed.searchParams.get('code') || parsed.searchParams.get('error'));
+  } catch {
+    return false;
+  }
+}
+
 function forwardOAuthCallback(url) {
-  if (!url || !url.startsWith(`${OAUTH_PROTOCOL}://`)) return;
+  if (!isValidOAuthCallbackUrl(url)) {
+    if (url) console.warn('[electron:oauth] rejected invalid callback URL', url);
+    return;
+  }
   if (mainWindowRef && !mainWindowRef.isDestroyed()) {
     mainWindowRef.webContents.send('oauth-callback', url);
   } else {
@@ -51,29 +97,52 @@ if (!gotSingleInstanceLock) {
       mainWindowRef.focus();
     }
   });
+  // The app can also be launched cold *by* the deep link (Windows registers
+  // the .exe as the protocol handler) — argv[1] carries it on this, the
+  // first, instance rather than a second-instance event.
+  const initialDeepLink = process.argv.find((arg) => arg.startsWith(`${OAUTH_PROTOCOL}://`));
+  if (initialDeepLink) pendingOAuthUrl = initialDeepLink;
 }
 
+ipcMain.handle('open-external-url', (_event, url) => {
+  if (!isAllowedExternalUrl(url)) {
+    console.warn('[electron:open-external-url] blocked disallowed URL', url);
+    return false;
+  }
+  shell.openExternal(url);
+  return true;
+});
+
+async function probeDevServer(port) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(`http://localhost:${port}`, (res) => {
+      res.resume();
+      if (res.statusCode && res.statusCode < 500) resolve(port);
+      else reject(new Error(`Status ${res.statusCode}`));
+    });
+    req.on('error', reject);
+    req.setTimeout(500, () => req.destroy(new Error('Timeout')));
+  });
+}
+
+/** vite.config.ts pins strictPort:true on 5173 (see that file's comment) —
+ * this is a bounded retry for the brief window before Vite finishes binding,
+ * not a fallback across multiple ports, so Electron can never latch onto an
+ * unrelated process answering on some other port. */
 async function findDevServer() {
-  const ports = [5173, 5174, 5175, 5176, 5177];
-  for (const port of ports) {
+  const explicit = process.env.VITE_DEV_SERVER_URL;
+  if (explicit) return explicit;
+  const port = 5173;
+  const attempts = 20;
+  for (let i = 0; i < attempts; i++) {
     try {
-      await new Promise((resolve, reject) => {
-        const req = http.get(`http://localhost:${port}`, (res) => {
-          if (res.statusCode === 200 || res.statusCode === 204) {
-            resolve(port);
-          } else {
-            reject(new Error(`Status ${res.statusCode}`));
-          }
-        });
-        req.on('error', reject);
-        req.setTimeout(500, () => reject(new Error('Timeout')));
-      });
-      return port;
+      await probeDevServer(port);
+      return `http://localhost:${port}`;
     } catch {
-      // try next port
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
-  return 5173; // fallback
+  throw new Error(`Vite dev server never answered on port ${port} after ${attempts} attempts`);
 }
 
 function createWindow() {
@@ -84,36 +153,87 @@ function createWindow() {
     minHeight: 700,
     title: 'Innovacar Desktop',
     autoHideMenuBar: true,
+    show: false,
+    backgroundColor: '#0b1220',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false,
+      sandbox: true,
     },
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+  // ready-to-show fires once the renderer has painted its first frame — if
+  // it never fires (a synchronous crash before first paint, or the load
+  // itself failing), the window must still appear rather than staying
+  // invisible forever with no way to see the error.
+  const readyToShowTimeout = setTimeout(() => {
+    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      console.error('[electron:ready-to-show] timed out after 8s — showing window anyway so any error is visible');
+      mainWindow.show();
+    }
+  }, 8000);
+  mainWindow.once('ready-to-show', () => clearTimeout(readyToShowTimeout));
+
+  // ── Diagnostics ──────────────────────────────────────────────────────────
+  mainWindow.webContents.on('did-start-loading', () => {
+    console.log('[electron:did-start-loading]');
+  });
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('[electron:did-finish-load]');
+  });
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('[electron:did-fail-load]', { errorCode, errorDescription, validatedURL });
+  });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[electron:render-process-gone]', details);
+  });
+  mainWindow.webContents.on('unresponsive', () => {
+    console.error('[electron:unresponsive] renderer stopped responding');
+  });
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    // Forwards every renderer console.* call (including uncaught exceptions
+    // React/Vite log via the default window.onerror handler) into this
+    // process's own stdout, so `npm run electron:dev`'s terminal shows the
+    // real failure without needing DevTools open.
+    const levels = ['log', 'warning', 'error', 'debug'];
+    console.log(`[renderer:${levels[level] || level}] ${message} (${sourceId}:${line})`);
   });
 
   // External links (help center, support, OAuth, etc.) must open in the
   // user's real browser, not navigate the app window away from the SPA.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (isAllowedExternalUrl(url)) shell.openExternal(url);
+    else console.warn('[electron:setWindowOpenHandler] blocked disallowed URL', url);
     return { action: 'deny' };
   });
 
   // Google's OAuth button does a top-level `window.location.assign(...)`
-  // (see GoogleAuthButton.tsx), not window.open — that's a same-window
-  // navigation, not a new-window request, so it doesn't hit
-  // setWindowOpenHandler above. Catch it here instead: any attempt to
-  // navigate this window away from its own local dist/dev-server origin
-  // is redirected to the system browser and cancelled in-app, so the
-  // packaged app's window can never end up stuck on a live https page.
+  // fallback on platforms where the preload's openExternalAuthUrl bridge
+  // is unavailable — that's a same-window navigation, not a new-window
+  // request, so it doesn't hit setWindowOpenHandler above. Catch it here
+  // instead: any attempt to navigate this window away from its own local
+  // dist/dev-server origin is redirected to the system browser (if
+  // allow-listed) and cancelled in-app, so the packaged app's window can
+  // never end up stuck on a live https page.
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const target = new URL(url);
+    let target;
+    try {
+      target = new URL(url);
+    } catch {
+      event.preventDefault();
+      return;
+    }
     const isAppOrigin = isDev
       ? target.hostname === 'localhost' || target.hostname === '127.0.0.1'
       : target.protocol === 'file:';
     if (!isAppOrigin) {
       event.preventDefault();
-      shell.openExternal(url);
+      if (isAllowedExternalUrl(url)) shell.openExternal(url);
+      else console.warn('[electron:will-navigate] blocked disallowed navigation', url);
     }
   });
 
@@ -126,12 +246,32 @@ function createWindow() {
   });
 
   if (isDev) {
-    findDevServer().then((port) => {
-      mainWindow.loadURL(`http://localhost:${port}`);
-      mainWindow.webContents.openDevTools();
-    });
+    if (process.env.OPEN_DEVTOOLS !== 'false') {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+    findDevServer()
+      .then((url) => {
+        if (mainWindow.isDestroyed()) return;
+        return mainWindow.loadURL(`${url}/#/login`).catch((err) => {
+          throw Object.assign(err, { stage: 'loadURL', url: `${url}/#/login` });
+        });
+      })
+      .catch((err) => {
+        if (mainWindow.isDestroyed()) return;
+        const stage = err.stage === 'loadURL' ? 'loadURL' : 'findDevServer';
+        console.error(`[electron:${stage}] failed to load the renderer`, err);
+        mainWindow.loadURL(
+          `data:text/html,${encodeURIComponent(
+            `<body style="font-family:sans-serif;background:#0b1220;color:#fff;padding:2rem">` +
+              `<h2>Innovacar Desktop — renderer failed to load (${stage})</h2>` +
+              `<p>${String(err.message || err)}</p>` +
+              `<p>Is <code>npm run dev</code> (Vite) running and bound to port 5173?</p></body>`,
+          )}`,
+        );
+        mainWindow.show();
+      });
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: '/login' });
   }
 }
 
