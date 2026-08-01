@@ -8,8 +8,10 @@
 <div class="email-content">
   <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello <strong th:text="${firstName}">there</strong>,</p>
   <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
-    Your Innovacar trial ends in <strong th:text="${daysRemaining}">3</strong> day(s), on <strong th:text="${trialEndDate}">—</strong>.
-    Upgrade now to keep uninterrupted access to your fleet, reservations, contracts, payments and GPS data.
+    Your trial expires in <strong th:text="${daysRemaining}">3</strong> day(s). Upgrade now to continue using Innovacar.
+  </p>
+  <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+    Your trial ends on <strong th:text="${trialEndDate}">—</strong> — upgrade to keep uninterrupted access to your fleet, reservations, contracts, payments and GPS data.
   </p>
 
   <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:10px;padding:18px 20px;margin:20px 0;">

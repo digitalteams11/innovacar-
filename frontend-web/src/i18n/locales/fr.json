@@ -2833,7 +2833,9 @@
   "trialExpiredScreen": {
     "title": "Votre essai gratuit est terminé",
     "description": "Choisissez un abonnement pour continuer à utiliser Innovacar.",
-    "viewSubscriptionOptions": "Voir les options d'abonnement"
+    "viewSubscriptionOptions": "Voir les options d'abonnement",
+    "upgradeNow": "Mettre a niveau",
+    "contactSupport": "Contacter le support"
   },
   "subscription": {
     "title": "Abonnement & Facturation",

@@ -2833,7 +2833,9 @@
   "trialExpiredScreen": {
     "title": "Your free trial has ended",
     "description": "Choose a subscription to continue using Innovacar.",
-    "viewSubscriptionOptions": "View subscription options"
+    "viewSubscriptionOptions": "View subscription options",
+    "upgradeNow": "Upgrade now",
+    "contactSupport": "Contact support"
   },
   "subscription": {
     "title": "Subscription & Billing",

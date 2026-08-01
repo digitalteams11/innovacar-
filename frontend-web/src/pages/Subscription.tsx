@@ -82,7 +82,13 @@ export default function Subscription() {
         api.get('/subscriptions/plans'),
         api.get('/subscriptions/status'),
       ]);
-      setPlans(plansRes.data);
+      // Trial is never a purchasable plan — it's granted automatically at
+      // registration and requires no checkout, so it must never appear as a
+      // selectable pricing card (spec: "Remove the Trial plan from the
+      // pricing page completely").
+      const purchasablePlans = (plansRes.data ?? []).filter((plan: any) =>
+        String(plan?.code ?? '').toUpperCase() !== 'TRIAL');
+      setPlans(purchasablePlans);
       setStatus(statusRes.data);
     } catch (err) {
       console.error(err);

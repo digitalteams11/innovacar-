@@ -16,27 +16,29 @@ export default function TrialBanner() {
 
   const secondsRemaining = subscription.trialSecondsRemaining;
   const daysRemaining = subscription.trialDaysRemaining;
-  const isUrgent = daysRemaining <= 7;
   const isExpired = secondsRemaining <= 0;
 
-  const urgentStyle = {
-    background: 'rgba(245,158,11,0.1)',
-    borderBottom: '1px solid rgba(245,158,11,0.3)',
-    iconColor: '#d97706',
-    textColor: '#92400e',
-    buttonColor: '#92400e',
-    closeColor: '#d97706',
-  };
-  const normalStyle = {
-    background: 'rgba(59,130,246,0.08)',
-    borderBottom: '1px solid rgba(59,130,246,0.2)',
-    iconColor: '#3b82f6',
-    textColor: '#1e40af',
-    buttonColor: '#1e40af',
-    closeColor: '#3b82f6',
-  };
+  // Three-tier countdown color per spec: green with more than 7 days left,
+  // orange under 7 days, red under 3 days — never just a single "urgent" cutoff.
+  const dayFraction = secondsRemaining / 86400;
+  const tier: 'green' | 'orange' | 'red' = dayFraction < 3 ? 'red' : dayFraction < 7 ? 'orange' : 'green';
 
-  const s = isUrgent ? urgentStyle : normalStyle;
+  const styles = {
+    green: {
+      background: 'rgba(16,185,129,0.08)', borderBottom: '1px solid rgba(16,185,129,0.25)',
+      iconColor: '#059669', buttonColor: '#047857', closeColor: '#059669',
+    },
+    orange: {
+      background: 'rgba(245,158,11,0.1)', borderBottom: '1px solid rgba(245,158,11,0.3)',
+      iconColor: '#d97706', buttonColor: '#92400e', closeColor: '#d97706',
+    },
+    red: {
+      background: 'rgba(239,68,68,0.1)', borderBottom: '1px solid rgba(239,68,68,0.3)',
+      iconColor: '#dc2626', buttonColor: '#991b1b', closeColor: '#dc2626',
+    },
+  } as const;
+
+  const s = styles[tier];
 
   // Backend trialSecondsRemaining is the exact-instant source of truth, so once a
   // trial has less than a day left this switches to hours/minutes instead of

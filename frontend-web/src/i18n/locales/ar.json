@@ -2833,7 +2833,9 @@
   "trialExpiredScreen": {
     "title": "انتهت فترتك التجريبية المجانية",
     "description": "اختر اشتراكًا لمواصلة استخدام إنوفاكار.",
-    "viewSubscriptionOptions": "عرض خيارات الاشتراك"
+    "viewSubscriptionOptions": "عرض خيارات الاشتراك",
+    "upgradeNow": "الترقية الآن",
+    "contactSupport": "الاتصال بالدعم"
   },
   "subscription": {
     "title": "الاشتراك والفوترة",

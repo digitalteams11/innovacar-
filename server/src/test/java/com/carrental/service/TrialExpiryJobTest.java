@@ -91,6 +91,26 @@ class TrialExpiryJobTest {
     }
 
     @Test
+    void sendsThreeDayReminderWithTheExactRequiredWording() {
+        Tenant tenant = Tenant.builder()
+                .id(4L).name("Agency").email("agency@test.com")
+                .status("TRIAL").subscriptionActive(true)
+                .trialStartDate(LocalDate.now().minusDays(11))
+                .trialEndDate(LocalDate.now().plusDays(3))
+                .build();
+        when(tenantRepository.findAllByStatusIgnoreCase("TRIAL")).thenReturn(List.of(tenant));
+        when(tenantRepository.countByStatusIgnoreCase("ACTIVE")).thenReturn(0L);
+
+        trialExpiryJob.processTrials();
+
+        assertThat(tenant.getTrialReminder3SentAt()).isNotNull();
+        verify(notificationService, times(1)).createNotification(
+                eq("Your trial expires in 3 days."), eq("Upgrade now to continue using Innovacar."),
+                eq(Notification.NotificationType.WARNING), isNull(), eq(4L));
+        verify(platformEmailService, times(1)).sendTrialReminder(4L, "agency@test.com", "Agency", 3);
+    }
+
+    @Test
     void skipsTenantsWithNoTrialEndDateWithoutError() {
         Tenant tenant = Tenant.builder()
                 .id(3L).name("Agency").email("agency@test.com")

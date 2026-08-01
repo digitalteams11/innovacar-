@@ -66,7 +66,7 @@ export default function AccountSuspended() {
           >
             <CreditCard size={16} />
             {isTrialExpired
-              ? t('trialExpiredScreen.viewSubscriptionOptions', 'View subscription options')
+              ? t('trialExpiredScreen.upgradeNow', 'Upgrade now')
               : t('accountSuspended.openBilling', 'Open Billing')}
           </button>
           <button
@@ -74,7 +74,9 @@ export default function AccountSuspended() {
             className="w-full flex items-center justify-center gap-2 bg-[var(--bg-hover)] hover:bg-[var(--bg-active)] text-[var(--text-primary)] py-2.5 rounded-xl text-sm font-semibold transition-colors"
           >
             <LifeBuoy size={16} />
-            {t('accountSuspended.contactSupport', 'Contact Support')}
+            {isTrialExpired
+              ? t('trialExpiredScreen.contactSupport', 'Contact support')
+              : t('accountSuspended.contactSupport', 'Contact Support')}
           </button>
           <button
             onClick={logout}

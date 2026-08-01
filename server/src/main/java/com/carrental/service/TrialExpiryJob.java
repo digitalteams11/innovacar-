@@ -110,11 +110,17 @@ public class TrialExpiryJob {
         return false;
     }
 
+    /**
+     * Title+message reconstruct the exact required sentence for the 3-day
+     * reminder ("Your trial expires in 3 days. Upgrade now to continue using
+     * Innovacar.") and the same phrasing scales naturally for the 7- and
+     * 1-day reminders too, rather than special-casing one string.
+     */
     private void sendReminder(Tenant tenant, long daysRemaining) {
         String dayWord = daysRemaining == 1 ? "day" : "days";
         notificationService.createNotification(
-                "Your free trial ends in " + daysRemaining + " " + dayWord,
-                "Choose a plan before your trial ends to avoid any interruption.",
+                "Your trial expires in " + daysRemaining + " " + dayWord + ".",
+                "Upgrade now to continue using Innovacar.",
                 Notification.NotificationType.WARNING,
                 null,
                 tenant.getId());
