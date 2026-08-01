@@ -38,7 +38,10 @@ export default function GoogleAuthButton({
   const handleClick = () => {
     if (redirecting || disabled) return;
     setRedirecting(true);
-    window.location.href = `${API_ORIGIN}/oauth2/authorization/google`;
+    // Full top-level browser navigation — never fetch/axios. A same-origin
+    // XHR/fetch call here would follow the 302 to accounts.google.com under
+    // CORS rules instead of actually navigating the browser there.
+    window.location.assign(`${API_ORIGIN}/oauth2/authorization/google`);
   };
 
   const busy = redirecting || disabled;

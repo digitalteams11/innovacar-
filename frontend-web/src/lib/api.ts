@@ -16,7 +16,16 @@ function sanitizeConfiguredApiUrl(raw: string | undefined): string | undefined {
   return trimmed;
 }
 
-const configuredApiUrl = sanitizeConfiguredApiUrl(import.meta.env.VITE_API_URL);
+// Desktop-only override: the Innovacar desktop app's Settings lets a user
+// point the installed app at a different backend (e.g. a LAN server) without
+// rebuilding. Only ever consulted inside Electron (window.electronAPI is
+// only defined there, via preload) — a no-op on the web build.
+const desktopApiUrlOverride =
+  typeof window !== 'undefined' && (window as unknown as { electronAPI?: unknown }).electronAPI
+    ? sanitizeConfiguredApiUrl(localStorage.getItem('api_base_url') ?? undefined)
+    : undefined;
+
+const configuredApiUrl = desktopApiUrlOverride ?? sanitizeConfiguredApiUrl(import.meta.env.VITE_API_URL);
 const browserHost =
   typeof window !== 'undefined' && window.location.hostname
     ? window.location.hostname

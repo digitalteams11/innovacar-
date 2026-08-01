@@ -9,7 +9,6 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "i18n:check": "node scripts/check-i18n-keys.js",
     "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
     "electron:dev": "concurrently -k \"npm run dev\" \"npm run electron\"",
     "electron:build": "npm run build && electron-builder"
@@ -57,8 +56,9 @@
     "wait-on": "^9.0.5"
   },
   "build": {
-    "appId": "com.rentcar.desktop",
-    "productName": "Innovacar Desktop",
+    "appId": "app.innovacar.desktop",
+    "productName": "Innovacar",
+    "copyright": "Copyright © Innovax Technologies",
     "directories": {
       "output": "release"
     },
@@ -66,8 +66,18 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "protocols": [
+      {
+        "name": "Innovacar OAuth Callback",
+        "schemes": ["innovacar"]
+      }
+    ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "publisherName": "Innovax Technologies"
+    },
+    "nsis": {
+      "shortcutName": "Innovacar"
     },
     "mac": {
       "target": "dmg"
