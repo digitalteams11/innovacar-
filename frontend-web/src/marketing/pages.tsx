@@ -126,6 +126,7 @@ const API_ORIGIN = (() => {
 interface LiveDesktopRelease {
   loading: boolean;
   available: boolean;
+  releaseId?: number;
   version?: string;
   downloadUrl?: string;
   fileName?: string;
@@ -262,16 +263,25 @@ const UI: Record<string, Dict> = {
     en: 'Accessible from any modern browser, no installation needed. Your data stays in sync across mobile, tablet and desktop.',
     ar: 'يمكن الوصول إليه من أي متصفح حديث دون تثبيت. تبقى بياناتك متزامنة على الهاتف واللوحي والحاسوب.',
   },
-  desktopCardTitle: { fr: `Application ${DESKTOP_PLATFORM}`, en: `${DESKTOP_PLATFORM} application`, ar: `تطبيق ${DESKTOP_PLATFORM}` },
+  desktopCardTitle: { fr: 'Application Windows', en: 'Windows application', ar: 'تطبيق Windows' },
   desktopCardBody: {
-    fr: `Une expérience dédiée pour ${DESKTOP_PLATFORM}, connectée au même compte Innovacar et aux mêmes données que la version web.`,
-    en: `A dedicated experience for ${DESKTOP_PLATFORM}, connected to the same Innovacar account and the same data as the web version.`,
-    ar: `تجربة مخصصة لنظام ${DESKTOP_PLATFORM}، متصلة بنفس حساب Innovacar ونفس بيانات النسخة الإلكترونية.`,
+    fr: 'Installez Innovacar sur votre ordinateur Windows et connectez-vous avec le même compte que sur la version web. Vos véhicules, clients, réservations, contrats et paiements restent synchronisés.',
+    en: 'Install Innovacar on your Windows computer and sign in with the same account as the web version. Your vehicles, clients, reservations, contracts and payments stay synchronized.',
+    ar: 'ثبّت Innovacar على جهاز Windows الخاص بك وسجّل الدخول بنفس الحساب المستخدم في نسخة الويب. تبقى مركباتك وعملاؤك وحجوزاتك وعقودك ومدفوعاتك متزامنة.',
   },
-  desktopDownload: { fr: 'Télécharger', en: 'Download', ar: 'تحميل' },
+  desktopDownload: { fr: 'Télécharger pour Windows', en: 'Download for Windows', ar: 'تحميل لنظام Windows' },
+  desktopAvailableBadge: { fr: 'Disponible', en: 'Available', ar: 'متوفر' },
   desktopSoon: { fr: 'Bientôt disponible', en: 'Coming soon', ar: 'قريباً' },
   desktopWaitlist: { fr: "M'avertir à la disponibilité", en: 'Notify me when available', ar: 'أعلمني عند التوفر' },
   desktopLearnMore: { fr: 'En savoir plus →', en: 'Learn more →', ar: 'اعرف المزيد ←' },
+  desktopViewDetails: { fr: 'Voir les détails', en: 'View details', ar: 'عرض التفاصيل' },
+  desktopSameAccountLine: {
+    fr: 'Même compte, mêmes données, aucune nouvelle configuration requise.',
+    en: 'Same account, same data, no new setup required.',
+    ar: 'نفس الحساب، نفس البيانات، دون الحاجة لأي إعداد جديد.',
+  },
+  desktopWindowsBits: { fr: 'Windows 10/11 · 64 bits', en: 'Windows 10/11 · 64-bit', ar: 'Windows 10/11 · 64 بت' },
+  version: { fr: 'Version', en: 'Version', ar: 'الإصدار' },
 
   contactUs: { fr: 'Contactez-nous', en: 'Contact us', ar: 'تواصل معنا' },
 
@@ -1005,25 +1015,41 @@ function HomePageContent() {
           </div>
           <div className="im-card im-webdesktop-card">
             <div className="im-feature-icon"><Icon d={ICONS.monitor} /></div>
-            <h3>{t(lang, 'desktopCardTitle')}</h3>
+            <div className="im-desktop-card-head">
+              <h3>{t(lang, 'desktopCardTitle')}</h3>
+              <span className={`im-badge ${desktop.available ? 'im-badge-available' : ''}`}>
+                {t(lang, desktop.available ? 'desktopAvailableBadge' : 'desktopSoon')}
+              </span>
+            </div>
             <p>{t(lang, 'desktopCardBody')}</p>
             {desktop.available && desktop.downloadUrl ? (
-              <a
-                href={desktop.downloadUrl}
-                className="im-btn im-btn-primary"
-                onClick={() => recordDesktopDownload(undefined, 'LANDING')}
-              >
-                {t(lang, 'desktopDownload')}
-              </a>
+              <>
+                <ul className="im-desktop-meta">
+                  <li>{t(lang, 'version')} {desktop.version}</li>
+                  <li>{t(lang, 'desktopWindowsBits')}</li>
+                  {desktop.fileSizeBytes && <li>{(desktop.fileSizeBytes / (1024 * 1024)).toFixed(0)} MB</li>}
+                  {desktop.releaseDate && <li>{new Date(desktop.releaseDate).toLocaleDateString(lang)}</li>}
+                </ul>
+                <div className="im-desktop-actions">
+                  <a
+                    href={desktop.downloadUrl}
+                    className="im-btn im-btn-primary"
+                    onClick={() => recordDesktopDownload(desktop.releaseId, 'LANDING')}
+                  >
+                    {t(lang, 'desktopDownload')}
+                  </a>
+                  <a href="/desktop" className="im-btn im-btn-ghost">{t(lang, 'desktopViewDetails')}</a>
+                </div>
+                <p className="im-hero-note">{t(lang, 'desktopSameAccountLine')}</p>
+              </>
             ) : (
               <div className="im-desktop-soon">
-                <span className="im-badge">{t(lang, 'desktopSoon')}</span>
                 <button type="button" className="im-btn im-btn-ghost" onClick={() => scrollToId('contact')}>
                   {t(lang, 'desktopWaitlist')}
                 </button>
+                <a href="/desktop" className="im-link-more">{t(lang, 'desktopLearnMore')}</a>
               </div>
             )}
-            <a href="/desktop" className="im-link-more">{t(lang, 'desktopLearnMore')}</a>
           </div>
         </div>
       </section>
@@ -1211,18 +1237,20 @@ function DesktopPageContent() {
       <section className="im-hero im-hero-compact">
         <h1>{dt(lang, 'title')}</h1>
         <p className="im-hero-sub">{dt(lang, 'subtitle')}</p>
+        <span className={`im-badge ${desktop.available ? 'im-badge-available' : ''}`}>
+          {t(lang, desktop.available ? 'desktopAvailableBadge' : 'desktopSoon')}
+        </span>
         <div className="im-hero-actions">
           {desktop.available && desktop.downloadUrl ? (
             <a
               href={desktop.downloadUrl}
               className="im-btn im-btn-primary im-btn-lg"
-              onClick={() => recordDesktopDownload(undefined, 'DESKTOP_PAGE')}
+              onClick={() => recordDesktopDownload(desktop.releaseId, 'DESKTOP_PAGE')}
             >
-              {t(lang, 'desktopDownload')} {DESKTOP_PLATFORM}
+              {t(lang, 'desktopDownload')}
             </a>
           ) : (
             <div className="im-desktop-soon">
-              <span className="im-badge">{t(lang, 'desktopSoon')}</span>
               <a href="mailto:support@innovacar.app?subject=Notify%20me%20-%20Innovacar%20Desktop" className="im-btn im-btn-ghost im-btn-lg">
                 {t(lang, 'desktopWaitlist')}
               </a>

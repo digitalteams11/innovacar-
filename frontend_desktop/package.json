@@ -1,17 +1,18 @@
 {
   "name": "frontend-desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
     "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
     "electron:dev": "concurrently -k \"npm run dev\" \"npm run electron\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder --win --publish=never",
+    "package:desktop": "npm run electron:build"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",
@@ -59,8 +60,10 @@
     "appId": "app.innovacar.desktop",
     "productName": "Innovacar",
     "copyright": "Copyright © Innovax Technologies",
+    "icon": "build/icon.png",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
@@ -73,11 +76,17 @@
       }
     ],
     "win": {
-      "target": "nsis",
-      "publisherName": "Innovax Technologies"
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "publisherName": "Innovax Technologies",
+      "artifactName": "Innovacar-Setup-${version}.exe",
+      "executableName": "Innovacar"
     },
     "nsis": {
-      "shortcutName": "Innovacar"
+      "shortcutName": "Innovacar",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "allowToChangeInstallationDirectory": true,
+      "oneClick": false
     },
     "mac": {
       "target": "dmg"

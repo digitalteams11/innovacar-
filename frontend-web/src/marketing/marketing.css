@@ -646,6 +646,43 @@ main {
   flex-wrap: wrap;
 }
 
+.im-badge-available {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #059669;
+}
+
+.im-desktop-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.im-desktop-card-head h3 {
+  margin: 0;
+}
+
+.im-desktop-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted, var(--text-primary));
+}
+
+.im-desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
 .im-link-more {
   display: inline-block;
   margin-top: 0.75rem;
