@@ -284,7 +284,7 @@ export default function RolePermissions() {
   const filteredRoles = roles.filter(r => roleLabel(r, t).toLowerCase().includes(roleSearch.toLowerCase()));
 
   return (
-    <div className="space-y-5 p-3 sm:p-4 lg:p-6 pb-24">
+    <div className="space-y-5 pb-24">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-500">
           <ShieldCheck size={21} />

@@ -684,7 +684,7 @@ export default function ContractDetails() {
   ];
 
   return (
-    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
+    <div className="space-y-5 animate-fade">
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">

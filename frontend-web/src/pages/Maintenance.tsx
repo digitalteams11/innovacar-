@@ -320,7 +320,7 @@ export default function Maintenance() {
   }, { context: 'maintenance-repair-orphans' });
 
   return (
-    <div className="space-y-5 p-3 sm:p-4 lg:p-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-[#1e293b]">{t('maintenance.title')}</h1>

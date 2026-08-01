@@ -69,7 +69,7 @@ export default function Agency() {
   }
 
   return (
-    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
+    <div className="space-y-5 animate-fade">
       <div>
         <h1 className="text-lg sm:text-xl font-bold text-[#1e293b]">{t('agency.title')}</h1>
         <p className="text-slate-500 font-normal text-xs sm:text-sm mt-0.5">{t('agency.subtitle')}</p>

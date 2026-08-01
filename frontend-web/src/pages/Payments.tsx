@@ -291,7 +291,7 @@ export default function Payments() {
     // ApiErrorState's button calls onRetry directly as an onClick handler, which
     // would otherwise pass the click MouseEvent through as fetchPayments' signal
     // argument — wrap it so a manual retry always starts a fresh, real request.
-    return <div className="p-3 sm:p-4 lg:p-6"><ApiErrorState message={loadError} onRetry={() => fetchPayments()} /></div>;
+    return <ApiErrorState message={loadError} onRetry={() => fetchPayments()} />;
   }
 
   return (

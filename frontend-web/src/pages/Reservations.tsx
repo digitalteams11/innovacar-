@@ -502,11 +502,7 @@ export default function Reservations() {
     });
   };
   if (loadError) {
-    return (
-      <div className="p-3 sm:p-4 lg:p-6">
-        <ApiErrorState message={loadError} onRetry={fetchReservations} />
-      </div>
-    );
+    return <ApiErrorState message={loadError} onRetry={fetchReservations} />;
   }
 
   return (

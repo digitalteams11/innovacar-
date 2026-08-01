@@ -449,11 +449,11 @@ export default function GpsSettingsPage() {
   }
 
   if (loadError) {
-    return <div className="p-3 sm:p-4 lg:p-6"><ApiErrorState message={loadError} onRetry={fetchSettings} /></div>;
+    return <ApiErrorState message={loadError} onRetry={fetchSettings} />;
   }
 
   return (
-    <div className="space-y-6 animate-fade max-w-6xl mx-auto w-full p-3 sm:p-4 lg:p-6">
+    <div className="space-y-6 animate-fade max-w-6xl mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

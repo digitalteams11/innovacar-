@@ -598,7 +598,7 @@ export default function Vehicles() {
   };
 
   return (
-    <div className="space-y-5 animate-fade p-3 sm:p-4 lg:p-6">
+    <div className="space-y-5 animate-fade">
       <GlassPageHeader
         title={t('vehicles.title')}
         subtitle={t('vehicles.subtitle', { count: data.length })}

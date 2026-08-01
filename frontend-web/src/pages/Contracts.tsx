@@ -1215,11 +1215,7 @@ export default function Contracts() {
   };
 
   if (loadError) {
-    return (
-      <div className="p-3 sm:p-4 lg:p-6">
-        <ApiErrorState message={loadError} onRetry={fetchContracts} />
-      </div>
-    );
+    return <ApiErrorState message={loadError} onRetry={fetchContracts} />;
   }
 
   return (

@@ -282,7 +282,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             nav) so the last row of content — e.g. a vehicle card's action
             buttons — is never left sitting under the fixed FAB when
             scrolled all the way down. */}
-        <main className="page-canvas flex-1 w-full p-3 sm:p-4 lg:p-6 pb-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+88px)] lg:pb-6">
+        {/* Horizontal padding is expressed in exact pixel values (rather than
+            Tailwind's p-3/p-4/p-6 scale) so it lines up precisely with the
+            header's own inset above (mx-2/lg:mx-4 floating margin + its
+            px-3/sm:px-4/lg:px-5 internal padding = 20px/24px/36px) — using
+            the ordinary padding scale here previously left page content
+            sitting a few pixels inboard of the header, a visible
+            misalignment between the header and the page body. */}
+        <main className="page-canvas flex-1 w-full px-[20px] sm:px-[24px] lg:px-[36px] py-3 sm:py-4 lg:py-6 pb-[calc(var(--mobile-nav-height,66px)+env(safe-area-inset-bottom)+88px)] lg:pb-6">
           <AnnouncementBanner />
           <div key={location.pathname} className="animate-fade">{children}</div>
         </main>

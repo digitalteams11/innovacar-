@@ -448,8 +448,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           </div>
         </header>
 
-        {/* Content */}
-        <main className="page-canvas p-3 lg:p-6 pt-2 flex-1 w-full">
+        {/* Content — horizontal padding matches the header's own inset
+            exactly (mx-2/lg:mx-4 + px-4/lg:px-5 = 24px/36px above), see
+            Layout.tsx's matching comment. */}
+        <main className="page-canvas px-[24px] lg:px-[36px] py-3 lg:py-6 pt-2 flex-1 w-full">
           {children}
         </main>
       </div>
