@@ -35,7 +35,8 @@
     "menu": "القائمة",
     "gpsAlerts": "تنبيهات GPS",
     "help": "المساعدة والدعم",
-    "automationCenter": "الذكاء الاصطناعي والأتمتة"
+    "automationCenter": "الذكاء الاصطناعي والأتمتة",
+    "desktopApp": "تطبيق سطح المكتب"
   },
   "assistant": {
     "openMenu": "فتح قائمة المساعد",
@@ -706,7 +707,8 @@
       "OUT_OF_SERVICE": "خارج الخدمة",
       "SOLD": "مباع",
       "ARCHIVED": "مؤرشف"
-    }
+    },
+    "activeContract": "العقد النشط"
   },
   "reservations": {
     "title": "الحجوزات والتأجير",
@@ -2807,7 +2809,8 @@
     "saveChanges": "حفظ التغييرات",
     "notAvailable": "غير متاح",
     "vehicleActionInvalidId": "تعذر فتح هذا الإجراء — مرجع المركبة مفقود.",
-    "discard": "تجاهل"
+    "discard": "تجاهل",
+    "moreActions": "المزيد من الإجراءات"
   },
   "trialBanner": {
     "trialEndsIn": "ينتهي الإصدار التجريبي خلال {{count}} يوم. قم بالترقية لفتح كامل الإمكانات.",
@@ -4240,6 +4243,55 @@
       "NORMAL": "عادي",
       "ELEVATED": "مرتفع",
       "DANGEROUS": "حساس"
+    }
+  },
+  "desktop": {
+    "title": "Innovacar لسطح المكتب",
+    "subtitle": "مساحة عمل Windows أصلية لحساب Innovacar الخاص بك",
+    "downloadWindows": "تحميل لنظام Windows",
+    "comingSoon": "تطبيق سطح المكتب قريباً",
+    "notifyMe": "أعلمني عند التوفر",
+    "latestVersion": "أحدث إصدار",
+    "releaseDate": "تاريخ الإصدار",
+    "fileSize": "حجم الملف",
+    "orLater": "أو أحدث",
+    "req64bit": "معالج 64 بت",
+    "reqInternet": "اتصال بالإنترنت",
+    "reqAccount": "حساب Innovacar نشط",
+    "systemRequirements": "المتطلبات",
+    "benefitsTitle": "لماذا تستخدم تطبيق سطح المكتب",
+    "benefits": {
+      "dedicatedWorkspace": "مساحة عمل مخصصة، منفصلة عن تبويبات المتصفح",
+      "nativeNotifications": "إشعارات Windows الأصلية",
+      "securePdf": "حفظ آمن لملفات PDF عبر نافذة أصلية",
+      "printing": "طباعة مباشرة",
+      "fastAccess": "وصول سريع - انطلق مباشرة إلى لوحة التحكم",
+      "futureUpdates": "تحديثات تلقائية (قريباً)"
+    },
+    "installation": {
+      "title": "خطوات التثبيت",
+      "step1": "افتح Innovacar Setup.",
+      "step2": "اتبع خطوات التثبيت.",
+      "step3": "شغّل Innovacar.",
+      "step4": "سجّل الدخول بنفس حساب Innovacar."
+    },
+    "sameAccount": "نفس الحساب، نفس البيانات",
+    "sameData": "لا حاجة لحساب جديد. سجّل الدخول بنفس بريد Innovacar وكلمة المرور (أو حساب Google) الذي تستخدمه على الويب - مركباتك وحجوزاتك وعقودك وصلاحياتك هي نفس البيانات تماماً، وتُزامن تلقائياً.",
+    "releaseNotes": "ملاحظات الإصدار",
+    "checksum": "بصمة SHA-256",
+    "downloadPreparing": "جارٍ تحضير التحميل…",
+    "downloadStarted": "بدأ التحميل",
+    "downloadFailed": "فشل التحميل - يرجى المحاولة مرة أخرى",
+    "support": "بحاجة للمساعدة؟",
+    "supportCopy": "إذا لم يعمل التثبيت أو تسجيل الدخول كما هو متوقع، تواصل مع الدعم وسنساعدك على الإعداد.",
+    "announcement": {
+      "learnMore": "اعرف المزيد",
+      "notNow": "ليس الآن"
+    },
+    "errors": {
+      "unavailable": "معلومات الإصدار غير متوفرة مؤقتاً.",
+      "unsupportedOs": "يتطلب هذا المثبت نظام Windows 10 أو أحدث.",
+      "downloadExpired": "انتهت صلاحية رابط التحميل هذا - يرجى تحديث الصفحة والمحاولة مرة أخرى."
     }
   }
 }

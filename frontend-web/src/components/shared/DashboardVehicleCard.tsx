@@ -1,9 +1,11 @@
-import { Car, Gauge, Fuel, FileText, Calendar, User, Wrench, Eye, Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Car, Gauge, Fuel, FileText, Calendar, User, Wrench, Eye, ArrowLeftRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { normalizeStatusCode, translateFuelLevel, translateFuelType, translateVehicleCategory, translateVehicleStatus } from '../../utils/statusLabels';
 import { navigateToVehicleAction } from '../../lib/vehicleActions';
 import { useToast } from '../../context/ToastContext';
+import ActionMenu, { type ActionMenuItem } from './ActionMenu';
 
 /* ─── types ─────────────────────────────────────────────────────────── */
 export interface VehicleCardData {
@@ -55,7 +57,7 @@ function StatusBadge({ statut }: { statut?: string }) {
   const key = normalizeStatusCode(statut) || 'AVAILABLE';
   const cfg = STATUS_CFG[key] ?? { cls: 'bg-slate-500/15 text-slate-500 border-slate-500/25' };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cfg.cls}`}>
+    <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cfg.cls}`}>
       {translateVehicleStatus(key)}
     </span>
   );
@@ -64,14 +66,21 @@ function StatusBadge({ statut }: { statut?: string }) {
 /* ─── avatar initial ─────────────────────────────────────────────────── */
 function VehicleIcon({ imageUrl, marque }: { imageUrl?: string; marque: string }) {
   if (imageUrl) {
-    return <img src={imageUrl} alt={marque} className="w-10 h-10 rounded-xl object-cover shrink-0" />;
+    return <img src={imageUrl} alt={marque} className="w-11 h-11 rounded-xl object-cover shrink-0" />;
   }
   return (
-    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
       style={{ background: 'var(--bg-card-hover)' }}>
       <Car size={20} style={{ color: 'var(--text-muted)' }} />
     </div>
   );
+}
+
+interface CardAction {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
 }
 
 /* ─── main card ──────────────────────────────────────────────────────── */
@@ -82,6 +91,7 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
   const pct = fuelPercent(v.fuelLevelCurrent);
   const fuelLevelLabel = translateFuelLevel(v.fuelLevelCurrent) || '-';
   const fuelTypeLabel = translateFuelType(v.fuel);
+  const status = normalizeStatusCode(v.statut) || 'AVAILABLE';
 
   // Every action on this card must carry v.id (the real database key) into
   // the destination workflow via the URL — never silently drop it, never
@@ -92,15 +102,64 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
     });
   };
 
+  const viewAction: CardAction = { key: 'view', label: t('common.view'), icon: <Eye size={14} />, onClick: () => goTo('view') };
+  const contractAction: CardAction = { key: 'contract', label: t('common.contract'), icon: <FileText size={14} />, onClick: () => goTo('contract') };
+  const maintenanceAction: CardAction = { key: 'maintenance', label: t('common.maintenance'), icon: <Wrench size={14} />, onClick: () => goTo('maintenance') };
+  const activeContractAction: CardAction | null = v.activeContractId
+    ? { key: 'active-contract', label: t('vehicles.activeContract', 'Active contract'), icon: <FileText size={14} />, onClick: () => navigate(`/contracts/${v.activeContractId}`) }
+    : null;
+  const returnAction: CardAction | null = onReturn && v.activeContractId
+    ? { key: 'return', label: t('common.return'), icon: <ArrowLeftRight size={14} />, onClick: () => onReturn(v.activeContractId!) }
+    : null;
+
+  // Exactly one primary + one secondary action visible, everything else in
+  // the overflow menu — never five competing colored buttons on one card
+  // (spec: "one primary action, one secondary action, optional overflow").
+  let primary: CardAction = viewAction;
+  let secondary: CardAction | null = null;
+  let overflow: CardAction[] = [];
+
+  if (status === 'AVAILABLE') {
+    primary = { key: 'reserve', label: t('common.reserve'), icon: <Calendar size={14} />, onClick: () => goTo('reserve') };
+    secondary = viewAction;
+    overflow = [contractAction, maintenanceAction];
+  } else if (status === 'RESERVED') {
+    // No reservation id is threaded onto the dashboard vehicle-card payload
+    // today, so "open reservation" isn't a real deep link yet — contract
+    // creation is the next real actionable step for a reserved vehicle.
+    primary = contractAction;
+    secondary = viewAction;
+    overflow = [maintenanceAction];
+  } else if (status === 'RENTED' || status === 'ACTIVE') {
+    primary = returnAction ?? viewAction;
+    secondary = returnAction ? (activeContractAction ?? viewAction) : (activeContractAction ?? null);
+    overflow = [maintenanceAction];
+  } else if (status === 'IN_MAINTENANCE' || status === 'MAINTENANCE') {
+    // No standalone maintenance-record detail view exists yet — View remains
+    // the only real destination for a vehicle already in maintenance.
+    primary = viewAction;
+    secondary = null;
+    overflow = [];
+  } else {
+    overflow = [maintenanceAction];
+  }
+
+  const overflowItems: ActionMenuItem[] = overflow
+    .filter((a) => a.key !== primary.key && a.key !== secondary?.key)
+    .map((a) => ({ label: a.label, icon: a.icon, onClick: a.onClick }));
+
   return (
     <div className="glass-card rounded-2xl p-4 flex flex-col gap-3 hover:shadow-lg transition-all duration-200"
       style={{ border: '1px solid var(--border-subtle)' }}>
 
-      {/* Header */}
+      {/* Header — the vehicle name is never truncated: it wraps onto a
+          second line instead of clipping (spec: "ensure the full vehicle
+          name is readable"). Registration/category sit below it, always
+          fully visible since they're short, fixed-format strings. */}
       <div className="flex items-start gap-3">
         <VehicleIcon imageUrl={v.imageUrl} marque={v.marque} />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
+          <p className="font-semibold text-sm leading-snug break-words" style={{ color: 'var(--text-primary)' }}>
             {v.marque}
           </p>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -110,7 +169,7 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
         <StatusBadge statut={v.statut} />
       </div>
 
-      {/* Fuel level bar */}
+      {/* Fuel level bar — only rendered when real data exists (spec). */}
       {v.fuelLevelCurrent && (
         <div className="space-y-1">
           <div className="flex justify-between items-center">
@@ -126,7 +185,7 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
         </div>
       )}
 
-      {/* Mileage + fuel type */}
+      {/* Mileage + fuel type + daily price */}
       <div className="flex gap-3 text-[11px]" style={{ color: 'var(--text-muted)' }}>
         {v.mileageCurrent != null && (
           <span className="flex items-center gap-1">
@@ -145,7 +204,7 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
         )}
       </div>
 
-      {/* Active contract info */}
+      {/* Active contract info — shown only when relevant (spec). */}
       {v.activeContractNumber && (
         <div className="rounded-xl px-3 py-2 space-y-1"
           style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-subtle)' }}>
@@ -168,49 +227,28 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
         </div>
       )}
 
-      {/* Quick actions — semantic mobile-action tokens (not raw hex) so every
-          button keeps AA-level text contrast in both themes; min-h-10
-          (40px) satisfies the 40-44px touch-target requirement, and each
-          button is allowed to grow to fill a 2-up row on 320px screens
-          instead of shrink-wrapping into an unreadably narrow pill. */}
-      <div className="flex gap-2 flex-wrap pt-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-        <button onClick={() => goTo('view')}
-          aria-label={t('common.view')}
-          className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-          style={{ background: 'var(--mobile-action-neutral-bg)', color: 'var(--mobile-action-neutral-text)', borderColor: 'transparent' }}>
-          <Eye size={14} /> {t('common.view')}
+      {/* Footer — one primary action (brand-colored), one secondary action
+          (neutral outline), everything else behind a single overflow menu.
+          No more than two visible buttons regardless of vehicle status, and
+          maintenance no longer defaults to a large red/danger button just
+          because it *can* be destructive-adjacent (spec section 7). */}
+      <div className="flex items-center gap-2 pt-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+        <button onClick={primary.onClick}
+          aria-label={primary.label}
+          className="flex-1 flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl transition-all hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)' }}>
+          {primary.icon} {primary.label}
         </button>
-        {v.statut === 'AVAILABLE' && (
-          <>
-            <button onClick={() => goTo('reserve')}
-              aria-label={t('common.reserve')}
-              className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-              style={{ background: 'var(--mobile-action-success-bg)', color: 'var(--mobile-action-success-text)', borderColor: 'transparent' }}>
-              <Calendar size={14} /> {t('common.reserve')}
-            </button>
-            <button onClick={() => goTo('contract')}
-              aria-label={t('common.contract')}
-              className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-              style={{ background: 'var(--mobile-action-primary-bg)', color: 'var(--mobile-action-primary-text)', borderColor: 'transparent' }}>
-              <FileText size={14} /> {t('common.contract')}
-            </button>
-          </>
-        )}
-        {(v.statut === 'RENTED' || v.statut === 'ACTIVE') && onReturn && v.activeContractId && (
-          <button onClick={() => onReturn(v.activeContractId!)}
-            aria-label={t('common.return')}
-            className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-            style={{ background: 'var(--mobile-action-warning-bg)', color: 'var(--mobile-action-warning-text)', borderColor: 'transparent' }}>
-            <Plus size={14} /> {t('common.return')}
+        {secondary && (
+          <button onClick={secondary.onClick}
+            aria-label={secondary.label}
+            className="flex-1 flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:bg-[var(--bg-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-medium)' }}>
+            {secondary.icon} {secondary.label}
           </button>
         )}
-        {v.statut !== 'IN_MAINTENANCE' && v.statut !== 'MAINTENANCE' && (
-          <button onClick={() => goTo('maintenance')}
-            aria-label={t('common.maintenance')}
-            className="flex-1 basis-[45%] flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:opacity-85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-            style={{ background: 'var(--mobile-action-danger-bg)', color: 'var(--mobile-action-danger-text)', borderColor: 'transparent' }}>
-            <Wrench size={14} /> {t('common.maintenance')}
-          </button>
+        {overflowItems.length > 0 && (
+          <ActionMenu items={overflowItems} ariaLabel={t('common.moreActions', 'More actions')} />
         )}
       </div>
     </div>

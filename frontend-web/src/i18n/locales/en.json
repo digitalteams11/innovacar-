@@ -58,7 +58,8 @@
     "menu": "Menu",
     "gpsAlerts": "GPS Alerts",
     "help": "Help & Support",
-    "automationCenter": "AI & Automation"
+    "automationCenter": "AI & Automation",
+    "desktopApp": "Desktop App"
   },
   "assistant": {
     "openMenu": "Open assistant menu",
@@ -718,7 +719,8 @@
       "OUT_OF_SERVICE": "Out of service",
       "SOLD": "Sold",
       "ARCHIVED": "Archived"
-    }
+    },
+    "activeContract": "Active contract"
   },
   "reservations": {
     "title": "Reservations & Rentals",
@@ -2807,7 +2809,8 @@
     "saveChanges": "Save Changes",
     "notAvailable": "N/A",
     "vehicleActionInvalidId": "Unable to open this action — the vehicle reference is missing.",
-    "discard": "Discard"
+    "discard": "Discard",
+    "moreActions": "More actions"
   },
   "trialBanner": {
     "trialEndsIn": "Trial ends in {{count}} day. Upgrade anytime to unlock your full potential.",
@@ -4201,6 +4204,55 @@
       "NORMAL": "Normal",
       "ELEVATED": "Elevated",
       "DANGEROUS": "Sensitive"
+    }
+  },
+  "desktop": {
+    "title": "Innovacar Desktop",
+    "subtitle": "A native Windows workspace for your Innovacar account",
+    "downloadWindows": "Download for Windows",
+    "comingSoon": "Desktop app coming soon",
+    "notifyMe": "Notify me when available",
+    "latestVersion": "Latest version",
+    "releaseDate": "Release date",
+    "fileSize": "File size",
+    "orLater": "or later",
+    "req64bit": "64-bit processor",
+    "reqInternet": "Internet connection",
+    "reqAccount": "An active Innovacar account",
+    "systemRequirements": "System requirements",
+    "benefitsTitle": "Why use the desktop app",
+    "benefits": {
+      "dedicatedWorkspace": "A dedicated workspace, separate from your browser tabs",
+      "nativeNotifications": "Native Windows notifications",
+      "securePdf": "Secure PDF saving with a native file dialog",
+      "printing": "Direct printing support",
+      "fastAccess": "Fast access — launch straight into your dashboard",
+      "futureUpdates": "Automatic updates (coming soon)"
+    },
+    "installation": {
+      "title": "Installation steps",
+      "step1": "Open Innovacar Setup.",
+      "step2": "Follow the installation steps.",
+      "step3": "Launch Innovacar.",
+      "step4": "Sign in using the same Innovacar account."
+    },
+    "sameAccount": "Same account, same data",
+    "sameData": "No new account is required. Sign in with the same Innovacar email and password (or Google account) you already use on the web — your vehicles, reservations, contracts and permissions are the exact same data, kept in sync automatically.",
+    "releaseNotes": "Release notes",
+    "checksum": "SHA-256 checksum",
+    "downloadPreparing": "Preparing download…",
+    "downloadStarted": "Download started",
+    "downloadFailed": "Download failed — please try again",
+    "support": "Need help?",
+    "supportCopy": "If the installer or sign-in doesn't work as expected, contact support and we'll help you get set up.",
+    "announcement": {
+      "learnMore": "Learn more",
+      "notNow": "Not now"
+    },
+    "errors": {
+      "unavailable": "Release information is temporarily unavailable.",
+      "unsupportedOs": "This installer requires Windows 10 or later.",
+      "downloadExpired": "This download link has expired — please refresh the page and try again."
     }
   }
 }
