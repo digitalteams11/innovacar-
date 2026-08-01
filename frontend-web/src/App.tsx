@@ -50,6 +50,7 @@ const AutomationCenter = React.lazy(() => import('./pages/AutomationCenter'));
 const Maintenance = React.lazy(() => import('./pages/Maintenance'));
 const RolePermissions = React.lazy(() => import('./pages/RolePermissions'));
 const OperationsCenter = React.lazy(() => import('./pages/OperationsCenter'));
+const DesktopApp = React.lazy(() => import('./pages/DesktopApp'));
 const HelpCenter = React.lazy(() => import('./pages/HelpCenter'));
 const TicketDetail = React.lazy(() => import('./pages/TicketDetail'));
 const PublicContact = React.lazy(() => import('./pages/PublicContact'));
@@ -81,6 +82,7 @@ const SuperAdminFeatures = React.lazy(() => import('./pages/superadmin/SuperAdmi
 const SuperAdminBackups = React.lazy(() => import('./pages/superadmin/SuperAdminBackups'));
 const SuperAdminDataReset = React.lazy(() => import('./pages/superadmin/SuperAdminDataReset'));
 const SuperAdminAnnouncements = React.lazy(() => import('./pages/superadmin/SuperAdminAnnouncements'));
+const SuperAdminDesktopReleases = React.lazy(() => import('./pages/superadmin/SuperAdminDesktopReleases'));
 const SuperAdminStaff = React.lazy(() => import('./pages/superadmin/SuperAdminStaff'));
 const SuperAdminRoles = React.lazy(() => import('./pages/superadmin/SuperAdminRoles'));
 const SuperAdminCancellationRequests = React.lazy(() => import('./pages/superadmin/SuperAdminCancellationRequests'));
@@ -222,6 +224,7 @@ function AppRoutes() {
       <Route path="/super-admin/backups" element={<SuperAdminRoute><SuperAdminBackups /></SuperAdminRoute>} />
       <Route path="/super-admin/data-reset" element={<SuperAdminRoute><SuperAdminDataReset /></SuperAdminRoute>} />
       <Route path="/super-admin/announcements" element={<SuperAdminRoute><SuperAdminAnnouncements /></SuperAdminRoute>} />
+      <Route path="/super-admin/desktop/releases" element={<SuperAdminRoute><SuperAdminDesktopReleases /></SuperAdminRoute>} />
       <Route path="/super-admin/staff" element={<SuperAdminRoute><SuperAdminStaff /></SuperAdminRoute>} />
       <Route path="/super-admin/roles" element={<SuperAdminRoute><SuperAdminRoles /></SuperAdminRoute>} />
       <Route path="/super-admin/cancellation-requests" element={<SuperAdminRoute><SuperAdminCancellationRequests /></SuperAdminRoute>} />
@@ -261,6 +264,7 @@ function AppRoutes() {
       <Route path="/maintenance" element={<ProtectedRoute><PermissionGate permission="VIEW_MAINTENANCE"><FeatureGate feature="VEHICLE_MANAGEMENT"><Maintenance /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/role-permissions" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><RolePermissions /></PermissionGate></ProtectedRoute>} />
       <Route path="/operations-center" element={<ProtectedRoute><OperationsCenter /></ProtectedRoute>} />
+      <Route path="/desktop-app" element={<ProtectedRoute><DesktopApp /></ProtectedRoute>} />
       <Route path="/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
       <Route path="/support" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
       <Route path="/tickets" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />

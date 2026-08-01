@@ -64,9 +64,8 @@ const ENV: EnvBag = {
   VITE_TRIAL_DURATION_DAYS: import.meta.env?.VITE_TRIAL_DURATION_DAYS,
   VITE_TRIAL_PROMO_ENABLED: import.meta.env?.VITE_TRIAL_PROMO_ENABLED,
   VITE_TRIAL_LABEL: import.meta.env?.VITE_TRIAL_LABEL,
-  VITE_DESKTOP_AVAILABLE: import.meta.env?.VITE_DESKTOP_AVAILABLE,
-  VITE_DESKTOP_DOWNLOAD_URL: import.meta.env?.VITE_DESKTOP_DOWNLOAD_URL,
   VITE_DESKTOP_PLATFORM: import.meta.env?.VITE_DESKTOP_PLATFORM,
+  VITE_API_URL: import.meta.env?.VITE_API_URL,
   VITE_CONTACT_EMAIL: import.meta.env?.VITE_CONTACT_EMAIL,
   VITE_CONTACT_WHATSAPP: import.meta.env?.VITE_CONTACT_WHATSAPP,
 };
@@ -114,9 +113,52 @@ const COMPANY_NAME = envStr('VITE_COMPANY_NAME') || 'Innovax Technologies';
 const TRIAL_DAYS = envStr('VITE_TRIAL_DURATION_DAYS');
 const TRIAL_PROMO_ENABLED = envBool('VITE_TRIAL_PROMO_ENABLED');
 const TRIAL_LABEL_OVERRIDE = envStr('VITE_TRIAL_LABEL');
-const DESKTOP_AVAILABLE = envBool('VITE_DESKTOP_AVAILABLE');
-const DESKTOP_URL = envSafeUrl('VITE_DESKTOP_DOWNLOAD_URL');
 const DESKTOP_PLATFORM = envStr('VITE_DESKTOP_PLATFORM') || 'Windows';
+// Desktop availability/download URL are no longer env-driven — they come
+// live from the backend-managed release (GET /api/public/desktop/releases/latest),
+// the single source of truth shared with the authenticated Desktop App page
+// and Super Admin's release manager. See useDesktopReleaseLive() below.
+const API_ORIGIN = (() => {
+  const configured = envStr('VITE_API_URL').replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  return configured || 'https://api.innovacar.app';
+})();
+
+interface LiveDesktopRelease {
+  loading: boolean;
+  available: boolean;
+  version?: string;
+  downloadUrl?: string;
+  fileName?: string;
+  fileSizeBytes?: number;
+  releaseDate?: string;
+  sha256?: string;
+  minimumOs?: string;
+  releaseNotes?: { en: string[]; fr: string[]; ar: string[] };
+}
+
+/** Live release metadata for the homepage's Web & Desktop section, the FAQ, and the /desktop page — never a hardcoded URL. */
+function useDesktopReleaseLive(): LiveDesktopRelease {
+  const [state, setState] = useState<LiveDesktopRelease>({ loading: true, available: false });
+  useEffect(() => {
+    if (!isBrowser()) return;
+    let cancelled = false;
+    fetch(`${API_ORIGIN}/api/public/desktop/releases/latest?platform=WINDOWS&arch=X64`)
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled) setState({ loading: false, ...data }); })
+      .catch(() => { if (!cancelled) setState({ loading: false, available: false }); });
+    return () => { cancelled = true; };
+  }, []);
+  return state;
+}
+
+function recordDesktopDownload(releaseId: number | undefined, source: 'LANDING' | 'DESKTOP_PAGE') {
+  if (!isBrowser()) return;
+  fetch(`${API_ORIGIN}/api/public/desktop/downloads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ releaseId, source, status: 'STARTED' }),
+  }).catch(() => { /* analytics is best-effort, never blocks the download */ });
+}
 const CONTACT_EMAIL = envStr('VITE_CONTACT_EMAIL');
 const CONTACT_WHATSAPP_DIGITS = envStr('VITE_CONTACT_WHATSAPP').replace(/[^\d]/g, '');
 
@@ -229,6 +271,7 @@ const UI: Record<string, Dict> = {
   desktopDownload: { fr: 'Télécharger', en: 'Download', ar: 'تحميل' },
   desktopSoon: { fr: 'Bientôt disponible', en: 'Coming soon', ar: 'قريباً' },
   desktopWaitlist: { fr: "M'avertir à la disponibilité", en: 'Notify me when available', ar: 'أعلمني عند التوفر' },
+  desktopLearnMore: { fr: 'En savoir plus →', en: 'Learn more →', ar: 'اعرف المزيد ←' },
 
   contactUs: { fr: 'Contactez-nous', en: 'Contact us', ar: 'تواصل معنا' },
 
@@ -703,7 +746,7 @@ const TRUST_ITEMS: Array<{ icon: string; title: Dict; body: Dict }> = [
 // ─────────────────────────────────────────────────────────────────────────
 // FAQ (Section 13)
 // ─────────────────────────────────────────────────────────────────────────
-const FAQ_ITEMS: Array<{ q: Dict; a: Dict }> = [
+const FAQ_ITEMS: Array<{ q: Dict; a: Dict; dynamicDesktop?: boolean }> = [
   {
     q: { fr: "Qu'est-ce qu'Innovacar ?", en: 'What is Innovacar?', ar: 'ما هو Innovacar؟' },
     a: {
@@ -722,17 +765,10 @@ const FAQ_ITEMS: Array<{ q: Dict; a: Dict }> = [
   },
   {
     q: { fr: 'Existe-t-il une application de bureau ?', en: 'Is there a desktop application?', ar: 'هل يوجد تطبيق لسطح المكتب؟' },
-    a: {
-      fr: DESKTOP_AVAILABLE
-        ? `Oui, une application ${DESKTOP_PLATFORM} est disponible, connectée aux mêmes données que la version web.`
-        : `Une application ${DESKTOP_PLATFORM} est en préparation. En attendant, la version web fonctionne sur ordinateur sans installation.`,
-      en: DESKTOP_AVAILABLE
-        ? `Yes, a ${DESKTOP_PLATFORM} application is available, connected to the same data as the web version.`
-        : `A ${DESKTOP_PLATFORM} application is in the works. In the meantime, the web version works on desktop with no install.`,
-      ar: DESKTOP_AVAILABLE
-        ? `نعم، يتوفر تطبيق ${DESKTOP_PLATFORM} متصل بنفس بيانات النسخة الإلكترونية.`
-        : `تطبيق ${DESKTOP_PLATFORM} قيد التحضير. في غضون ذلك، تعمل نسخة الويب على الحاسوب دون تثبيت.`,
-    },
+    // Placeholder — the real, live-availability-aware answer is computed in
+    // Faq() via desktopFaqAnswer() below, using useDesktopReleaseLive().
+    a: { fr: '', en: '', ar: '' },
+    dynamicDesktop: true,
   },
   {
     q: { fr: 'Puis-je gérer plusieurs employés ?', en: 'Can I manage several employees?', ar: 'هل يمكنني إدارة عدة موظفين؟' },
@@ -792,8 +828,24 @@ const FAQ_ITEMS: Array<{ q: Dict; a: Dict }> = [
   },
 ];
 
+function desktopFaqAnswer(available: boolean, lang: Lang): string {
+  const dict: Dict = available
+    ? {
+        fr: `Oui, une application ${DESKTOP_PLATFORM} est disponible, connectée aux mêmes données que la version web.`,
+        en: `Yes, a ${DESKTOP_PLATFORM} application is available, connected to the same data as the web version.`,
+        ar: `نعم، يتوفر تطبيق ${DESKTOP_PLATFORM} متصل بنفس بيانات النسخة الإلكترونية.`,
+      }
+    : {
+        fr: `Une application ${DESKTOP_PLATFORM} est en préparation. En attendant, la version web fonctionne sur ordinateur sans installation.`,
+        en: `A ${DESKTOP_PLATFORM} application is in the works. In the meantime, the web version works on desktop with no install.`,
+        ar: `تطبيق ${DESKTOP_PLATFORM} قيد التحضير. في غضون ذلك، تعمل نسخة الويب على الحاسوب دون تثبيت.`,
+      };
+  return dict[lang];
+}
+
 function Faq() {
   const { lang } = useLang();
+  const desktop = useDesktopReleaseLive();
   return (
     <div className="im-faq">
       {FAQ_ITEMS.map((item) => (
@@ -802,7 +854,7 @@ function Faq() {
             <span>{item.q[lang]}</span>
             <Icon d={ICONS.chevron} size={18} />
           </summary>
-          <p>{item.a[lang]}</p>
+          <p>{item.dynamicDesktop ? desktopFaqAnswer(desktop.available, lang) : item.a[lang]}</p>
         </details>
       ))}
     </div>
@@ -896,6 +948,7 @@ function HomePage() {
 /** Rendered as a child of Layout so useLang() here actually sees LangProvider's state. */
 function HomePageContent() {
   const { lang } = useLang();
+  const desktop = useDesktopReleaseLive();
 
   useEffect(() => {
     if (!isBrowser()) return;
@@ -954,8 +1007,12 @@ function HomePageContent() {
             <div className="im-feature-icon"><Icon d={ICONS.monitor} /></div>
             <h3>{t(lang, 'desktopCardTitle')}</h3>
             <p>{t(lang, 'desktopCardBody')}</p>
-            {DESKTOP_AVAILABLE && DESKTOP_URL ? (
-              <a href={DESKTOP_URL} className="im-btn im-btn-primary" target="_blank" rel="noopener noreferrer">
+            {desktop.available && desktop.downloadUrl ? (
+              <a
+                href={desktop.downloadUrl}
+                className="im-btn im-btn-primary"
+                onClick={() => recordDesktopDownload(undefined, 'LANDING')}
+              >
                 {t(lang, 'desktopDownload')}
               </a>
             ) : (
@@ -966,6 +1023,7 @@ function HomePageContent() {
                 </button>
               </div>
             )}
+            <a href="/desktop" className="im-link-more">{t(lang, 'desktopLearnMore')}</a>
           </div>
         </div>
       </section>
@@ -1074,6 +1132,188 @@ function PricingPageContent() {
         <p className="im-hero-sub">{t(lang, 'pricingPageSub')}</p>
       </section>
       <FreeTrialCta />
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Dedicated /desktop page — deeper dive than the homepage's Web & Desktop
+// section, using the same live release data (useDesktopReleaseLive) so
+// nothing here is ever hand-duplicated from the homepage card or the
+// authenticated Desktop App page.
+// ─────────────────────────────────────────────────────────────────────────
+const DESKTOP_PAGE_UI: Record<string, Dict> = {
+  title: { fr: 'Innovacar Bureau', en: 'Innovacar Desktop', ar: 'Innovacar لسطح المكتب' },
+  subtitle: {
+    fr: `Une application ${DESKTOP_PLATFORM} native pour votre compte Innovacar — même compte, mêmes données.`,
+    en: `A native ${DESKTOP_PLATFORM} application for your Innovacar account — same account, same data.`,
+    ar: `تطبيق ${DESKTOP_PLATFORM} أصلي لحساب Innovacar الخاص بك — نفس الحساب، نفس البيانات.`,
+  },
+  benefitsTitle: { fr: 'Pourquoi utiliser Innovacar Bureau', en: 'Why use Innovacar Desktop', ar: 'لماذا تستخدم Innovacar لسطح المكتب' },
+  benefit1: { fr: 'Un espace de travail dédié, séparé de vos onglets de navigateur', en: 'A dedicated workspace, separate from your browser tabs', ar: 'مساحة عمل مخصصة، منفصلة عن تبويبات المتصفح' },
+  benefit2: { fr: 'Notifications natives Windows', en: 'Native Windows notifications', ar: 'إشعارات Windows الأصلية' },
+  benefit3: { fr: 'Enregistrement sécurisé des PDF', en: 'Secure PDF saving', ar: 'حفظ آمن لملفات PDF' },
+  benefit4: { fr: 'Impression directe', en: 'Direct printing', ar: 'طباعة مباشرة' },
+  benefit5: { fr: 'Accès rapide au tableau de bord', en: 'Fast access to your dashboard', ar: 'وصول سريع إلى لوحة التحكم' },
+  benefit6: { fr: 'Mises à jour automatiques (bientôt)', en: 'Automatic updates (coming soon)', ar: 'تحديثات تلقائية (قريباً)' },
+  reqTitle: { fr: 'Configuration requise', en: 'System requirements', ar: 'المتطلبات' },
+  req1: { fr: 'Windows 10 ou plus récent', en: 'Windows 10 or later', ar: 'Windows 10 أو أحدث' },
+  req2: { fr: 'Processeur 64 bits', en: '64-bit processor', ar: 'معالج 64 بت' },
+  req3: { fr: 'Connexion Internet', en: 'Internet connection', ar: 'اتصال بالإنترنت' },
+  req4: { fr: 'Un compte Innovacar actif', en: 'An active Innovacar account', ar: 'حساب Innovacar نشط' },
+  releaseInfo: { fr: 'Informations sur la version', en: 'Release information', ar: 'معلومات الإصدار' },
+  version: { fr: 'Version', en: 'Version', ar: 'الإصدار' },
+  releaseDate: { fr: 'Date de sortie', en: 'Release date', ar: 'تاريخ الإصدار' },
+  fileSize: { fr: 'Taille du fichier', en: 'File size', ar: 'حجم الملف' },
+  architecture: { fr: 'Architecture', en: 'Architecture', ar: 'المعمارية' },
+  checksum: { fr: 'Somme de contrôle SHA-256', en: 'SHA-256 checksum', ar: 'بصمة SHA-256' },
+  releaseNotesTitle: { fr: 'Notes de version', en: 'Release notes', ar: 'ملاحظات الإصدار' },
+  securityTitle: { fr: 'Sécurité', en: 'Security', ar: 'الأمان' },
+  securityBody: {
+    fr: "L'installateur est distribué en HTTPS depuis une source approuvée. La signature de code Windows est en cours de mise en place — nous l'indiquerons ici dès qu'elle sera active.",
+    en: 'The installer is distributed over HTTPS from an approved source. Windows code signing is being put in place — we will state clearly here once it is active.',
+    ar: 'يتم توزيع المثبت عبر HTTPS من مصدر معتمد. يجري حالياً إعداد التوقيع الرقمي لـ Windows — سنوضح ذلك هنا فور تفعيله.',
+  },
+  installTitle: { fr: "Étapes d'installation", en: 'Installation steps', ar: 'خطوات التثبيت' },
+  installStep1: { fr: 'Ouvrez Innovacar Setup.', en: 'Open Innovacar Setup.', ar: 'افتح Innovacar Setup.' },
+  installStep2: { fr: "Suivez les étapes d'installation.", en: 'Follow the installation steps.', ar: 'اتبع خطوات التثبيت.' },
+  installStep3: { fr: 'Lancez Innovacar.', en: 'Launch Innovacar.', ar: 'شغّل Innovacar.' },
+  installStep4: { fr: 'Connectez-vous avec votre compte Innovacar habituel.', en: 'Sign in using your usual Innovacar account.', ar: 'سجّل الدخول باستخدام حساب Innovacar المعتاد.' },
+  loginNote: {
+    fr: "Aucun nouveau compte n'est nécessaire. Les données de l'application web et de bureau restent synchronisées automatiquement.",
+    en: 'No new account is needed. Web and desktop data stay synchronized automatically.',
+    ar: 'لا حاجة لحساب جديد. تبقى بيانات تطبيقي الويب وسطح المكتب متزامنة تلقائياً.',
+  },
+  supportTitle: { fr: 'Besoin d’aide ?', en: 'Need help?', ar: 'بحاجة للمساعدة؟' },
+  supportBody: { fr: 'Contactez le support si l’installation ou la connexion ne se déroule pas comme prévu.', en: "Contact support if the installer or sign-in doesn't work as expected.", ar: 'تواصل مع الدعم إذا لم يعمل التثبيت أو تسجيل الدخول كما هو متوقع.' },
+  faqTitle: { fr: 'Questions fréquentes', en: 'Frequently asked questions', ar: 'الأسئلة الشائعة' },
+};
+
+function dt(lang: Lang, key: string): string {
+  return DESKTOP_PAGE_UI[key]?.[lang] ?? key;
+}
+
+function DesktopPage() {
+  return (
+    <Layout>
+      <DesktopPageContent />
+    </Layout>
+  );
+}
+
+function DesktopPageContent() {
+  const { lang } = useLang();
+  const desktop = useDesktopReleaseLive();
+  const notes = desktop.releaseNotes?.[lang] ?? desktop.releaseNotes?.en ?? [];
+
+  return (
+    <>
+      <section className="im-hero im-hero-compact">
+        <h1>{dt(lang, 'title')}</h1>
+        <p className="im-hero-sub">{dt(lang, 'subtitle')}</p>
+        <div className="im-hero-actions">
+          {desktop.available && desktop.downloadUrl ? (
+            <a
+              href={desktop.downloadUrl}
+              className="im-btn im-btn-primary im-btn-lg"
+              onClick={() => recordDesktopDownload(undefined, 'DESKTOP_PAGE')}
+            >
+              {t(lang, 'desktopDownload')} {DESKTOP_PLATFORM}
+            </a>
+          ) : (
+            <div className="im-desktop-soon">
+              <span className="im-badge">{t(lang, 'desktopSoon')}</span>
+              <a href="mailto:support@innovacar.app?subject=Notify%20me%20-%20Innovacar%20Desktop" className="im-btn im-btn-ghost im-btn-lg">
+                {t(lang, 'desktopWaitlist')}
+              </a>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="im-section">
+        <div className="im-mockup-desktop" role="img" aria-label={dt(lang, 'title')}>
+          <div className="im-mockup-topbar"><span /><span /><span /></div>
+          <div className="im-mockup-body">
+            <div className="im-mockup-sidebar">
+              {[ICONS.chart, ICONS.car, ICONS.calendar, ICONS.users].map((d, i) => (
+                <span key={i} className={i === 0 ? 'im-mockup-sidebar-active' : ''}><Icon d={d} size={16} /></span>
+              ))}
+            </div>
+            <div className="im-mockup-main">
+              <div className="im-mockup-stat-row"><div className="im-mockup-stat" /><div className="im-mockup-stat" /><div className="im-mockup-stat" /></div>
+              <div className="im-mockup-chart" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="im-section">
+        <h2>{dt(lang, 'benefitsTitle')}</h2>
+        <ul className="im-trial-notes">
+          {['benefit1', 'benefit2', 'benefit3', 'benefit4', 'benefit5', 'benefit6'].map((key) => (
+            <li key={key}>{dt(lang, key)}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="im-section">
+        <h2>{dt(lang, 'reqTitle')}</h2>
+        <ul className="im-trial-notes">
+          <li>{dt(lang, 'req1')}</li>
+          <li>{dt(lang, 'req2')}</li>
+          <li>{dt(lang, 'req3')}</li>
+          <li>{dt(lang, 'req4')}</li>
+        </ul>
+      </section>
+
+      {desktop.available && (
+        <section className="im-section">
+          <h2>{dt(lang, 'releaseInfo')}</h2>
+          <ul className="im-trial-notes">
+            <li>{dt(lang, 'version')}: {desktop.version}</li>
+            <li>{dt(lang, 'releaseDate')}: {desktop.releaseDate ? new Date(desktop.releaseDate).toLocaleDateString(lang) : '—'}</li>
+            <li>{dt(lang, 'fileSize')}: {desktop.fileSizeBytes ? `${(desktop.fileSizeBytes / (1024 * 1024)).toFixed(0)} MB` : '—'}</li>
+            <li>{dt(lang, 'architecture')}: X64</li>
+          </ul>
+          {desktop.sha256 && (
+            <p className="im-hero-note" style={{ wordBreak: 'break-all' }}>{dt(lang, 'checksum')}: {desktop.sha256}</p>
+          )}
+          {notes.length > 0 && (
+            <>
+              <h3>{dt(lang, 'releaseNotesTitle')}</h3>
+              <ul className="im-trial-notes">
+                {notes.map((line, i) => <li key={i}>{line}</li>)}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
+      <section className="im-section">
+        <h2>{dt(lang, 'securityTitle')}</h2>
+        <p className="im-section-sub">{dt(lang, 'securityBody')}</p>
+      </section>
+
+      <section className="im-section">
+        <h2>{dt(lang, 'installTitle')}</h2>
+        <ol className="im-steps">
+          {['installStep1', 'installStep2', 'installStep3', 'installStep4'].map((key, i) => (
+            <li key={key}><strong>{i + 1}. {dt(lang, key)}</strong></li>
+          ))}
+        </ol>
+        <p className="im-hero-note">{dt(lang, 'loginNote')}</p>
+      </section>
+
+      <section id="faq" className="im-section">
+        <h2>{dt(lang, 'faqTitle')}</h2>
+        <Faq />
+      </section>
+
+      <section className="im-section im-contact">
+        <h2>{dt(lang, 'supportTitle')}</h2>
+        <p className="im-section-sub">{dt(lang, 'supportBody')} <a href="mailto:support@innovacar.app">support@innovacar.app</a></p>
+      </section>
     </>
   );
 }
@@ -1349,6 +1589,14 @@ export const MARKETING_PAGES: Record<string, { meta: MarketingPageMeta; Componen
       description: "Démarrez un essai gratuit d'Innovacar, sans carte bancaire, ou contactez-nous pour un devis adapté à votre agence.",
     },
     Component: PricingPage,
+  },
+  '/desktop': {
+    meta: {
+      path: '/desktop',
+      title: 'Innovacar Desktop | Application Windows',
+      description: "Téléchargez Innovacar pour Windows : notifications natives, PDF sécurisés, impression et accès rapide, connecté aux mêmes données que la version web.",
+    },
+    Component: DesktopPage,
   },
   '/confidentialite': {
     meta: {

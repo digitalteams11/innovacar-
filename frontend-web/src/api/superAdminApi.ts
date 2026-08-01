@@ -56,6 +56,17 @@ export const superAdminApi = {
     api.patch(`/super-admin/announcements/${id}/status`, { active }),
 
   // ═══════════════════════════════════════════════════════════════
+  // DESKTOP RELEASES
+  // ═══════════════════════════════════════════════════════════════
+  getDesktopReleases: () => api.get('/super-admin/desktop/releases'),
+  createDesktopRelease: (data: any) => api.post('/super-admin/desktop/releases', data),
+  updateDesktopRelease: (id: number, data: any) => api.put(`/super-admin/desktop/releases/${id}`, data),
+  publishDesktopRelease: (id: number) => api.post(`/super-admin/desktop/releases/${id}/publish`),
+  deprecateDesktopRelease: (id: number) => api.post(`/super-admin/desktop/releases/${id}/deprecate`),
+  withdrawDesktopRelease: (id: number) => api.post(`/super-admin/desktop/releases/${id}/withdraw`),
+  getDesktopReleaseAnalytics: () => api.get('/super-admin/desktop/releases/analytics'),
+
+  // ═══════════════════════════════════════════════════════════════
   // SUBSCRIPTION & BILLING SYSTEM
   // ═══════════════════════════════════════════════════════════════
   getPlans: () => api.get('/super-admin/plans'),

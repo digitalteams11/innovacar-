@@ -54,6 +54,31 @@ public class Announcement {
     @Column(nullable = false)
     private boolean active;
 
+    /** What this announcement is about — drives client-side rendering (icon, CTA) and eligibility rules for the desktop-promotion types. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 40)
+    private Type type;
+
+    /** Restricts a DESKTOP_* announcement to one client platform (e.g. only show to Windows web users). Null = no platform restriction. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Platform platform;
+
+    /** Release version this announcement refers to (e.g. NEW_MAJOR_DESKTOP_VERSION) — lets the client decide whether a new dismissal cycle is warranted for a newer version. */
+    @Column(length = 50)
+    private String version;
+
+    @Column(nullable = false)
+    private boolean dismissible;
+
+    /** Days a user's dismissal suppresses this announcement before it's eligible to show again. */
+    @Column(name = "cooldown_days", nullable = false)
+    private int cooldownDays;
+
+    /** Where the announcement's primary action navigates (e.g. /desktop-app). */
+    @Column(name = "action_url", length = 1000)
+    private String actionUrl;
+
     @Column(name = "created_by")
     private String createdBy;
 
@@ -68,6 +93,8 @@ public class Announcement {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (priority == null) priority = Priority.NORMAL;
+        if (type == null) type = Type.GENERIC;
+        if (cooldownDays <= 0) cooldownDays = 30;
     }
 
     @PreUpdate
@@ -77,4 +104,6 @@ public class Announcement {
 
     public enum Audience { ALL, SELECTED_AGENCIES, PLAN, ROLE }
     public enum Priority { LOW, NORMAL, HIGH, CRITICAL }
+    public enum Type { GENERIC, DESKTOP_AVAILABLE, NEW_MAJOR_DESKTOP_VERSION, DESKTOP_SECURITY_UPDATE, DESKTOP_MAINTENANCE, DESKTOP_COMING_SOON }
+    public enum Platform { WINDOWS, MAC, LINUX }
 }

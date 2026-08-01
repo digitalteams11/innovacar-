@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Archive, BarChart3, Bell, Calendar, Car, ChevronDown, CreditCard, FileText, HelpCircle,
-  Info, LayoutDashboard, LockKeyhole, MapPin, MoreHorizontal,
+  Info, LayoutDashboard, LockKeyhole, MapPin, Monitor, MoreHorizontal,
   Palette, PanelLeftClose, PanelLeftOpen, Settings, ShieldCheck,
   Sparkles, Users, Wrench,
 } from 'lucide-react';
@@ -101,6 +101,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/white-label', icon: Palette, label: t('nav.whiteLabel'), feature: 'WHITE_LABEL' },
     { to: '/automation-center', icon: Sparkles, label: t('nav.automationCenter', 'AI & Automation'), feature: 'AUTOMATION_CENTER' },
     { to: '/operations-center', icon: HelpCircle, label: t('nav.operationsCenter') },
+    { to: '/desktop-app', icon: Monitor, label: t('nav.desktopApp', 'Desktop App') },
     { to: '/help', icon: HelpCircle, label: t('nav.help', 'Help & Support') },
   ], [t]);
 
