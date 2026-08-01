@@ -190,9 +190,10 @@ export default function PrivacyTab({ inspectionRetentionDays }: PrivacyTabProps)
       </div>
 
       {showDeactivateModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDeactivateModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-elevated w-full max-w-md p-6">
+          <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
             <h3 className="text-lg font-bold text-[#1e293b] mb-2">{t('settings.privacyTab.requestDeactivationTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">
               {t('settings.privacyTab.deactivationModalDesc')}
@@ -204,22 +205,27 @@ export default function PrivacyTab({ inspectionRetentionDays }: PrivacyTabProps)
               rows={3}
               className="w-full px-3 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm mb-4 focus:outline-none focus:ring-2 ring-rose-100 resize-none"
             />
-            <label className="flex items-start gap-2 mb-4 text-sm text-slate-600">
+            <label className="flex items-start gap-2 text-sm text-slate-600">
               <input type="checkbox" checked={deactivateConfirm} onChange={(e) => setDeactivateConfirm(e.target.checked)} className="mt-0.5 w-4 h-4 accent-rose-500" />
               {t('settings.privacyTab.deactivationConfirm')}
             </label>
-            <div className="flex gap-3">
-              <button
-                onClick={submitDeactivationRequest}
-                disabled={submittingDeactivate}
-                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              >
-                {submittingDeactivate ? t('settings.privacyTab.submitting') : t('settings.privacyTab.submitRequest')}
-              </button>
-              <button onClick={() => setShowDeactivateModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                {t('settings.privacyTab.cancel')}
-              </button>
-            </div>
+          </div>
+
+          <div
+            className="shrink-0 flex gap-3 border-t border-[#e8e6e1] p-6"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button
+              onClick={submitDeactivationRequest}
+              disabled={submittingDeactivate}
+              className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            >
+              {submittingDeactivate ? t('settings.privacyTab.submitting') : t('settings.privacyTab.submitRequest')}
+            </button>
+            <button onClick={() => setShowDeactivateModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors">
+              {t('settings.privacyTab.cancel')}
+            </button>
+          </div>
           </div>
         </div>
       )}

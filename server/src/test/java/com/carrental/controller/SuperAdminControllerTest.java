@@ -1,5 +1,8 @@
 package com.carrental.controller;
 
+import com.carrental.entity.CancellationReason;
+import com.carrental.entity.CancellationRequest;
+import com.carrental.entity.CancellationRequestStatus;
 import com.carrental.entity.EmailLog;
 import com.carrental.entity.EmailTemplate;
 import com.carrental.entity.OnboardingProgress;
@@ -78,6 +81,7 @@ class SuperAdminControllerTest {
     @Mock private GpsAlertRepository gpsAlertRepository;
     @Mock private SubscriptionPlanRepository planRepository;
     @Mock private SupportTicketRepository ticketRepository;
+    @Mock private com.carrental.repository.CancellationRequestRepository cancellationRequestRepository;
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private PlatformSettingsRepository platformSettingsRepository;
     @Mock private PromoCodeRepository promoCodeRepository;
@@ -544,6 +548,95 @@ class SuperAdminControllerTest {
             assertThat(log.getTemplateId()).isEqualTo(7L);
             assertThat(log.getStatus()).isEqualTo("SENT");
         });
+    }
+
+    // ── Cancellation requests ─────────────────────────────────────────────────
+    // Regression coverage for the bug where getCancellationRequests/approve/reject
+    // lacked @Transactional: with spring.jpa.open-in-view=false, touching the lazy
+    // `tenant` association from cancellationRequestRow() outside an active Hibernate
+    // session throws LazyInitializationException, which the global exception handler's
+    // catch-all turns into a 500 "temporarily unavailable" message. These unit tests
+    // exercise the business logic (status filtering, transitions, row shape) with
+    // Mockito doubles — they can't reproduce the lazy-proxy failure itself (Mockito
+    // mocks have no lazy-loading behavior), so the @Transactional presence itself was
+    // verified separately by booting the app against a real Postgres database.
+
+    @Test
+    void getCancellationRequests_withStatusFilter_returnsOnlyMatchingRowsShapedForTheTable() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").build();
+        CancellationRequest pending = CancellationRequest.builder()
+                .id(1L).tenant(tenant).requestedByUserId(10L).reason(CancellationReason.TOO_EXPENSIVE)
+                .status(CancellationRequestStatus.PENDING).createdAt(LocalDateTime.now()).build();
+        when(cancellationRequestRepository.findAllByStatusOrderByCreatedAtDesc(CancellationRequestStatus.PENDING))
+                .thenReturn(List.of(pending));
+
+        List<Map<String, Object>> rows = superAdminController.getCancellationRequests("pending").getBody();
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0))
+                .containsEntry("tenantId", 5L)
+                .containsEntry("agencyName", "Atlas Rentals")
+                .containsEntry("status", CancellationRequestStatus.PENDING);
+    }
+
+    @Test
+    void getCancellationRequests_noFilter_returnsEmptyList_notAnError() {
+        when(cancellationRequestRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+
+        List<Map<String, Object>> rows = superAdminController.getCancellationRequests(null).getBody();
+
+        assertThat(rows).isEmpty();
+    }
+
+    @Test
+    void approveCancellationRequest_cancelsSubscriptionAndMarksApproved() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").status("ACTIVE").subscriptionActive(true).build();
+        CancellationRequest request = CancellationRequest.builder()
+                .id(9L).tenant(tenant).requestedByUserId(10L).reason(CancellationReason.OTHER)
+                .status(CancellationRequestStatus.PENDING).createdAt(LocalDateTime.now()).build();
+        when(cancellationRequestRepository.findById(9L)).thenReturn(Optional.of(request));
+
+        Map<String, Object> body = superAdminController.approveCancellationRequest(9L).getBody();
+
+        assertThat(tenant.getStatus()).isEqualTo("CANCELLED");
+        assertThat(tenant.isSubscriptionActive()).isFalse();
+        assertThat(request.getStatus()).isEqualTo(CancellationRequestStatus.APPROVED);
+        assertThat(request.getReviewedBy()).isEqualTo("superadmin@test.com");
+        assertThat(body).containsEntry("success", true);
+        verify(tenantRepository).save(tenant);
+        verify(cancellationRequestRepository).save(request);
+    }
+
+    @Test
+    void approveCancellationRequest_alreadyReviewed_returns409WithoutMutatingTenant() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").status("ACTIVE").subscriptionActive(true).build();
+        CancellationRequest request = CancellationRequest.builder()
+                .id(9L).tenant(tenant).requestedByUserId(10L).reason(CancellationReason.OTHER)
+                .status(CancellationRequestStatus.APPROVED).createdAt(LocalDateTime.now()).build();
+        when(cancellationRequestRepository.findById(9L)).thenReturn(Optional.of(request));
+
+        var response = superAdminController.approveCancellationRequest(9L);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(tenant.getStatus()).isEqualTo("ACTIVE");
+        verify(tenantRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void rejectCancellationRequest_marksRejectedWithOptionalNote() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").build();
+        CancellationRequest request = CancellationRequest.builder()
+                .id(9L).tenant(tenant).requestedByUserId(10L).reason(CancellationReason.OTHER)
+                .status(CancellationRequestStatus.PENDING).createdAt(LocalDateTime.now()).build();
+        when(cancellationRequestRepository.findById(9L)).thenReturn(Optional.of(request));
+
+        Map<String, Object> body = superAdminController
+                .rejectCancellationRequest(9L, Map.of("note", "Retention offer accepted")).getBody();
+
+        assertThat(request.getStatus()).isEqualTo(CancellationRequestStatus.REJECTED);
+        assertThat(request.getReviewNote()).isEqualTo("Retention offer accepted");
+        assertThat(body).containsEntry("success", true);
+        verify(cancellationRequestRepository).save(request);
     }
 
     private Payment payment(String number, Tenant tenant, String amount, LocalDateTime paymentDate) {

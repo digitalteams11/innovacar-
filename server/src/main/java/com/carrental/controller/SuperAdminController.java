@@ -2674,6 +2674,7 @@ public class SuperAdminController {
     // ═══════════════════════════════════════════════════════════════════════════
 
     @GetMapping("/cancellation-requests")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getCancellationRequests(
             @RequestParam(required = false) String status) {
         List<CancellationRequest> requests = status != null
@@ -2683,6 +2684,7 @@ public class SuperAdminController {
     }
 
     @PatchMapping("/cancellation-requests/{id}/approve")
+    @Transactional
     public ResponseEntity<Map<String, Object>> approveCancellationRequest(@PathVariable Long id) {
         CancellationRequest request = cancellationRequestRepository.findById(id)
                 .orElseThrow(() -> new com.carrental.exception.ResourceNotFoundException("Cancellation request not found"));
@@ -2709,6 +2711,7 @@ public class SuperAdminController {
     }
 
     @PatchMapping("/cancellation-requests/{id}/reject")
+    @Transactional
     public ResponseEntity<Map<String, Object>> rejectCancellationRequest(
             @PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         CancellationRequest request = cancellationRequestRepository.findById(id)

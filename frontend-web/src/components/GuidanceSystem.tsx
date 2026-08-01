@@ -309,7 +309,24 @@ export default function GuidanceSystem() {
       )}
 
       {showWizard && (
-        <Dialog onClose={() => setShowWizard(false)} wide>
+        <Dialog
+          onClose={() => setShowWizard(false)}
+          wide
+          footer={wizardStep < 7 && (
+            <div className="flex items-center justify-between">
+              <button disabled={wizardStep === 0} onClick={() => setWizardStep(step => step - 1)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 disabled:opacity-30">
+                <ArrowLeft size={16} /> {t('guidance.previous')}
+              </button>
+              <button
+                disabled={saving}
+                onClick={wizardStep < 2 ? saveConfigurationStep : () => setWizardStep(step => step + 1)}
+                className="flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {t('guidance.next')} <ArrowRight size={16} />
+              </button>
+            </div>
+          )}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold uppercase text-brand-500">{t('guidance.setup')} {wizardStep + 1}/8</p>
@@ -335,20 +352,6 @@ export default function GuidanceSystem() {
               <ActionStep title={t('guidance.wizard.complete.description')} completed actionLabel={t('guidance.wizard.complete.action')} onAction={finish} />
             )}
           </div>
-          {wizardStep < 7 && (
-            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-              <button disabled={wizardStep === 0} onClick={() => setWizardStep(step => step - 1)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 disabled:opacity-30">
-                <ArrowLeft size={16} /> {t('guidance.previous')}
-              </button>
-              <button
-                disabled={saving}
-                onClick={wizardStep < 2 ? saveConfigurationStep : () => setWizardStep(step => step + 1)}
-                className="flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {t('guidance.next')} <ArrowRight size={16} />
-              </button>
-            </div>
-          )}
         </Dialog>
       )}
 
@@ -371,17 +374,27 @@ export default function GuidanceSystem() {
   );
 }
 
-function Dialog({ children, onClose, wide = false }: { children: React.ReactNode; onClose: () => void; wide?: boolean }) {
+function Dialog({ children, footer, onClose, wide = false }: { children: React.ReactNode; footer?: React.ReactNode; onClose: () => void; wide?: boolean }) {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[110] flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true">
       <button className="absolute inset-0 bg-[#0b1437]/65 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
-      <div className={`relative max-h-[90vh] w-full overflow-y-auto bg-white p-6 shadow-2xl sm:p-8 ${wide ? 'max-w-3xl' : 'max-w-xl'}`}>
-        {children}
+      <div className={`relative flex max-h-[100dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-xl'}`}>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 sm:p-8">
+          {children}
+        </div>
+        {footer && (
+          <div
+            className="shrink-0 border-t border-slate-100 px-6 py-4 sm:px-8"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

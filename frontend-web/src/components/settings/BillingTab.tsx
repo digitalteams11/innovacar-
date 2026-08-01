@@ -560,9 +560,10 @@ export default function BillingTab() {
 
       {/* Upgrade/checkout confirm modal */}
       {showUpgradeModal && selectedPlan && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+        <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)} />
-          <div className="relative bg-white dark:bg-[#0f1428] rounded-2xl shadow-elevated w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto p-5 sm:p-6 space-y-4">
+          <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated dark:bg-[#0f1428] sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4">
             <div>
               <h3 className="text-lg font-bold text-[#1e293b] dark:text-white">{t('settings.billingTab.confirmPlanChange')}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -604,28 +605,33 @@ export default function BillingTab() {
             <p className="text-xs text-slate-400">
               {t('settings.billingTab.redirectCheckoutHint')}
             </p>
+          </div>
 
-            <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3">
-              <button onClick={() => setShowUpgradeModal(false)} className="flex-1 min-h-[44px] bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-[#1e293b] dark:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                {t('settings.billingTab.cancel')}
-              </button>
-              <button
-                onClick={handleCheckout}
-                disabled={checkoutLoading}
-                className="flex-1 min-h-[44px] bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-              >
-                {checkoutLoading ? <><Loader2 size={14} className="animate-spin" />{t('settings.billingTab.processing')}</> : t('settings.billingTab.continueToCheckout')}
-              </button>
-            </div>
+          <div
+            className="shrink-0 flex flex-col-reverse gap-2.5 border-t border-[#e8e6e1] p-5 dark:border-white/10 sm:flex-row sm:gap-3 sm:p-6"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button onClick={() => setShowUpgradeModal(false)} className="flex-1 min-h-[44px] bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-[#1e293b] dark:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+              {t('settings.billingTab.cancel')}
+            </button>
+            <button
+              onClick={handleCheckout}
+              disabled={checkoutLoading}
+              className="flex-1 min-h-[44px] bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+            >
+              {checkoutLoading ? <><Loader2 size={14} className="animate-spin" />{t('settings.billingTab.processing')}</> : t('settings.billingTab.continueToCheckout')}
+            </button>
+          </div>
           </div>
         </div>
       )}
 
       {/* Cancellation request modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-elevated w-full max-w-md p-6">
+          <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
             <h3 className="text-lg font-bold text-[#1e293b] mb-2">{t('settings.billingTab.requestCancellation')}</h3>
             <p className="text-sm text-slate-500 mb-4">
               {t('settings.billingTab.cancellationReviewHint')}
@@ -655,7 +661,7 @@ export default function BillingTab() {
               className="w-full px-3 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm mb-4 focus:outline-none focus:ring-2 ring-rose-100 resize-none"
             />
 
-            <label className="flex items-start gap-2 mb-4 cursor-pointer">
+            <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={cancelConfirmed}
@@ -664,22 +670,26 @@ export default function BillingTab() {
               />
               <span className="text-sm text-slate-600">{t('settings.billingTab.confirmCancellationReview')}</span>
             </label>
+          </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={handleRequestCancellation}
-                disabled={cancelling || !cancelConfirmed}
-                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              >
-                {cancelling ? t('settings.billingTab.submitting') : t('settings.billingTab.submitRequest')}
-              </button>
-              <button
-                onClick={() => { setShowCancelModal(false); setCancelFeedback(''); setCancelConfirmed(false); }}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              >
-                {t('settings.billingTab.keepSubscription')}
-              </button>
-            </div>
+          <div
+            className="shrink-0 flex gap-3 border-t border-[#e8e6e1] p-6"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button
+              onClick={handleRequestCancellation}
+              disabled={cancelling || !cancelConfirmed}
+              className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            >
+              {cancelling ? t('settings.billingTab.submitting') : t('settings.billingTab.submitRequest')}
+            </button>
+            <button
+              onClick={() => { setShowCancelModal(false); setCancelFeedback(''); setCancelConfirmed(false); }}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#1e293b] py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            >
+              {t('settings.billingTab.keepSubscription')}
+            </button>
+          </div>
           </div>
         </div>
       )}

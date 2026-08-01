@@ -550,16 +550,16 @@ export default function OperationsCenter() {
       )}
 
       {creating && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
-          <div className="data-surface w-full max-w-xl p-5 shadow-2xl">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="data-surface flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl shadow-2xl sm:max-h-[90dvh] sm:max-w-xl sm:rounded-2xl">
+            <div className="shrink-0 flex items-center justify-between p-5">
               <div>
                 <h2 className="text-lg font-semibold text-[var(--text-primary)]">{activeTab === 'complaints' ? t('operations.submitComplaint') : t('operations.createSupportRequest')}</h2>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">{t('operations.requestTrackingHint')}</p>
               </div>
               <button onClick={() => setCreating(false)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"><X size={18} /></button>
             </div>
-            <div className="mt-5 space-y-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 space-y-4">
               <input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} placeholder={t('operations.subjectPlaceholder') as string} className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none" />
               <div className="grid grid-cols-2 gap-3">
                 <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none">
@@ -578,6 +578,11 @@ export default function OperationsCenter() {
                 </select>
               </div>
               <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={6} placeholder={t('operations.descriptionPlaceholder') as string} className="w-full resize-none rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-sm text-[var(--text-primary)] outline-none" />
+            </div>
+            <div
+              className="shrink-0 p-5 pt-0"
+              style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+            >
               <button disabled={submitting} onClick={submitTicket} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-3 text-sm font-semibold text-[var(--brand-primary-foreground,#171817)] disabled:opacity-50">
                 <Send size={16} /> {submitting ? t('operations.submitting') : t('operations.submitRequest')}
               </button>
@@ -588,7 +593,7 @@ export default function OperationsCenter() {
 
       {selectedTicket && (
         <div className="fixed inset-0 z-[110] flex items-end justify-end bg-black/45 backdrop-blur-sm sm:p-4">
-          <section className="flex h-[92vh] w-full max-w-xl flex-col overflow-hidden bg-[var(--bg-card)] shadow-2xl sm:h-[calc(100vh-2rem)] sm:rounded-lg sm:border sm:border-[var(--border-subtle)]">
+          <section className="flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-[var(--bg-card)] shadow-2xl sm:h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:border-[var(--border-subtle)]">
             <header className="flex items-start justify-between border-b border-[var(--border-subtle)] p-5">
               <div>
                 <p className="font-mono text-xs text-[var(--brand-primary)]">{selectedTicket.ticketNumber}</p>
@@ -613,7 +618,7 @@ export default function OperationsCenter() {
                 </div>
               ))}
             </div>
-            <footer className="border-t border-[var(--border-subtle)] p-4">
+            <footer className="shrink-0 border-t border-[var(--border-subtle)] p-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
               {attachment && (
                 <div className="mb-3 flex items-center justify-between rounded-lg bg-[var(--bg-hover)] px-3 py-2 text-xs text-[var(--text-secondary)]">
                   <span className="truncate">{attachment.name}</span>

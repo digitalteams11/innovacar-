@@ -31,20 +31,23 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative bg-white dark:bg-[#1a2332] rounded-2xl shadow-elevated w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col`}>
-        <div className="sticky top-0 bg-white dark:bg-[#1a2332] px-6 py-4 border-b border-[#e8e6e1]/60 dark:border-white/5 flex items-center justify-between z-10 rounded-t-2xl">
+      <div className={`relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated dark:bg-[#1a2332] sm:max-h-[90dvh] sm:rounded-2xl ${sizeClasses[size]}`}>
+        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-[#e8e6e1]/60 dark:border-white/5">
           <h2 className="text-lg font-bold text-[#1e293b] dark:text-white">{title}</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors">
             <X size={18} className="text-slate-400" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
           {children}
         </div>
         {footer && (
-          <div className="sticky bottom-0 bg-white dark:bg-[#1a2332] px-6 py-4 border-t border-[#e8e6e1]/60 dark:border-white/5 rounded-b-2xl z-10">
+          <div
+            className="shrink-0 border-t border-[#e8e6e1]/60 px-6 py-4 dark:border-white/5"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
             {footer}
           </div>
         )}

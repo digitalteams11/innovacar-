@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { superAdminApi } from '../../api/superAdminApi';
 import { useToast } from '../../context/ToastContext';
-import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronDown, RefreshCw, ShieldAlert, ServerCrash, WifiOff, SearchX, LockKeyhole } from 'lucide-react';
 
 interface CancellationRequestRow {
   id: number;
@@ -26,6 +26,27 @@ const REASON_LABELS: Record<string, string> = {
   OTHER: 'Other',
 };
 
+/** Compact inline error, local to the table — never a full-page reload, never a global toast. Retry only shown for genuinely retriable failures (401/403 changing nothing by retrying). */
+function InlineLoadError({ icon: Icon, message, retriable, onRetry }: {
+  icon: React.ElementType; message: string; retriable: boolean; onRetry?: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 text-center">
+      <Icon size={22} className="text-slate-400" />
+      <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">{message}</p>
+      {retriable && onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-1 flex items-center gap-1.5 rounded-lg border border-[#e8e6e1]/80 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+        >
+          <RefreshCw size={12} /> Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
 const STATUS_STYLES: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   APPROVED: 'bg-rose-50 text-rose-700 border-rose-200',
@@ -33,22 +54,39 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: 'bg-slate-50 text-slate-600 border-slate-200',
 };
 
+/**
+ * Explicit load-state machine for this page's one query — a 401/403/404/500/
+ * network error must each show their own precise, compact inline state
+ * (never a single generic "service unavailable" toast, and never a full-page
+ * reload to retry). SUCCESS covers both "has rows" and "empty" — the table
+ * body itself already renders the right one from `requests.length`.
+ */
+type LoadState = 'loading' | 'success' | 'unauthorized' | 'forbidden' | 'not_found' | 'server_error' | 'network_error';
+
+function classifyLoadError(err: any): LoadState {
+  const status: number | undefined = err?.response?.status;
+  if (!err?.response) return 'network_error';
+  if (status === 401) return 'unauthorized';
+  if (status === 403) return 'forbidden';
+  if (status === 404) return 'not_found';
+  return 'server_error'; // 500/502/503/etc — a real backend problem, not classified as "unavailable" by default
+}
+
 export default function SuperAdminCancellationRequests() {
   const { showToast } = useToast();
   const [requests, setRequests] = useState<CancellationRequestRow[]>([]);
   const [statusFilter, setStatusFilter] = useState('PENDING');
-  const [loading, setLoading] = useState(true);
+  const [loadState, setLoadState] = useState<LoadState>('loading');
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = async () => {
-    setLoading(true);
+    setLoadState('loading');
     try {
       const { data } = await superAdminApi.getCancellationRequests(statusFilter || undefined);
       setRequests(data);
+      setLoadState('success');
     } catch (err: any) {
-      showToast(err?.userMessage || 'Unable to load cancellation requests.', 'error');
-    } finally {
-      setLoading(false);
+      setLoadState(classifyLoadError(err));
     }
   };
 
@@ -118,8 +156,41 @@ export default function SuperAdminCancellationRequests() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loadState === 'loading' ? (
                 <tr><td colSpan={6} className="text-center py-12 text-slate-400">Loading...</td></tr>
+              ) : loadState === 'unauthorized' ? (
+                <tr><td colSpan={6} className="py-10"><InlineLoadError
+                  icon={LockKeyhole}
+                  message="Your session has expired. Please sign in again."
+                  retriable={false}
+                /></td></tr>
+              ) : loadState === 'forbidden' ? (
+                <tr><td colSpan={6} className="py-10"><InlineLoadError
+                  icon={ShieldAlert}
+                  message="You do not have permission to view cancellation requests."
+                  retriable={false}
+                /></td></tr>
+              ) : loadState === 'not_found' ? (
+                <tr><td colSpan={6} className="py-10"><InlineLoadError
+                  icon={SearchX}
+                  message="This page could not reach the cancellation requests endpoint."
+                  retriable={true}
+                  onRetry={load}
+                /></td></tr>
+              ) : loadState === 'network_error' ? (
+                <tr><td colSpan={6} className="py-10"><InlineLoadError
+                  icon={WifiOff}
+                  message="Could not reach the server. Check your connection and try again."
+                  retriable={true}
+                  onRetry={load}
+                /></td></tr>
+              ) : loadState === 'server_error' ? (
+                <tr><td colSpan={6} className="py-10"><InlineLoadError
+                  icon={ServerCrash}
+                  message="Something went wrong loading cancellation requests. Our team has been notified."
+                  retriable={true}
+                  onRetry={load}
+                /></td></tr>
               ) : requests.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-12 text-slate-400">No cancellation requests found.</td></tr>
               ) : (

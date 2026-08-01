@@ -147,13 +147,13 @@ export default function SuperAdminFeatures() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl border border-[#e8e6e1] shadow-elevated">
-            <div className="px-5 py-4 border-b border-[#e8e6e1] flex items-center justify-between">
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center p-0 sm:items-center sm:p-4">
+          <div className="flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl border border-[#e8e6e1] bg-white shadow-elevated sm:max-h-[90dvh] sm:max-w-xl sm:rounded-none">
+            <div className="shrink-0 px-5 py-4 border-b border-[#e8e6e1] flex items-center justify-between">
               <h2 className="font-bold text-[#1e293b]">{form.id ? 'Edit Feature' : 'Create Feature'}</h2>
               <button onClick={() => setModalOpen(false)} className="p-1.5 text-slate-400"><X size={17} /></button>
             </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 ['code', 'Feature Code'],
                 ['name', 'Feature Name'],
@@ -178,7 +178,10 @@ export default function SuperAdminFeatures() {
                 <textarea value={form.benefits || ''} onChange={(e) => setForm({ ...form, benefits: e.target.value })} className="mt-1 w-full px-3 py-2.5 border border-[#e8e6e1] rounded-lg text-sm min-h-20 outline-none" />
               </label>
             </div>
-            <div className="px-5 py-4 border-t border-[#e8e6e1] flex justify-end gap-2">
+            <div
+              className="shrink-0 px-5 py-4 border-t border-[#e8e6e1] flex justify-end gap-2"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
               <button onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-slate-500">Cancel</button>
               <button onClick={saveFeature} className="px-4 py-2 bg-[#0a0f2c] text-white rounded-lg text-sm font-semibold">Save Feature</button>
             </div>

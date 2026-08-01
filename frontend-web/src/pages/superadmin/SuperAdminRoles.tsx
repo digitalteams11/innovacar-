@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, ShieldCheck, Plus, Crown, X } from 'lucide-react';
 import { superAdminApi } from '../../api/superAdminApi';
@@ -196,14 +197,15 @@ export default function SuperAdminRoles() {
       })}
 
       {showCreate && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-[#1a2332] rounded-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-[#1e293b] dark:text-white">New Staff Role</h3>
-              <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-[#1e293b] dark:hover:text-white">
-                <X size={18} />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 backdrop-blur-sm p-0 sm:items-center sm:p-4">
+          <div className="flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl dark:bg-[#1a2332] sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+          <div className="shrink-0 flex items-center justify-between px-6 pt-6">
+            <h3 className="text-base font-bold text-[#1e293b] dark:text-white">New Staff Role</h3>
+            <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-[#1e293b] dark:hover:text-white">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
             <div className="space-y-3">
               <input
                 type="text" placeholder="Code (e.g. REGIONAL_MANAGER)" value={form.code}
@@ -222,18 +224,22 @@ export default function SuperAdminRoles() {
               />
               <p className="text-xs text-slate-400">New roles start with no permissions granted — enable them below after creating.</p>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5">
-                Cancel
-              </button>
-              <button
-                onClick={createRole}
-                disabled={creating}
-                className="px-4 py-2 rounded-xl text-sm font-medium bg-[#0a0f2c] text-white hover:bg-[#0a0f2c]/85 disabled:opacity-60"
-              >
-                {creating ? 'Creating...' : 'Create'}
-              </button>
-            </div>
+          </div>
+          <div
+            className="shrink-0 flex justify-end gap-2 border-t border-[#e8e6e1] px-6 py-4 dark:border-white/10"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5">
+              Cancel
+            </button>
+            <button
+              onClick={createRole}
+              disabled={creating}
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-[#0a0f2c] text-white hover:bg-[#0a0f2c]/85 disabled:opacity-60"
+            >
+              {creating ? 'Creating...' : 'Create'}
+            </button>
+          </div>
           </div>
         </div>
       )}
