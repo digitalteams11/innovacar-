@@ -964,6 +964,15 @@
 .dark .bg-gray-100 {
   background-color: var(--bg-active) !important;
 }
+/* Was missing from this list — left a light-gray disabled-tab/divider pill
+   (e.g. ContractDetails.tsx's disabled tab state) sitting in dark UI with no
+   remapping, while its paired text-slate-400 WAS already remapped to
+   var(--text-muted) (a light color meant for dark backgrounds) — a real
+   low-contrast "mixed mode" combination, not just a cosmetic mismatch. */
+.dark .bg-slate-200,
+.dark .bg-gray-200 {
+  background-color: var(--bg-active) !important;
+}
 .dark .border-slate-200,
 .dark .border-gray-200 {
   border-color: var(--border-medium) !important;
@@ -971,6 +980,10 @@
 .dark .border-slate-100,
 .dark .border-gray-100 {
   border-color: var(--border-subtle) !important;
+}
+.dark .border-slate-300,
+.dark .border-gray-300 {
+  border-color: var(--border-medium) !important;
 }
 /* Hardcoded hex overrides — matches Settings.tsx pattern */
 .dark .text-\[\#1e293b\],

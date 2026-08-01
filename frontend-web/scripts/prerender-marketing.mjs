@@ -5,7 +5,7 @@
 //
 // Run via `npm run prerender:marketing`, wired after `vite build` and before
 // `verify:seo` so dist/ has the final marketing HTML before the SEO checks run.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { transformWithOxc } from 'vite';
@@ -16,6 +16,34 @@ const DIST = path.join(ROOT, '..', 'dist');
 const PAGES_SRC = path.join(ROOT, '..', 'src', 'marketing', 'pages.tsx');
 const TEMPLATE_PATH = path.join(DIST, 'index.html');
 const CANONICAL_ORIGIN = 'https://innovacar.app';
+
+// ── Root cause of the "unstyled text/nav flash on refresh" bug ──────────────
+// src/marketing/MarketingApp.tsx imports its own marketing.css, but
+// MarketingApp itself is dynamically import()'d from main.tsx (intentional
+// code-splitting, so the authenticated app bundle never ships marketing-only
+// CSS). Vite therefore emits that CSS as its own hashed chunk
+// (dist/assets/MarketingApp-*.css), separate from the critical-path
+// index-*.css this template's <head> already references. The prerendered
+// body markup below (im-page/im-header/im-brand/...) is real HTML painted
+// immediately on load, but its actual layout rules only exist in that
+// separate chunk — which Vite doesn't request until index-*.js has
+// downloaded, parsed, and executed the dynamic import(). That gap between
+// "raw prerendered markup paints" and "MarketingApp-*.css chunk link is
+// injected at runtime" is the flash. Fix: reference that same hashed file
+// directly in <head> here too, so it loads in parallel with index-*.css
+// instead of waiting on JS execution — no change to the code-splitting
+// itself, no duplicate CSS shipped to the authenticated app.
+function findMarketingCssHref() {
+  const assetsDir = path.join(DIST, 'assets');
+  const match = readdirSync(assetsDir).find((f) => /^MarketingApp-.*\.css$/.test(f));
+  if (!match) {
+    throw new Error(
+      '[prerender-marketing] could not find dist/assets/MarketingApp-*.css — ' +
+      'has MarketingApp.tsx stopped importing marketing.css, or did the build output change shape?'
+    );
+  }
+  return `/assets/${match}`;
+}
 
 // ── Compile src/marketing/pages.tsx (TS+JSX) to plain ESM so this plain
 // Node script can import it directly, without adding a bundler/loader
@@ -33,6 +61,10 @@ writeFileSync(tmpFile, code, 'utf8');
 const { MARKETING_PAGES } = await import(`${pathToFileURL(tmpFile).href}?t=${Date.now()}`);
 
 const template = readFileSync(TEMPLATE_PATH, 'utf8');
+const marketingCssHref = findMarketingCssHref();
+if (!/<link rel="stylesheet"[^>]*>/.test(template)) {
+  throw new Error('[prerender-marketing] dist/index.html has no <link rel="stylesheet"> to anchor the marketing CSS link after — template shape changed.');
+}
 
 // Static (non-React) neutral placeholder shown instead of the marketing body
 // when route-bootstrap.js detects a "#/..." hash-route refresh (see the CSS
@@ -71,6 +103,15 @@ for (const [routePath, { meta, Component }] of Object.entries(MARKETING_PAGES)) 
   const bodyHtml = renderToStaticMarkup(Component());
 
   let html = template;
+
+  // Load the marketing layout's own CSS chunk in parallel with the critical
+  // path bundle instead of waiting for main.tsx's runtime dynamic import to
+  // request it — this is the actual fix for the unstyled-flash bug (see
+  // findMarketingCssHref() above for the full root-cause explanation).
+  html = html.replace(
+    /(<link rel="stylesheet"[^>]*>)/,
+    `$1\n    <link rel="stylesheet" crossorigin href="${marketingCssHref}">`
+  );
 
   // <title>
   html = html.replace(/<title>.*?<\/title>/s, `<title>${escapeHtml(meta.title)}</title>`);
