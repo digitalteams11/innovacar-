@@ -116,7 +116,13 @@ export default function ReportArchive() {
   );
 
   return (
-    <div className="p-4 lg:p-6 max-w-6xl mx-auto">
+    // No max-width/padding here — page-canvas (Layout.tsx) already provides
+    // both for every authenticated page; this page previously duplicated
+    // both (its own p-4 lg:p-6 on top of page-canvas's padding, and a
+    // max-w-6xl cap well below page-canvas's own width) which is exactly the
+    // "narrow centered container on a full-width page" bug, matching the
+    // established root-wrapper convention used by Contracts.tsx/Vehicles.tsx.
+    <div className="space-y-5 animate-fade">
       <GlassPageHeader
         title={t('reports.archiveTitle', 'Report Archive')}
         subtitle={t('reports.archiveSubtitle', 'Monthly and yearly financial reports, generated automatically or on demand')}

@@ -683,8 +683,21 @@
     box-shadow: 0 0 0 3px rgba(71, 125, 145, .13);
   }
 
+  /* The single shared width constraint for every authenticated page's
+     content (see Layout.tsx's <main className="page-canvas ...">). At any
+     normal desktop/laptop width (up to ~2200px of space beside the sidebar)
+     this never binds — width is 100%, matching the header's own near-full-
+     width span exactly. It only engages on genuinely ultrawide monitors, so
+     the dashboard/tables/grids never look like a centered marketing page —
+     per spec, an app-specific ceiling (1800-2200px), never a marketing-page
+     limit (~1200px). Marketing/public pages use their own separate
+     .im-* container system in marketing.css, never this class.
+     Previously capped at 1760px, which — combined with GpsDashboard.tsx and
+     ReportArchive.tsx additionally wrapping their own content in an inner
+     max-w-4xl/max-w-6xl (896px/1152px) — is what produced the reported
+     large empty side margins even on ordinary desktop widths. */
   .page-canvas {
-    width: min(100%, 1760px);
+    width: min(100%, 2200px);
     margin-inline: auto;
   }
 
