@@ -115,6 +115,12 @@
     --z-floating-fab: 55;
     --z-bottom-sheet-overlay: 60;
     --z-bottom-sheet-panel: 70;
+    /* Dropdowns/overflow menus that render inline (not through Modal.tsx's
+       portal) still need to escape ancestor `overflow: clip|hidden` — e.g.
+       .glass-card sets overflow: clip for its rounded-corner gradient edge,
+       which silently clipped ActionMenu's popover into invisibility. Below
+       --z-modal-overlay so an open modal always wins. */
+    --z-popover: 900;
     --z-modal-overlay: 1000;
     --z-modal-dialog: 1000;
     --z-toast: 1100;

@@ -233,14 +233,14 @@ export default function DashboardVehicleCard({ v, onReturn }: { v: VehicleCardDa
           maintenance no longer defaults to a large red/danger button just
           because it *can* be destructive-adjacent (spec section 7). */}
       <div className="flex items-center gap-2 pt-1 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-        <button onClick={primary.onClick}
+        <button type="button" onClick={primary.onClick}
           aria-label={primary.label}
           className="flex-1 flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl transition-all hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)' }}>
           {primary.icon} {primary.label}
         </button>
         {secondary && (
-          <button onClick={secondary.onClick}
+          <button type="button" onClick={secondary.onClick}
             aria-label={secondary.label}
             className="flex-1 flex items-center justify-center gap-1.5 min-h-10 text-xs font-bold px-3 py-2 rounded-xl border transition-all hover:bg-[var(--bg-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-medium)' }}>
