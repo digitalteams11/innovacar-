@@ -169,12 +169,16 @@ describe('ThemeProvider — login/logout must not silently change the theme', ()
     // Must capture classList state AT CALL TIME, not afterwards — the whole
     // point is to catch a commit where they briefly disagreed, and checking
     // `isDark()` only after everything settles would miss exactly that.
-    const bgPageWrites: Array<{ value: string; darkAtCallTime: boolean }> = [];
+    const bgPageWrites: Array<{ value: string | null; darkAtCallTime: boolean }> = [];
     const realSetProperty = document.documentElement.style.setProperty.bind(document.documentElement.style);
     const setPropertySpy = vi.spyOn(document.documentElement.style, 'setProperty')
-      .mockImplementation((prop: string, value: string) => {
+      // CSSStyleDeclaration.setProperty's real signature accepts `value: string | null`
+      // (passing null removes the property) — match it exactly rather than narrowing to
+      // `string`, which is what TS2345 was flagging: a mock assigned to a wider real
+      // signature must still accept every value that signature accepts.
+      .mockImplementation((prop: string, value: string | null, priority?: string) => {
         if (prop === '--bg-page') bgPageWrites.push({ value, darkAtCallTime: isDark() });
-        return realSetProperty(prop, value);
+        return realSetProperty(prop, value, priority);
       });
 
     render(<ThemeProvider><TestProbe /></ThemeProvider>);
@@ -187,6 +191,10 @@ describe('ThemeProvider — login/logout must not silently change the theme', ()
 
     expect(bgPageWrites.length).toBeGreaterThan(0);
     for (const { value, darkAtCallTime } of bgPageWrites) {
+      // ThemeContext always sets --bg-page to a concrete preset hex string —
+      // never clears it — so a null write here would itself be a bug, not a
+      // value this test's LIGHT_BG/DARK_BG branches should silently ignore.
+      expect(value).not.toBeNull();
       if (value === LIGHT_BG) {
         expect(darkAtCallTime).toBe(false);
       } else if (value === DARK_BG) {
