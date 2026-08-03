@@ -18,6 +18,15 @@ vi.mock('../../context/ToastContext', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }));
 
+vi.mock('../../context/ConfirmContext', () => ({
+  useConfirm: () => vi.fn(async () => true),
+  usePromptText: () => vi.fn(async () => null),
+}));
+
+vi.mock('../../context/PermissionContext', () => ({
+  usePermissions: () => ({ hasPermission: () => true, loading: false }),
+}));
+
 // This page's own signing/inspection sub-components are unrelated to the
 // resend-email and signature-display logic under test here, and each pulls
 // in its own heavy dependency tree (canvas signing, file upload, etc.) —

@@ -1063,6 +1063,8 @@
       "requiredDocuments": "Documents requis",
       "additionalDrivers": "Conducteurs additionnels",
       "noAdditionalDrivers": "Aucun conducteur additionnel",
+      "driverEmailPlaceholder": "Email du conducteur (optionnel)",
+      "driverSignatureRequired": "Signature individuelle requise",
       "vehicleInspection": "Inspection du véhicule",
       "reservationSummary": "Récapitulatif de la réservation",
       "creatingContract": "Création du contrat...",
@@ -1124,6 +1126,63 @@
       "contractCancelled": "Contrat annulé",
       "contractRestored": "Contrat restauré avec succès",
       "contractPermanentlyDeleted": "Contrat définitivement supprimé"
+    },
+    "driverSignature": {
+      "sectionTitle": "Signatures des conducteurs additionnels",
+      "status": {
+        "NOT_REQUIRED": "Non requise",
+        "PENDING": "En attente",
+        "LINK_SENT": "Lien envoyé",
+        "OPENED": "Ouvert",
+        "SIGNED": "Signé",
+        "DECLINED": "Refusé",
+        "EXPIRED": "Expiré",
+        "REVOKED": "Révoqué"
+      },
+      "actions": {
+        "sendLink": "Envoyer le lien",
+        "resend": "Renvoyer",
+        "revoke": "Révoquer",
+        "viewSignature": "Voir la signature",
+        "viewAudit": "Voir l'historique",
+        "generateNewLink": "Générer un nouveau lien",
+        "review": "Consulter"
+      },
+      "linkSentAt": "Lien envoyé",
+      "openedAt": "Ouvert",
+      "signedAt": "Signé",
+      "declinedAt": "Refusé",
+      "modalTitle": "Lien de signature du conducteur",
+      "linkGenerated": "Lien de signature sécurisé généré",
+      "signingUrl": "URL de signature",
+      "expiresAt": "Expire le {{date}}",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "linkCopied": "Lien copié dans le presse-papiers.",
+      "copyFailed": "Impossible de copier le lien. Veuillez réessayer.",
+      "emailSubject": "Signature requise — Contrat {{contractNumber}}",
+      "whatsappMessage": "Bonjour {{driverName}},\n\nVous avez été ajouté comme conducteur additionnel au contrat {{contractNumber}} de l'agence {{agencyName}}.\n\nVeuillez consulter et signer votre déclaration ici :\n{{secureSigningUrl}}\n\nCe lien est personnel et ne doit pas être partagé.",
+      "confirmRevokeTitle": "Révoquer le lien de signature ?",
+      "confirmRevokeBody": "Cette action invalidera le lien de signature actuel pour {{name}}. Un nouveau lien sera nécessaire pour signer.",
+      "viewSignature": "Détails de la signature",
+      "signatureImageAlt": "Signature du conducteur",
+      "auditIp": "Adresse IP",
+      "auditDeclarationVersion": "Version de la déclaration",
+      "auditDeclarationsAccepted": "Déclarations acceptées",
+      "declineReasonLabel": "Motif du refus",
+      "noDeclineReason": "Aucun motif fourni.",
+      "declarationLabels": {
+        "identityCorrect": "Identité et informations du permis confirmées",
+        "licenseValid": "Permis de conduire valide confirmé",
+        "responsibilityAccepted": "Responsabilité pendant la conduite acceptée",
+        "termsRead": "Contrat de location et conditions de l'agence acceptés",
+        "dataConsent": "Lien personnel et non partageable reconnu"
+      },
+      "errors": {
+        "sendFailed": "Impossible de générer le lien de signature. Veuillez réessayer.",
+        "revokeFailed": "Impossible de révoquer le lien de signature. Veuillez réessayer.",
+        "loadFailed": "Impossible de charger les détails de la signature. Veuillez réessayer."
+      }
     }
   },
   "clientSearch": {
@@ -4035,6 +4094,67 @@
     "seo": {
       "title": "Signature du contrat",
       "description": "Lien sécurisé de signature de contrat."
+    }
+  },
+  "publicAdditionalDriverSign": {
+    "loading": "Chargement de votre page de signature...",
+    "pageLabel": "Signature du conducteur additionnel",
+    "agencyFallback": "Agence",
+    "vehicleFallback": "Véhicule",
+    "roleLabel": "Conducteur additionnel",
+    "roleExplanation": "Vous avez été ajouté comme conducteur additionnel sur ce contrat de location. Veuillez consulter et signer votre propre déclaration ci-dessous — indépendamment de la signature du client principal.",
+    "maskedLicenseLabel": "Permis",
+    "mainClientLabel": "Client principal",
+    "start": "Début",
+    "end": "Fin",
+    "daysCount_one": "{{count}} jour",
+    "daysCount_other": "{{count}} jours",
+    "declarationsTitle": "Déclarations",
+    "declarations": {
+      "identityCorrect": "Je confirme que les informations d'identité et de permis de conduire affichées sont correctes.",
+      "licenseValid": "Je confirme que je détiens un permis de conduire valide.",
+      "responsibilityAccepted": "J'accepte la responsabilité du véhicule pendant que je le conduis.",
+      "termsRead": "J'accepte de respecter le contrat de location et les conditions de l'agence.",
+      "dataConsent": "Je comprends que ce lien de signature est personnel et ne doit pas être partagé."
+    },
+    "yourSignature": "Votre signature",
+    "acceptAllBeforeSigning": "Veuillez accepter toutes les déclarations ci-dessus avant de signer.",
+    "signWithFingerOrStylus": "Signez avec votre doigt ou un stylet",
+    "syncingSignature": "Synchronisation de votre signature...",
+    "cannotSignLink": "Je ne peux pas signer",
+    "declineConfirmTitle": "Refuser de signer ?",
+    "declineConfirmBody": "Vous pouvez éventuellement indiquer la raison à l'agence. Cette action est irréversible depuis cette page.",
+    "declineReasonPlaceholder": "Raison (optionnel)",
+    "declineConfirmButton": "Confirmer le refus",
+    "declinedTitle": "Signature refusée",
+    "declinedBody": "Vous avez refusé de signer cette déclaration. L'agence a été notifiée.",
+    "successTitle": "Signature enregistrée !",
+    "successBody": "Votre signature a été enregistrée en toute sécurité et synchronisée avec l'agence.",
+    "canCloseNowNote": "Vous pouvez maintenant fermer cette page.",
+    "contactAgencyForAssistance": "Veuillez contacter l'agence de location pour obtenir de l'aide.",
+    "errorTitles": {
+      "INVALID": "Lien invalide",
+      "EXPIRED": "Lien expiré",
+      "REVOKED": "Lien révoqué",
+      "ALREADY_SIGNED": "Déjà signé",
+      "CANCELLED": "Contrat annulé",
+      "NETWORK": "Problème de connexion",
+      "GENERIC": "Impossible de charger"
+    },
+    "errors": {
+      "INVALID": "Ce lien de signature est invalide. Veuillez contacter l'agence de location pour un nouveau lien.",
+      "EXPIRED": "Ce lien de signature a expiré. Veuillez contacter l'agence de location pour un nouveau lien.",
+      "REVOKED": "Ce lien de signature n'est plus valide. Veuillez contacter l'agence de location pour un nouveau lien.",
+      "ALREADY_SIGNED": "Cette déclaration a déjà été signée.",
+      "CANCELLED": "Ce contrat de location a été annulé. Aucune signature n'est requise.",
+      "NETWORK": "Impossible de joindre le serveur. Veuillez vérifier votre connexion et réessayer.",
+      "GENERIC": "Cette page n'a pas pu être chargée pour le moment. Veuillez réessayer sous peu.",
+      "submitFailed": "Échec de l'enregistrement de votre signature. Veuillez réessayer.",
+      "declineFailed": "Échec de l'enregistrement de votre refus. Veuillez réessayer."
+    },
+    "seo": {
+      "title": "Signature du conducteur additionnel",
+      "description": "Lien sécurisé de signature du conducteur additionnel."
     }
   },
   "permissions": {

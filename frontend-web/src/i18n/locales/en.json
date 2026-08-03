@@ -1063,6 +1063,8 @@
       "requiredDocuments": "Required Documents",
       "additionalDrivers": "Additional Drivers",
       "noAdditionalDrivers": "No additional drivers",
+      "driverEmailPlaceholder": "Driver email (optional)",
+      "driverSignatureRequired": "Requires own signature",
       "vehicleInspection": "Vehicle Inspection",
       "reservationSummary": "Reservation Summary",
       "creatingContract": "Creating contract...",
@@ -1124,6 +1126,63 @@
       "contractCancelled": "Contract cancelled",
       "contractRestored": "Contract restored successfully",
       "contractPermanentlyDeleted": "Contract permanently deleted"
+    },
+    "driverSignature": {
+      "sectionTitle": "Additional driver signatures",
+      "status": {
+        "NOT_REQUIRED": "Not required",
+        "PENDING": "Pending",
+        "LINK_SENT": "Link sent",
+        "OPENED": "Opened",
+        "SIGNED": "Signed",
+        "DECLINED": "Declined",
+        "EXPIRED": "Expired",
+        "REVOKED": "Revoked"
+      },
+      "actions": {
+        "sendLink": "Send link",
+        "resend": "Resend",
+        "revoke": "Revoke",
+        "viewSignature": "View signature",
+        "viewAudit": "View audit",
+        "generateNewLink": "Generate new link",
+        "review": "Review"
+      },
+      "linkSentAt": "Link sent",
+      "openedAt": "Opened",
+      "signedAt": "Signed",
+      "declinedAt": "Declined",
+      "modalTitle": "Driver signing link",
+      "linkGenerated": "Secure signing link generated",
+      "signingUrl": "Signing URL",
+      "expiresAt": "Expires on {{date}}",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "linkCopied": "Link copied to clipboard.",
+      "copyFailed": "Unable to copy link. Please try again.",
+      "emailSubject": "Signature required — Contract {{contractNumber}}",
+      "whatsappMessage": "Hello {{driverName}},\n\nYou have been added as an additional driver on contract {{contractNumber}} for agency {{agencyName}}.\n\nPlease review and sign your declaration here:\n{{secureSigningUrl}}\n\nThis link is personal and must not be shared.",
+      "confirmRevokeTitle": "Revoke signing link?",
+      "confirmRevokeBody": "This will invalidate the current signing link for {{name}}. They will need a new link to sign.",
+      "viewSignature": "Signature details",
+      "signatureImageAlt": "Driver signature",
+      "auditIp": "IP address",
+      "auditDeclarationVersion": "Declaration version",
+      "auditDeclarationsAccepted": "Declarations accepted",
+      "declineReasonLabel": "Decline reason",
+      "noDeclineReason": "No reason provided.",
+      "declarationLabels": {
+        "identityCorrect": "Identity and license information confirmed",
+        "licenseValid": "Valid driving license confirmed",
+        "responsibilityAccepted": "Responsibility while driving accepted",
+        "termsRead": "Rental contract and agency conditions accepted",
+        "dataConsent": "Personal, non-shareable link acknowledged"
+      },
+      "errors": {
+        "sendFailed": "Unable to generate the signing link. Please try again.",
+        "revokeFailed": "Unable to revoke the signing link. Please try again.",
+        "loadFailed": "Unable to load signature details. Please try again."
+      }
     }
   },
   "clientSearch": {
@@ -4035,6 +4094,67 @@
     "seo": {
       "title": "Contract Signing",
       "description": "Secure contract signing link."
+    }
+  },
+  "publicAdditionalDriverSign": {
+    "loading": "Loading your signing page...",
+    "pageLabel": "Additional Driver Signature",
+    "agencyFallback": "Agency",
+    "vehicleFallback": "Vehicle",
+    "roleLabel": "Additional driver",
+    "roleExplanation": "You have been added as an additional driver on this rental contract. Please review and sign your own declaration below — independently from the main client's signature.",
+    "maskedLicenseLabel": "License",
+    "mainClientLabel": "Main client",
+    "start": "Start",
+    "end": "End",
+    "daysCount_one": "{{count}} day",
+    "daysCount_other": "{{count}} days",
+    "declarationsTitle": "Declarations",
+    "declarations": {
+      "identityCorrect": "I confirm that the identity and driving-license information shown is correct.",
+      "licenseValid": "I confirm that I hold a valid driving license.",
+      "responsibilityAccepted": "I accept responsibility for the vehicle while I am driving it.",
+      "termsRead": "I agree to comply with the rental contract and agency conditions.",
+      "dataConsent": "I understand that this signing link is personal and must not be shared."
+    },
+    "yourSignature": "Your Signature",
+    "acceptAllBeforeSigning": "Please accept all declarations above before signing.",
+    "signWithFingerOrStylus": "Sign with your finger or stylus",
+    "syncingSignature": "Syncing your signature...",
+    "cannotSignLink": "I cannot sign this",
+    "declineConfirmTitle": "Decline to sign?",
+    "declineConfirmBody": "You can optionally tell the agency why. This cannot be undone from this page.",
+    "declineReasonPlaceholder": "Reason (optional)",
+    "declineConfirmButton": "Confirm decline",
+    "declinedTitle": "Signature Declined",
+    "declinedBody": "You have declined to sign this declaration. The agency has been notified.",
+    "successTitle": "Signature Recorded!",
+    "successBody": "Your signature has been securely recorded and synced to the agency.",
+    "canCloseNowNote": "You can now close this page.",
+    "contactAgencyForAssistance": "Please contact the rental agency for assistance.",
+    "errorTitles": {
+      "INVALID": "Invalid Link",
+      "EXPIRED": "Link Expired",
+      "REVOKED": "Link Revoked",
+      "ALREADY_SIGNED": "Already Signed",
+      "CANCELLED": "Contract Cancelled",
+      "NETWORK": "Connection Problem",
+      "GENERIC": "Unable to Load"
+    },
+    "errors": {
+      "INVALID": "This signing link is invalid. Please contact the rental agency for a new link.",
+      "EXPIRED": "This signing link has expired. Please contact the rental agency for a new link.",
+      "REVOKED": "This signing link is no longer valid. Please contact the rental agency for a new link.",
+      "ALREADY_SIGNED": "This declaration has already been signed.",
+      "CANCELLED": "This rental contract has been cancelled. No signature is required.",
+      "NETWORK": "We could not reach the server. Please check your connection and try again.",
+      "GENERIC": "This page could not be loaded right now. Please try again shortly.",
+      "submitFailed": "Failed to save your signature. Please try again.",
+      "declineFailed": "Failed to record your decline. Please try again."
+    },
+    "seo": {
+      "title": "Additional Driver Signature",
+      "description": "Secure additional-driver signing link."
     }
   },
   "permissions": {

@@ -1214,8 +1214,8 @@ export default function Contracts() {
     }
   };
 
-  const addDriver = () => setAdditionalDrivers([...additionalDrivers, { fullName: '', driverLicenseNumber: '', phone: '' }]);
-  const updateDriver = (idx: number, field: string, value: string) => {
+  const addDriver = () => setAdditionalDrivers([...additionalDrivers, { fullName: '', driverLicenseNumber: '', phone: '', email: '', signatureRequired: true }]);
+  const updateDriver = (idx: number, field: string, value: string | boolean) => {
     const updated = [...additionalDrivers];
     updated[idx] = { ...updated[idx], [field]: value };
     setAdditionalDrivers(updated);
@@ -2077,7 +2077,7 @@ export default function Contracts() {
                     <p className="text-xs text-slate-400">{t('contracts.form.noAdditionalDrivers')}</p>
                   )}
                   {additionalDrivers.map((driver, idx) => (
-                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 pb-3 border-b border-slate-100 last:border-b-0 last:pb-0">
                       <input placeholder={t('contracts.form.fullNamePlaceholder')} value={driver.fullName} onChange={(e) => updateDriver(idx, 'fullName', e.target.value)}
                         className="px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm" />
                       <input placeholder={t('contracts.form.driverLicensePlaceholder')} value={driver.driverLicenseNumber} onChange={(e) => updateDriver(idx, 'driverLicenseNumber', e.target.value)}
@@ -2089,6 +2089,17 @@ export default function Contracts() {
                           <Trash2 size={14} />
                         </button>
                       </div>
+                      <input type="email" placeholder={t('contracts.form.driverEmailPlaceholder')} value={driver.email || ''} onChange={(e) => updateDriver(idx, 'email', e.target.value)}
+                        className="sm:col-span-2 px-3 py-2 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm" />
+                      <label className="flex items-center gap-2 px-3 py-2 text-xs text-slate-500 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={driver.signatureRequired !== false}
+                          onChange={(e) => updateDriver(idx, 'signatureRequired', e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300"
+                        />
+                        {t('contracts.form.driverSignatureRequired')}
+                      </label>
                     </div>
                   ))}
                 </div>

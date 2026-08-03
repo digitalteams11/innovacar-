@@ -1063,6 +1063,8 @@
       "requiredDocuments": "الوثائق المطلوبة",
       "additionalDrivers": "سائقون إضافيون",
       "noAdditionalDrivers": "لا يوجد سائقون إضافيون",
+      "driverEmailPlaceholder": "البريد الإلكتروني للسائق (اختياري)",
+      "driverSignatureRequired": "يتطلب توقيعًا مستقلاً",
       "vehicleInspection": "فحص المركبة",
       "reservationSummary": "ملخص الحجز",
       "creatingContract": "جارٍ إنشاء العقد...",
@@ -1124,6 +1126,63 @@
       "contractCancelled": "تم إلغاء العقد",
       "contractRestored": "تمت استعادة العقد بنجاح",
       "contractPermanentlyDeleted": "تم حذف العقد نهائيًا"
+    },
+    "driverSignature": {
+      "sectionTitle": "توقيعات السائقين الإضافيين",
+      "status": {
+        "NOT_REQUIRED": "غير مطلوب",
+        "PENDING": "قيد الانتظار",
+        "LINK_SENT": "تم إرسال الرابط",
+        "OPENED": "تم الفتح",
+        "SIGNED": "تم التوقيع",
+        "DECLINED": "مرفوض",
+        "EXPIRED": "منتهي الصلاحية",
+        "REVOKED": "ملغى"
+      },
+      "actions": {
+        "sendLink": "إرسال الرابط",
+        "resend": "إعادة الإرسال",
+        "revoke": "إلغاء",
+        "viewSignature": "عرض التوقيع",
+        "viewAudit": "عرض السجل",
+        "generateNewLink": "إنشاء رابط جديد",
+        "review": "مراجعة"
+      },
+      "linkSentAt": "تم إرسال الرابط",
+      "openedAt": "تم الفتح",
+      "signedAt": "تم التوقيع",
+      "declinedAt": "تم الرفض",
+      "modalTitle": "رابط توقيع السائق",
+      "linkGenerated": "تم إنشاء رابط توقيع آمن",
+      "signingUrl": "رابط التوقيع",
+      "expiresAt": "ينتهي في {{date}}",
+      "whatsapp": "واتساب",
+      "email": "البريد الإلكتروني",
+      "linkCopied": "تم نسخ الرابط إلى الحافظة.",
+      "copyFailed": "تعذر نسخ الرابط. يرجى المحاولة مرة أخرى.",
+      "emailSubject": "التوقيع مطلوب — العقد {{contractNumber}}",
+      "whatsappMessage": "مرحباً {{driverName}}،\n\nتمت إضافتك كسائق إضافي في العقد {{contractNumber}} لدى وكالة {{agencyName}}.\n\nيرجى الاطلاع على إقرارك وتوقيعه هنا:\n{{secureSigningUrl}}\n\nهذا الرابط شخصي ويجب عدم مشاركته.",
+      "confirmRevokeTitle": "إلغاء رابط التوقيع؟",
+      "confirmRevokeBody": "سيؤدي هذا إلى إبطال رابط التوقيع الحالي لـ {{name}}. سيحتاجون إلى رابط جديد للتوقيع.",
+      "viewSignature": "تفاصيل التوقيع",
+      "signatureImageAlt": "توقيع السائق",
+      "auditIp": "عنوان IP",
+      "auditDeclarationVersion": "إصدار الإقرار",
+      "auditDeclarationsAccepted": "الإقرارات المقبولة",
+      "declineReasonLabel": "سبب الرفض",
+      "noDeclineReason": "لم يتم تقديم سبب.",
+      "declarationLabels": {
+        "identityCorrect": "تم تأكيد صحة الهوية ومعلومات الرخصة",
+        "licenseValid": "تم تأكيد رخصة قيادة سارية المفعول",
+        "responsibilityAccepted": "تم قبول المسؤولية أثناء القيادة",
+        "termsRead": "تم قبول عقد الإيجار وشروط الوكالة",
+        "dataConsent": "تم الإقرار بأن الرابط شخصي وغير قابل للمشاركة"
+      },
+      "errors": {
+        "sendFailed": "تعذر إنشاء رابط التوقيع. يرجى المحاولة مرة أخرى.",
+        "revokeFailed": "تعذر إلغاء رابط التوقيع. يرجى المحاولة مرة أخرى.",
+        "loadFailed": "تعذر تحميل تفاصيل التوقيع. يرجى المحاولة مرة أخرى."
+      }
     }
   },
   "clientSearch": {
@@ -4074,6 +4133,67 @@
     "seo": {
       "title": "توقيع العقد",
       "description": "رابط آمن لتوقيع العقد."
+    }
+  },
+  "publicAdditionalDriverSign": {
+    "loading": "جارٍ تحميل صفحة التوقيع الخاصة بك...",
+    "pageLabel": "توقيع السائق الإضافي",
+    "agencyFallback": "الوكالة",
+    "vehicleFallback": "المركبة",
+    "roleLabel": "سائق إضافي",
+    "roleExplanation": "تمت إضافتك كسائق إضافي في عقد الإيجار هذا. يرجى الاطلاع على إقرارك الخاص وتوقيعه أدناه — بشكل مستقل عن توقيع العميل الرئيسي.",
+    "maskedLicenseLabel": "رخصة القيادة",
+    "mainClientLabel": "العميل الرئيسي",
+    "start": "البداية",
+    "end": "النهاية",
+    "daysCount_one": "{{count}} يوم",
+    "daysCount_other": "{{count}} أيام",
+    "declarationsTitle": "الإقرارات",
+    "declarations": {
+      "identityCorrect": "أؤكد أن معلومات الهوية ورخصة القيادة المعروضة صحيحة.",
+      "licenseValid": "أؤكد أنني أحمل رخصة قيادة سارية المفعول.",
+      "responsibilityAccepted": "أقبل المسؤولية عن المركبة أثناء قيادتي لها.",
+      "termsRead": "أوافق على الالتزام بعقد الإيجار وشروط الوكالة.",
+      "dataConsent": "أدرك أن رابط التوقيع هذا شخصي ويجب عدم مشاركته."
+    },
+    "yourSignature": "توقيعك",
+    "acceptAllBeforeSigning": "يرجى قبول جميع الإقرارات أعلاه قبل التوقيع.",
+    "signWithFingerOrStylus": "وقّع بإصبعك أو بقلم اللمس",
+    "syncingSignature": "جارٍ مزامنة توقيعك...",
+    "cannotSignLink": "لا يمكنني التوقيع",
+    "declineConfirmTitle": "رفض التوقيع؟",
+    "declineConfirmBody": "يمكنك اختياريًا إخبار الوكالة بالسبب. لا يمكن التراجع عن هذا الإجراء من هذه الصفحة.",
+    "declineReasonPlaceholder": "السبب (اختياري)",
+    "declineConfirmButton": "تأكيد الرفض",
+    "declinedTitle": "تم رفض التوقيع",
+    "declinedBody": "لقد رفضت توقيع هذا الإقرار. تم إخطار الوكالة.",
+    "successTitle": "تم تسجيل التوقيع!",
+    "successBody": "تم تسجيل توقيعك بأمان ومزامنته مع الوكالة.",
+    "canCloseNowNote": "يمكنك الآن إغلاق هذه الصفحة.",
+    "contactAgencyForAssistance": "يرجى الاتصال بوكالة الإيجار للحصول على المساعدة.",
+    "errorTitles": {
+      "INVALID": "رابط غير صالح",
+      "EXPIRED": "انتهت صلاحية الرابط",
+      "REVOKED": "تم إلغاء الرابط",
+      "ALREADY_SIGNED": "تم التوقيع مسبقًا",
+      "CANCELLED": "تم إلغاء العقد",
+      "NETWORK": "مشكلة في الاتصال",
+      "GENERIC": "تعذر التحميل"
+    },
+    "errors": {
+      "INVALID": "رابط التوقيع هذا غير صالح. يرجى الاتصال بوكالة الإيجار للحصول على رابط جديد.",
+      "EXPIRED": "انتهت صلاحية رابط التوقيع هذا. يرجى الاتصال بوكالة الإيجار للحصول على رابط جديد.",
+      "REVOKED": "لم يعد رابط التوقيع هذا صالحًا. يرجى الاتصال بوكالة الإيجار للحصول على رابط جديد.",
+      "ALREADY_SIGNED": "تم توقيع هذا الإقرار بالفعل.",
+      "CANCELLED": "تم إلغاء عقد الإيجار هذا. لا حاجة إلى أي توقيع.",
+      "NETWORK": "تعذر الوصول إلى الخادم. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+      "GENERIC": "تعذر تحميل هذه الصفحة الآن. يرجى المحاولة مرة أخرى بعد قليل.",
+      "submitFailed": "فشل حفظ توقيعك. يرجى المحاولة مرة أخرى.",
+      "declineFailed": "فشل تسجيل رفضك. يرجى المحاولة مرة أخرى."
+    },
+    "seo": {
+      "title": "توقيع السائق الإضافي",
+      "description": "رابط آمن لتوقيع السائق الإضافي."
     }
   },
   "permissions": {

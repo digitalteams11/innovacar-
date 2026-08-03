@@ -35,6 +35,7 @@ const CheckoutTrial = React.lazy(() => import('./pages/CheckoutTrial'));
 const Contracts = React.lazy(() => import('./pages/Contracts'));
 const ContractDetails = React.lazy(() => import('./pages/ContractDetails'));
 const PublicContract = React.lazy(() => import('./pages/PublicContract'));
+const PublicAdditionalDriverSign = React.lazy(() => import('./pages/PublicAdditionalDriverSign'));
 const PublicClientInformation = React.lazy(() => import('./pages/PublicClientInformation'));
 const ClientInformationRequests = React.lazy(() => import('./pages/ClientInformationRequests'));
 const InspectionCapture = React.lazy(() => import('./pages/InspectionCapture'));
@@ -195,6 +196,7 @@ function AppRoutes() {
       <Route path="/contract-sign/:contractId/:token" element={<PublicContract />} />
       <Route path="/contract-sign/:token" element={<PublicContract />} />
       <Route path="/client-info/:token" element={<PublicClientInformation />} />
+      <Route path="/sign/additional-driver/:token" element={<PublicAdditionalDriverSign />} />
       <Route path="/inspection/:token" element={<InspectionCapture />} />
       {/* Public Contact â€” no login required */}
       <Route path="/contact" element={<PublicContact />} />

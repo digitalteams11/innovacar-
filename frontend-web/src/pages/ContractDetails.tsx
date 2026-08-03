@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { usePermissions } from '../context/PermissionContext';
 import api from '../api/axios';
 import { resolveMediaUrl, cn } from '../lib/utils';
 import { useInlineAction } from '../hooks/useInlineAction';
@@ -16,14 +18,22 @@ import ReturnInspectionModal from '../components/shared/ReturnInspectionModal';
 import InspectionGallery from '../components/InspectionGallery';
 import Modal from '../components/Modal';
 import AddClientEmailModal from '../components/shared/AddClientEmailModal';
+import AdditionalDriverSignatureLinkModal from '../components/shared/AdditionalDriverSignatureLinkModal';
+import AdditionalDriverSignatureViewModal from '../components/shared/AdditionalDriverSignatureViewModal';
 import { normalizePhoneForWhatsApp } from '../lib/phone';
+import { maskLicense } from '../lib/maskLicense';
+import {
+  listAdditionalDrivers, getAdditionalDriverSignature,
+  sendAdditionalDriverSignatureLink, resendAdditionalDriverSignatureLink, revokeAdditionalDriverSignatureLink,
+  type AdditionalDriverDto, type AdditionalDriverSignatureView, type AdditionalDriverSignatureLinkResponse,
+} from '../api/additionalDrivers';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft, FileText, Calendar, User, Car, CheckCircle2, Clock,
   Printer, Download, QrCode, Shield,
   AlertCircle, Loader2, CreditCard,
   ClipboardCheck, Users, History, RefreshCw,
-  MailPlus, Send, MessageCircle, Copy, Pencil, Check
+  MailPlus, Send, MessageCircle, Copy, Pencil, Check, XCircle, Ban, Eye
 } from 'lucide-react';
 
 interface ContractDetail {
@@ -147,6 +157,8 @@ export default function ContractDetails() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { tenant } = useAuth();
+  const confirmDialog = useConfirm();
+  const { hasPermission } = usePermissions();
 
   const [contract, setContract] = useState<ContractDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,6 +175,19 @@ export default function ContractDetails() {
   const [showAddEmailModal, setShowAddEmailModal] = useState(false);
   const [savingClientEmail, setSavingClientEmail] = useState(false);
   const [generatingShareLink, setGeneratingShareLink] = useState(false);
+
+  // Additional-driver independent signing — fetched via the dedicated
+  // endpoints (not embedded in the main contract payload) so the section
+  // always reflects the current AdditionalDriverDto shape/status.
+  const [driverSignatures, setDriverSignatures] = useState<AdditionalDriverDto[]>([]);
+  const [driverSignaturesLoading, setDriverSignaturesLoading] = useState(false);
+  const [driverActionId, setDriverActionId] = useState<number | null>(null);
+  const [linkModalData, setLinkModalData] = useState<{
+    driver: AdditionalDriverDto; result: AdditionalDriverSignatureLinkResponse;
+  } | null>(null);
+  const [viewModalDriverId, setViewModalDriverId] = useState<number | null>(null);
+  const [viewModalData, setViewModalData] = useState<AdditionalDriverSignatureView | null>(null);
+  const [viewModalLoading, setViewModalLoading] = useState(false);
 
   const emailErrorLabel = (code?: string | null): string => {
     switch (code) {
@@ -223,6 +248,21 @@ export default function ContractDetails() {
   }, [id]);
 
   useEffect(() => { fetchContract(); }, [id, fetchContract]);
+
+  const fetchDriverSignatures = useCallback(async () => {
+    if (!id) return;
+    setDriverSignaturesLoading(true);
+    try {
+      const { data } = await listAdditionalDrivers(id);
+      setDriverSignatures(data);
+    } catch {
+      // Non-fatal — the identity-only list elsewhere on this tab still works.
+    } finally {
+      setDriverSignaturesLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { fetchDriverSignatures(); }, [id, fetchDriverSignatures]);
 
   // Real-time auto-refresh via SSE contract_event / notification broadcast
   useEffect(() => {
@@ -602,6 +642,65 @@ export default function ContractDetails() {
       showToast((err as any).userMessage || t('contractDetails.toasts.finalizeFailed'), 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSendDriverLink = async (driver: AdditionalDriverDto) => {
+    if (!contract) return;
+    setDriverActionId(driver.id);
+    try {
+      const { data } = await sendAdditionalDriverSignatureLink(contract.id, driver.id);
+      setLinkModalData({ driver, result: data });
+      fetchDriverSignatures();
+    } catch (err: any) {
+      showToast(err?.userMessage || t('contracts.driverSignature.errors.sendFailed'), 'error');
+    } finally {
+      setDriverActionId(null);
+    }
+  };
+
+  const handleResendDriverLink = async (driver: AdditionalDriverDto) => {
+    if (!contract) return;
+    setDriverActionId(driver.id);
+    try {
+      const { data } = await resendAdditionalDriverSignatureLink(contract.id, driver.id);
+      setLinkModalData({ driver, result: data });
+      fetchDriverSignatures();
+    } catch (err: any) {
+      showToast(err?.userMessage || t('contracts.driverSignature.errors.sendFailed'), 'error');
+    } finally {
+      setDriverActionId(null);
+    }
+  };
+
+  const handleRevokeDriverLink = async (driver: AdditionalDriverDto) => {
+    if (!contract) return;
+    const confirmed = await confirmDialog({
+      title: t('contracts.driverSignature.confirmRevokeTitle'),
+      description: t('contracts.driverSignature.confirmRevokeBody', { name: driver.fullName }),
+      tone: 'danger',
+      confirmLabel: t('contracts.driverSignature.actions.revoke'),
+      action: async () => {
+        await revokeAdditionalDriverSignatureLink(contract.id, driver.id);
+        fetchDriverSignatures();
+      },
+    });
+    if (!confirmed) return;
+  };
+
+  const handleViewDriverSignature = async (driver: AdditionalDriverDto) => {
+    if (!contract) return;
+    setViewModalDriverId(driver.id);
+    setViewModalLoading(true);
+    setViewModalData(null);
+    try {
+      const { data } = await getAdditionalDriverSignature(contract.id, driver.id);
+      setViewModalData(data);
+    } catch (err: any) {
+      showToast(err?.userMessage || t('contracts.driverSignature.errors.loadFailed'), 'error');
+      setViewModalDriverId(null);
+    } finally {
+      setViewModalLoading(false);
     }
   };
 
@@ -1328,6 +1427,127 @@ export default function ContractDetails() {
             </div>
           )}
 
+          {activeTab === 'drivers' && driverSignatures.length > 0 && (
+            <div className="card-premium p-4 sm:p-6 space-y-3 sm:space-y-4">
+              <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">
+                {t('contracts.driverSignature.sectionTitle')}
+              </h3>
+              {driverSignaturesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={20} className="animate-spin text-slate-300" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {driverSignatures.map((driver) => {
+                    const status = driver.signatureStatus;
+                    const acting = driverActionId === driver.id;
+                    const canSend = hasPermission('ADDITIONAL_DRIVER_SIGNATURE_SEND');
+                    const canRevoke = hasPermission('ADDITIONAL_DRIVER_SIGNATURE_REVOKE');
+                    const canViewSig = hasPermission('ADDITIONAL_DRIVER_SIGNATURE_VIEW');
+                    const statusColors: Record<string, string> = {
+                      NOT_REQUIRED: 'bg-slate-50 text-slate-400',
+                      PENDING: 'bg-warning-50 text-warning-500',
+                      LINK_SENT: 'bg-brand-50 text-brand-500',
+                      OPENED: 'bg-brand-50 text-brand-600',
+                      SIGNED: 'bg-success-50 text-success-500',
+                      DECLINED: 'bg-danger-50 text-danger-500',
+                      EXPIRED: 'bg-slate-100 text-slate-500',
+                      REVOKED: 'bg-slate-100 text-slate-400',
+                    };
+                    return (
+                      <div key={driver.id} className="p-4 bg-slate-50 rounded-2xl space-y-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="min-w-0">
+                            <p className="font-bold text-[#1e293b] truncate">{driver.fullName}</p>
+                            <p className="text-xs text-slate-400">
+                              {driver.driverLicenseNumber ? maskLicense(driver.driverLicenseNumber) : ''}
+                            </p>
+                          </div>
+                          <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider', statusColors[status] || 'bg-slate-50 text-slate-400')}>
+                            {t(`contracts.driverSignature.status.${status}`)}
+                          </span>
+                        </div>
+                        {(driver.linkSentAt || driver.openedAt || driver.signedAt || driver.declinedAt) && (
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                            {driver.linkSentAt && <span>{t('contracts.driverSignature.linkSentAt')}: {new Date(driver.linkSentAt).toLocaleString()}</span>}
+                            {driver.openedAt && <span>{t('contracts.driverSignature.openedAt')}: {new Date(driver.openedAt).toLocaleString()}</span>}
+                            {driver.signedAt && <span>{t('contracts.driverSignature.signedAt')}: {new Date(driver.signedAt).toLocaleString()}</span>}
+                            {driver.declinedAt && <span>{t('contracts.driverSignature.declinedAt')}: {new Date(driver.declinedAt).toLocaleString()}</span>}
+                          </div>
+                        )}
+                        {!driver.signatureRequired ? null : (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {(status === 'PENDING' || status === 'EXPIRED') && canSend && (
+                              <button
+                                onClick={() => handleSendDriverLink(driver)}
+                                disabled={acting}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 text-white rounded-lg text-xs font-medium hover:bg-brand-600 disabled:opacity-50"
+                              >
+                                {acting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                                {status === 'EXPIRED' ? t('contracts.driverSignature.actions.generateNewLink') : t('contracts.driverSignature.actions.sendLink')}
+                              </button>
+                            )}
+                            {(status === 'LINK_SENT' || status === 'OPENED') && canSend && (
+                              <button
+                                onClick={() => handleResendDriverLink(driver)}
+                                disabled={acting}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 text-brand-600 rounded-lg text-xs font-medium hover:bg-brand-100 disabled:opacity-50"
+                              >
+                                {acting ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                                {t('contracts.driverSignature.actions.resend')}
+                              </button>
+                            )}
+                            {(status === 'LINK_SENT' || status === 'OPENED') && canRevoke && (
+                              <button
+                                onClick={() => handleRevokeDriverLink(driver)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-danger-50 text-danger-500 rounded-lg text-xs font-medium hover:bg-danger-100"
+                              >
+                                <Ban size={13} />
+                                {t('contracts.driverSignature.actions.revoke')}
+                              </button>
+                            )}
+                            {status === 'SIGNED' && canViewSig && (
+                              <button
+                                onClick={() => handleViewDriverSignature(driver)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-success-50 text-success-600 rounded-lg text-xs font-medium hover:bg-success-100"
+                              >
+                                <Eye size={13} />
+                                {t('contracts.driverSignature.actions.viewSignature')}
+                              </button>
+                            )}
+                            {status === 'DECLINED' && (
+                              <>
+                                {canViewSig && (
+                                  <button
+                                    onClick={() => handleViewDriverSignature(driver)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200"
+                                  >
+                                    <XCircle size={13} />
+                                    {t('contracts.driverSignature.actions.review')}
+                                  </button>
+                                )}
+                                {canSend && (
+                                  <button
+                                    onClick={() => handleSendDriverLink(driver)}
+                                    disabled={acting}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 text-white rounded-lg text-xs font-medium hover:bg-brand-600 disabled:opacity-50"
+                                  >
+                                    {acting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                                    {t('contracts.driverSignature.actions.generateNewLink')}
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'activity' && (
             <div className="card-premium p-4 sm:p-6 space-y-3 sm:space-y-4">
               <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.activityLog')}</h3>
@@ -1488,6 +1708,27 @@ export default function ContractDetails() {
           </div>
         )}
       </Modal>
+
+      {linkModalData && (
+        <AdditionalDriverSignatureLinkModal
+          isOpen={!!linkModalData}
+          onClose={() => setLinkModalData(null)}
+          signingUrl={linkModalData.result.signingUrl}
+          expiresAt={linkModalData.result.expiresAt}
+          driverName={linkModalData.driver.fullName}
+          driverPhone={linkModalData.driver.phone}
+          driverEmail={linkModalData.driver.email}
+          contractNumber={contract.contractNumber}
+          agencyName={tenant?.name}
+        />
+      )}
+
+      <AdditionalDriverSignatureViewModal
+        isOpen={viewModalDriverId !== null}
+        onClose={() => { setViewModalDriverId(null); setViewModalData(null); }}
+        data={viewModalData}
+        loading={viewModalLoading}
+      />
     </div>
   );
 }
