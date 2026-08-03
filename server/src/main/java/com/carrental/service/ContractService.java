@@ -396,6 +396,8 @@ public class ContractService {
                             .address(d.getAddress())
                             .phone(d.getPhone())
                             .birthDate(d.getBirthDate())
+                            .email(d.getEmail())
+                            .signatureRequired(d.getSignatureRequired() == null || d.getSignatureRequired())
                             .contract(saved)
                             .build())
                     .collect(Collectors.toList());
@@ -1855,6 +1857,9 @@ public class ContractService {
                                 .cin(d.getCin())
                                 .driverLicenseNumber(d.getDriverLicenseNumber())
                                 .phone(d.getPhone())
+                                .email(d.getEmail())
+                                .signatureRequired(d.isSignatureRequired())
+                                .signatureStatus(d.getSignatureStatus())
                                 .build())
                             .collect(Collectors.toList())
                         : List.of())
@@ -2226,6 +2231,27 @@ public class ContractService {
         repairSignedStatus(contract);
     }
 
+    /**
+     * Single shared source of truth for "is this contract fully signed":
+     * existing client+agency check, widened to also require every
+     * signature-required additional driver to have signed. Both places that
+     * used to decide this independently (this class's repairSignedStatus,
+     * called from signContract/signPublicContract) now go through here so
+     * they can't drift; DepositService's CONTRACT_FULLY_SIGNED reference was
+     * found to be an unrelated notification (deposit-return message, not a
+     * completion check) and was left untouched — see implementation report.
+     */
+    public boolean allRequiredSignaturesComplete(Contract contract) {
+        if (contract == null) return false;
+        boolean client = StringUtils.hasText(contract.getClientSignature());
+        boolean owner = StringUtils.hasText(contract.getOwnerSignature());
+        if (!client || !owner) return false;
+        if (contract.getAdditionalDrivers() == null) return true;
+        return contract.getAdditionalDrivers().stream()
+                .filter(AdditionalDriver::isSignatureRequired)
+                .allMatch(d -> d.getSignatureStatus() == com.carrental.entity.SignatureStatus.SIGNED);
+    }
+
     private boolean repairSignedStatus(Contract contract) {
         if (contract == null || isTerminalContractStatus(contract.getStatus())) {
             return false;
@@ -2234,7 +2260,7 @@ public class ContractService {
         boolean client = StringUtils.hasText(contract.getClientSignature());
         boolean owner = StringUtils.hasText(contract.getOwnerSignature());
 
-        if (client && owner) {
+        if (client && owner && allRequiredSignaturesComplete(contract)) {
             contract.setStatus(ContractStatus.ACTIVE);
         } else if (client || owner) {
             contract.setStatus(ContractStatus.PENDING_SIGNATURE);
@@ -2242,6 +2268,21 @@ public class ContractService {
             contract.setStatus(ContractStatus.DRAFT);
         }
         return previous != contract.getStatus();
+    }
+
+    /**
+     * Re-evaluates and persists the fully-signed transition after an
+     * additional driver signs — mirrors repairSignedStatus's side effects
+     * exactly (same ACTIVE/PENDING_SIGNATURE transition) so the two paths
+     * can never diverge. Called from AdditionalDriverSigningService.
+     */
+    @Transactional
+    public boolean recheckSignatureCompletion(Contract contract) {
+        boolean changed = repairSignedStatus(contract);
+        if (changed) {
+            contractRepository.save(contract);
+        }
+        return changed;
     }
 
     private boolean isTerminalContractStatus(ContractStatus status) {

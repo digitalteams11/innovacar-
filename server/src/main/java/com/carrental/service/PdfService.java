@@ -349,6 +349,49 @@ public class PdfService {
             stampTable.addCell(stampCell);
             document.add(stampTable);
         }
+
+        addAdditionalDriverSignatures(document, c);
+    }
+
+    /**
+     * One row per additional driver, each using that driver's own
+     * signatureData — never the main client/owner cell or another driver's
+     * image. Unsigned drivers get "Signature en attente" text instead of an
+     * image, matching this PDF's existing French-only convention.
+     */
+    private void addAdditionalDriverSignatures(Document document, Contract c) throws Exception {
+        List<AdditionalDriver> drivers = c.getAdditionalDrivers();
+        if (drivers == null || drivers.isEmpty()) return;
+
+        for (AdditionalDriver driver : drivers) {
+            PdfPTable row = new PdfPTable(1);
+            row.setWidthPercentage(100);
+            row.setSpacingBefore(6);
+
+            PdfPCell infoCell = cell("", Rectangle.BOX, 5, Element.ALIGN_LEFT, Color.WHITE);
+            Paragraph title = new Paragraph("Conducteur additionnel — " + value(driver.getFullName(), ""), SMALL_BOLD);
+            infoCell.addElement(title);
+            String maskedLicense = com.carrental.util.MaskingUtil.maskLicense(driver.getDriverLicenseNumber());
+            Paragraph details = new Paragraph(
+                    "Permis: " + value(maskedLicense, "N/A") + "   |   Tel: " + value(driver.getPhone(), "N/A"), SMALL);
+            infoCell.addElement(details);
+
+            if (driver.getSignatureStatus() == com.carrental.entity.SignatureStatus.SIGNED
+                    && driver.getSignatureData() != null && !driver.getSignatureData().isBlank()) {
+                Image image = imageFromDataUrl(driver.getSignatureData());
+                if (image != null) {
+                    image.scaleToFit(120, 34);
+                    infoCell.addElement(image);
+                }
+                String signedLabel = "Signe le: " + (driver.getSignedAt() != null ? driver.getSignedAt().format(DATETIME) : "");
+                infoCell.addElement(new Paragraph(signedLabel, SMALL));
+            } else {
+                infoCell.addElement(new Paragraph("Signature en attente", SMALL));
+            }
+
+            row.addCell(infoCell);
+            document.add(row);
+        }
     }
 
     /**
