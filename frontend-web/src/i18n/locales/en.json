@@ -4254,5 +4254,53 @@
       "unsupportedOs": "This installer requires Windows 10 or later.",
       "downloadExpired": "This download link has expired — please refresh the page and try again."
     }
+  },
+  "actions": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "keepContract": "Keep contract",
+    "cancelContract": "Cancel contract",
+    "deletePermanently": "Delete permanently",
+    "archive": "Archive",
+    "restore": "Restore",
+    "logout": "Log out",
+    "retry": "Retry"
+  },
+  "confirm": {
+    "areYouSure": {
+      "title": "Are you sure?"
+    },
+    "deleteItem": {
+      "title": "Delete this item?",
+      "description": "This action cannot be undone."
+    },
+    "archiveItem": {
+      "title": "Archive this item?"
+    },
+    "restoreItem": {
+      "title": "Restore this item?"
+    },
+    "logout": {
+      "title": "Log out?",
+      "description": "You'll need to sign in again to continue."
+    },
+    "unsavedChanges": {
+      "title": "You have unsaved changes",
+      "description": "Your edits will be lost if you leave this page now.",
+      "confirmLabel": "Leave without saving",
+      "cancelLabel": "Continue editing"
+    },
+    "cancelContract": {
+      "title": "Cancel this contract?",
+      "description": "Contract {{contractNumber}} will be marked as cancelled. It will not be permanently deleted.",
+      "warning": "The associated vehicle availability and active reservation state may be updated."
+    },
+    "deleteContract": {
+      "title": "Delete this contract permanently?",
+      "description": "Contract {{contractNumber}} will be permanently deleted. This cannot be undone."
+    },
+    "trashContract": {
+      "title": "Move this contract to trash?"
+    }
   }
 }

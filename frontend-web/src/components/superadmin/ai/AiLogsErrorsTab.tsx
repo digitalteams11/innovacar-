@@ -4,11 +4,13 @@ import { Trash2 } from 'lucide-react';
 import { DataTable, Badge } from '..';
 import { aiService } from '../../../api/aiService';
 import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import type { AiUsageLogRow } from './types';
 
 export default function AiLogsErrorsTab() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [errors, setErrors] = useState<AiUsageLogRow[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -42,7 +44,14 @@ export default function AiLogsErrorsTab() {
   };
 
   const clearAll = async () => {
-    if (!confirm(t('superAdmin.ai.logs.confirmClear'))) return;
+    const confirmed = await confirm({
+      title: t('confirm.areYouSure.title', 'Are you sure?'),
+      description: t('superAdmin.ai.logs.confirmClear'),
+      confirmLabel: t('common.confirm', 'Confirm'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setClearing(true);
     try {
       await aiService.clearUsageLogs();

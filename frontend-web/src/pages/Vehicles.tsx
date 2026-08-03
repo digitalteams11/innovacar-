@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import Modal from '../components/Modal';
 import { GlassCard } from '../components/GlassCard';
 import { GlassPageHeader } from '../components/GlassPageHeader';
@@ -132,6 +133,7 @@ export default function Vehicles() {
   const [purgingId, setPurgingId] = useState<number | null>(null);
 
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { t, i18n } = useTranslation();
   const { canCreateVehicle, status } = useSubscription();
 
@@ -245,7 +247,14 @@ export default function Vehicles() {
 
   const purgeVehiclePermanently = async (id: number, marque: string) => {
     if (purgingId) return;
-    if (!confirm(t('vehicles.permanentlyDeleteConfirm', { name: marque }))) return;
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('vehicles.permanentlyDeleteConfirm', { name: marque }),
+      confirmLabel: t('actions.deletePermanently', 'Delete permanently'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setPurgingId(id);
     try {
       const { data: response } = await api.delete(`/vehicles/${id}/purge`);
@@ -466,8 +475,17 @@ export default function Vehicles() {
   const hasUnsavedChanges = modalMode === 'edit' && initialForm != null
     && JSON.stringify(form) !== JSON.stringify(initialForm);
 
-  const closeVehicleModal = () => {
-    if (hasUnsavedChanges && !window.confirm(t('vehicles.unsavedChangesConfirm'))) return;
+  const closeVehicleModal = async () => {
+    if (hasUnsavedChanges) {
+      const leave = await confirm({
+        title: t('confirm.unsavedChanges.title', 'You have unsaved changes'),
+        description: t('vehicles.unsavedChangesConfirm'),
+        confirmLabel: t('confirm.unsavedChanges.confirmLabel', 'Leave without saving'),
+        cancelLabel: t('confirm.unsavedChanges.cancelLabel', 'Continue editing'),
+        tone: 'warning',
+      });
+      if (!leave) return;
+    }
     setIsModalOpen(false);
     setEditingId(null);
     setSelectedVehicle(null);
@@ -587,7 +605,14 @@ export default function Vehicles() {
   );
 
   const deleteVehicle = async (id: number) => {
-    if (!confirm(t('vehicles.moveToTrashConfirm'))) return;
+    const confirmed = await confirm({
+      title: t('confirm.trashContract.title', 'Move to trash?'),
+      description: t('vehicles.moveToTrashConfirm'),
+      confirmLabel: t('common.trash', 'Trash'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'warning',
+    });
+    if (!confirmed) return;
     try {
       const { data: response } = await api.delete(`/vehicles/${id}`);
       showToast(response?.message || t('vehicles.movedToTrash'), 'success');

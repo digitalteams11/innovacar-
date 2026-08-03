@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import Modal from '../components/Modal';
 import QRCodeModal from '../components/shared/QRCodeModal';
 import VehicleInspection from '../components/shared/VehicleInspection';
@@ -299,6 +300,7 @@ export default function Contracts() {
   const [dataConflictAlert, setDataConflictAlert] = useState<{ message: string; requestId?: string } | null>(null);
 
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { t } = useTranslation();
 
   useEffect(() => { fetchContracts(); }, []);
@@ -404,7 +406,14 @@ export default function Contracts() {
 
   const purgeContractPermanently = async (id: number, contractNumber: string) => {
     if (purgingId) return;
-    if (!confirm(`Permanently delete contract ${contractNumber}? This cannot be undone.`)) return;
+    const confirmed = await confirm({
+      title: t('confirm.deleteContract.title', 'Delete this contract permanently?'),
+      description: t('confirm.deleteContract.description', 'Contract {{contractNumber}} will be permanently deleted. This cannot be undone.', { contractNumber }),
+      confirmLabel: t('actions.deletePermanently', 'Delete permanently'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setPurgingId(id);
     try {
       const { data: response } = await api.delete(`/contracts/${id}/purge`);
@@ -1096,7 +1105,14 @@ export default function Contracts() {
     const activeWarning = contract && ['ACTIVE', 'SIGNED', 'WAITING_SIGNATURE'].includes(contract.status)
       ? t('contracts.confirmMoveToTrashActiveWarning')
       : '';
-    if (!confirm(`${t('contracts.confirmMoveToTrash')}${activeWarning}`)) return;
+    const confirmed = await confirm({
+      title: t('confirm.trashContract.title', 'Move this contract to trash?'),
+      description: `${t('contracts.confirmMoveToTrash')}${activeWarning}`,
+      confirmLabel: t('common.trash', 'Trash'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'warning',
+    });
+    if (!confirmed) return;
 
     const previous = data;
     const beforeStatus = contract?.status;
@@ -1135,30 +1151,47 @@ export default function Contracts() {
   };
 
   const cancelContract = async (id: number) => {
+    if (cancellingId) return;
     const contract = data.find((c) => c.id === id);
-    if (!confirm(`Cancel contract ${contract?.contractNumber ?? id}? This will mark it as Cancelled (not deleted).`)) return;
-    setCancellingId(id);
+    const contractNumber = contract?.contractNumber ?? String(id);
     const beforeStatus = contract?.status;
-    console.log('[CONTRACT_ACTION_DEBUG]', { action: 'CANCEL', contractId: id, endpoint: `POST /contracts/${id}/cancel`, beforeStatus });
-    try {
-      const { data: response } = await api.post(`/contracts/${id}/cancel`);
-      const afterData = response?.data || {};
-      console.log('[CONTRACT_ACTION_DEBUG]', {
-        action: 'CANCEL',
-        contractId: id,
-        endpoint: `POST /contracts/${id}/cancel`,
-        beforeStatus,
-        afterStatus: afterData.contractStatus ?? 'CANCELLED',
-        deletedBefore: false,
-        deletedAfter: false,
-      });
-      showToast(response?.message || t('contracts.toasts.contractCancelled'), 'success');
-      fetchContracts();
-    } catch (err: any) {
-      showToast(err?.userMessage || 'Unable to cancel contract. Please try again.', 'error');
-    } finally {
-      setCancellingId(null);
-    }
+
+    await confirm({
+      title: t('confirm.cancelContract.title', 'Cancel this contract?'),
+      description: (
+        <>
+          {t('confirm.cancelContract.description', 'Contract {{contractNumber}} will be marked as cancelled. It will not be permanently deleted.', { contractNumber })}
+          {' '}
+          <span style={{ color: 'var(--text-muted)' }}>
+            {t('confirm.cancelContract.warning', 'The associated vehicle availability and active reservation state may be updated.')}
+          </span>
+        </>
+      ),
+      confirmLabel: t('actions.cancelContract', 'Cancel contract'),
+      cancelLabel: t('actions.keepContract', 'Keep contract'),
+      tone: 'danger',
+      action: async () => {
+        setCancellingId(id);
+        console.log('[CONTRACT_ACTION_DEBUG]', { action: 'CANCEL', contractId: id, endpoint: `POST /contracts/${id}/cancel`, beforeStatus });
+        try {
+          const { data: response } = await api.post(`/contracts/${id}/cancel`);
+          const afterData = response?.data || {};
+          console.log('[CONTRACT_ACTION_DEBUG]', {
+            action: 'CANCEL',
+            contractId: id,
+            endpoint: `POST /contracts/${id}/cancel`,
+            beforeStatus,
+            afterStatus: afterData.contractStatus ?? 'CANCELLED',
+            deletedBefore: false,
+            deletedAfter: false,
+          });
+          showToast(response?.message || t('contracts.toasts.contractCancelled'), 'success');
+          fetchContracts();
+        } finally {
+          setCancellingId(null);
+        }
+      },
+    });
   };
 
   const handleGenerateQR = async (contract: Contract) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
+import { useConfirm, usePromptText } from '../context/ConfirmContext';
 import { usePermissions } from '../context/PermissionContext';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
@@ -67,6 +68,8 @@ export default function Employees() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { showToast } = useToast();
+  const confirm = useConfirm();
+  const promptText = usePromptText();
   const { t } = useTranslation();
   const { user } = useAuth();
   const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
@@ -256,7 +259,12 @@ export default function Employees() {
       showToast(t('employees.errors.noLoginAccount'), 'warning');
       return;
     }
-    const newPassword = window.prompt(t('employees.resetPasswordPrompt', { name: emp.name }));
+    const newPassword = await promptText({
+      title: t('employees.resetPasswordPrompt', { name: emp.name }),
+      confirmLabel: t('actions.confirm', 'Confirm'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      required: true,
+    });
     if (!newPassword || !isPasswordStrong(newPassword)) return;
     try {
       await api.put(`/users/${emp.userId}/admin-reset-password`, { newPassword });
@@ -267,14 +275,20 @@ export default function Employees() {
   };
 
   const deleteEmployee = async (id: number) => {
-    if (confirm(t('employees.deleteConfirm'))) {
-      try {
-        await api.delete(`/employees/${id}`);
-        setData((prev) => prev.filter((e) => e.id !== id));
-        showToast(t('toast.success', { action: t('employees.actionLabels.delete') }));
-      } catch (err: any) {
-        showToast(err?.userMessage || t('employees.errors.deleteFailed'), 'error');
-      }
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('employees.deleteConfirm'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await api.delete(`/employees/${id}`);
+      setData((prev) => prev.filter((e) => e.id !== id));
+      showToast(t('toast.success', { action: t('employees.actionLabels.delete') }));
+    } catch (err: any) {
+      showToast(err?.userMessage || t('employees.errors.deleteFailed'), 'error');
     }
   };
 

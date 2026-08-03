@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { PageHeader, SearchBar, FilterSelect, DataTable, Modal, FormField, TextInput, Badge, ActionMenu } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const statusOptions = [
   { value: 'ACTIVE', label: 'Active' },
@@ -27,6 +28,7 @@ export default function SuperAdminAgencies() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [agencies, setAgencies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -83,7 +85,14 @@ export default function SuperAdminAgencies() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm(t('superAdmin.agencies.confirmDelete'))) return;
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('superAdmin.agencies.confirmDelete'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deleteAgency(id);
       await fetchAgencies();

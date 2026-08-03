@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { superAdminApi } from '../../api/superAdminApi';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm, usePromptText } from '../../context/ConfirmContext';
 import { CheckCircle2, XCircle, ChevronDown, RefreshCw, ShieldAlert, ServerCrash, WifiOff, SearchX, LockKeyhole } from 'lucide-react';
 
 interface CancellationRequestRow {
@@ -74,6 +75,8 @@ function classifyLoadError(err: any): LoadState {
 
 export default function SuperAdminCancellationRequests() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
+  const promptText = usePromptText();
   const [requests, setRequests] = useState<CancellationRequestRow[]>([]);
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [loadState, setLoadState] = useState<LoadState>('loading');
@@ -93,7 +96,14 @@ export default function SuperAdminCancellationRequests() {
   useEffect(() => { load(); }, [statusFilter]);
 
   const approve = async (req: CancellationRequestRow) => {
-    if (!window.confirm(`Approve cancellation for ${req.agencyName}? Their subscription will be cancelled immediately.`)) return;
+    const confirmed = await confirm({
+      title: 'Approve this cancellation?',
+      description: `Approve cancellation for ${req.agencyName}? Their subscription will be cancelled immediately.`,
+      confirmLabel: 'Approve cancellation',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setBusyId(req.id);
     try {
       await superAdminApi.approveCancellationRequest(req.id);
@@ -107,7 +117,16 @@ export default function SuperAdminCancellationRequests() {
   };
 
   const reject = async (req: CancellationRequestRow) => {
-    const note = window.prompt(`Reject cancellation for ${req.agencyName}. Optional note for the record:`) || undefined;
+    const noteInput = await promptText({
+      title: `Reject cancellation for ${req.agencyName}?`,
+      description: 'Optional note for the record.',
+      placeholder: 'Optional note...',
+      confirmLabel: 'Reject request',
+      cancelLabel: 'Cancel',
+      tone: 'warning',
+    });
+    if (noteInput == null) return;
+    const note = noteInput || undefined;
     setBusyId(req.id);
     try {
       await superAdminApi.rejectCancellationRequest(req.id, note);

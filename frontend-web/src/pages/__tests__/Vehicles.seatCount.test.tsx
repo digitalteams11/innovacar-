@@ -14,6 +14,11 @@ vi.mock('../../context/ToastContext', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }));
 
+vi.mock('../../context/ConfirmContext', () => ({
+  useConfirm: () => vi.fn(async () => true),
+  usePromptText: () => vi.fn(async () => null),
+}));
+
 const mockedApi = vi.mocked(api, true);
 
 const baseVehicle = {

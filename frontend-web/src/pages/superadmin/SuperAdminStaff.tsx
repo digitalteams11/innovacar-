@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { superAdminApi } from '../../api/superAdminApi';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { Plus, ShieldOff, ShieldCheck, X, Crown } from 'lucide-react';
 
 interface StaffRole {
@@ -24,6 +25,7 @@ interface StaffMember {
 
 export default function SuperAdminStaff() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,16 @@ export default function SuperAdminStaff() {
 
   const toggleStatus = async (member: StaffMember) => {
     const enabling = !member.accountEnabled;
-    if (!enabling && !window.confirm(`Suspend ${member.email}? They will immediately lose access to the Super Admin control center.`)) return;
+    if (!enabling) {
+      const confirmed = await confirm({
+        title: 'Suspend this staff account?',
+        description: `${member.email} will immediately lose access to the Super Admin control center.`,
+        confirmLabel: 'Suspend',
+        cancelLabel: 'Cancel',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
+    }
     try {
       await superAdminApi.setStaffStatus(member.id, enabling);
       showToast(enabling ? 'Staff account activated.' : 'Staff account suspended.', 'success');

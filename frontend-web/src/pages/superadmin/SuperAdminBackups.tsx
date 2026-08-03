@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import ApiErrorState from '../../components/ApiErrorState';
 import EmptyState from '../../components/EmptyState';
 import { ShimmerTable } from '../../components/ShimmerSkeleton';
@@ -50,6 +51,7 @@ const statusClass = (status: BackupStatus) => {
 
 export default function SuperAdminBackups() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [configuration, setConfiguration] = useState<BackupConfiguration | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,7 +125,14 @@ export default function SuperAdminBackups() {
   };
 
   const remove = async (backup: BackupRecord) => {
-    if (!window.confirm(`Delete ${backup.fileName || `backup #${backup.id}`} permanently?`)) return;
+    const confirmed = await confirm({
+      title: 'Delete this backup permanently?',
+      description: `${backup.fileName || `Backup #${backup.id}`} will be permanently deleted. This cannot be undone.`,
+      confirmLabel: 'Delete permanently',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setBusyId(backup.id);
     try {
       await api.delete(`/super-admin/backups/${backup.id}`);

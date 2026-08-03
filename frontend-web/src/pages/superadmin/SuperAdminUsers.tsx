@@ -6,6 +6,7 @@ import {
   Crown, Briefcase
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const roleConfig: Record<string, { color: string; icon: any; label: string }> = {
   SUPER_ADMIN: { color: 'bg-violet-50 text-violet-700 border-violet-200', icon: Crown, label: 'Super Admin' },
@@ -20,6 +21,7 @@ const allRoles = ['SUPER_ADMIN', 'ADMIN', 'EMPLOYEE', 'AGENT', 'CLIENT'];
 export default function SuperAdminUsers() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -59,7 +61,14 @@ export default function SuperAdminUsers() {
   };
 
   const deleteUser = async (id: number) => {
-    if (!window.confirm(t('superAdmin.users.confirmDelete'))) return;
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('superAdmin.users.confirmDelete'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deleteUser(id);
       await fetchUsers();

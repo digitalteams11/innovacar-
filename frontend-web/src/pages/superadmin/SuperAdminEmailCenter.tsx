@@ -9,6 +9,7 @@ import {
 import { PageHeader, TabGroup, DataTable, Modal, Badge, RecipientSelector } from '../../components/superadmin';
 import type { Recipient } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ const fieldCls = 'w-full px-3 py-2.5 bg-slate-50 dark:bg-white/5 border border-[
 export default function SuperAdminEmailCenter() {
   useTranslation();
   const { showToast } = useToast();
+  const confirm = useConfirm();
 
   // ── Global state ──────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
@@ -277,7 +279,14 @@ export default function SuperAdminEmailCenter() {
 
   const handleDelete = async (t: EmailTemplate) => {
     const verb = t.systemDefault ? 'deactivate' : 'delete';
-    if (!window.confirm(`${verb === 'delete' ? 'Delete' : 'Deactivate'} template "${t.name}"?`)) return;
+    const confirmed = await confirm({
+      title: `${verb === 'delete' ? 'Delete' : 'Deactivate'} this template?`,
+      description: `Template "${t.name}" will be ${verb}d.`,
+      confirmLabel: verb === 'delete' ? 'Delete' : 'Deactivate',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deleteEmailTemplate(t.id);
       showToast(`Template ${verb}d`, 'success');
@@ -294,7 +303,14 @@ export default function SuperAdminEmailCenter() {
   };
 
   const handleReset = async (t: EmailTemplate) => {
-    if (!window.confirm(`Reset "${t.name}" to its default content?`)) return;
+    const confirmed = await confirm({
+      title: 'Reset this template?',
+      description: `"${t.name}" will be reset to its default content.`,
+      confirmLabel: 'Reset',
+      cancelLabel: 'Cancel',
+      tone: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.resetEmailTemplate(t.id);
       showToast('Template reset to default', 'success');

@@ -4,6 +4,7 @@ import { Plus, PlugZap, Power, PowerOff, Trash2, Pencil } from 'lucide-react';
 import { DataTable, Modal, Badge, ActionMenu, FormField, TextInput, SelectInput, ToggleSwitch } from '..';
 import { aiService } from '../../../api/aiService';
 import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import { PROVIDER_TYPES, PROVIDER_DEFAULT_BASE_URL } from './types';
 import type { AiProviderRow } from './types';
 
@@ -20,6 +21,7 @@ const emptyForm = {
 export default function AiProvidersTab({ onChanged }: { onChanged?: () => void }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [providers, setProviders] = useState<AiProviderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -157,7 +159,14 @@ export default function AiProvidersTab({ onChanged }: { onChanged?: () => void }
       showToast(t('superAdmin.ai.providers.cannotDeleteActive'), 'warning');
       return;
     }
-    if (!confirm(t('superAdmin.ai.providers.confirmDelete'))) return;
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('superAdmin.ai.providers.confirmDelete'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await aiService.deleteProvider(row.id);
       showToast(t('superAdmin.ai.providers.deleteSuccess'), 'success');

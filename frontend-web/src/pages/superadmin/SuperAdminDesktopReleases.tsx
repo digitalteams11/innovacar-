@@ -3,6 +3,7 @@ import { MonitorSmartphone, Plus, Rocket, Archive, Ban } from 'lucide-react';
 import { superAdminApi } from '../../api/superAdminApi';
 import { PageHeader, Modal, FormField, TextInput, TextArea, SelectInput, Badge, EmptyState } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const channelOptions = [
   { value: 'STABLE', label: 'Stable' },
@@ -24,6 +25,7 @@ const defaultForm = {
 
 export default function SuperAdminDesktopReleases() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [releases, setReleases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -75,7 +77,14 @@ export default function SuperAdminDesktopReleases() {
   };
 
   const publish = async (release: any) => {
-    if (!window.confirm(`Publish version ${release.version} publicly? This will immediately become the "Download for Windows" target on the landing page, /desktop, and inside the app.`)) return;
+    const confirmed = await confirm({
+      title: `Publish version ${release.version}?`,
+      description: 'This will immediately become the "Download for Windows" target on the landing page, /desktop, and inside the app.',
+      confirmLabel: 'Publish',
+      cancelLabel: 'Cancel',
+      tone: 'warning',
+    });
+    if (!confirmed) return;
     try {
       const { data } = await superAdminApi.publishDesktopRelease(release.id);
       showToast(data?.message || 'Release published', 'success');
@@ -86,7 +95,14 @@ export default function SuperAdminDesktopReleases() {
   };
 
   const withdraw = async (release: any) => {
-    if (!window.confirm(`Withdraw version ${release.version}? It will stop being downloadable everywhere immediately.`)) return;
+    const confirmed = await confirm({
+      title: `Withdraw version ${release.version}?`,
+      description: 'It will stop being downloadable everywhere immediately.',
+      confirmLabel: 'Withdraw',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       const { data } = await superAdminApi.withdrawDesktopRelease(release.id);
       showToast(data?.message || 'Release withdrawn', 'success');
@@ -97,7 +113,14 @@ export default function SuperAdminDesktopReleases() {
   };
 
   const deprecate = async (release: any) => {
-    if (!window.confirm(`Mark version ${release.version} as deprecated? It stays downloadable but is flagged as outdated.`)) return;
+    const confirmed = await confirm({
+      title: `Mark version ${release.version} as deprecated?`,
+      description: 'It stays downloadable but is flagged as outdated.',
+      confirmLabel: 'Mark deprecated',
+      cancelLabel: 'Cancel',
+      tone: 'warning',
+    });
+    if (!confirmed) return;
     try {
       const { data } = await superAdminApi.deprecateDesktopRelease(release.id);
       showToast(data?.message || 'Release deprecated', 'success');

@@ -4293,5 +4293,53 @@
       "unsupportedOs": "يتطلب هذا المثبت نظام Windows 10 أو أحدث.",
       "downloadExpired": "انتهت صلاحية رابط التحميل هذا - يرجى تحديث الصفحة والمحاولة مرة أخرى."
     }
+  },
+  "actions": {
+    "confirm": "تأكيد",
+    "cancel": "إلغاء",
+    "keepContract": "الاحتفاظ بالعقد",
+    "cancelContract": "إلغاء العقد",
+    "deletePermanently": "حذف نهائي",
+    "archive": "أرشفة",
+    "restore": "استعادة",
+    "logout": "تسجيل الخروج",
+    "retry": "إعادة المحاولة"
+  },
+  "confirm": {
+    "areYouSure": {
+      "title": "هل أنت متأكد؟"
+    },
+    "deleteItem": {
+      "title": "حذف هذا العنصر؟",
+      "description": "لا يمكن التراجع عن هذا الإجراء."
+    },
+    "archiveItem": {
+      "title": "أرشفة هذا العنصر؟"
+    },
+    "restoreItem": {
+      "title": "استعادة هذا العنصر؟"
+    },
+    "logout": {
+      "title": "تسجيل الخروج؟",
+      "description": "ستحتاج إلى تسجيل الدخول مرة أخرى للمتابعة."
+    },
+    "unsavedChanges": {
+      "title": "لديك تغييرات غير محفوظة",
+      "description": "ستفقد تعديلاتك إذا غادرت هذه الصفحة الآن.",
+      "confirmLabel": "المغادرة دون حفظ",
+      "cancelLabel": "متابعة التحرير"
+    },
+    "cancelContract": {
+      "title": "إلغاء هذا العقد؟",
+      "description": "سيتم تحديد العقد {{contractNumber}} كملغى. لن يتم حذفه نهائيًا.",
+      "warning": "قد يتم تحديث توفر المركبة وحالة الحجز النشط المرتبطين بالعقد."
+    },
+    "deleteContract": {
+      "title": "حذف هذا العقد نهائيًا؟",
+      "description": "سيتم حذف العقد {{contractNumber}} نهائيًا. لا يمكن التراجع عن هذا الإجراء."
+    },
+    "trashContract": {
+      "title": "نقل هذا العقد إلى سلة المهملات؟"
+    }
   }
 }

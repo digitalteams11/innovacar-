@@ -5,6 +5,7 @@ import { superAdminApi } from '../../api/superAdminApi';
 import { ArrowRightCircle } from 'lucide-react';
 import { PageHeader, FilterSelect, DataTable, Badge } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const statusOptions = [
   { value: 'NEW', label: 'New' },
@@ -26,6 +27,7 @@ export default function SuperAdminContactRequests() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
@@ -51,7 +53,14 @@ export default function SuperAdminContactRequests() {
 
   const handleConvert = async (row: any) => {
     if (row.convertedTicketId) return;
-    if (!window.confirm(`Convert request ${row.requestNumber} into a support ticket?`)) return;
+    const confirmed = await confirm({
+      title: 'Convert to a support ticket?',
+      description: `Request ${row.requestNumber} will be converted into a support ticket.`,
+      confirmLabel: 'Convert',
+      cancelLabel: 'Cancel',
+      tone: 'default',
+    });
+    if (!confirmed) return;
     setConvertingId(row.id);
     try {
       const res = await superAdminApi.convertContactRequestToTicket(row.id);

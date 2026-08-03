@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { PageHeader, Modal, FormField, TextInput, ToggleSwitch, Badge } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const planIcons: Record<string, any> = {
   Trial: Zap,
@@ -19,6 +20,7 @@ const planIcons: Record<string, any> = {
 export default function SuperAdminSubscriptions() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [plans, setPlans] = useState<any[]>([]);
   const [agencies, setAgencies] = useState<any[]>([]);
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
@@ -81,7 +83,14 @@ export default function SuperAdminSubscriptions() {
   };
 
   const handleDeletePlan = async (id: number) => {
-    if (!window.confirm(t('superAdmin.subscriptions.confirmDelete'))) return;
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('superAdmin.subscriptions.confirmDelete'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deletePlan(id);
       fetchData();
@@ -156,7 +165,14 @@ export default function SuperAdminSubscriptions() {
   };
 
   const handleDeletePromo = async (id: number) => {
-    if (!window.confirm('Soft-delete this promo code? It will be hidden from agencies.')) return;
+    const confirmed = await confirm({
+      title: 'Delete this promo code?',
+      description: 'It will be hidden from agencies. This is a soft-delete and can be restored by support if needed.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      tone: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deletePromoCode(id);
       fetchData();

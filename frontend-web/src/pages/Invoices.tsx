@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import Modal from '../components/Modal';
 import SmartClientSearch from '../components/shared/SmartClientSearch';
 import api from '../api/axios';
@@ -34,6 +35,7 @@ export default function Invoices() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { t } = useTranslation();
 
   useEffect(() => { fetchInvoices(); }, []);
@@ -165,14 +167,20 @@ export default function Invoices() {
   );
 
   const deleteInvoice = async (id: number) => {
-    if (confirm(t('invoices.deleteConfirm') || 'Delete this invoice?')) {
-      try {
-        await api.delete(`/invoices/${id}`);
-        fetchInvoices();
-        showToast(t('invoices.deletedSuccess'), 'success');
-      } catch (err) {
-        showToast(t('invoices.deleteFailed'), 'error');
-      }
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('invoices.deleteConfirm') || 'Delete this invoice?',
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await api.delete(`/invoices/${id}`);
+      fetchInvoices();
+      showToast(t('invoices.deletedSuccess'), 'success');
+    } catch (err) {
+      showToast(t('invoices.deleteFailed'), 'error');
     }
   };
 

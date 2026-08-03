@@ -18,5 +18,16 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Innovacar's confirmation UX is a single shared ConfirmProvider/
+      // useConfirm/ConfirmDialog system (src/context/ConfirmContext.tsx), not
+      // browser-chrome dialogs — no window.confirm/alert/prompt allowed
+      // anywhere in the app. ESLint's own scope analysis means this only
+      // flags real references to the global functions; a local `const
+      // confirm = useConfirm()` (or any other shadowing binding) is never
+      // mistaken for the native one, so no false positives on the very
+      // pattern this migration introduced everywhere.
+      'no-alert': 'error',
+    },
   },
 ])

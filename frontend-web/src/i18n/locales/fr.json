@@ -4254,5 +4254,53 @@
       "unsupportedOs": "Cet installateur necessite Windows 10 ou plus recent.",
       "downloadExpired": "Ce lien de telechargement a expire - veuillez actualiser la page et reessayer."
     }
+  },
+  "actions": {
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "keepContract": "Conserver le contrat",
+    "cancelContract": "Annuler le contrat",
+    "deletePermanently": "Supprimer définitivement",
+    "archive": "Archiver",
+    "restore": "Restaurer",
+    "logout": "Se déconnecter",
+    "retry": "Réessayer"
+  },
+  "confirm": {
+    "areYouSure": {
+      "title": "Êtes-vous sûr(e) ?"
+    },
+    "deleteItem": {
+      "title": "Supprimer cet élément ?",
+      "description": "Cette action est irréversible."
+    },
+    "archiveItem": {
+      "title": "Archiver cet élément ?"
+    },
+    "restoreItem": {
+      "title": "Restaurer cet élément ?"
+    },
+    "logout": {
+      "title": "Se déconnecter ?",
+      "description": "Vous devrez vous reconnecter pour continuer."
+    },
+    "unsavedChanges": {
+      "title": "Modifications non enregistrées",
+      "description": "Vos modifications seront perdues si vous quittez cette page maintenant.",
+      "confirmLabel": "Quitter sans enregistrer",
+      "cancelLabel": "Continuer la modification"
+    },
+    "cancelContract": {
+      "title": "Annuler ce contrat ?",
+      "description": "Le contrat {{contractNumber}} sera marqué comme annulé. Il ne sera pas supprimé définitivement.",
+      "warning": "La disponibilité du véhicule et l'état de la réservation active peuvent être mis à jour."
+    },
+    "deleteContract": {
+      "title": "Supprimer ce contrat définitivement ?",
+      "description": "Le contrat {{contractNumber}} sera définitivement supprimé. Cette action est irréversible."
+    },
+    "trashContract": {
+      "title": "Déplacer ce contrat vers la corbeille ?"
+    }
   }
 }

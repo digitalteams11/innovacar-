@@ -4,11 +4,13 @@ import { RefreshCw, Plus, Star } from 'lucide-react';
 import { DataTable, Badge, FilterSelect, Modal, FormField, TextInput, ActionMenu } from '..';
 import { aiService } from '../../../api/aiService';
 import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import type { AiModelRow, AiProviderRow } from './types';
 
 export default function AiModelsTab() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [providers, setProviders] = useState<AiProviderRow[]>([]);
   const [providerId, setProviderId] = useState<string>('');
   const [models, setModels] = useState<AiModelRow[]>([]);
@@ -96,7 +98,14 @@ export default function AiModelsTab() {
   };
 
   const remove = async (row: AiModelRow) => {
-    if (!confirm(t('superAdmin.ai.models.confirmDelete'))) return;
+    const confirmed = await confirm({
+      title: t('confirm.deleteItem.title', 'Delete this item?'),
+      description: t('superAdmin.ai.models.confirmDelete'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await aiService.deleteModel(row.id);
       await loadModels(providerId);

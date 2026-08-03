@@ -123,6 +123,12 @@
     --z-popover: 900;
     --z-modal-overlay: 1000;
     --z-modal-dialog: 1000;
+    /* Confirmation dialogs (useConfirm) can be triggered from inside another
+       Modal (e.g. "unsaved changes" while an edit modal is open) — always
+       above --z-modal-overlay so it's never hidden behind the modal that
+       spawned it, but below --z-toast so a toast fired on confirm-success
+       still reads on top. */
+    --z-confirm-overlay: 1050;
     --z-toast: 1100;
 
     /* Transitions */

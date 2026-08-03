@@ -4,12 +4,14 @@ import { superAdminApi } from '../../api/superAdminApi';
 import { Edit2, Plus, Trash2 } from 'lucide-react';
 import { PageHeader, DataTable, Badge, Modal, FormField, TextInput, TextArea } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const emptyForm = { id: null as number | null, slug: '', title: '', category: '', summary: '', content: '', published: true, isFaq: false };
 
 export default function SuperAdminHelpArticles() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -72,7 +74,14 @@ export default function SuperAdminHelpArticles() {
   };
 
   const handleDelete = async (row: any) => {
-    if (!window.confirm(`Delete article "${row.title}"?`)) return;
+    const confirmed = await confirm({
+      title: 'Delete this article?',
+      description: `"${row.title}" will be permanently deleted.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await superAdminApi.deleteHelpArticle(row.id);
       showToast('Article deleted', 'success');

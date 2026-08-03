@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Edit2, Plus, Trash2, X } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const emptyForm = {
   code: '',
@@ -20,6 +21,7 @@ export default function SuperAdminFeatures() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
+  const confirm = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -71,7 +73,14 @@ export default function SuperAdminFeatures() {
   };
 
   const removeFeature = async (feature: any) => {
-    if (!window.confirm(`Delete ${feature.name}?`)) return;
+    const confirmed = await confirm({
+      title: 'Delete this feature?',
+      description: `${feature.name} will be permanently deleted.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     await api.delete(`/super-admin/features/${feature.id}`);
     await load();
   };

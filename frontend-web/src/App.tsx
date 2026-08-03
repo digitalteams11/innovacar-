@@ -6,6 +6,7 @@ import { RefreshCw, ServerOff, WifiOff } from 'lucide-react';
 import { checkHealth } from './lib/api';
 import { useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { NotificationSoundProvider } from './context/NotificationSoundContext';
 import { FeatureAccessProvider } from './context/FeatureAccessContext';
@@ -479,7 +480,9 @@ function App() {
       <NotificationSoundProvider>
         <NotificationProvider>
           <ToastProvider>
-            <AppShell />
+            <ConfirmProvider>
+              <AppShell />
+            </ConfirmProvider>
           </ToastProvider>
         </NotificationProvider>
       </NotificationSoundProvider>
