@@ -155,6 +155,47 @@ describe('ThemeProvider — login/logout must not silently change the theme', ()
     await waitFor(() => expect(isDark()).toBe(true));
   });
 
+  it('never paints --bg-page for the wrong mode while the `dark` class is toggled (mixed-theme regression)', async () => {
+    // Regression test for the production bug: background/surface/sidebar
+    // colors used to be re-derived from the preset in a separate passive
+    // effect, one render behind the layout effect that flips the `dark`
+    // class — producing exactly one committed frame with `dark` set but
+    // still-light --bg-page (light page + dark cards + invisible text).
+    // This spies on every --bg-page write across the login transition below
+    // (which flips resolvedTheme from light to dark) and asserts the `dark`
+    // class already agrees with the color at the moment each write happens.
+    const LIGHT_BG = '#F8FAFC';
+    const DARK_BG = '#071A16'; // neo-emerald dark background
+    // Must capture classList state AT CALL TIME, not afterwards — the whole
+    // point is to catch a commit where they briefly disagreed, and checking
+    // `isDark()` only after everything settles would miss exactly that.
+    const bgPageWrites: Array<{ value: string; darkAtCallTime: boolean }> = [];
+    const realSetProperty = document.documentElement.style.setProperty.bind(document.documentElement.style);
+    const setPropertySpy = vi.spyOn(document.documentElement.style, 'setProperty')
+      .mockImplementation((prop: string, value: string) => {
+        if (prop === '--bg-page') bgPageWrites.push({ value, darkAtCallTime: isDark() });
+        return realSetProperty(prop, value);
+      });
+
+    render(<ThemeProvider><TestProbe /></ThemeProvider>);
+    await waitFor(() => expect(isDark()).toBe(false));
+
+    await act(async () => {
+      setMockAuth({ isAuthenticated: true, user: { id: 99, themeMode: 'dark' } });
+    });
+    await waitFor(() => expect(isDark()).toBe(true));
+
+    expect(bgPageWrites.length).toBeGreaterThan(0);
+    for (const { value, darkAtCallTime } of bgPageWrites) {
+      if (value === LIGHT_BG) {
+        expect(darkAtCallTime).toBe(false);
+      } else if (value === DARK_BG) {
+        expect(darkAtCallTime).toBe(true);
+      }
+    }
+    setPropertySpy.mockRestore();
+  });
+
   it('logout does not unexpectedly change the theme', async () => {
     localStorage.setItem(CANONICAL_KEY, 'dark');
     currentAuth = { isAuthenticated: true, user: { id: 1, themeMode: 'dark' } };

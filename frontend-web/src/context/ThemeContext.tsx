@@ -600,45 +600,67 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener('change', updateResolvedTheme);
   }, [appearance.mode]);
 
-  // Re-derive background/surface/sidebar from the active preset whenever the
-  // resolved mode flips (light <-> dark), so a theme stays readable and on-
-  // brand in both modes instead of dragging light-mode colors into dark mode.
-  useEffect(() => {
-    const definition = presetCatalog[appearance.preset] ?? presetCatalog['neo-emerald'];
-    // resolvedTheme is state, not a freshly-normalized value — defend the
-    // same way presetColorsFor() does rather than trusting it's always
-    // exactly 'light' | 'dark' at runtime.
-    const modeColors = definition[resolvedTheme] ?? definition.light;
-    setAppearance((current) => {
-      if (
-        current.backgroundColor === modeColors.background
-        && current.surfaceColor === modeColors.surface
-        && current.sidebarColor === modeColors.sidebar
-      ) {
-        return current;
-      }
-      return {
-        ...current,
-        backgroundColor: modeColors.background,
-        surfaceColor: modeColors.surface,
-        sidebarColor: modeColors.sidebar,
-        glassColor: modeColors.surface,
-      };
-    });
-  }, [resolvedTheme, appearance.preset]);
-
   // useLayoutEffect (not useEffect): applies the `dark` class and CSS vars
   // synchronously after DOM mutation but before the browser paints, shrinking
   // the flash window for brand-color-dependent foreground text (see
   // readableTextOn() below) — the inline script in index.html already
   // handles the class/color-scheme before React even mounts, this effect
   // just needs to apply the same thing on every subsequent state change.
+  //
+  // The background/surface/sidebar re-derivation used to live in its own
+  // plain `useEffect` keyed on [resolvedTheme, appearance.preset], separate
+  // from this one. That was the actual mixed-theme production bug: a plain
+  // effect is a passive effect, so it runs (and its setAppearance take
+  // effect) one whole render AFTER this layout effect already painted with
+  // the NEW resolvedTheme's `dark` class but the OLD mode's preset colors
+  // still sitting in `appearance` — e.g. right after login when the
+  // sync-once effect flips `appearance.mode`, or the instant the OS flips
+  // prefers-color-scheme in SYSTEM mode. That one painted frame is exactly
+  // "page background light, cards/nav dark, text invisible" — the `dark`
+  // class flips class-based CSS (index.css's `.dark` overrides, --text-*
+  // tokens) instantly via the cascade, while the JS-computed --bg-page/
+  // --bg-card-solid/--bg-sidebar vars below lagged a render behind. Deriving
+  // the mode-correct colors synchronously, right here, in the same effect
+  // that writes the DOM, closes that gap: there is no longer a commit where
+  // resolvedTheme and the applied surface colors disagree.
   useLayoutEffect(() => {
+    const presetDefinition = presetCatalog[appearance.preset] ?? presetCatalog['neo-emerald'];
+    // resolvedTheme is state, not a freshly-normalized value — defend the
+    // same way presetColorsFor() does rather than trusting it's always
+    // exactly 'light' | 'dark' at runtime.
+    const modeColors = presetDefinition[resolvedTheme] ?? presetDefinition.light;
+    const colorsMatchMode = appearance.backgroundColor === modeColors.background
+      && appearance.surfaceColor === modeColors.surface
+      && appearance.sidebarColor === modeColors.sidebar;
+    // When the stored colors don't match the currently-resolved mode, use the
+    // preset's mode-correct colors for THIS paint immediately, and persist
+    // them into `appearance` for subsequent renders/localStorage — instead of
+    // painting with stale colors now and only self-correcting next render.
+    const effectiveBackground = colorsMatchMode ? appearance.backgroundColor : modeColors.background;
+    const effectiveSurface = colorsMatchMode ? appearance.surfaceColor : modeColors.surface;
+    const effectiveSidebar = colorsMatchMode ? appearance.sidebarColor : modeColors.sidebar;
+    const effectiveGlass = colorsMatchMode ? appearance.glassColor : modeColors.surface;
+    if (!colorsMatchMode) {
+      setAppearance((current) => (
+        current.backgroundColor === modeColors.background
+          && current.surfaceColor === modeColors.surface
+          && current.sidebarColor === modeColors.sidebar
+          ? current
+          : {
+            ...current,
+            backgroundColor: modeColors.background,
+            surfaceColor: modeColors.surface,
+            sidebarColor: modeColors.sidebar,
+            glassColor: modeColors.surface,
+          }
+      ));
+    }
+
     const root = document.documentElement;
-    const glass = hexToRgb(appearance.glassColor);
+    const glass = hexToRgb(effectiveGlass);
     const density = appearance.cardDensity === 'compact' ? 0.78 : appearance.cardDensity === 'spacious' ? 1.2 : 1;
     const duration = Math.max(40, appearance.animationSpeed);
-    const sidebarText = readableTextOn(appearance.sidebarColor);
+    const sidebarText = readableTextOn(effectiveSidebar);
     const resolvedPrimary = branding?.primaryColor || appearance.primaryColor;
     const resolvedAccent = branding?.accentColor || appearance.accentColor;
     // Same luminance-safe approach the sidebar already uses, applied to every place
@@ -674,12 +696,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--brand-secondary', appearance.secondaryColor);
     root.style.setProperty('--brand-accent', resolvedAccent);
     root.style.setProperty('--brand-accent-foreground', accentText.text);
-    root.style.setProperty('--bg-sidebar', appearance.sidebarColor);
+    root.style.setProperty('--bg-sidebar', effectiveSidebar);
     root.style.setProperty('--text-sidebar', sidebarText.text);
     root.style.setProperty('--text-sidebar-muted', sidebarText.muted);
-    root.style.setProperty('--bg-page', appearance.backgroundColor);
-    root.style.setProperty('--bg-page-raised', appearance.surfaceColor);
-    root.style.setProperty('--bg-card-solid', appearance.surfaceColor);
+    root.style.setProperty('--bg-page', effectiveBackground);
+    root.style.setProperty('--bg-page-raised', effectiveSurface);
+    root.style.setProperty('--bg-card-solid', effectiveSurface);
     // Every preset's background is either clearly light or clearly dark, so
     // the existing light/dark `--text-primary` neutrals (toggled by the
     // `.dark` class above) already stay readable against it — intentionally
@@ -695,7 +717,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--radius-card', `${appearance.cornerRadius}px`);
     root.style.setProperty('--density-scale', String(density));
     root.style.setProperty('--font-ui', `'${appearance.fontFamily}', Inter, system-ui, sans-serif`);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appearance));
+    // Persist the effective (mode-correct) colors even though the pending
+    // setAppearance() above hasn't landed in state yet this commit — so a
+    // refresh/close in this exact instant never reads back the stale pair.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...appearance,
+      backgroundColor: effectiveBackground,
+      surfaceColor: effectiveSurface,
+      sidebarColor: effectiveSidebar,
+      glassColor: effectiveGlass,
+    }));
     writeThemePreferenceKey(appearance.mode);
     themeDebugLog('applied: preference ->', appearance.mode, 'resolved ->', resolvedTheme, 'dark class ->', resolvedTheme === 'dark');
   }, [appearance, resolvedTheme, branding]);
