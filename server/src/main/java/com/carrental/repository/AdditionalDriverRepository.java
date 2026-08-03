@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AdditionalDriverRepository extends JpaRepository<AdditionalDriver, Long> {
@@ -17,6 +18,12 @@ public interface AdditionalDriverRepository extends JpaRepository<AdditionalDriv
     long countByContractIdIn(List<Long> contractIds);
 
     void deleteAllByContractIdIn(List<Long> contractIds);
+
+    /** Tenant/contract-scoped lookup — a contract's admin can never touch another contract's driver by guessing an id. */
+    Optional<AdditionalDriver> findByIdAndContractId(Long id, Long contractId);
+
+    /** Public signing lookup — token is always hashed before this call, never stored/compared raw. */
+    Optional<AdditionalDriver> findByTokenHash(String tokenHash);
 
     /** Native bulk DELETE — bypasses @SQLRestriction on Contract (see PaymentRepository for details). */
     @Modifying

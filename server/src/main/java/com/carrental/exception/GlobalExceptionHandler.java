@@ -226,6 +226,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatus()).body(body);
     }
 
+    @ExceptionHandler(PublicSigningException.class)
+    public ResponseEntity<Map<String, Object>> handlePublicSigning(PublicSigningException ex) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("success", false);
+        body.put("code", ex.getReason().name());
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(ex.getStatus()).body(body);
+    }
+
     @ExceptionHandler(AiServiceException.class)
     public ResponseEntity<Map<String, Object>> handleAiService(AiServiceException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {
