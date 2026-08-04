@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Represents an invoice within a tenant's business.
@@ -50,6 +51,34 @@ public class Invoice {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private InvoiceStatus status;
+
+    // ── PDF / contract-link additions ────────────────────────────────────────
+
+    /** Optional link to the rental contract this invoice bills — null for
+     *  manual/ad-hoc invoices (the only kind that existed before this link
+     *  was added). When set, the individual PDF renders the full rental
+     *  context + fee breakdown sourced from the contract itself. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contract_id")
+    private Contract contract;
+
+    @Column(name = "currency", length = 10)
+    private String currency;
+
+    @Column(name = "pdf_generated_at")
+    private LocalDateTime pdfGeneratedAt;
+
+    @Column(name = "pdf_language", length = 5)
+    private String pdfLanguage;
+
+    @Column(name = "pdf_outdated", nullable = false)
+    private boolean pdfOutdated;
+
+    @Column(name = "emailed_at")
+    private LocalDateTime emailedAt;
+
+    @Column(name = "emailed_to", length = 150)
+    private String emailedTo;
 
     // ── Multi-tenancy link ──────────────────────────────────────────────────
 

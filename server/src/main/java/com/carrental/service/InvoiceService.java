@@ -3,6 +3,7 @@ package com.carrental.service;
 import com.carrental.dto.invoice.CreateInvoiceRequest;
 import com.carrental.dto.invoice.UpdateInvoiceRequest;
 import com.carrental.dto.invoice.InvoiceResponse;
+import com.carrental.dto.invoice.InvoiceExportFilter;
 import com.carrental.entity.*;
 import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.ClientRepository;
@@ -12,6 +13,7 @@ import com.carrental.repository.TenantRepository;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -64,6 +66,66 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public InvoiceResponse getInvoiceById(Long id) {
         return InvoiceResponse.from(fetchInvoiceInTenant(id));
+    }
+
+    /**
+     * Tenant-scoped invoice entity lookup for callers that need the full
+     * entity (PDF generation, email dispatch) rather than the DTO — e.g.
+     * {@code InvoiceController}'s {@code /pdf} and {@code /email} endpoints.
+     * 404s (never 403) on both missing and cross-tenant invoices, exactly
+     * like every other lookup in this service.
+     */
+    @Transactional(readOnly = true)
+    public Invoice getInvoiceEntityById(Long id) {
+        return fetchInvoiceInTenant(id);
+    }
+
+    /**
+     * Dynamic-filter invoice export, shared verbatim by the PDF-export and
+     * CSV-export controller endpoints so the two formats can never disagree
+     * on which invoices matched. Tenant scoping always comes from
+     * {@link TenantContext#getCurrentTenantId()} — never from the filter
+     * DTO — regardless of anything the frontend sends.
+     */
+    @Transactional(readOnly = true)
+    public List<Invoice> exportFilteredInvoices(InvoiceExportFilter filter) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        InvoiceStatus status = null;
+        if (filter != null && StringUtils.hasText(filter.getStatus()) && !"all".equalsIgnoreCase(filter.getStatus())) {
+            try {
+                status = InvoiceStatus.valueOf(filter.getStatus().trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // Unknown status value — treat as "no status filter" rather than failing the export.
+            }
+        }
+        Sort sort = Sort.by(Sort.Direction.DESC, "issueDate");
+        if (filter != null && StringUtils.hasText(filter.getSort())) {
+            String[] parts = filter.getSort().split(",", 2);
+            String property = parts[0].trim();
+            Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())
+                    ? Sort.Direction.ASC : Sort.Direction.DESC;
+            if (StringUtils.hasText(property)) {
+                sort = Sort.by(direction, property);
+            }
+        }
+
+        List<Invoice> results = invoiceRepository.findAllForExport(
+                tenantId,
+                filter != null && StringUtils.hasText(filter.getSearch()) ? filter.getSearch().trim() : null,
+                status,
+                filter != null ? filter.getDateFrom() : null,
+                filter != null ? filter.getDateTo() : null,
+                filter != null ? filter.getClientId() : null,
+                filter != null ? filter.getContractId() : null,
+                filter != null ? filter.getVehicleId() : null,
+                sort);
+
+        if (filter != null && "CURRENT_PAGE".equalsIgnoreCase(filter.getScope())
+                && filter.getPageInvoiceIds() != null) {
+            var allowedIds = new java.util.HashSet<>(filter.getPageInvoiceIds());
+            results = results.stream().filter(inv -> allowedIds.contains(inv.getId())).toList();
+        }
+        return results;
     }
 
     // ── CREATE ────────────────────────────────────────────────────────────────
@@ -204,6 +266,22 @@ public class InvoiceService {
         log.info("Marked invoice [id={}] as PAID in tenant [{}]",
                 id, tenantId);
         return InvoiceResponse.from(saved);
+    }
+
+    /**
+     * Stamps the PDF-generation metadata (§ "mark previous PDF outdated,
+     * regenerate on demand" at the metadata level — no historical PDF
+     * archive) after a successful individual PDF render. Called by
+     * {@code InvoiceController}'s {@code /pdf} endpoint, never before the
+     * PDF bytes are actually confirmed generated.
+     */
+    @Transactional
+    public void markPdfGenerated(Long id, String language) {
+        Invoice invoice = fetchInvoiceInTenant(id);
+        invoice.setPdfGeneratedAt(java.time.LocalDateTime.now());
+        invoice.setPdfLanguage(language);
+        invoice.setPdfOutdated(false);
+        invoiceRepository.save(invoice);
     }
 
     private String generatePaymentNumber() {

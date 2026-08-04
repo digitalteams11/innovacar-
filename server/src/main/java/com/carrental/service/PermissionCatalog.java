@@ -125,6 +125,9 @@ public final class PermissionCatalog {
             Entry.of("PAYMENT_REFUND", "PAYMENTS", "PAYMENT", "REFUND", DANGEROUS, List.of("PAYMENT_VIEW"), next()),
             Entry.of("INVOICE_VIEW", "PAYMENTS", "INVOICE", "VIEW", NORMAL, List.of(), next()),
             Entry.of("INVOICE_EXPORT", "PAYMENTS", "INVOICE", "EXPORT", NORMAL, List.of("INVOICE_VIEW"), next()),
+            Entry.of("INVOICE_PDF_DOWNLOAD", "PAYMENTS", "INVOICE", "PDF_DOWNLOAD", NORMAL, List.of("INVOICE_VIEW"), next()),
+            Entry.of("INVOICE_PRINT", "PAYMENTS", "INVOICE", "PRINT", NORMAL, List.of("INVOICE_VIEW"), next()),
+            Entry.of("INVOICE_EMAIL_SEND", "PAYMENTS", "INVOICE", "EMAIL_SEND", NORMAL, List.of("INVOICE_VIEW"), next()),
 
             Entry.of("REPORT_VIEW", "REPORTS", "REPORT", "VIEW", NORMAL, List.of(), next()),
             Entry.of("REPORT_GENERATE", "REPORTS", "REPORT", "GENERATE", NORMAL, List.of("REPORT_VIEW"), next()),

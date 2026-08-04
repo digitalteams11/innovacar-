@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Read-only invoice projection returned by all invoice endpoints.
@@ -24,6 +25,16 @@ public class InvoiceResponse {
     private BigDecimal    amount;
     private InvoiceStatus status;
     private Long          tenantId;
+    private String        currency;
+    private Long          contractId;
+    private String        contractNumber;
+    // PDF/email metadata — lets the frontend hydrate "sent" state across
+    // reloads instead of tracking it only in local session state.
+    private LocalDateTime pdfGeneratedAt;
+    private String        pdfLanguage;
+    private boolean       pdfOutdated;
+    private LocalDateTime emailedAt;
+    private String        emailedTo;
 
     // ── Static factory ───────────────────────────────────────────────────────
 
@@ -38,6 +49,14 @@ public class InvoiceResponse {
                 .amount(invoice.getAmount())
                 .status(invoice.getStatus())
                 .tenantId(invoice.getTenant().getId())
+                .currency(invoice.getCurrency())
+                .contractId(invoice.getContract() != null ? invoice.getContract().getId() : null)
+                .contractNumber(invoice.getContract() != null ? invoice.getContract().getContractNumber() : null)
+                .pdfGeneratedAt(invoice.getPdfGeneratedAt())
+                .pdfLanguage(invoice.getPdfLanguage())
+                .pdfOutdated(invoice.isPdfOutdated())
+                .emailedAt(invoice.getEmailedAt())
+                .emailedTo(invoice.getEmailedTo())
                 .build();
     }
 }
