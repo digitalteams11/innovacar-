@@ -4,6 +4,7 @@ import com.carrental.entity.ContactRequest;
 import com.carrental.entity.Contract;
 import com.carrental.entity.Deposit;
 import com.carrental.entity.EmailLog;
+import com.carrental.entity.Invoice;
 import com.carrental.entity.PlatformSettings;
 import com.carrental.entity.SupportMessage;
 import com.carrental.entity.SupportTicket;
@@ -13,6 +14,7 @@ import com.carrental.repository.ContactRequestRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.DepositRepository;
 import com.carrental.repository.EmailLogRepository;
+import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PlatformSettingsRepository;
 import com.carrental.repository.SupportTicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +62,9 @@ public class PlatformEmailService {
     private final com.carrental.repository.TenantSettingsRepository tenantSettingsRepository;
     private final EmailTemplateRenderer emailTemplateRenderer;
     private final Environment environment;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoicePdfService invoicePdfService;
+    private final EmailActionUrlBuilder emailActionUrlBuilder;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -209,6 +214,112 @@ public class PlatformEmailService {
 
     private String sanitizeFileName(String fileName) {
         return fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
+    /**
+     * Renders and sends the invoice PDF to {@code toEmail}, cloning
+     * {@link #sendContractPdfEmail}'s shape: render via
+     * {@link EmailTemplateService} (falling back to a plain body if no
+     * managed template exists yet), attach the generated PDF bytes (never a
+     * file path) via {@link SmtpMailService#sendForTenant}, and — on
+     * confirmed provider success only — stamp {@code invoice.emailedAt}/
+     * {@code emailedTo} and save. On failure the invoice is left completely
+     * untouched and the precise {@link SmtpMailService.SmtpResult} is
+     * returned so the caller can surface the real error instead of a
+     * generic toast.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public SmtpMailService.SmtpResult sendInvoicePdfEmail(Invoice invoice, String toEmail, String language) {
+        Long tenantId = invoice.getTenant() != null ? invoice.getTenant().getId() : null;
+        if (!StringUtils.hasText(toEmail)) {
+            return SmtpMailService.SmtpResult.failure(null, "Recipient email not provided.", "EMAIL_TO_ADDRESS_MISSING");
+        }
+
+        Map<String, String> vars = buildInvoiceVars(invoice, language);
+        var rendered = emailTemplateService.render(
+                EmailTemplateService.KEY_INVOICE_SENT_CLIENT, resolveTenantEmailLanguage(invoice.getTenant()), vars);
+
+        String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
+                .orElseGet(() -> "Your invoice " + safeInvoiceNumber(invoice));
+        String htmlBody = rendered.map(EmailTemplateService.RenderedEmail::htmlBody)
+                .filter(StringUtils::hasText).orElse(null);
+        String plainBody = rendered.map(EmailTemplateService.RenderedEmail::plainBody)
+                .filter(StringUtils::hasText)
+                .orElseGet(() -> buildInvoiceFallbackBody(invoice, vars));
+
+        byte[] pdfBytes;
+        try {
+            pdfBytes = invoicePdfService.generateInvoicePdf(invoice, language);
+        } catch (Exception e) {
+            log.error("[EMAIL] Invoice PDF generation failed for invoiceId={}", invoice.getId(), e);
+            return SmtpMailService.SmtpResult.failure(null, "Unable to generate the invoice PDF.", "INVOICE_PDF_GENERATION_FAILED");
+        }
+        String attachmentName = sanitizeFileName("facture-" + safeInvoiceNumber(invoice) + ".pdf");
+
+        SmtpMailService.SmtpResult result = tenantId != null
+                ? smtpMailService.sendForTenant(tenantId, toEmail, subject, htmlBody, plainBody,
+                        attachmentName, pdfBytes, "application/pdf")
+                : SmtpMailService.SmtpResult.failure(null, "Invoice has no tenant.", "TENANT_MISSING");
+
+        if (result.sent()) {
+            invoice.setEmailedAt(LocalDateTime.now());
+            invoice.setEmailedTo(toEmail);
+            invoiceRepository.save(invoice);
+            saveLog(null, tenantId, toEmail, EmailLog.TYPE_INVOICE_SENT_CLIENT, subject, "SENT", null, null);
+            log.info("[EMAIL] INVOICE_SENT_CLIENT sent [invoiceId={}, to={}]", invoice.getId(), toEmail);
+        } else {
+            String errorCode = classifyError(result);
+            saveLog(null, tenantId, toEmail, EmailLog.TYPE_INVOICE_SENT_CLIENT, subject, "FAILED",
+                    errorCode, truncate(result.errorMessage(), 900));
+            log.warn("[EMAIL] INVOICE_SENT_CLIENT failed [invoiceId={}, errorCode={}]: {}",
+                    invoice.getId(), errorCode, result.errorMessage());
+        }
+        return result;
+    }
+
+    private String safeInvoiceNumber(Invoice invoice) {
+        return StringUtils.hasText(invoice.getInvoiceNumber()) ? invoice.getInvoiceNumber() : ("INV-" + invoice.getId());
+    }
+
+    /** Builds the variable map used by the INVOICE_SENT_CLIENT template. */
+    private Map<String, String> buildInvoiceVars(Invoice invoice, String language) {
+        String currency = StringUtils.hasText(invoice.getCurrency()) ? invoice.getCurrency() : "MAD";
+        BigDecimal grandTotal = (invoice.getContract() != null && invoice.getContract().getTotalPrice() != null)
+                ? invoice.getContract().getTotalPrice()
+                : (invoice.getAmount() != null ? invoice.getAmount() : BigDecimal.ZERO);
+        BigDecimal paid = invoicePdfService.paidAmountFor(invoice);
+        BigDecimal remaining = grandTotal.subtract(paid).max(BigDecimal.ZERO);
+
+        String clientName = invoice.getClient() != null && StringUtils.hasText(invoice.getClient().getName())
+                ? invoice.getClient().getName()
+                : (StringUtils.hasText(invoice.getClientName()) ? invoice.getClientName() : "Valued Client");
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("clientName", clientName);
+        vars.put("agencyName", invoice.getTenant() != null ? invoice.getTenant().getName() : "");
+        vars.put("invoiceNumber", safeInvoiceNumber(invoice));
+        vars.put("grandTotal", invoicePdfService.formatCurrency(grandTotal, currency, language));
+        vars.put("paidAmount", invoicePdfService.formatCurrency(paid, currency, language));
+        vars.put("remainingAmount", invoicePdfService.formatCurrency(remaining, currency, language));
+        return vars;
+    }
+
+    private String buildInvoiceFallbackBody(Invoice invoice, Map<String, String> vars) {
+        return String.format("""
+                Bonjour %s,
+
+                Veuillez trouver ci-joint votre facture %s.
+
+                Total: %s
+                Payé: %s
+                Reste à payer: %s
+
+                Merci pour votre confiance,
+                %s
+                """,
+                vars.get("clientName"), vars.get("invoiceNumber"),
+                vars.get("grandTotal"), vars.get("paidAmount"), vars.get("remainingAmount"),
+                vars.get("agencyName"));
     }
 
     /**
@@ -710,7 +821,7 @@ public class PlatformEmailService {
                 "firstName", StringUtils.hasText(tenantName) ? tenantName : "there",
                 "daysRemaining", daysRemaining,
                 "trialEndDate", LocalDate.now().plusDays(daysRemaining).toString(),
-                "upgradeUrl", frontendUrl + "/subscription"));
+                "upgradeUrl", emailActionUrlBuilder.subscriptionUrl()));
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
         String status = result.sent() ? "SENT" : "FAILED";
@@ -733,7 +844,7 @@ public class PlatformEmailService {
         String subject = "Your Innovacar free trial has ended — " + tenantName;
         String body = emailTemplateRenderer.render("trial-expired", Map.of(
                 "firstName", StringUtils.hasText(tenantName) ? tenantName : "there",
-                "upgradeUrl", frontendUrl + "/subscription"));
+                "upgradeUrl", emailActionUrlBuilder.subscriptionUrl()));
 
         SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, tenantEmail, subject, body);
         String status = result.sent() ? "SENT" : "FAILED";
@@ -769,7 +880,7 @@ public class PlatformEmailService {
         vars.put("requesterEmail", StringUtils.hasText(ticket.getRequesterEmail()) ? ticket.getRequesterEmail() : "");
         vars.put("subject", StringUtils.hasText(ticket.getSubject()) ? ticket.getSubject() : "");
         vars.put("message", StringUtils.hasText(ticket.getDescription()) ? ticket.getDescription() : "");
-        vars.put("dashboardUrl", frontendUrl + "/super-admin/support/" + ticket.getId());
+        vars.put("dashboardUrl", emailActionUrlBuilder.supportTicketAdminUrl(ticket.getId()));
 
         // Internal notification to the platform support team (destinationEmail), not the
         // ticket requester — platform staff language isn't tracked anywhere, so EN is the
@@ -807,7 +918,7 @@ public class PlatformEmailService {
         Map<String, String> vars = new java.util.HashMap<>();
         vars.put("userName", StringUtils.hasText(ticket.getRequesterName()) ? ticket.getRequesterName() : "there");
         vars.put("ticketNumber", ticket.getTicketNumber());
-        vars.put("supportUrl", frontendUrl + "/tickets/" + ticket.getId());
+        vars.put("supportUrl", emailActionUrlBuilder.supportTicketUrl(ticket.getId()));
 
         String templateKey = SupportRoutingService.CHANNEL_CONTACT.equals(ticket.getChannel())
                 ? EmailTemplateService.KEY_CONTACT_FORM_RECEIVED
@@ -854,7 +965,7 @@ public class PlatformEmailService {
         vars.put("requesterEmail", StringUtils.hasText(request.getRequesterEmail()) ? request.getRequesterEmail() : "");
         vars.put("subject", StringUtils.hasText(request.getSubject()) ? request.getSubject() : "");
         vars.put("message", StringUtils.hasText(request.getMessage()) ? request.getMessage() : "");
-        vars.put("dashboardUrl", frontendUrl + "/super-admin/contact-requests/" + request.getId());
+        vars.put("dashboardUrl", emailActionUrlBuilder.contactRequestsAdminUrl());
 
         // Internal notification to the platform support team, not the contact-form
         // submitter — same reasoning as sendSupportTicketCreatedInternal above.
@@ -888,7 +999,7 @@ public class PlatformEmailService {
         Map<String, String> vars = new java.util.HashMap<>();
         vars.put("userName", StringUtils.hasText(request.getRequesterName()) ? request.getRequesterName() : "there");
         vars.put("ticketNumber", request.getRequestNumber());
-        vars.put("supportUrl", frontendUrl + "/contact");
+        vars.put("supportUrl", emailActionUrlBuilder.contactUrl());
 
         // ContactRequest is always anonymous/public (no tenant column at all, by design —
         // see ContactRequest's own class javadoc), so there is no language signal available
@@ -925,7 +1036,7 @@ public class PlatformEmailService {
         vars.put("userName", StringUtils.hasText(ticket.getRequesterName()) ? ticket.getRequesterName() : "there");
         vars.put("ticketNumber", ticket.getTicketNumber());
         vars.put("replyMessage", StringUtils.hasText(message.getMessage()) ? message.getMessage() : "");
-        vars.put("supportUrl", frontendUrl + "/tickets/" + ticket.getId());
+        vars.put("supportUrl", emailActionUrlBuilder.supportTicketUrl(ticket.getId()));
 
         var rendered = emailTemplateService.render(EmailTemplateService.KEY_SUPPORT_REPLY, resolveTenantEmailLanguage(ticket.getTenant()), vars);
         String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)

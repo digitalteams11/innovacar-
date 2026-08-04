@@ -98,4 +98,5 @@ public class EmailLog {
     public static final String TYPE_CONTACT_REQUEST_CREATED       = "CONTACT_REQUEST_CREATED";
     public static final String TYPE_TRIAL_REMINDER                = "TRIAL_REMINDER";
     public static final String TYPE_TRIAL_EXPIRED                 = "TRIAL_EXPIRED";
+    public static final String TYPE_INVOICE_SENT_CLIENT            = "INVOICE_SENT_CLIENT";
 }

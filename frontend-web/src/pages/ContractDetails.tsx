@@ -23,7 +23,7 @@ import AdditionalDriverSignatureViewModal from '../components/shared/AdditionalD
 import { normalizePhoneForWhatsApp } from '../lib/phone';
 import { maskLicense } from '../lib/maskLicense';
 import {
-  listAdditionalDrivers, getAdditionalDriverSignature, updateAdditionalDriver,
+  listAdditionalDrivers, getAdditionalDriverSignature,
   sendAdditionalDriverSignatureLink, resendAdditionalDriverSignatureLink, revokeAdditionalDriverSignatureLink,
   issueAdditionalDriverSignatureLinkForShare, recordAdditionalDriverSignatureLinkCopied,
   type AdditionalDriverDto, type AdditionalDriverSignatureView, type AdditionalDriverSignatureLinkResponse,

@@ -1,11 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useToast } from '../context/ToastContext';
-import { useConfirm } from '../context/ConfirmContext';
+import { useConfirm, usePromptText, type ConfirmOptions, type PromptOptions } from '../context/ConfirmContext';
+import { usePermissions } from '../context/PermissionContext';
 import Modal from '../components/Modal';
 import SmartClientSearch from '../components/shared/SmartClientSearch';
+import InvoicePdfPreviewModal from '../components/shared/InvoicePdfPreviewModal';
+import InlineActionButton from '../components/shared/InlineActionButton';
+import AnimatedStatusIcon, { type StatusPhase } from '../components/shared/AnimatedStatusIcon';
+import Tooltip from '../components/shared/Tooltip';
+import { logDevError, toFriendlyError } from '../lib/errorMessages';
+import { cn } from '../lib/utils';
 import api from '../api/axios';
-import { Plus, Download, FileText, Trash2, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  Plus, Download, FileText, Trash2, CheckCircle2, Clock, AlertCircle, Loader2,
+  Eye, Printer, Mail, ChevronDown, FileDown, Ban, RotateCcw, FileSignature,
+} from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
 import { SearchInput } from '../components/SearchInput';
 import { FilterChips } from '../components/FilterChips';
@@ -21,6 +32,36 @@ interface Invoice {
   dueDate: string;
   amount: number;
   status: string;
+  /** Local-only, populated after a successful send in this session — the
+   *  GET /invoices list endpoint does not currently return these fields
+   *  (see report), so this is never hydrated from the server on load. */
+  emailedAt?: string;
+  emailedTo?: string;
+}
+
+/** Maps the app's i18n language to the backend's supported PDF languages. */
+function toPdfLang(language: string | undefined): 'fr' | 'en' | 'ar' {
+  const code = (language || 'fr').slice(0, 2).toLowerCase();
+  if (code === 'en' || code === 'ar') return code;
+  return 'fr';
+}
+
+/** Parses filename from a Content-Disposition header (RFC 6266 + plain form). */
+function filenameFromDisposition(disposition: string, fallback: string): string {
+  const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)"?/i);
+  return match ? decodeURIComponent(match[1]) : fallback;
+}
+
+function triggerBlobDownload(data: BlobPart, contentType: string, filename: string) {
+  const blob = new Blob([data], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 export default function Invoices() {
@@ -33,10 +74,21 @@ export default function Invoices() {
   const [clientData, setClientData] = useState<any>({});
   const [form, setForm] = useState({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [exporting, setExporting] = useState(false);
+  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+  const [previewDownloading, setPreviewDownloading] = useState(false);
 
   const { showToast } = useToast();
   const confirm = useConfirm();
-  const { t } = useTranslation();
+  const promptText = usePromptText();
+  const { t, i18n } = useTranslation();
+  const { hasPermission } = usePermissions();
+  const lang = toPdfLang(i18n.language);
+
+  const canExport = hasPermission('INVOICE_EXPORT');
+  const canViewPdf = hasPermission('INVOICE_VIEW') || hasPermission('INVOICE_PDF_DOWNLOAD');
+  const canDownloadPdf = hasPermission('INVOICE_PDF_DOWNLOAD') || hasPermission('INVOICE_VIEW');
+  const canEmailSend = hasPermission('INVOICE_EMAIL_SEND');
 
   useEffect(() => { fetchInvoices(); }, []);
 
@@ -54,9 +106,14 @@ export default function Invoices() {
 
   const tabs = [
     { key: 'All', label: t('invoices.all') },
+    { key: 'DRAFT', label: t('invoices.draft') },
+    { key: 'ISSUED', label: t('invoices.issued') },
     { key: 'PAID', label: t('invoices.paid') },
+    { key: 'PARTIALLY_PAID', label: t('invoices.partiallyPaid') },
     { key: 'PENDING', label: t('invoices.pending') },
     { key: 'OVERDUE', label: t('invoices.overdue') },
+    { key: 'CANCELLED', label: t('invoices.cancelled') },
+    { key: 'REFUNDED', label: t('invoices.refunded') },
   ];
 
   const filteredData = data.filter((i) => {
@@ -69,18 +126,102 @@ export default function Invoices() {
   const totalPending = data.filter((i) => i.status === 'PENDING').reduce((sum, i) => sum + i.amount, 0);
   const totalOverdue = data.filter((i) => i.status === 'OVERDUE').reduce((sum, i) => sum + i.amount, 0);
 
-  const exportCSV = () => {
-    const headers = ['Invoice ID', 'Client', 'Date', 'Due Date', 'Amount', 'Status'];
-    const rows = filteredData.map((i) => [i.invoiceNumber, i.clientName, i.issueDate, i.dueDate, i.amount, i.status]);
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'invoices.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(t('toast.dataExported'));
+  // ── Export filter shared by the PDF (POST body) and CSV (GET query) endpoints ──
+  const currentExportFilter = () => ({
+    search: searchQuery.trim() || undefined,
+    status: activeTab !== 'All' ? activeTab : undefined,
+  });
+
+  /**
+   * Real server-side PDF report — replaces the old client-side comma-join
+   * export. Mirrors Contracts.tsx's exportCSV: blob-vs-JSON-error detection
+   * (axios still delivers structured error bodies as a Blob when
+   * responseType is 'blob'), Content-Disposition filename parsing, and a
+   * dedicated NO_MATCHING_INVOICES message instead of a generic failure.
+   */
+  const exportInvoicesPdf = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const response = await api.post('/invoices/export/pdf', currentExportFilter(), {
+        responseType: 'blob',
+        params: { lang },
+      });
+      const contentType = String(response.headers['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (response.data as Blob).text();
+        const parsed = JSON.parse(text);
+        const err: any = new Error(parsed.message || t('invoices.exportFailed', 'Failed to generate the PDF export.'));
+        err.code = parsed.code;
+        throw err;
+      }
+      const disposition = String(response.headers['content-disposition'] || '');
+      const filename = filenameFromDisposition(disposition, 'factures.pdf');
+      triggerBlobDownload(response.data, contentType || 'application/pdf', filename);
+      showToast(t('toast.dataExported'));
+    } catch (err: any) {
+      let message = t('invoices.exportFailed', 'Failed to generate the PDF export.');
+      const responseData = err?.response?.data;
+      if (responseData instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await responseData.text());
+          if (parsed.code === 'NO_MATCHING_INVOICES') message = t('invoices.noMatchingInvoices', 'Aucune facture ne correspond aux filtres sélectionnés.');
+          else if (parsed.message) message = parsed.message;
+        } catch {
+          /* body wasn't JSON either — keep the generic message */
+        }
+      } else if (err?.code === 'NO_MATCHING_INVOICES') {
+        message = t('invoices.noMatchingInvoices', 'Aucune facture ne correspond aux filtres sélectionnés.');
+      } else if (err?.message) {
+        message = err.message;
+      }
+      showToast(message, 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  /** Secondary CSV export — same filter/error contract as the PDF export. */
+  const exportInvoicesCsv = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const response = await api.get('/invoices/export/csv', {
+        responseType: 'blob',
+        params: currentExportFilter(),
+      });
+      const contentType = String(response.headers['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (response.data as Blob).text();
+        const parsed = JSON.parse(text);
+        const err: any = new Error(parsed.message || t('invoices.exportFailed', 'Failed to generate the CSV export.'));
+        err.code = parsed.code;
+        throw err;
+      }
+      const disposition = String(response.headers['content-disposition'] || '');
+      const filename = filenameFromDisposition(disposition, 'factures.csv');
+      triggerBlobDownload(response.data, contentType || 'text/csv', filename);
+      showToast(t('toast.dataExported'));
+    } catch (err: any) {
+      let message = t('invoices.exportFailed', 'Failed to generate the CSV export.');
+      const responseData = err?.response?.data;
+      if (responseData instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await responseData.text());
+          if (parsed.code === 'NO_MATCHING_INVOICES') message = t('invoices.noMatchingInvoices', 'Aucune facture ne correspond aux filtres sélectionnés.');
+          else if (parsed.message) message = parsed.message;
+        } catch {
+          /* body wasn't JSON either — keep the generic message */
+        }
+      } else if (err?.code === 'NO_MATCHING_INVOICES') {
+        message = t('invoices.noMatchingInvoices', 'Aucune facture ne correspond aux filtres sélectionnés.');
+      } else if (err?.message) {
+        message = err.message;
+      }
+      showToast(message, 'error');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const openCreate = () => {
@@ -184,14 +325,41 @@ export default function Invoices() {
     }
   };
 
-  const invoiceStatusBadge = (invoice: Invoice) => (
-    <span className={`inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-      invoice.status === 'PAID' ? 'bg-success-50 text-success-500' : invoice.status === 'PENDING' ? 'bg-warning-50 text-warning-500' : 'bg-danger-50 text-danger-500'
-    }`}>
-      {invoice.status === 'PAID' ? <CheckCircle2 size={12} /> : invoice.status === 'PENDING' ? <Clock size={12} /> : <AlertCircle size={12} />}
-      {invoice.status === 'PAID' ? t('invoices.paid') : invoice.status === 'PENDING' ? t('invoices.pending') : t('invoices.overdue')}
-    </span>
-  );
+  const STATUS_BADGE_CONFIG: Record<string, { className: string; icon: any }> = {
+    PAID: { className: 'bg-success-50 text-success-500', icon: CheckCircle2 },
+    PARTIALLY_PAID: { className: 'bg-success-50 text-success-500', icon: CheckCircle2 },
+    PENDING: { className: 'bg-warning-50 text-warning-500', icon: Clock },
+    ISSUED: { className: 'bg-warning-50 text-warning-500', icon: Clock },
+    DRAFT: { className: 'bg-slate-100 text-slate-500', icon: FileSignature },
+    OVERDUE: { className: 'bg-danger-50 text-danger-500', icon: AlertCircle },
+    CANCELLED: { className: 'bg-slate-100 text-slate-500', icon: Ban },
+    REFUNDED: { className: 'bg-brand-50 text-brand-500', icon: RotateCcw },
+  };
+
+  const statusLabel = (status: string) => {
+    switch (status) {
+      case 'PAID': return t('invoices.paid');
+      case 'PENDING': return t('invoices.pending');
+      case 'OVERDUE': return t('invoices.overdue');
+      case 'DRAFT': return t('invoices.draft');
+      case 'ISSUED': return t('invoices.issued');
+      case 'PARTIALLY_PAID': return t('invoices.partiallyPaid');
+      case 'CANCELLED': return t('invoices.cancelled');
+      case 'REFUNDED': return t('invoices.refunded');
+      default: return status;
+    }
+  };
+
+  const invoiceStatusBadge = (invoice: Invoice) => {
+    const config = STATUS_BADGE_CONFIG[invoice.status] || STATUS_BADGE_CONFIG.PENDING;
+    const Icon = config.icon;
+    return (
+      <span className={`inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${config.className}`}>
+        <Icon size={12} />
+        {statusLabel(invoice.status)}
+      </span>
+    );
+  };
 
   const markAsPaid = async (id: number) => {
     try {
@@ -203,6 +371,36 @@ export default function Invoices() {
     }
   };
 
+  const handleEmailSent = (id: number, emailedTo: string) => {
+    setData((current) => current.map((inv) => (
+      inv.id === id ? { ...inv, emailedAt: new Date().toISOString(), emailedTo } : inv
+    )));
+  };
+
+  const openPreview = (invoice: Invoice) => setPreviewInvoice(invoice);
+  const closePreview = () => setPreviewInvoice(null);
+
+  const downloadInvoicePdf = async (invoice: Invoice) => {
+    const response = await api.get(`/invoices/${invoice.id}/pdf`, {
+      responseType: 'blob',
+      params: { mode: 'attachment', lang },
+    });
+    const disposition = String(response.headers['content-disposition'] || '');
+    const filename = filenameFromDisposition(disposition, `facture-${invoice.invoiceNumber}.pdf`);
+    triggerBlobDownload(response.data, 'application/pdf', filename);
+  };
+
+  const printInvoicePdf = async (invoice: Invoice) => {
+    const response = await api.get(`/invoices/${invoice.id}/pdf`, {
+      responseType: 'blob',
+      params: { mode: 'inline', lang },
+    });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+
   return (
     <div className="space-y-5 animate-fade">
       <GlassPageHeader
@@ -210,9 +408,22 @@ export default function Invoices() {
         subtitle={t('invoices.subtitle')}
         icon={FileText}
         actions={<>
-          <button onClick={exportCSV} className="surface-control flex items-center gap-2 h-10 px-4 font-medium text-sm active:scale-95">
-            <Download size={18} /> {t('invoices.export')}
-          </button>
+          {canExport && (
+            <ActionMenu
+              ariaLabel={t('invoices.exportMenu', 'Export options')}
+              disabled={exporting}
+              triggerClassName="surface-control flex h-10 items-center gap-2 px-4 font-medium text-sm active:scale-95 disabled:cursor-wait disabled:opacity-60"
+              trigger={<>
+                {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                {t('invoices.exportPdf', 'Exporter en PDF')}
+                <ChevronDown size={14} />
+              </>}
+              items={[
+                { label: t('invoices.exportPdf', 'Exporter en PDF'), icon: <FileDown size={15} />, onClick: exportInvoicesPdf, disabled: exporting },
+                { label: t('invoices.exportCsv', 'Exporter en CSV'), icon: <Download size={15} />, onClick: exportInvoicesCsv, disabled: exporting },
+              ]}
+            />
+          )}
           <button onClick={openCreate} className="premium-action flex items-center gap-2 h-10 px-4 font-medium text-sm active:scale-95">
             <Plus size={18} /> {t('invoices.newInvoice')}
           </button>
@@ -268,27 +479,57 @@ export default function Invoices() {
                       <span>{new Date(invoice.issueDate).toLocaleDateString()} → {new Date(invoice.dueDate).toLocaleDateString()}</span>
                       <span className="text-sm font-bold text-[#1e293b] dark:text-white">{invoice.amount.toLocaleString()} MAD</span>
                     </div>
-                    <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] pt-3">
-                      {invoice.status !== 'PAID' && (
+                    <div className="flex flex-wrap items-center gap-1 border-t border-[var(--border-subtle)] pt-3">
+                      {canViewPdf && (
                         <button
-                          onClick={() => markAsPaid(invoice.id)}
-                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-success-50 text-sm font-semibold text-success-600"
+                          onClick={() => openPreview(invoice)}
+                          aria-label={t('invoices.view', 'Voir')}
+                          className="flex h-11 w-11 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                         >
-                          <CheckCircle2 size={15} /> {t('invoices.markAsPaid', 'Mark as paid')}
+                          <Eye size={17} />
                         </button>
                       )}
-                      <button
-                        onClick={() => openEdit(invoice)}
-                        className={`flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-50 text-sm font-semibold text-brand-600 ${invoice.status === 'PAID' ? 'flex-1' : 'px-4'}`}
-                      >
-                        <FileText size={15} /> {t('common.edit', 'Edit')}
-                      </button>
-                      <ActionMenu
-                        ariaLabel={t('invoices.actions')}
-                        items={[
-                          { label: t('common.delete', 'Delete'), icon: <Trash2 size={15} />, onClick: () => deleteInvoice(invoice.id), danger: true },
-                        ]}
-                      />
+                      {canDownloadPdf && (
+                        <InlineActionButton
+                          icon={Download}
+                          label={t('invoices.download', 'Télécharger')}
+                          onAction={() => downloadInvoicePdf(invoice)}
+                          context={`invoice-download-${invoice.id}`}
+                        />
+                      )}
+                      {canDownloadPdf && (
+                        <InlineActionButton
+                          icon={Printer}
+                          label={t('invoices.print', 'Imprimer')}
+                          onAction={() => printInvoicePdf(invoice)}
+                          context={`invoice-print-${invoice.id}`}
+                        />
+                      )}
+                      {canEmailSend && (
+                        <InvoiceEmailButton invoice={invoice} lang={lang} t={t} confirm={confirm} promptText={promptText} onSent={handleEmailSent} />
+                      )}
+                      <div className="ml-auto flex items-center gap-2">
+                        {invoice.status !== 'PAID' && (
+                          <button
+                            onClick={() => markAsPaid(invoice.id)}
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-success-50 px-3 text-sm font-semibold text-success-600"
+                          >
+                            <CheckCircle2 size={15} /> {t('invoices.markAsPaid', 'Mark as paid')}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openEdit(invoice)}
+                          className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-50 px-3 text-sm font-semibold text-brand-600"
+                        >
+                          <FileText size={15} /> {t('common.edit', 'Edit')}
+                        </button>
+                        <ActionMenu
+                          ariaLabel={t('invoices.actions')}
+                          items={[
+                            { label: t('common.delete', 'Delete'), icon: <Trash2 size={15} />, onClick: () => deleteInvoice(invoice.id), danger: true },
+                          ]}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -326,6 +567,34 @@ export default function Invoices() {
                     <td className="px-5 py-4">{invoiceStatusBadge(invoice)}</td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {canViewPdf && (
+                          <button
+                            onClick={() => openPreview(invoice)}
+                            aria-label={t('invoices.view', 'Voir')}
+                            className="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"
+                          >
+                            <Eye size={17} />
+                          </button>
+                        )}
+                        {canDownloadPdf && (
+                          <InlineActionButton
+                            icon={Download}
+                            label={t('invoices.download', 'Télécharger')}
+                            onAction={() => downloadInvoicePdf(invoice)}
+                            context={`invoice-download-${invoice.id}`}
+                          />
+                        )}
+                        {canDownloadPdf && (
+                          <InlineActionButton
+                            icon={Printer}
+                            label={t('invoices.print', 'Imprimer')}
+                            onAction={() => printInvoicePdf(invoice)}
+                            context={`invoice-print-${invoice.id}`}
+                          />
+                        )}
+                        {canEmailSend && (
+                          <InvoiceEmailButton invoice={invoice} lang={lang} t={t} confirm={confirm} promptText={promptText} onSent={handleEmailSent} />
+                        )}
                         {invoice.status !== 'PAID' && (
                           <button onClick={() => markAsPaid(invoice.id)} className="px-3 py-1.5 bg-success-50 text-success-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-success-500 hover:text-white transition-all">{t('invoices.pay')}</button>
                         )}
@@ -371,12 +640,153 @@ export default function Invoices() {
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.amount')} (MAD) *</label><input type="number" value={form.amount} onChange={(e) => updateFormField('amount', e.target.value)} aria-invalid={Boolean(fieldErrors.amount)} className={inputClass('amount')} />{fieldError('amount')}</div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.status')}</label>
               <select value={form.status} onChange={(e) => updateFormField('status', e.target.value)} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
-                <option value="PENDING">{t('invoices.pending')}</option><option value="PAID">{t('invoices.paid')}</option><option value="OVERDUE">{t('invoices.overdue')}</option>
+                <option value="DRAFT">{t('invoices.draft')}</option>
+                <option value="ISSUED">{t('invoices.issued')}</option>
+                <option value="PENDING">{t('invoices.pending')}</option>
+                <option value="PARTIALLY_PAID">{t('invoices.partiallyPaid')}</option>
+                <option value="PAID">{t('invoices.paid')}</option>
+                <option value="OVERDUE">{t('invoices.overdue')}</option>
+                <option value="CANCELLED">{t('invoices.cancelled')}</option>
+                <option value="REFUNDED">{t('invoices.refunded')}</option>
               </select>
             </div>
           </div>
         </div>
       </Modal>
+
+      {previewInvoice && (
+        <InvoicePdfPreviewModal
+          isOpen={Boolean(previewInvoice)}
+          invoiceId={previewInvoice.id}
+          invoiceNumber={previewInvoice.invoiceNumber}
+          lang={lang}
+          downloading={previewDownloading}
+          onClose={closePreview}
+          onDownload={async () => {
+            if (previewDownloading) return;
+            setPreviewDownloading(true);
+            try {
+              await downloadInvoicePdf(previewInvoice);
+            } catch (err) {
+              showToast(t('invoices.downloadFailed', 'Unable to download this invoice PDF.'), 'error');
+            } finally {
+              setPreviewDownloading(false);
+            }
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+interface InvoiceEmailButtonProps {
+  invoice: Invoice;
+  lang: string;
+  t: TFunction;
+  confirm: (options: ConfirmOptions) => Promise<boolean>;
+  promptText: (options: PromptOptions) => Promise<string | null>;
+  onSent: (id: number, emailedTo: string) => void;
+}
+
+/**
+ * Per-invoice send/resend action — never optimistic: the icon only turns
+ * green once POST /invoices/{id}/email confirms success. Resolves the
+ * client's email on file first (GET /clients/{id}) and asks for confirmation
+ * before sending; if no address is on file it prompts for one instead.
+ * Cancelling either dialog leaves the button in its idle state (not an
+ * error) — only a real failed send flips it to the red/retry state.
+ */
+function InvoiceEmailButton({ invoice, lang, t, confirm, promptText, onSent }: InvoiceEmailButtonProps) {
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+  }, []);
+
+  const handleClick = async () => {
+    if (phase === 'loading') return;
+
+    let targetEmail: string | null = null;
+    if (invoice.clientId) {
+      try {
+        const { data } = await api.get(`/clients/${invoice.clientId}`);
+        targetEmail = data?.email || null;
+      } catch {
+        /* best-effort — falls through to the manual-entry prompt below */
+      }
+    }
+
+    if (!targetEmail) {
+      const entered = await promptText({
+        title: t('invoices.emailConfirmTitle', 'Envoyer la facture par e-mail ?'),
+        description: t('invoices.emailNoAddressOnFile', 'Aucune adresse e-mail connue pour ce client. Saisissez une adresse pour envoyer la facture.'),
+        placeholder: t('invoices.emailPlaceholder', 'client@exemple.com'),
+        confirmLabel: t('invoices.sendEmail', 'Envoyer'),
+        cancelLabel: t('actions.cancel', 'Cancel'),
+        required: true,
+      });
+      if (!entered) return; // cancelled — stay idle, not an error
+      targetEmail = entered.trim();
+    } else {
+      const confirmed = await confirm({
+        title: t('invoices.emailConfirmTitle', 'Envoyer la facture par e-mail ?'),
+        description: t('invoices.emailConfirmBody', { email: targetEmail, defaultValue: `Envoyer la facture ${invoice.invoiceNumber} à ${targetEmail} ?` }),
+        confirmLabel: t('invoices.sendEmail', 'Envoyer'),
+        cancelLabel: t('actions.cancel', 'Cancel'),
+        tone: 'info',
+      });
+      if (!confirmed) return; // cancelled — stay idle, not an error
+    }
+
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    setPhase('loading');
+    setErrorMsg(null);
+    try {
+      const { data } = await api.post(
+        `/invoices/${invoice.id}/email`,
+        targetEmail ? { toEmail: targetEmail } : {},
+        { params: { lang } },
+      );
+      if (!data?.success) {
+        throw new Error(data?.message || t('invoices.emailSendFailed', 'Failed to send the invoice email.'));
+      }
+      onSent(invoice.id, data.emailedTo || targetEmail || '');
+      setPhase('success');
+      settleTimerRef.current = setTimeout(() => setPhase('idle'), 2000);
+    } catch (err) {
+      logDevError(`invoice-email-${invoice.id}`, err);
+      setErrorMsg(toFriendlyError(err, t('invoices.emailSendFailed', 'Failed to send the invoice email.')).message);
+      setPhase('error');
+    }
+  };
+
+  const alreadySent = Boolean(invoice.emailedAt);
+  const displayPhase: StatusPhase = phase !== 'idle' ? phase : alreadySent ? 'success' : 'idle';
+  const label = phase === 'error'
+    ? (errorMsg || t('invoices.emailSendFailed', 'Failed to send the invoice email.'))
+    : displayPhase === 'success' && invoice.emailedAt
+      ? t('invoices.emailSentAt', { date: new Date(invoice.emailedAt).toLocaleString(), defaultValue: `Envoyée le ${new Date(invoice.emailedAt).toLocaleString()}` })
+      : t('invoices.sendEmail', 'Envoyer par e-mail');
+
+  return (
+    <Tooltip label={label}>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={phase === 'loading'}
+        aria-label={label}
+        aria-live="polite"
+        className={cn(
+          'relative flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 transition-colors',
+          'hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-40',
+          displayPhase === 'success' && 'text-emerald-600 dark:text-emerald-400',
+          displayPhase === 'error' && 'text-red-600 dark:text-red-400',
+        )}
+      >
+        <AnimatedStatusIcon phase={displayPhase} idleIcon={Mail} successIcon={CheckCircle2} />
+      </button>
+    </Tooltip>
   );
 }

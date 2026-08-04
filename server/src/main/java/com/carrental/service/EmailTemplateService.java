@@ -56,6 +56,7 @@ public class EmailTemplateService {
     public static final String KEY_CONTACT_FORM_RECEIVED     = "CONTACT_FORM_RECEIVED";
     public static final String KEY_GPS_GEOFENCE_ALERT        = "GPS_GEOFENCE_ALERT";
     public static final String KEY_GPS_MOVEMENT_ALERT        = "GPS_MOVEMENT_ALERT";
+    public static final String KEY_INVOICE_SENT_CLIENT       = "INVOICE_SENT_CLIENT";
 
     // ── Startup seeding ───────────────────────────────────────────────────────
 
@@ -240,7 +241,8 @@ public class EmailTemplateService {
             buildSupportReply(),
             buildContactFormReceived(),
             buildGpsGeofenceAlert(),
-            buildGpsMovementAlert()
+            buildGpsMovementAlert(),
+            buildInvoiceSentClient()
         );
     }
 
@@ -547,6 +549,45 @@ Remaining: {{remainingAmount}}
         return tpl(KEY_PAYMENT_RECEIVED, CAT_PAYMENT,
                 "Payment Received",
                 "Payment received — {{contractNumber}}",
+                body, plain);
+    }
+
+    // G2. INVOICE_SENT_CLIENT ─────────────────────────────────────────────────
+    private EmailTemplate buildInvoiceSentClient() {
+        String body = shell(
+            "Your Invoice",
+            "A new invoice from " + "{{agencyName}}" + " is ready.",
+            para("Hello " + bold("{{clientName}}") + ",")
+          + para("Please find attached your invoice from " + bold("{{agencyName}}") + ".")
+          + infoBox(
+              "&#128196; " + bold("Invoice:") + " {{invoiceNumber}}",
+              "&#128176; " + bold("Total:") + " {{grandTotal}}",
+              "&#9989; " + bold("Paid:") + " {{paidAmount}}",
+              "&#9203; " + bold("Remaining:") + " {{remainingAmount}}"
+            )
+          + para("The invoice PDF is attached to this email.")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Thank you for choosing "
+              + bold("{{agencyName}}") + ".</span>")
+        );
+        String plain = """
+Hello {{clientName}},
+
+Please find attached your invoice from {{agencyName}}.
+
+Invoice: {{invoiceNumber}}
+Total: {{grandTotal}}
+Paid: {{paidAmount}}
+Remaining: {{remainingAmount}}
+
+The invoice PDF is attached to this email.
+
+Thank you for choosing {{agencyName}}.
+
+— Innovacar / Innovax Technologies
+""";
+        return tpl(KEY_INVOICE_SENT_CLIENT, CAT_PAYMENT,
+                "Invoice Sent — Client",
+                "Your invoice {{invoiceNumber}} from {{agencyName}}",
                 body, plain);
     }
 
@@ -917,6 +958,14 @@ View on GPS dashboard: {{dashboardUrl}}
             v("location",    "GPS coordinates", "33.5731° N, 7.5898° W"),
             v("alertTime",   "Alert timestamp", "2026-07-01 14:30"),
             v("dashboardUrl","Dashboard URL",   "https://app.innovacar.app")
+        )),
+        Map.entry(KEY_INVOICE_SENT_CLIENT, List.of(
+            v("clientName",       "Client full name",  "Ahmed Yacoubi"),
+            v("agencyName",       "Agency name",        "Innovacar Agency"),
+            v("invoiceNumber",    "Invoice reference",  "INV-2026-00012"),
+            v("grandTotal",       "Grand total",         "2400.00 MAD"),
+            v("paidAmount",       "Amount paid",         "1000.00 MAD"),
+            v("remainingAmount",  "Remaining balance",   "1400.00 MAD")
         ))
     );
 

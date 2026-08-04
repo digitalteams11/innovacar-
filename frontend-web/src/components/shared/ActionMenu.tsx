@@ -13,8 +13,19 @@ export interface ActionMenuItem {
 
 interface ActionMenuProps {
   items: ActionMenuItem[];
-  /** Accessible label for the trigger button — required since it's icon-only. */
+  /** Accessible label for the trigger button — required since it's icon-only by default. */
   ariaLabel?: string;
+  /**
+   * Custom trigger content (e.g. an icon + label + chevron for a primary
+   * "Export ▾" split button) — when omitted, falls back to the default
+   * icon-only "..." trigger used everywhere else. Swaps the trigger's visual
+   * content only; positioning/portal/outside-click logic is unchanged.
+   */
+  trigger?: React.ReactNode;
+  /** Replaces the default trigger button classes when `trigger` is provided. */
+  triggerClassName?: string;
+  /** Disables the trigger itself (distinct from per-item `disabled`). */
+  disabled?: boolean;
 }
 
 const MENU_WIDTH = 192; // w-48
@@ -34,7 +45,7 @@ const VIEWPORT_MARGIN = 8;
  * More menu button does nothing" even though the click handler fired and
  * `open` really did flip to true.
  */
-export default function ActionMenu({ items, ariaLabel = 'More actions' }: ActionMenuProps) {
+export default function ActionMenu({ items, ariaLabel = 'More actions', trigger, triggerClassName, disabled }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -85,13 +96,17 @@ export default function ActionMenu({ items, ariaLabel = 'More actions' }: Action
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { if (!disabled) setOpen((v) => !v); }}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-11 w-11 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        disabled={disabled}
+        className={
+          triggerClassName ??
+          'flex h-11 w-11 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60'
+        }
       >
-        <MoreHorizontal size={18} />
+        {trigger ?? <MoreHorizontal size={18} />}
       </button>
       {open && coords && createPortal(
         <div
