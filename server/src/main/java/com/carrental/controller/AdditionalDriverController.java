@@ -90,9 +90,9 @@ public class AdditionalDriverController {
                 .driverLicenseNumber(request.getDriverLicenseNumber())
                 .nationality(request.getNationality())
                 .address(request.getAddress())
-                .phone(request.getPhone())
+                .phone(normalizePhone(request.getPhone()))
                 .birthDate(request.getBirthDate())
-                .email(request.getEmail())
+                .email(normalizeEmail(request.getEmail()))
                 .signatureRequired(request.getSignatureRequired() == null || request.getSignatureRequired())
                 .contract(contract)
                 .build();
@@ -124,20 +124,34 @@ public class AdditionalDriverController {
         List<AdditionalDriver> siblings = additionalDriverRepository.findAllByContractId(contract.getId());
         validateNoDuplicates(contract, siblings, request, driverId);
 
+        String normalizedPhone = normalizePhone(request.getPhone());
+        String normalizedEmail = normalizeEmail(request.getEmail());
+        boolean contactOnlyChange =
+                (!safeEquals(driver.getPhone(), normalizedPhone) || !safeEquals(driver.getEmail(), normalizedEmail))
+                && safeEquals(driver.getFullName(), request.getFullName())
+                && safeEquals(driver.getDriverLicenseNumber(), request.getDriverLicenseNumber())
+                && safeEquals(driver.getCin(), request.getCin())
+                && safeEquals(driver.getPassportNumber(), request.getPassportNumber());
+
         driver.setFullName(request.getFullName().trim());
         driver.setCin(request.getCin());
         driver.setPassportNumber(request.getPassportNumber());
         driver.setDriverLicenseNumber(request.getDriverLicenseNumber());
         driver.setNationality(request.getNationality());
         driver.setAddress(request.getAddress());
-        driver.setPhone(request.getPhone());
+        driver.setPhone(normalizedPhone);
         driver.setBirthDate(request.getBirthDate());
-        driver.setEmail(request.getEmail());
+        driver.setEmail(normalizedEmail);
         if (request.getSignatureRequired() != null) {
             driver.setSignatureRequired(request.getSignatureRequired());
         }
         AdditionalDriver saved = additionalDriverRepository.save(driver);
-        logAudit(contract, "ADDITIONAL_DRIVER_UPDATED", "Updated driver id=" + saved.getId() + " (" + saved.getFullName() + ")");
+        if (contactOnlyChange) {
+            logAudit(contract, "ADDITIONAL_DRIVER_CONTACT_UPDATED",
+                    "Updated contact details for driver id=" + saved.getId() + " (" + saved.getFullName() + ")");
+        } else {
+            logAudit(contract, "ADDITIONAL_DRIVER_UPDATED", "Updated driver id=" + saved.getId() + " (" + saved.getFullName() + ")");
+        }
         return ResponseEntity.ok(toDto(saved));
     }
 
@@ -174,6 +188,20 @@ public class AdditionalDriverController {
         return ResponseEntity.noContent().build();
     }
 
+    /** For WhatsApp / copy-link — returns a fresh signing URL without sending an email. Same permission as sending, since it exposes the private link. */
+    @PostMapping("/{driverId}/signature-link/for-share")
+    @PreAuthorize("@rolePermissionService.has('ADDITIONAL_DRIVER_SIGNATURE_SEND')")
+    public ResponseEntity<AdditionalDriverSignatureLinkResponse> issueLinkForShare(@PathVariable Long contractId, @PathVariable Long driverId) {
+        return ResponseEntity.ok(signingService.issueLinkForShare(contractId, driverId));
+    }
+
+    @PostMapping("/{driverId}/signature-link/copied")
+    @PreAuthorize("@rolePermissionService.has('ADDITIONAL_DRIVER_SIGNATURE_SEND')")
+    public ResponseEntity<Void> recordLinkCopied(@PathVariable Long contractId, @PathVariable Long driverId) {
+        signingService.recordLinkCopied(contractId, driverId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private void validateIdentity(AdditionalDriverRequest request) {
@@ -189,6 +217,15 @@ public class AdditionalDriverController {
         if (StringUtils.hasText(request.getEmail()) && !EMAIL_PATTERN.matcher(request.getEmail().trim()).matches()) {
             throw new IllegalArgumentException("This email address is not valid.");
         }
+    }
+
+    /** Blank → null (never stored as a real value), email trimmed+lowercased, phone trimmed. */
+    private String normalizeEmail(String email) {
+        return StringUtils.hasText(email) ? email.trim().toLowerCase() : null;
+    }
+
+    private String normalizePhone(String phone) {
+        return StringUtils.hasText(phone) ? phone.trim() : null;
     }
 
     private void validateNoDuplicates(Contract contract, List<AdditionalDriver> siblings, AdditionalDriverRequest request, Long excludeDriverId) {
@@ -233,6 +270,11 @@ public class AdditionalDriverController {
                 .openedAt(d.getOpenedAt())
                 .signedAt(d.getSignedAt())
                 .declinedAt(d.getDeclinedAt())
+                .deliveryStatus(d.getDeliveryStatus())
+                .lastDeliveryChannel(d.getLastDeliveryChannel())
+                .lastSentAt(d.getLastSentAt())
+                .deliveryFailureMessageSafe(d.getDeliveryFailureMessageSafe())
+                .deliveryAttemptCount(d.getDeliveryAttemptCount())
                 .build();
     }
 

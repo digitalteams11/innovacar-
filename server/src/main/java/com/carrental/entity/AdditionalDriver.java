@@ -104,6 +104,37 @@ public class AdditionalDriver {
     @Column(name = "decline_reason", length = 255)
     private String declineReason;
 
+    // ── Delivery tracking (separate from signatureStatus) ───────────────────
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_status", nullable = false, length = 20)
+    private AdditionalDriverDeliveryStatus deliveryStatus = AdditionalDriverDeliveryStatus.NOT_SENT;
+
+    /** "EMAIL" or "WHATSAPP" — free string, not an enum, to avoid a migration every time a channel is added. */
+    @Column(name = "last_delivery_channel", length = 20)
+    private String lastDeliveryChannel;
+
+    @Column(name = "last_sent_at")
+    private LocalDateTime lastSentAt;
+
+    @Column(name = "provider_message_id", length = 150)
+    private String providerMessageId;
+
+    @Column(name = "delivery_failure_code", length = 50)
+    private String deliveryFailureCode;
+
+    /** Safe-for-frontend text only — never the raw provider exception/payload. */
+    @Column(name = "delivery_failure_message_safe", length = 255)
+    private String deliveryFailureMessageSafe;
+
+    @Column(name = "last_delivery_attempt_at")
+    private LocalDateTime lastDeliveryAttemptAt;
+
+    @Builder.Default
+    @Column(name = "delivery_attempt_count", nullable = false)
+    private int deliveryAttemptCount = 0;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

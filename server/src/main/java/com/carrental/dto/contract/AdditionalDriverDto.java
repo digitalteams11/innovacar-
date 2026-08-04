@@ -1,5 +1,6 @@
 package com.carrental.dto.contract;
 
+import com.carrental.entity.AdditionalDriverDeliveryStatus;
 import com.carrental.entity.SignatureStatus;
 import lombok.Builder;
 import lombok.Data;
@@ -33,6 +34,13 @@ public class AdditionalDriverDto {
     private LocalDateTime openedAt;
     private LocalDateTime signedAt;
     private LocalDateTime declinedAt;
+
+    // ── Delivery tracking (separate from signatureStatus — see entity) ──────
+    private AdditionalDriverDeliveryStatus deliveryStatus;
+    private String lastDeliveryChannel;
+    private LocalDateTime lastSentAt;
+    private String deliveryFailureMessageSafe;
+    private int deliveryAttemptCount;
 
     /**
      * @see com.carrental.dto.contract.AdditionalDriverSignatureView

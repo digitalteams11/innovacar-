@@ -5,6 +5,7 @@ import com.carrental.dto.contract.AdditionalDriverSignatureLinkResponse;
 import com.carrental.dto.contract.AdditionalDriverSignatureSubmitRequest;
 import com.carrental.dto.contract.PublicAdditionalDriverSigningResponse;
 import com.carrental.entity.AdditionalDriver;
+import com.carrental.entity.AdditionalDriverDeliveryStatus;
 import com.carrental.entity.Contract;
 import com.carrental.entity.ContractAuditLog;
 import com.carrental.entity.ContractStatus;
@@ -69,14 +70,26 @@ public class AdditionalDriverSigningService {
     private final ContractService contractService;
     private final PdfService pdfService;
     private final ObjectMapper objectMapper;
+    private final EmailService emailService;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
 
     // ── Admin: generate / resend / revoke ───────────────────────────────────
 
+    /**
+     * Rotates the signing token and — when {@code sendEmail} is true and the
+     * driver has a usable email address — actually sends the signature-request
+     * email through the real configured provider (ZeptoMail via EmailService/
+     * SmtpMailService), gating deliveryStatus/audit events on the provider's
+     * real response instead of assuming success. signatureStatus/linkSentAt
+     * describe the *signing workflow* (a token now exists, awaiting
+     * signature) — they are NOT proof of email delivery; see deliveryStatus
+     * for that. WhatsApp/copy-link callers pass sendEmail=false to obtain a
+     * fresh URL without triggering an email side effect.
+     */
     @Transactional
-    public AdditionalDriverSignatureLinkResponse generateLink(Long contractId, Long driverId) {
+    public AdditionalDriverSignatureLinkResponse issueLink(Long contractId, Long driverId, boolean sendEmail) {
         AdditionalDriver driver = fetchDriverInContract(contractId, driverId);
         if (driver.getSignatureStatus() == SignatureStatus.SIGNED) {
             throw new IllegalStateException("This driver has already signed — revoke is not applicable to a completed signature.");
@@ -88,19 +101,64 @@ public class AdditionalDriverSigningService {
         driver.setTokenRevokedAt(null);
         driver.setSignatureStatus(SignatureStatus.LINK_SENT);
         driver.setLinkSentAt(LocalDateTime.now());
-        AdditionalDriver saved = additionalDriverRepository.save(driver);
-
-        logAudit(saved.getContract(), "ADDITIONAL_DRIVER_SIGNATURE_LINK_SENT",
-                "Signing link sent to driver id=" + saved.getId() + " (" + saved.getFullName() + ")");
 
         String url = buildSigningUrl(rawToken);
         log.info("[ADDITIONAL_DRIVER_SIGN] link generated driverId={} contractId={} tokenPrefix={}",
-                saved.getId(), contractId, MaskingUtil.maskToken(rawToken));
+                driver.getId(), contractId, MaskingUtil.maskToken(rawToken));
+
+        AdditionalDriverDeliveryStatus deliveryStatus = driver.getDeliveryStatus();
+        String deliveryFailureMessageSafe = null;
+
+        if (sendEmail) {
+            if (!StringUtils.hasText(driver.getEmail())) {
+                // No email on file — do not silently do nothing; the caller (controller)
+                // surfaces a precise "add an email first" error rather than us faking QUEUED.
+                throw new IllegalArgumentException("This driver has no email address on file. Add one before sending by email.");
+            }
+            driver.setLastDeliveryChannel("EMAIL");
+            driver.setLastDeliveryAttemptAt(LocalDateTime.now());
+            driver.setDeliveryAttemptCount(driver.getDeliveryAttemptCount() + 1);
+
+            Contract contract = driver.getContract();
+            SmtpMailService.SmtpResult result = emailService.sendAdditionalDriverSignatureEmail(
+                    driver.getEmail(), driver.getFullName(), contract.getContractNumber(), url,
+                    contract.getTenant() != null ? contract.getTenant().getName() : null,
+                    buildVehicleSummary(contract), contract.getStartDate(), contract.getEndDate(),
+                    driver.getTokenExpiresAt(), contract.getContractLanguage());
+
+            if (result.sent()) {
+                deliveryStatus = AdditionalDriverDeliveryStatus.SENT;
+                driver.setLastSentAt(LocalDateTime.now());
+                driver.setProviderMessageId(result.messageId());
+                driver.setDeliveryFailureCode(null);
+                driver.setDeliveryFailureMessageSafe(null);
+            } else {
+                deliveryStatus = AdditionalDriverDeliveryStatus.FAILED;
+                deliveryFailureMessageSafe = safeFailureMessage(result.errorMessage());
+                driver.setDeliveryFailureCode(result.errorCode());
+                driver.setDeliveryFailureMessageSafe(deliveryFailureMessageSafe);
+            }
+            driver.setDeliveryStatus(deliveryStatus);
+        }
+
+        AdditionalDriver saved = additionalDriverRepository.save(driver);
+
+        logAudit(saved.getContract(), "ADDITIONAL_DRIVER_SIGNATURE_LINK_CREATED",
+                "Signing link created for driver id=" + saved.getId() + " (" + saved.getFullName() + ")");
+        if (sendEmail) {
+            if (deliveryStatus == AdditionalDriverDeliveryStatus.SENT) {
+                logAudit(saved.getContract(), "ADDITIONAL_DRIVER_SIGNATURE_EMAIL_SENT",
+                        "Signature email accepted by provider for driver id=" + saved.getId() + " (" + saved.getFullName() + ")");
+            } else {
+                logAudit(saved.getContract(), "ADDITIONAL_DRIVER_SIGNATURE_EMAIL_FAILED",
+                        "Signature email failed for driver id=" + saved.getId() + " (" + saved.getFullName() + "): " + deliveryFailureMessageSafe);
+            }
+        }
 
         try {
             notificationService.createNotification(
                     "Additional driver link sent",
-                    "A signing link was sent to " + saved.getFullName() + ".",
+                    "A signing link was created for " + saved.getFullName() + ".",
                     Notification.NotificationType.ADDITIONAL_DRIVER_LINK_SENT,
                     contractId, TenantContext.getCurrentTenantId());
         } catch (Exception e) {
@@ -110,13 +168,45 @@ public class AdditionalDriverSigningService {
         return AdditionalDriverSignatureLinkResponse.builder()
                 .signingUrl(url)
                 .expiresAt(saved.getTokenExpiresAt())
+                .deliveryStatus(sendEmail ? deliveryStatus : null)
+                .deliveryFailureMessageSafe(deliveryFailureMessageSafe)
                 .build();
     }
 
-    /** New token invalidates the old one implicitly (token_hash is overwritten) — still audited as "link sent". */
+    /** Existing "Envoyer par e-mail" / "Renvoyer" action — always attempts a real email send. */
+    @Transactional
+    public AdditionalDriverSignatureLinkResponse generateLink(Long contractId, Long driverId) {
+        return issueLink(contractId, driverId, true);
+    }
+
+    /** New token invalidates the old one implicitly (token_hash is overwritten). */
     @Transactional
     public AdditionalDriverSignatureLinkResponse resendLink(Long contractId, Long driverId) {
-        return generateLink(contractId, driverId);
+        return issueLink(contractId, driverId, true);
+    }
+
+    /** For WhatsApp / copy-link — rotates and returns a fresh URL without sending an email. */
+    @Transactional
+    public AdditionalDriverSignatureLinkResponse issueLinkForShare(Long contractId, Long driverId) {
+        return issueLink(contractId, driverId, false);
+    }
+
+    @Transactional
+    public void recordLinkCopied(Long contractId, Long driverId) {
+        AdditionalDriver driver = fetchDriverInContract(contractId, driverId);
+        logAudit(driver.getContract(), "ADDITIONAL_DRIVER_SIGNATURE_LINK_COPIED",
+                "Signing link copied for driver id=" + driver.getId() + " (" + driver.getFullName() + ")");
+    }
+
+    /** Caps/sanitizes a provider error message before it's ever persisted or shown to frontend staff — never the raw exception/payload. */
+    private String safeFailureMessage(String raw) {
+        if (!StringUtils.hasText(raw)) return "The email could not be sent. Please try again.";
+        String lower = raw.toLowerCase();
+        if (lower.contains("exception") || lower.contains("stack trace") || lower.contains("at com.")
+                || lower.contains("at java.") || lower.contains("connection refused")) {
+            return "The email could not be sent. Please check the email configuration.";
+        }
+        return raw.length() > 200 ? raw.substring(0, 197) + "..." : raw;
     }
 
     @Transactional

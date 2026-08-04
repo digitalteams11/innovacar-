@@ -14,6 +14,8 @@ interface AdditionalDriverSignatureLinkModalProps {
   driverEmail?: string | null;
   contractNumber: string;
   agencyName?: string | null;
+  /** Fired once the link is actually copied to the clipboard — used to record an audit event. */
+  onCopied?: () => void;
 }
 
 /**
@@ -24,7 +26,7 @@ interface AdditionalDriverSignatureLinkModalProps {
  * logged, matching the backend's hashed-token security design.
  */
 export default function AdditionalDriverSignatureLinkModal({
-  isOpen, onClose, signingUrl, expiresAt, driverName, driverPhone, driverEmail, contractNumber, agencyName,
+  isOpen, onClose, signingUrl, expiresAt, driverName, driverPhone, driverEmail, contractNumber, agencyName, onCopied,
 }: AdditionalDriverSignatureLinkModalProps) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
@@ -45,6 +47,7 @@ export default function AdditionalDriverSignatureLinkModal({
       await navigator.clipboard.writeText(signingUrl);
       setCopied(true);
       showToast(t('contracts.driverSignature.linkCopied'), 'success');
+      onCopied?.();
       setTimeout(() => setCopied(false), 2000);
     } catch {
       showToast(t('contracts.driverSignature.copyFailed'), 'error');

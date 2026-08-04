@@ -23,10 +23,12 @@ import AdditionalDriverSignatureViewModal from '../components/shared/AdditionalD
 import { normalizePhoneForWhatsApp } from '../lib/phone';
 import { maskLicense } from '../lib/maskLicense';
 import {
-  listAdditionalDrivers, getAdditionalDriverSignature,
+  listAdditionalDrivers, getAdditionalDriverSignature, updateAdditionalDriver,
   sendAdditionalDriverSignatureLink, resendAdditionalDriverSignatureLink, revokeAdditionalDriverSignatureLink,
+  issueAdditionalDriverSignatureLinkForShare, recordAdditionalDriverSignatureLinkCopied,
   type AdditionalDriverDto, type AdditionalDriverSignatureView, type AdditionalDriverSignatureLinkResponse,
 } from '../api/additionalDrivers';
+import EditDriverContactModal from '../components/shared/EditDriverContactModal';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft, FileText, Calendar, User, Car, CheckCircle2, Clock,
@@ -188,6 +190,7 @@ export default function ContractDetails() {
   const [viewModalDriverId, setViewModalDriverId] = useState<number | null>(null);
   const [viewModalData, setViewModalData] = useState<AdditionalDriverSignatureView | null>(null);
   const [viewModalLoading, setViewModalLoading] = useState(false);
+  const [editContactDriver, setEditContactDriver] = useState<AdditionalDriverDto | null>(null);
 
   const emailErrorLabel = (code?: string | null): string => {
     switch (code) {
@@ -645,13 +648,33 @@ export default function ContractDetails() {
     }
   };
 
+  /**
+   * A 200 response here does NOT mean the email was delivered — deliveryStatus
+   * is the real, provider-confirmed outcome (see AdditionalDriverSigningService).
+   * A FAILED deliveryStatus must never be shown as success; the link itself
+   * still exists (for WhatsApp/copy) but the email attempt genuinely failed.
+   */
+  const handleDriverLinkEmailResult = (driver: AdditionalDriverDto, result: AdditionalDriverSignatureLinkResponse) => {
+    setLinkModalData({ driver, result });
+    if (result.deliveryStatus === 'FAILED') {
+      showToast(
+        result.deliveryFailureMessageSafe || t('contracts.driverSignature.errors.deliveryFailed'),
+        'error',
+      );
+    }
+    fetchDriverSignatures();
+  };
+
   const handleSendDriverLink = async (driver: AdditionalDriverDto) => {
     if (!contract) return;
+    if (!driver.email) {
+      setEditContactDriver(driver);
+      return;
+    }
     setDriverActionId(driver.id);
     try {
       const { data } = await sendAdditionalDriverSignatureLink(contract.id, driver.id);
-      setLinkModalData({ driver, result: data });
-      fetchDriverSignatures();
+      handleDriverLinkEmailResult(driver, data);
     } catch (err: any) {
       showToast(err?.userMessage || t('contracts.driverSignature.errors.sendFailed'), 'error');
     } finally {
@@ -661,9 +684,27 @@ export default function ContractDetails() {
 
   const handleResendDriverLink = async (driver: AdditionalDriverDto) => {
     if (!contract) return;
+    if (!driver.email) {
+      setEditContactDriver(driver);
+      return;
+    }
     setDriverActionId(driver.id);
     try {
       const { data } = await resendAdditionalDriverSignatureLink(contract.id, driver.id);
+      handleDriverLinkEmailResult(driver, data);
+    } catch (err: any) {
+      showToast(err?.userMessage || t('contracts.driverSignature.errors.sendFailed'), 'error');
+    } finally {
+      setDriverActionId(null);
+    }
+  };
+
+  /** WhatsApp / copy-link — never sends an email, so it works even when the driver has no email on file. */
+  const handleShareDriverLink = async (driver: AdditionalDriverDto) => {
+    if (!contract) return;
+    setDriverActionId(driver.id);
+    try {
+      const { data } = await issueAdditionalDriverSignatureLinkForShare(contract.id, driver.id);
       setLinkModalData({ driver, result: data });
       fetchDriverSignatures();
     } catch (err: any) {
@@ -1444,6 +1485,18 @@ export default function ContractDetails() {
                     const canSend = hasPermission('ADDITIONAL_DRIVER_SIGNATURE_SEND');
                     const canRevoke = hasPermission('ADDITIONAL_DRIVER_SIGNATURE_REVOKE');
                     const canViewSig = hasPermission('ADDITIONAL_DRIVER_SIGNATURE_VIEW');
+                    const canEditContact = hasPermission('ADDITIONAL_DRIVER_UPDATE');
+                    const deliveryStatus = driver.deliveryStatus;
+                    // Real, provider-confirmed delivery outcome — separate from the
+                    // signature-workflow badge above. A LINK_SENT signature status is
+                    // never proof the email actually reached the driver.
+                    const deliveryColors: Record<string, string> = {
+                      SENT: 'text-brand-500',
+                      DELIVERED: 'text-success-500',
+                      BOUNCED: 'text-danger-500',
+                      FAILED: 'text-danger-500',
+                      QUEUED: 'text-warning-500',
+                    };
                     const statusColors: Record<string, string> = {
                       NOT_REQUIRED: 'bg-slate-50 text-slate-400',
                       PENDING: 'bg-warning-50 text-warning-500',
@@ -1462,11 +1515,25 @@ export default function ContractDetails() {
                             <p className="text-xs text-slate-400">
                               {driver.driverLicenseNumber ? maskLicense(driver.driverLicenseNumber) : ''}
                             </p>
+                            <p className="text-xs text-slate-400 truncate">
+                              {driver.email || <span className="italic">{t('contracts.driverSignature.noEmail')}</span>}
+                              {driver.phone ? ` • ${driver.phone}` : ''}
+                            </p>
                           </div>
                           <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider', statusColors[status] || 'bg-slate-50 text-slate-400')}>
                             {t(`contracts.driverSignature.status.${status}`)}
                           </span>
                         </div>
+                        {/* Real, provider-confirmed delivery outcome — distinct from the
+                            signature-workflow badge above, which is never proof of delivery. */}
+                        {deliveryStatus && deliveryStatus !== 'NOT_SENT' && (
+                          <div className={cn('flex items-center gap-1.5 text-[11px] font-medium', deliveryColors[deliveryStatus] || 'text-slate-400')}>
+                            {deliveryStatus === 'FAILED' || deliveryStatus === 'BOUNCED' ? <XCircle size={12} /> : <CheckCircle2 size={12} />}
+                            {t(`contracts.driverSignature.delivery.${deliveryStatus}`)}
+                            {driver.lastSentAt && ` — ${new Date(driver.lastSentAt).toLocaleString()}`}
+                            {driver.deliveryFailureMessageSafe && `: ${driver.deliveryFailureMessageSafe}`}
+                          </div>
+                        )}
                         {(driver.linkSentAt || driver.openedAt || driver.signedAt || driver.declinedAt) && (
                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
                             {driver.linkSentAt && <span>{t('contracts.driverSignature.linkSentAt')}: {new Date(driver.linkSentAt).toLocaleString()}</span>}
@@ -1537,6 +1604,25 @@ export default function ContractDetails() {
                                   </button>
                                 )}
                               </>
+                            )}
+                            {status !== 'SIGNED' && (driver.phone || driver.email) && canSend && (
+                              <button
+                                onClick={() => handleShareDriverLink(driver)}
+                                disabled={acting}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 disabled:opacity-50"
+                              >
+                                {acting ? <Loader2 size={13} className="animate-spin" /> : <MessageCircle size={13} />}
+                                {t('contracts.driverSignature.actions.shareLink')}
+                              </button>
+                            )}
+                            {status !== 'SIGNED' && canEditContact && (
+                              <button
+                                onClick={() => setEditContactDriver(driver)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200"
+                              >
+                                <Pencil size={13} />
+                                {t('contracts.driverSignature.actions.editContact')}
+                              </button>
                             )}
                           </div>
                         )}
@@ -1720,6 +1806,23 @@ export default function ContractDetails() {
           driverEmail={linkModalData.driver.email}
           contractNumber={contract.contractNumber}
           agencyName={tenant?.name}
+          onCopied={() => {
+            if (contract && linkModalData) {
+              recordAdditionalDriverSignatureLinkCopied(contract.id, linkModalData.driver.id).catch(() => {});
+            }
+          }}
+        />
+      )}
+
+      {editContactDriver && contract && (
+        <EditDriverContactModal
+          contractId={contract.id}
+          driver={editContactDriver}
+          onClose={() => setEditContactDriver(null)}
+          onSaved={(updated) => {
+            setEditContactDriver(null);
+            setDriverSignatures((current) => current.map((d) => (d.id === updated.id ? updated : d)));
+          }}
         />
       )}
 

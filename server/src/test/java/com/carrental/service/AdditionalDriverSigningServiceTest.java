@@ -5,6 +5,7 @@ import com.carrental.dto.contract.AdditionalDriverSignatureLinkResponse;
 import com.carrental.dto.contract.AdditionalDriverSignatureSubmitRequest;
 import com.carrental.dto.contract.PublicAdditionalDriverSigningResponse;
 import com.carrental.entity.AdditionalDriver;
+import com.carrental.entity.AdditionalDriverDeliveryStatus;
 import com.carrental.entity.Contract;
 import com.carrental.entity.ContractAuditLog;
 import com.carrental.entity.ContractStatus;
@@ -34,6 +35,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -56,6 +58,7 @@ class AdditionalDriverSigningServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private ContractService contractService;
     @Mock private PdfService pdfService;
+    @Mock private EmailService emailService;
 
     private AdditionalDriverSigningService service;
     private Tenant tenant;
@@ -67,8 +70,13 @@ class AdditionalDriverSigningServiceTest {
         ObjectMapper objectMapper = new ObjectMapper();
         service = new AdditionalDriverSigningService(
                 additionalDriverRepository, contractRepository, contractAuditLogRepository,
-                depositRepository, notificationService, contractService, pdfService, objectMapper);
+                depositRepository, notificationService, contractService, pdfService, objectMapper, emailService);
         ReflectionTestUtils.setField(service, "frontendUrl", "https://innovacar.app");
+        // Default: provider accepts the email — individual tests override this to assert
+        // the FAILED/no-email paths. Real HTTP call, so must never hit the network here.
+        lenient().when(emailService.sendAdditionalDriverSignatureEmail(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(SmtpMailService.SmtpResult.success("ZEPTOMAIL", "msg-test-id"));
 
         tenant = Tenant.builder().id(1L).name("Acme Rental").build();
         contract = Contract.builder()
@@ -89,6 +97,7 @@ class AdditionalDriverSigningServiceTest {
     private AdditionalDriver driver(Long id, SignatureStatus status) {
         return AdditionalDriver.builder()
                 .id(id).fullName("Driver " + id).driverLicenseNumber("DL-" + id)
+                .email("driver" + id + "@example.com")
                 .signatureRequired(true).signatureStatus(status)
                 .contract(contract)
                 .build();
@@ -341,5 +350,83 @@ class AdditionalDriverSigningServiceTest {
                 .isInstanceOf(PublicSigningException.class)
                 .extracting(e -> ((PublicSigningException) e).getReason())
                 .isEqualTo(PublicSigningException.Reason.CANCELLED);
+    }
+
+    // ── 10. Email delivery is gated on the real provider response ───────────
+    // Regression coverage for the production bug this class now fixes: the
+    // signature-status badge ("LINK_SENT") used to be set with no email ever
+    // sent. These assert the real EmailService call happens and that
+    // deliveryStatus/DB fields only reflect what the provider actually said.
+
+    @Test
+    void providerAcceptanceSetsSentDeliveryStatusAndPersistsTheMessageId() {
+        AdditionalDriver d = driver(1L, SignatureStatus.PENDING);
+        when(contractRepository.findByIdAndTenantId(100L, 1L)).thenReturn(Optional.of(contract));
+        when(additionalDriverRepository.findByIdAndContractId(1L, 100L)).thenReturn(Optional.of(d));
+        when(emailService.sendAdditionalDriverSignatureEmail(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(SmtpMailService.SmtpResult.success("ZEPTOMAIL", "zm-abc123"));
+
+        AdditionalDriverSignatureLinkResponse response = service.generateLink(100L, 1L);
+
+        verify(emailService).sendAdditionalDriverSignatureEmail(
+                eq("driver1@example.com"), eq("Driver 1"), eq("CTR-2026-00100"), any(),
+                eq("Acme Rental"), any(), any(), any(), any(), any());
+        assertThat(d.getDeliveryStatus()).isEqualTo(AdditionalDriverDeliveryStatus.SENT);
+        assertThat(d.getProviderMessageId()).isEqualTo("zm-abc123");
+        assertThat(d.getLastSentAt()).isNotNull();
+        assertThat(d.getLastDeliveryChannel()).isEqualTo("EMAIL");
+        assertThat(response.getDeliveryStatus()).isEqualTo(AdditionalDriverDeliveryStatus.SENT);
+        // signatureStatus/linkSentAt describe the signing workflow, not delivery — both still set.
+        assertThat(d.getSignatureStatus()).isEqualTo(SignatureStatus.LINK_SENT);
+    }
+
+    @Test
+    void providerRejectionSetsFailedDeliveryStatusAndNeverClaimsSent() {
+        AdditionalDriver d = driver(1L, SignatureStatus.PENDING);
+        when(contractRepository.findByIdAndTenantId(100L, 1L)).thenReturn(Optional.of(contract));
+        when(additionalDriverRepository.findByIdAndContractId(1L, 100L)).thenReturn(Optional.of(d));
+        when(emailService.sendAdditionalDriverSignatureEmail(
+                        any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(SmtpMailService.SmtpResult.failure("ZEPTOMAIL", "Recipient rejected", "RECIPIENT_REJECTED"));
+
+        AdditionalDriverSignatureLinkResponse response = service.generateLink(100L, 1L);
+
+        assertThat(d.getDeliveryStatus()).isEqualTo(AdditionalDriverDeliveryStatus.FAILED);
+        assertThat(d.getDeliveryFailureCode()).isEqualTo("RECIPIENT_REJECTED");
+        assertThat(d.getDeliveryFailureMessageSafe()).isEqualTo("Recipient rejected");
+        assertThat(d.getProviderMessageId()).isNull();
+        assertThat(response.getDeliveryStatus()).isEqualTo(AdditionalDriverDeliveryStatus.FAILED);
+        // The token still exists (usable for WhatsApp/copy) even though the email failed.
+        assertThat(response.getSigningUrl()).isNotBlank();
+    }
+
+    @Test
+    void missingEmailRefusesToSendWithoutEverCallingTheProvider() {
+        AdditionalDriver d = driver(1L, SignatureStatus.PENDING);
+        d.setEmail(null);
+        when(contractRepository.findByIdAndTenantId(100L, 1L)).thenReturn(Optional.of(contract));
+        when(additionalDriverRepository.findByIdAndContractId(1L, 100L)).thenReturn(Optional.of(d));
+
+        assertThatThrownBy(() -> service.generateLink(100L, 1L))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(emailService, never()).sendAdditionalDriverSignatureEmail(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void shareLinkChannelNeverSendsEmailEvenWhenTheDriverHasOne() {
+        AdditionalDriver d = driver(1L, SignatureStatus.PENDING);
+        when(contractRepository.findByIdAndTenantId(100L, 1L)).thenReturn(Optional.of(contract));
+        when(additionalDriverRepository.findByIdAndContractId(1L, 100L)).thenReturn(Optional.of(d));
+
+        AdditionalDriverSignatureLinkResponse response = service.issueLinkForShare(100L, 1L);
+
+        verify(emailService, never()).sendAdditionalDriverSignatureEmail(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        assertThat(response.getSigningUrl()).isNotBlank();
+        assertThat(response.getDeliveryStatus()).isNull();
+        assertThat(d.getDeliveryStatus()).isEqualTo(AdditionalDriverDeliveryStatus.NOT_SENT);
     }
 }

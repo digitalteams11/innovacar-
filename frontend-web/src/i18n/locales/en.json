@@ -1146,7 +1146,9 @@
         "viewSignature": "View signature",
         "viewAudit": "View audit",
         "generateNewLink": "Generate new link",
-        "review": "Review"
+        "review": "Review",
+        "shareLink": "Share link",
+        "editContact": "Edit contact details"
       },
       "linkSentAt": "Link sent",
       "openedAt": "Opened",
@@ -1181,7 +1183,29 @@
       "errors": {
         "sendFailed": "Unable to generate the signing link. Please try again.",
         "revokeFailed": "Unable to revoke the signing link. Please try again.",
-        "loadFailed": "Unable to load signature details. Please try again."
+        "loadFailed": "Unable to load signature details. Please try again.",
+        "deliveryFailed": "The email could not be sent. Please check the email configuration."
+      },
+      "noEmail": "No email on file",
+      "delivery": {
+        "SENT": "Email sent",
+        "DELIVERED": "Email delivered",
+        "BOUNCED": "Email bounced",
+        "FAILED": "Sending failed",
+        "QUEUED": "Email queued"
+      },
+      "contactEdit": {
+        "title": "Edit contact details",
+        "phone": "Phone number",
+        "email": "Email address",
+        "emailOptionalHint": "Optional — required only to send by email. WhatsApp/copy-link work with just a phone number.",
+        "saved": "Contact details updated.",
+        "saveFailed": "Unable to save contact details. Please try again.",
+        "errors": {
+          "phoneRequired": "Phone number is required.",
+          "phoneInvalid": "Please enter a valid phone number.",
+          "emailInvalid": "Please enter a valid email address."
+        }
       }
     }
   },

@@ -11,6 +11,15 @@ export type SignatureStatus =
   | 'EXPIRED'
   | 'REVOKED';
 
+/** Mirrors the backend `AdditionalDriverDeliveryStatus` enum exactly. */
+export type AdditionalDriverDeliveryStatus =
+  | 'NOT_SENT'
+  | 'QUEUED'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'BOUNCED'
+  | 'FAILED';
+
 /** Mirrors `AdditionalDriverDto` (server/src/main/java/com/carrental/dto/contract/AdditionalDriverDto.java). */
 export interface AdditionalDriverDto {
   id: number;
@@ -29,6 +38,12 @@ export interface AdditionalDriverDto {
   openedAt?: string | null;
   signedAt?: string | null;
   declinedAt?: string | null;
+  /** Real, provider-confirmed delivery outcome — separate from signatureStatus. See AdditionalDriverDeliveryStatus. */
+  deliveryStatus?: AdditionalDriverDeliveryStatus | null;
+  lastDeliveryChannel?: string | null;
+  lastSentAt?: string | null;
+  deliveryFailureMessageSafe?: string | null;
+  deliveryAttemptCount?: number;
 }
 
 /** Mirrors `AdditionalDriverRequest` — POST/PUT body. */
@@ -67,6 +82,9 @@ export interface AdditionalDriverSignatureView {
 export interface AdditionalDriverSignatureLinkResponse {
   signingUrl: string;
   expiresAt: string;
+  /** Only set when the call attempted an email send (generateLink/resendLink) — null for the share-only endpoint. */
+  deliveryStatus?: AdditionalDriverDeliveryStatus | null;
+  deliveryFailureMessageSafe?: string | null;
 }
 
 const base = (contractId: number | string) => `/contracts/${contractId}/additional-drivers`;
@@ -101,6 +119,15 @@ export function resendAdditionalDriverSignatureLink(contractId: number | string,
 
 export function revokeAdditionalDriverSignatureLink(contractId: number | string, driverId: number | string) {
   return api.post<void>(`${base(contractId)}/${driverId}/signature-link/revoke`);
+}
+
+/** For WhatsApp / copy-link — returns a fresh signing URL without sending an email. */
+export function issueAdditionalDriverSignatureLinkForShare(contractId: number | string, driverId: number | string) {
+  return api.post<AdditionalDriverSignatureLinkResponse>(`${base(contractId)}/${driverId}/signature-link/for-share`);
+}
+
+export function recordAdditionalDriverSignatureLinkCopied(contractId: number | string, driverId: number | string) {
+  return api.post<void>(`${base(contractId)}/${driverId}/signature-link/copied`);
 }
 
 // ── Public (no-login) endpoints ──────────────────────────────────────────

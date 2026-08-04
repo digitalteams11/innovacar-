@@ -304,6 +304,107 @@ public class EmailService {
                 toEmail, subject);
     }
 
+    /**
+     * Sends the additional-driver signature-request email. Modeled on
+     * {@link #sendClientInformationRequestEmail}: localized FR/EN/AR (French
+     * fallback per product decision — the client-information-request variant
+     * above falls back to English instead), branded shell, returns the real
+     * {@link SmtpMailService.SmtpResult} so the caller (AdditionalDriverSigningService)
+     * can gate signatureStatus/deliveryStatus on actual provider acceptance
+     * instead of assuming success.
+     */
+    public SmtpMailService.SmtpResult sendAdditionalDriverSignatureEmail(
+            String toEmail, String driverName, String contractNumber, String signingUrl,
+            String agencyName, String vehicleSummary, java.time.LocalDate startDate, java.time.LocalDate endDate,
+            java.time.LocalDateTime expiresAt, String language) {
+        String lang = normalizeLanguageFrFallback(language);
+        record Copy(String htmlLang, String dir, String subject, String heading, String greeting, String roleLabel,
+                    String intro, String vehicleLabel, String datesLabel, String expiryNote, String button,
+                    String fallbackLabel, String security) {}
+        Copy c = switch (lang) {
+            case "en" -> new Copy("en", "ltr",
+                    "Signature required — Contract " + contractNumber,
+                    "Signature required",
+                    "Hello",
+                    "additional driver",
+                    "You have been added as an additional driver on rental contract %s from %s. Please review and sign below.",
+                    "Vehicle",
+                    "Rental period",
+                    "This link expires on %s.",
+                    "Review and sign",
+                    "If the button doesn't work, copy this link into your browser:",
+                    "This link is personal and secure. Do not share it with anyone.");
+            case "ar" -> new Copy("ar", "rtl",
+                    "التوقيع مطلوب — العقد " + contractNumber,
+                    "التوقيع مطلوب",
+                    "مرحباً",
+                    "سائق إضافي",
+                    "لقد تمت إضافتك كسائق إضافي في عقد الإيجار %s الخاص بـ %s. يرجى الاطلاع والتوقيع أدناه.",
+                    "المركبة",
+                    "فترة الإيجار",
+                    "تنتهي صلاحية هذا الرابط في %s.",
+                    "الاطلاع والتوقيع",
+                    "إذا لم يعمل الزر، انسخ هذا الرابط في متصفحك:",
+                    "هذا الرابط شخصي وآمن. لا تشاركه مع أي شخص.");
+            default -> new Copy("fr", "ltr",
+                    "Signature requise — Contrat " + contractNumber,
+                    "Signature requise",
+                    "Bonjour",
+                    "conducteur additionnel",
+                    "Vous avez été ajouté comme conducteur additionnel sur le contrat de location %s de %s. Veuillez consulter et signer ci-dessous.",
+                    "Véhicule",
+                    "Période de location",
+                    "Ce lien expire le %s.",
+                    "Consulter et signer",
+                    "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",
+                    "Ce lien est personnel et sécurisé. Ne le partagez avec personne.");
+        };
+
+        String name = StringUtils.hasText(driverName) ? driverName
+                : (lang.equals("fr") ? "cher conducteur" : lang.equals("ar") ? "عزيزنا السائق" : "there");
+        String agency = StringUtils.hasText(agencyName) ? agencyName : "Innovacar";
+        String expiryFormatted = expiresAt != null
+                ? expiresAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                : "";
+        String datesRange = (startDate != null ? startDate.toString() : "?") + " → " + (endDate != null ? endDate.toString() : "?");
+
+        java.util.List<String> infoRows = new java.util.ArrayList<>();
+        infoRows.add("<strong>" + escape(c.vehicleLabel()) + ":</strong> " + escape(StringUtils.hasText(vehicleSummary) ? vehicleSummary : "—"));
+        infoRows.add("<strong>" + escape(c.datesLabel()) + ":</strong> " + escape(datesRange));
+
+        String bodyHtml =
+              "<h2 style=\"margin:0 0 16px;color:#0f172a;font-size:20px;\">" + escape(c.heading()) + "</h2>"
+            + "<p style=\"margin:0 0 8px;color:#374151;font-size:15px;line-height:1.6;\">" + escape(c.greeting()) + " " + escape(name) + ",</p>"
+            + "<p style=\"margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;\">"
+                + escape(c.intro()).formatted(escape(contractNumber), escape(agency)) + "</p>"
+            + BrandedEmailLayout.infoBox(infoRows.toArray(new String[0]))
+            + BrandedEmailLayout.cta(c.button(), signingUrl)
+            + "<p style=\"margin:0 0 8px;color:#6b7280;font-size:13px;line-height:1.6;\">" + escape(c.fallbackLabel()) + "</p>"
+            + "<p style=\"margin:0 0 20px;word-break:break-all;\"><a href=\"" + signingUrl + "\" style=\"color:#0f766e;font-size:13px;\">" + signingUrl + "</a></p>"
+            + BrandedEmailLayout.alertBox(c.expiryNote().formatted(expiryFormatted), c.security());
+        String htmlBody = "<!DOCTYPE html><html lang=\"" + c.htmlLang() + "\" dir=\"" + c.dir() + "\">"
+                + "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + escape(c.subject()) + "</title></head>"
+                + "<body style=\"margin:0;padding:0;\">" + BrandedEmailLayout.shell(c.subject(), null, bodyHtml, agency, "support@innovacar.app") + "</body></html>";
+
+        String plainBody = c.greeting() + " " + name + ",\n\n" + c.intro().formatted(contractNumber, agency)
+                + "\n\n" + signingUrl + "\n\n" + c.expiryNote().formatted(expiryFormatted);
+
+        SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(
+                TenantContext.getCurrentTenantId(), toEmail, c.subject(), htmlBody, plainBody);
+        deliver(result, toEmail, c.subject());
+        return result;
+    }
+
+    /** Same 3-language set as {@link #normalizeLanguage}, but defaults to French — the product decision for this specific email. */
+    private static String normalizeLanguageFrFallback(String language) {
+        if (language == null) return "fr";
+        String l = language.trim().toLowerCase();
+        return switch (l) {
+            case "fr", "en", "ar" -> l;
+            default -> "fr";
+        };
+    }
+
     private void deliver(SmtpMailService.SmtpResult result, String toEmail, String subject) {
         if (result.sent()) {
             log.info("[EMAIL] Delivered via {} to {} | Subject: {}", result.providerUsed(), toEmail, subject);

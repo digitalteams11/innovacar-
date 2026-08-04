@@ -1146,7 +1146,9 @@
         "viewSignature": "Voir la signature",
         "viewAudit": "Voir l'historique",
         "generateNewLink": "Générer un nouveau lien",
-        "review": "Consulter"
+        "review": "Consulter",
+        "shareLink": "Partager le lien",
+        "editContact": "Modifier les coordonnées"
       },
       "linkSentAt": "Lien envoyé",
       "openedAt": "Ouvert",
@@ -1181,7 +1183,29 @@
       "errors": {
         "sendFailed": "Impossible de générer le lien de signature. Veuillez réessayer.",
         "revokeFailed": "Impossible de révoquer le lien de signature. Veuillez réessayer.",
-        "loadFailed": "Impossible de charger les détails de la signature. Veuillez réessayer."
+        "loadFailed": "Impossible de charger les détails de la signature. Veuillez réessayer.",
+        "deliveryFailed": "L'envoi a échoué. Vérifiez la configuration e-mail."
+      },
+      "noEmail": "Aucun e-mail enregistré",
+      "delivery": {
+        "SENT": "E-mail envoyé",
+        "DELIVERED": "E-mail livré",
+        "BOUNCED": "E-mail rejeté",
+        "FAILED": "Échec de l'envoi",
+        "QUEUED": "E-mail en file d'attente"
+      },
+      "contactEdit": {
+        "title": "Modifier les coordonnées",
+        "phone": "Téléphone",
+        "email": "Adresse e-mail",
+        "emailOptionalHint": "Facultatif — requis uniquement pour l'envoi par e-mail. WhatsApp/copier le lien fonctionnent avec juste un numéro de téléphone.",
+        "saved": "Coordonnées mises à jour.",
+        "saveFailed": "Impossible d'enregistrer les coordonnées. Veuillez réessayer.",
+        "errors": {
+          "phoneRequired": "Le numéro de téléphone est requis.",
+          "phoneInvalid": "Veuillez saisir un numéro de téléphone valide.",
+          "emailInvalid": "Veuillez saisir une adresse e-mail valide."
+        }
       }
     }
   },
