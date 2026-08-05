@@ -56,7 +56,7 @@ class DashboardIntelligenceServiceTest {
         lenient().when(reservationRepository.findAllByTenantId(TENANT_ID)).thenReturn(List.of());
         lenient().when(maintenanceRepository.findAllByTenantIdOrderByCreatedAtDesc(TENANT_ID)).thenReturn(List.of());
         lenient().when(clientRepository.findAllByTenantId(TENANT_ID)).thenReturn(List.of());
-        lenient().when(tenantRepository.findById(TENANT_ID)).thenReturn(java.util.Optional.of(Tenant.builder().id(TENANT_ID).status("ACTIVE").build()));
+        lenient().when(tenantRepository.findById(TENANT_ID)).thenReturn(java.util.Optional.of(Tenant.builder().id(TENANT_ID).status(SubscriptionStatus.ACTIVE).build()));
         lenient().when(reportCalculationService.computeFigures(any(), any(), any(), any())).thenReturn(emptyFigures());
     }
 

@@ -1,6 +1,7 @@
 package com.carrental.service;
 
 import com.carrental.entity.Role;
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
 import com.carrental.repository.TenantRepository;
@@ -54,9 +55,9 @@ class EmailRecipientSearchServiceTest {
     void excludesBlockedAndSuspendedAgenciesByDefault() {
         service = newService();
         when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
-                Tenant.builder().id(1L).name("Active Co").email("active@co.test").status("ACTIVE").build(),
-                Tenant.builder().id(2L).name("Suspended Co").email("suspended@co.test").status("SUSPENDED").build(),
-                Tenant.builder().id(3L).name("Blocked Co").email("blocked@co.test").status("BLOCKED").build()
+                Tenant.builder().id(1L).name("Active Co").email("active@co.test").status(SubscriptionStatus.ACTIVE).build(),
+                Tenant.builder().id(2L).name("Suspended Co").email("suspended@co.test").status(SubscriptionStatus.SUSPENDED).build(),
+                Tenant.builder().id(3L).name("Blocked Co").email("blocked@co.test").accountState("BLOCKED").status(SubscriptionStatus.ACTIVE).build()
         ));
         when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(Page.empty());
 
@@ -70,7 +71,7 @@ class EmailRecipientSearchServiceTest {
     void includeBlockedTrue_returnsBlockedAgenciesToo() {
         service = newService();
         when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
-                Tenant.builder().id(1L).name("Blocked Co").email("blocked@co.test").status("BLOCKED").build()
+                Tenant.builder().id(1L).name("Blocked Co").email("blocked@co.test").accountState("BLOCKED").status(SubscriptionStatus.ACTIVE).build()
         ));
         when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(Page.empty());
 
@@ -83,7 +84,7 @@ class EmailRecipientSearchServiceTest {
     void excludesDisabledUsersByDefault() {
         service = newService();
         when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(Page.empty());
-        Tenant tenant = Tenant.builder().id(1L).name("Acme").status("ACTIVE").build();
+        Tenant tenant = Tenant.builder().id(1L).name("Acme").status(SubscriptionStatus.ACTIVE).build();
         when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
                 User.builder().id(1L).email("enabled@acme.test").role(Role.EMPLOYEE).tenant(tenant).accountEnabled(true).build(),
                 User.builder().id(2L).email("disabled@acme.test").role(Role.EMPLOYEE).tenant(tenant).accountEnabled(false).build()
@@ -99,7 +100,7 @@ class EmailRecipientSearchServiceTest {
     void excludesEmptyEmails() {
         service = newService();
         when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(Page.empty());
-        Tenant tenant = Tenant.builder().id(1L).name("Acme").status("ACTIVE").build();
+        Tenant tenant = Tenant.builder().id(1L).name("Acme").status(SubscriptionStatus.ACTIVE).build();
         when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
                 User.builder().id(1L).email("").role(Role.EMPLOYEE).tenant(tenant).accountEnabled(true).build(),
                 User.builder().id(2L).email("real@acme.test").role(Role.EMPLOYEE).tenant(tenant).accountEnabled(true).build()
@@ -115,9 +116,9 @@ class EmailRecipientSearchServiceTest {
     void deduplicatesByNormalizedEmail_userWinsOverAgency() {
         service = newService();
         when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
-                Tenant.builder().id(1L).name("Acme").email("Shared@Acme.test").status("ACTIVE").build()
+                Tenant.builder().id(1L).name("Acme").email("Shared@Acme.test").status(SubscriptionStatus.ACTIVE).build()
         ));
-        Tenant tenant = Tenant.builder().id(1L).name("Acme").status("ACTIVE").build();
+        Tenant tenant = Tenant.builder().id(1L).name("Acme").status(SubscriptionStatus.ACTIVE).build();
         when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
                 User.builder().id(1L).email("shared@acme.test").firstName("Jane").lastName("Doe")
                         .role(Role.AGENCY_OWNER).tenant(tenant).accountEnabled(true).build()
@@ -134,7 +135,7 @@ class EmailRecipientSearchServiceTest {
     void verifiedOnly_excludesUnverifiedUsers() {
         service = newService();
         when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(Page.empty());
-        Tenant tenant = Tenant.builder().id(1L).name("Acme").status("ACTIVE").build();
+        Tenant tenant = Tenant.builder().id(1L).name("Acme").status(SubscriptionStatus.ACTIVE).build();
         when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
                 User.builder().id(1L).email("verified@acme.test").role(Role.EMPLOYEE).tenant(tenant)
                         .accountEnabled(true).emailVerified(true).build(),
@@ -158,7 +159,7 @@ class EmailRecipientSearchServiceTest {
         // recipient combobox).
         service = newService();
         when(tenantRepository.searchForEmailRecipients(anyString(), any())).thenReturn(pageOf(
-                Tenant.builder().id(1L).name(null).email("noname@co.test").status("ACTIVE").build()
+                Tenant.builder().id(1L).name(null).email("noname@co.test").status(SubscriptionStatus.ACTIVE).build()
         ));
         when(userRepository.searchForEmailRecipients(anyString(), any())).thenReturn(Page.empty());
 

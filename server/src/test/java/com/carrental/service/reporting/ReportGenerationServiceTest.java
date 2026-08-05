@@ -75,7 +75,7 @@ class ReportGenerationServiceTest {
     @Test
     void generateScheduled_blockedTenant_isSkipped() {
         Tenant blocked = tenant();
-        blocked.setStatus("SUSPENDED");
+        blocked.setStatus(SubscriptionStatus.SUSPENDED);
         when(tenantRepository.findById(1L)).thenReturn(Optional.of(blocked));
         when(featureAccessService.isEnabledForTenant(1L, ReportGenerationService.FEATURE_MONTHLY)).thenReturn(true);
 

@@ -94,7 +94,7 @@ class TenantTest {
     @Test
     void isSubscriptionValid_trueWhileTrialStillRunning() {
         Tenant tenant = Tenant.builder()
-                .status("TRIAL")
+                .status(SubscriptionStatus.TRIAL)
                 .subscriptionActive(true)
                 .trialStartedAt(java.time.LocalDateTime.now().minusHours(1))
                 .trialEndsAt(java.time.LocalDateTime.now().plusHours(23))
@@ -106,7 +106,7 @@ class TenantTest {
     @Test
     void isSubscriptionValid_falseTheInstantTrialEndsAtPasses_evenIfStatusStillSaysTrial() {
         Tenant tenant = Tenant.builder()
-                .status("TRIAL")
+                .status(SubscriptionStatus.TRIAL)
                 .subscriptionActive(true)
                 .trialStartedAt(java.time.LocalDateTime.now().minusHours(25))
                 .trialEndsAt(java.time.LocalDateTime.now().minusHours(1))
@@ -118,7 +118,7 @@ class TenantTest {
     @Test
     void isSubscriptionValid_paidActiveTenantUnaffectedByTrialFields() {
         Tenant tenant = Tenant.builder()
-                .status("ACTIVE")
+                .status(SubscriptionStatus.ACTIVE)
                 .subscriptionActive(true)
                 .subscriptionEndDate(LocalDate.now().plusMonths(1))
                 .build();
@@ -131,12 +131,53 @@ class TenantTest {
         // Employees don't have their own subscription state — they inherit the
         // tenant's, so this same method call is what gates an employee's access too.
         Tenant expiredTrialAgency = Tenant.builder()
-                .status("TRIAL")
+                .status(SubscriptionStatus.TRIAL)
                 .subscriptionActive(true)
                 .trialStartedAt(java.time.LocalDateTime.now().minusDays(15))
                 .trialEndsAt(java.time.LocalDateTime.now().minusDays(1))
                 .build();
 
         assertThat(expiredTrialAgency.isSubscriptionValid()).isFalse();
+    }
+
+    // Behavior 11: SUSPENDED blocks writes (matches the existing AGENCY_SUSPENDED convention
+    // via isAccountBlocked()), while GRACE_PERIOD remains fully usable — grace is NOT blocked.
+
+    @Test
+    void isAccountBlocked_trueWhenStatusIsSuspended() {
+        Tenant tenant = Tenant.builder().status(SubscriptionStatus.SUSPENDED).build();
+        assertThat(tenant.isAccountBlocked()).isTrue();
+        assertThat(tenant.isSubscriptionValid()).isFalse();
+    }
+
+    @Test
+    void isAccountBlocked_falseWhenStatusIsGracePeriod_gracePeriodIsFullyUsable() {
+        Tenant tenant = Tenant.builder()
+                .status(SubscriptionStatus.GRACE_PERIOD)
+                .gracePeriodEnd(java.time.LocalDateTime.now().plusDays(2))
+                .build();
+        assertThat(tenant.isAccountBlocked()).isFalse();
+        assertThat(tenant.isSubscriptionValid()).isTrue();
+    }
+
+    @Test
+    void isAccountBlocked_manualBlockedAccountStateAlwaysWinsRegardlessOfBillingStatus() {
+        Tenant tenant = Tenant.builder()
+                .status(SubscriptionStatus.ACTIVE)
+                .accountState("BLOCKED")
+                .build();
+        assertThat(tenant.isAccountBlocked()).isTrue();
+        assertThat(tenant.isSubscriptionValid()).isFalse();
+    }
+
+    @Test
+    void isAccountBlocked_manualInactiveAccountStateAlsoBlocksEvenDuringGracePeriod() {
+        Tenant tenant = Tenant.builder()
+                .status(SubscriptionStatus.GRACE_PERIOD)
+                .accountState("INACTIVE")
+                .gracePeriodEnd(java.time.LocalDateTime.now().plusDays(2))
+                .build();
+        assertThat(tenant.isAccountBlocked()).isTrue();
+        assertThat(tenant.isSubscriptionValid()).isFalse();
     }
 }

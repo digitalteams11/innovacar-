@@ -11,6 +11,7 @@ import com.carrental.entity.PaymentMethod;
 import com.carrental.entity.PaymentStatus;
 import com.carrental.entity.PaymentType;
 import com.carrental.entity.PlatformSettings;
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.SupportMessage;
 import com.carrental.entity.SupportTicket;
 import com.carrental.entity.Tenant;
@@ -590,7 +591,7 @@ class SuperAdminControllerTest {
 
     @Test
     void approveCancellationRequest_cancelsSubscriptionAndMarksApproved() {
-        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").status("ACTIVE").subscriptionActive(true).build();
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").status(SubscriptionStatus.ACTIVE).subscriptionActive(true).build();
         CancellationRequest request = CancellationRequest.builder()
                 .id(9L).tenant(tenant).requestedByUserId(10L).reason(CancellationReason.OTHER)
                 .status(CancellationRequestStatus.PENDING).createdAt(LocalDateTime.now()).build();
@@ -598,7 +599,7 @@ class SuperAdminControllerTest {
 
         Map<String, Object> body = superAdminController.approveCancellationRequest(9L).getBody();
 
-        assertThat(tenant.getStatus()).isEqualTo("CANCELLED");
+        assertThat(tenant.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
         assertThat(tenant.isSubscriptionActive()).isFalse();
         assertThat(request.getStatus()).isEqualTo(CancellationRequestStatus.APPROVED);
         assertThat(request.getReviewedBy()).isEqualTo("superadmin@test.com");
@@ -609,7 +610,7 @@ class SuperAdminControllerTest {
 
     @Test
     void approveCancellationRequest_alreadyReviewed_returns409WithoutMutatingTenant() {
-        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").status("ACTIVE").subscriptionActive(true).build();
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").status(SubscriptionStatus.ACTIVE).subscriptionActive(true).build();
         CancellationRequest request = CancellationRequest.builder()
                 .id(9L).tenant(tenant).requestedByUserId(10L).reason(CancellationReason.OTHER)
                 .status(CancellationRequestStatus.APPROVED).createdAt(LocalDateTime.now()).build();
@@ -618,7 +619,7 @@ class SuperAdminControllerTest {
         var response = superAdminController.approveCancellationRequest(9L);
 
         assertThat(response.getStatusCode().value()).isEqualTo(409);
-        assertThat(tenant.getStatus()).isEqualTo("ACTIVE");
+        assertThat(tenant.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
         verify(tenantRepository, org.mockito.Mockito.never()).save(any());
     }
 

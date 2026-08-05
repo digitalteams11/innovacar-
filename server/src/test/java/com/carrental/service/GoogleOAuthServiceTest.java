@@ -1,5 +1,6 @@
 package com.carrental.service;
 
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
 import com.carrental.exception.GoogleAuthException;
@@ -65,7 +66,7 @@ class GoogleOAuthServiceTest {
     }
 
     private Tenant activeTenant() {
-        return Tenant.builder().id(10L).name("Acme Rentals").status("ACTIVE").build();
+        return Tenant.builder().id(10L).name("Acme Rentals").status(SubscriptionStatus.ACTIVE).build();
     }
 
     private void stubAuthResponseCollaborators(User user, Long sessionId) {
@@ -194,7 +195,7 @@ class GoogleOAuthServiceTest {
 
     @Test
     void suspendedTenant_cannotLogInThroughGoogle() {
-        Tenant tenant = Tenant.builder().id(10L).name("Acme Rentals").status("SUSPENDED").build();
+        Tenant tenant = Tenant.builder().id(10L).name("Acme Rentals").status(SubscriptionStatus.SUSPENDED).build();
         User user = existingUser(tenant);
         when(userRepository.findByGoogleId(SUB)).thenReturn(Optional.of(user));
 

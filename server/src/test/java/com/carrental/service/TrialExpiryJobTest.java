@@ -1,6 +1,7 @@
 package com.carrental.service;
 
 import com.carrental.entity.Notification;
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.repository.TenantRepository;
 import org.junit.jupiter.api.Test;
@@ -32,16 +33,16 @@ class TrialExpiryJobTest {
     void expiresTrialPastEndDateAndSendsExpiryNotificationOnce() {
         Tenant tenant = Tenant.builder()
                 .id(1L).name("Agency").email("agency@test.com")
-                .status("TRIAL").subscriptionActive(true)
+                .status(SubscriptionStatus.TRIAL).subscriptionActive(true)
                 .trialStartDate(LocalDate.now().minusMonths(1).minusDays(1))
                 .trialEndDate(LocalDate.now().minusDays(1))
                 .build();
-        when(tenantRepository.findAllByStatusIgnoreCase("TRIAL")).thenReturn(List.of(tenant));
-        when(tenantRepository.countByStatusIgnoreCase("ACTIVE")).thenReturn(5L);
+        when(tenantRepository.findAllByStatus(SubscriptionStatus.TRIAL)).thenReturn(List.of(tenant));
+        when(tenantRepository.countByStatus(SubscriptionStatus.ACTIVE)).thenReturn(5L);
 
         trialExpiryJob.processTrials();
 
-        assertThat(tenant.getStatus()).isEqualTo("EXPIRED");
+        assertThat(tenant.getStatus()).isEqualTo(SubscriptionStatus.TRIAL_EXPIRED);
         assertThat(tenant.isSubscriptionActive()).isFalse();
         assertThat(tenant.getTrialExpiredNotifiedAt()).isNotNull();
         verify(platformEmailService, times(1)).sendTrialExpired(1L, "agency@test.com", "Agency");
@@ -54,13 +55,13 @@ class TrialExpiryJobTest {
     void doesNotResendExpiryNotificationOnSubsequentRuns() {
         Tenant tenant = Tenant.builder()
                 .id(1L).name("Agency").email("agency@test.com")
-                .status("TRIAL").subscriptionActive(true)
+                .status(SubscriptionStatus.TRIAL).subscriptionActive(true)
                 .trialStartDate(LocalDate.now().minusMonths(2))
                 .trialEndDate(LocalDate.now().minusDays(10))
                 .trialExpiredNotifiedAt(LocalDateTime.now().minusDays(9))
                 .build();
-        when(tenantRepository.findAllByStatusIgnoreCase("TRIAL")).thenReturn(List.of(tenant));
-        when(tenantRepository.countByStatusIgnoreCase("ACTIVE")).thenReturn(0L);
+        when(tenantRepository.findAllByStatus(SubscriptionStatus.TRIAL)).thenReturn(List.of(tenant));
+        when(tenantRepository.countByStatus(SubscriptionStatus.ACTIVE)).thenReturn(0L);
 
         trialExpiryJob.processTrials();
 
@@ -72,16 +73,16 @@ class TrialExpiryJobTest {
     void sendsSevenDayReminderExactlyOnce() {
         Tenant tenant = Tenant.builder()
                 .id(2L).name("Agency").email("agency@test.com")
-                .status("TRIAL").subscriptionActive(true)
+                .status(SubscriptionStatus.TRIAL).subscriptionActive(true)
                 .trialStartDate(LocalDate.now().minusDays(23))
                 .trialEndDate(LocalDate.now().plusDays(7))
                 .build();
-        when(tenantRepository.findAllByStatusIgnoreCase("TRIAL")).thenReturn(List.of(tenant));
-        when(tenantRepository.countByStatusIgnoreCase("ACTIVE")).thenReturn(0L);
+        when(tenantRepository.findAllByStatus(SubscriptionStatus.TRIAL)).thenReturn(List.of(tenant));
+        when(tenantRepository.countByStatus(SubscriptionStatus.ACTIVE)).thenReturn(0L);
 
         trialExpiryJob.processTrials();
 
-        assertThat(tenant.getStatus()).isEqualTo("TRIAL");
+        assertThat(tenant.getStatus()).isEqualTo(SubscriptionStatus.TRIAL);
         assertThat(tenant.getTrialReminder7SentAt()).isNotNull();
         verify(platformEmailService, times(1)).sendTrialReminder(2L, "agency@test.com", "Agency", 7);
 
@@ -94,12 +95,12 @@ class TrialExpiryJobTest {
     void sendsThreeDayReminderWithTheExactRequiredWording() {
         Tenant tenant = Tenant.builder()
                 .id(4L).name("Agency").email("agency@test.com")
-                .status("TRIAL").subscriptionActive(true)
+                .status(SubscriptionStatus.TRIAL).subscriptionActive(true)
                 .trialStartDate(LocalDate.now().minusDays(11))
                 .trialEndDate(LocalDate.now().plusDays(3))
                 .build();
-        when(tenantRepository.findAllByStatusIgnoreCase("TRIAL")).thenReturn(List.of(tenant));
-        when(tenantRepository.countByStatusIgnoreCase("ACTIVE")).thenReturn(0L);
+        when(tenantRepository.findAllByStatus(SubscriptionStatus.TRIAL)).thenReturn(List.of(tenant));
+        when(tenantRepository.countByStatus(SubscriptionStatus.ACTIVE)).thenReturn(0L);
 
         trialExpiryJob.processTrials();
 
@@ -114,14 +115,14 @@ class TrialExpiryJobTest {
     void skipsTenantsWithNoTrialEndDateWithoutError() {
         Tenant tenant = Tenant.builder()
                 .id(3L).name("Agency").email("agency@test.com")
-                .status("TRIAL").subscriptionActive(true)
+                .status(SubscriptionStatus.TRIAL).subscriptionActive(true)
                 .build();
-        when(tenantRepository.findAllByStatusIgnoreCase("TRIAL")).thenReturn(List.of(tenant));
-        when(tenantRepository.countByStatusIgnoreCase("ACTIVE")).thenReturn(0L);
+        when(tenantRepository.findAllByStatus(SubscriptionStatus.TRIAL)).thenReturn(List.of(tenant));
+        when(tenantRepository.countByStatus(SubscriptionStatus.ACTIVE)).thenReturn(0L);
 
         trialExpiryJob.processTrials();
 
-        assertThat(tenant.getStatus()).isEqualTo("TRIAL");
+        assertThat(tenant.getStatus()).isEqualTo(SubscriptionStatus.TRIAL);
         verifyNoInteractions(platformEmailService);
         verify(tenantRepository, never()).save(any());
     }
