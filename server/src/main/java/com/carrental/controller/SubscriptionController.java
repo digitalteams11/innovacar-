@@ -1,10 +1,12 @@
 package com.carrental.controller;
 
+import com.carrental.dto.subscription.SubscriptionStatusResponse;
 import com.carrental.entity.AuditLog;
 import com.carrental.entity.CancellationReason;
 import com.carrental.entity.CancellationRequest;
 import com.carrental.entity.CancellationRequestStatus;
 import com.carrental.entity.SubscriptionPlan;
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
 import com.carrental.repository.*;
@@ -71,7 +73,7 @@ public class SubscriptionController {
         // status="TRIAL" but a plan-lookup mismatch (e.g. after a block/unblock cycle,
         // or a plan record edited in Super Admin) would silently fall through to the
         // "renews on <stale date>" branch on the frontend instead of the trial countdown.
-        boolean inTrial = "TRIAL".equalsIgnoreCase(tenant.getStatus())
+        boolean inTrial = tenant.getStatus() == SubscriptionStatus.TRIAL
                 && tenant.getTrialEndDate() != null
                 && !tenant.isTrialExpired();
         long remainingTrialDays = inTrial ? tenant.trialDaysRemaining() : 0;
@@ -98,7 +100,7 @@ public class SubscriptionController {
         result.put("remainingTrialDays", remainingTrialDays);
         result.put("trialDaysRemaining", remainingTrialDays);
         result.put("trialStartDate", tenant.getTrialStartedAt() != null ? tenant.getTrialStartedAt() : tenant.getTrialStartDate());
-        result.put("trialExpired", tenant.isTrialExpired() && !"ACTIVE".equalsIgnoreCase(tenant.getStatus()));
+        result.put("trialExpired", tenant.isTrialExpired() && tenant.getStatus() != SubscriptionStatus.ACTIVE);
         result.put("currentPeriodEnd", tenant.getSubscriptionEndDate());
         result.put("subscriptionActive", tenant.isSubscriptionValid());
         result.put("subscriptionEndDate", tenant.getSubscriptionEndDate());
@@ -134,7 +136,39 @@ public class SubscriptionController {
         result.put("cancelScheduled", tenant.isCancelScheduled());
         result.put("cancelEffectiveAt", tenant.getCancelEffectiveAt());
         result.put("cancellationReason", tenant.getCancellationReason());
+
+        SubscriptionStatusResponse typed = buildTypedStatus(tenant, planCode, daysRemaining, preciseTrialEnd);
+        result.put("gracePeriodEnd", typed.getGracePeriodEnd());
+        result.put("accessMode", typed.getAccessMode());
+        result.put("canCheckout", typed.isCanCheckout());
+        result.put("statusEnum", typed.getStatus());
+        result.put("currentPeriodEndPrecise", typed.getCurrentPeriodEnd());
+
         return ResponseEntity.ok(withEnvelope(result));
+    }
+
+    /** Builds the normalized spec-§25 shape (additive fields only — see class Javadoc on SubscriptionStatusResponse). */
+    private SubscriptionStatusResponse buildTypedStatus(Tenant tenant, String planCode, long daysRemaining, LocalDateTime preciseTrialEnd) {
+        SubscriptionStatus status = tenant.getStatus();
+        String accessMode = switch (status == null ? SubscriptionStatus.TRIAL : status) {
+            case TRIAL, ACTIVE, GRACE_PERIOD, CANCEL_AT_PERIOD_END -> "FULL";
+            case TRIAL_EXPIRED, SUSPENDED, CANCELLED -> "BLOCKED";
+            case CHECKOUT_PENDING, PAYMENT_DUE -> "FULL";
+        };
+        boolean canCheckout = switch (status == null ? SubscriptionStatus.TRIAL : status) {
+            case TRIAL, TRIAL_EXPIRED, GRACE_PERIOD, SUSPENDED, CANCEL_AT_PERIOD_END -> true;
+            case ACTIVE, CANCELLED, CHECKOUT_PENDING, PAYMENT_DUE -> false;
+        };
+        return SubscriptionStatusResponse.builder()
+                .planCode(planCode)
+                .status(status)
+                .trialEndsAt(preciseTrialEnd)
+                .currentPeriodEnd(tenant.getCurrentPeriodEnd())
+                .gracePeriodEnd(tenant.getGracePeriodEnd())
+                .daysRemaining(daysRemaining)
+                .accessMode(accessMode)
+                .canCheckout(canCheckout)
+                .build();
     }
 
     // ── GET /api/subscriptions/plans ─────────────────────────────────────────
@@ -185,8 +219,8 @@ public class SubscriptionController {
             tenant.setPlanName("TRIAL");
             changed = true;
         }
-        if (tenant.getStatus() == null || tenant.getStatus().isBlank()) {
-            tenant.setStatus(trialPlan ? "TRIAL" : "ACTIVE");
+        if (tenant.getStatus() == null) {
+            tenant.setStatus(trialPlan ? SubscriptionStatus.TRIAL : SubscriptionStatus.ACTIVE);
             changed = true;
         }
         if (trialPlan && tenant.getTrialStartedAt() == null) {

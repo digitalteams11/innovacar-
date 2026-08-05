@@ -26,7 +26,7 @@ public class AiKnowledgeService {
             """;
 
     private static final String PLATFORM_KNOWLEDGE = """
-            === RENTCAR SAAS PLATFORM KNOWLEDGE BASE ===
+            === INNOVACAR PLATFORM KNOWLEDGE BASE ===
 
             --- OVERVIEW ---
             Innovacar is a multi-tenant car rental management platform.

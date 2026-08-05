@@ -3,6 +3,7 @@ package com.carrental.service;
 import com.carrental.entity.AuditLog;
 import com.carrental.entity.Notification;
 import com.carrental.entity.SubscriptionPlan;
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.entity.User;
 import com.carrental.exception.ResourceNotFoundException;
@@ -72,13 +73,13 @@ public class SubscriptionService {
             return tenant;
         }
 
-        if (trialPlan && "TRIAL".equalsIgnoreCase(tenant.getStatus()) && tenant.isTrialExpired()) {
-            tenant.setStatus("EXPIRED");
+        if (trialPlan && tenant.getStatus() == SubscriptionStatus.TRIAL && tenant.isTrialExpired()) {
+            tenant.setStatus(SubscriptionStatus.TRIAL_EXPIRED);
             tenant.setSubscriptionActive(false);
             changed = true;
         }
-        if (!trialPlan && "TRIAL".equalsIgnoreCase(tenant.getStatus())) {
-            tenant.setStatus("ACTIVE");
+        if (!trialPlan && tenant.getStatus() == SubscriptionStatus.TRIAL) {
+            tenant.setStatus(SubscriptionStatus.ACTIVE);
             changed = true;
         }
         if (!trialPlan && tenant.getTrialStartDate() != null) {
@@ -117,15 +118,22 @@ public class SubscriptionService {
 
         String previousPlan = tenant.getPlanName() == null ? "Trial" : tenant.getPlanName();
         LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
 
         tenant.setPlanName(plan.getName());
         tenant.setSubscriptionActive(true);
-        tenant.setStatus("ACTIVE");
+        tenant.setStatus(SubscriptionStatus.ACTIVE);
         tenant.setTrialStartDate(null);
         tenant.setTrialEndDate(null);
         tenant.setTrialStartedAt(null);
         tenant.setTrialEndsAt(null);
         tenant.setSubscriptionEndDate(today.plusMonths(Math.max(1, months)));
+        tenant.setCurrentPeriodStart(now);
+        tenant.setCurrentPeriodEnd(now.plusMonths(Math.max(1, months)));
+        tenant.setSuspendedAt(null);
+        tenant.setGracePeriodEnd(null);
+        tenant.setGraceStartedNotifiedAt(null);
+        tenant.setGraceSuspensionWarningNotifiedAt(null);
         tenant.setMaxVehicles(plan.getMaxVehicles());
         tenant.setMaxEmployees(plan.getMaxEmployees());
         tenant.setMaxGpsDevices(plan.getMaxGpsDevices());
@@ -193,14 +201,14 @@ public class SubscriptionService {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found: " + tenantId));
 
-        String currentStatus = tenant.getStatus() != null ? tenant.getStatus().toUpperCase() : "";
-        if ("CANCELLED".equals(currentStatus)) {
+        SubscriptionStatus currentStatus = tenant.getStatus();
+        if (currentStatus == SubscriptionStatus.CANCELLED) {
             throw new IllegalStateException("Subscription is already cancelled.");
         }
-        if ("CANCEL_SCHEDULED".equals(currentStatus)) {
+        if (currentStatus == SubscriptionStatus.CANCEL_AT_PERIOD_END) {
             throw new IllegalStateException("Cancellation is already scheduled.");
         }
-        if ("TRIAL".equals(currentStatus)) {
+        if (currentStatus == SubscriptionStatus.TRIAL) {
             throw new IllegalStateException("Trial subscriptions cannot be self-cancelled.");
         }
 
@@ -208,7 +216,7 @@ public class SubscriptionService {
                 ? tenant.getSubscriptionEndDate().atTime(23, 59, 59)
                 : LocalDateTime.now().plusDays(1).withHour(23).withMinute(59).withSecond(59);
 
-        tenant.setStatus("CANCEL_SCHEDULED");
+        tenant.setStatus(SubscriptionStatus.CANCEL_AT_PERIOD_END);
         tenant.setCancelRequestedAt(LocalDateTime.now());
         tenant.setCancelEffectiveAt(effectiveAt);
         tenant.setCancellationReason(StringUtils.hasText(reason) ? reason : "NOT_SPECIFIED");
@@ -249,11 +257,11 @@ public class SubscriptionService {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found: " + tenantId));
 
-        if (!"CANCEL_SCHEDULED".equalsIgnoreCase(tenant.getStatus())) {
+        if (tenant.getStatus() != SubscriptionStatus.CANCEL_AT_PERIOD_END) {
             throw new IllegalStateException("No pending cancellation to undo.");
         }
 
-        tenant.setStatus("ACTIVE");
+        tenant.setStatus(SubscriptionStatus.ACTIVE);
         tenant.setCancelRequestedAt(null);
         tenant.setCancelEffectiveAt(null);
         tenant.setCancellationReason(null);
@@ -282,6 +290,90 @@ public class SubscriptionService {
 
         log.info("[SUBSCRIPTION] Cancellation undone for tenant [{}] by [{}]", saved.getId(), performedBy);
         return saved;
+    }
+
+    /**
+     * A payment failure — sets GRACE_PERIOD and the exact grace deadline
+     * (never "end of calendar day"). Access remains fully usable throughout
+     * (see {@link Tenant#isSubscriptionValid()}). No email is sent from here —
+     * that is the scheduler's job (see the new RenewalAndGraceJob), so a
+     * retried/duplicate webhook delivery can't double-send the notice.
+     */
+    @Transactional
+    public Tenant startGracePeriod(Tenant tenant, SubscriptionPlan plan) {
+        int graceDays = plan != null && plan.getGracePeriodDays() != null ? plan.getGracePeriodDays() : 3;
+        LocalDateTime now = LocalDateTime.now();
+
+        tenant.setStatus(SubscriptionStatus.GRACE_PERIOD);
+        tenant.setGracePeriodEnd(now.plusDays(graceDays));
+        tenant.setGraceStartedNotifiedAt(null);
+        tenant.setGraceSuspensionWarningNotifiedAt(null);
+        Tenant saved = tenantRepository.save(tenant);
+
+        auditLogRepository.save(AuditLog.builder()
+                .action("SUBSCRIPTION_GRACE_PERIOD_STARTED")
+                .entityType("TENANT")
+                .entityId(saved.getId())
+                .tenantId(saved.getId())
+                .description("Payment failed — grace period started, ends " + saved.getGracePeriodEnd())
+                .performedBy(currentUsername())
+                .isSuccess(true)
+                .build());
+
+        log.info("[SUBSCRIPTION] Grace period started for tenant [{}], ends [{}]", saved.getId(), saved.getGracePeriodEnd());
+        return saved;
+    }
+
+    /**
+     * Reactivates a tenant back to ACTIVE with a fresh billing period — the
+     * single shared path for both "paid during grace" and "paid after
+     * suspension" (per spec: these two triggers must not diverge).
+     */
+    @Transactional
+    public Tenant reactivate(Tenant tenant, LocalDateTime periodStart, LocalDateTime periodEnd) {
+        tenant.setStatus(SubscriptionStatus.ACTIVE);
+        tenant.setSuspendedAt(null);
+        tenant.setGracePeriodEnd(null);
+        tenant.setGraceStartedNotifiedAt(null);
+        tenant.setGraceSuspensionWarningNotifiedAt(null);
+        tenant.setCurrentPeriodStart(periodStart);
+        tenant.setCurrentPeriodEnd(periodEnd);
+        tenant.setSubscriptionEndDate(periodEnd != null ? periodEnd.toLocalDate() : null);
+        tenant.setSubscriptionActive(true);
+        Tenant saved = tenantRepository.save(tenant);
+
+        auditLogRepository.save(AuditLog.builder()
+                .action("SUBSCRIPTION_REACTIVATED")
+                .entityType("TENANT")
+                .entityId(saved.getId())
+                .tenantId(saved.getId())
+                .description("Subscription reactivated, period end " + periodEnd)
+                .performedBy(currentUsername())
+                .isSuccess(true)
+                .build());
+
+        platformEmailService.sendAccountReactivated(saved);
+
+        log.info("[SUBSCRIPTION] Tenant [{}] reactivated, period end [{}]", saved.getId(), periodEnd);
+        return saved;
+    }
+
+    /**
+     * The single source of truth for granting a new trial at signup — reuses
+     * {@link #beginTrial(SubscriptionPlan, LocalDateTime)} for the actual day-count
+     * math. Mutates the given (not-yet-persisted or already-persisted) tenant
+     * in place; the caller is responsible for saving it.
+     */
+    public Tenant assignTrial(Tenant tenant, SubscriptionPlan plan) {
+        LocalDateTime now = LocalDateTime.now();
+        TrialWindow trial = beginTrial(plan, now);
+        tenant.setPlanName("Trial");
+        tenant.setStatus(trial.hasTrial() ? SubscriptionStatus.TRIAL : SubscriptionStatus.ACTIVE);
+        tenant.setTrialStartDate(trial.hasTrial() ? trial.startedAt().toLocalDate() : null);
+        tenant.setTrialEndDate(trial.hasTrial() ? trial.endsAt().toLocalDate() : null);
+        tenant.setTrialStartedAt(trial.startedAt());
+        tenant.setTrialEndsAt(trial.endsAt());
+        return tenant;
     }
 
     private Tenant getTenant() {

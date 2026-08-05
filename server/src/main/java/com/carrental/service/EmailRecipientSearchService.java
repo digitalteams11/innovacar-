@@ -89,9 +89,9 @@ public class EmailRecipientSearchService {
                                                             boolean includeBlocked) {
         return tenants.stream()
                 .filter(t -> StringUtils.hasText(t.getEmail()))
-                .filter(t -> includeBlocked || !BLOCKED_TENANT_STATUSES.contains(normalizedStatus(t.getStatus())))
+                .filter(t -> includeBlocked || !BLOCKED_TENANT_STATUSES.contains(normalizedStatus(effectiveStatus(t))))
                 .filter(t -> status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)
-                        || status.equalsIgnoreCase(t.getStatus()))
+                        || status.equalsIgnoreCase(effectiveStatus(t)))
                 .filter(t -> plan == null || plan.isBlank() || "ALL".equalsIgnoreCase(plan)
                         || plan.equalsIgnoreCase(t.getPlanName()))
                 .map(this::toAgencyDto)
@@ -105,13 +105,19 @@ public class EmailRecipientSearchService {
                 .filter(u -> includeBlocked || u.isEnabled())
                 .filter(u -> !Boolean.TRUE.equals(verifiedOnly) || Boolean.TRUE.equals(u.getEmailVerified()))
                 .filter(u -> status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)
-                        || (u.getTenant() != null && status.equalsIgnoreCase(u.getTenant().getStatus())))
+                        || (u.getTenant() != null && status.equalsIgnoreCase(effectiveStatus(u.getTenant()))))
                 .map(this::toUserDto)
                 .toList();
     }
 
     private String normalizedStatus(String status) {
         return status == null ? "" : status.toUpperCase(Locale.ROOT);
+    }
+
+    /** Manual accountState (BLOCKED/INACTIVE) takes precedence for display purposes; otherwise the billing-lifecycle status name. */
+    private String effectiveStatus(Tenant t) {
+        if (t.getAccountState() != null) return t.getAccountState();
+        return t.getStatus() == null ? null : t.getStatus().name();
     }
 
     private EmailRecipientDto toAgencyDto(Tenant t) {
@@ -123,8 +129,9 @@ public class EmailRecipientSearchService {
                 .role(null)
                 .agencyId(t.getId())
                 .agencyName(t.getName())
-                .status(t.getStatus())
-                .verified("ACTIVE".equalsIgnoreCase(t.getStatus()) || "TRIAL".equalsIgnoreCase(t.getStatus()))
+                .status(effectiveStatus(t))
+                .verified(t.getStatus() == com.carrental.entity.SubscriptionStatus.ACTIVE
+                        || t.getStatus() == com.carrental.entity.SubscriptionStatus.TRIAL)
                 .plan(t.getPlanName())
                 .build();
     }

@@ -84,9 +84,27 @@ public class Tenant {
     @Column
     private String planName;
 
-    /** Account status: ACTIVE, SUSPENDED, TRIAL, EXPIRED */
+    /**
+     * Billing lifecycle state — see {@link SubscriptionStatus} for the 9
+     * possible values. Deliberately does NOT include BLOCKED/INACTIVE (see
+     * {@link #accountState}) — those are Super-Admin manual actions, not
+     * billing-lifecycle transitions.
+     */
+    @Enumerated(EnumType.STRING)
     @Column
-    private String status;
+    private SubscriptionStatus status;
+
+    /**
+     * Super-Admin manual account state (BLOCKED / INACTIVE), orthogonal to
+     * the billing lifecycle in {@link #status}. Null means "no manual
+     * override" — the account is governed purely by its billing status.
+     * {@code SUSPENDED} is deliberately NOT stored here: it is a real
+     * billing-lifecycle terminal state (both a Super-Admin manual suspend
+     * and the automated post-grace-period suspension land on
+     * {@code status = SUSPENDED}), so it stays in {@link #status}.
+     */
+    @Column(name = "account_state")
+    private String accountState;
 
     /** Verification lifecycle is separate from subscription/account status. */
     @Column(name = "verification_status")
@@ -198,6 +216,52 @@ public class Tenant {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    /** Precise current paid-period start instant (new source of truth; {@link #trialStartDate}-style legacy columns stay date-only). */
+    @Column(name = "current_period_start")
+    private LocalDateTime currentPeriodStart;
+
+    /** Precise current paid-period end instant. {@link #subscriptionEndDate} is kept in sync as a legacy-compat date-only mirror. */
+    @Column(name = "current_period_end")
+    private LocalDateTime currentPeriodEnd;
+
+    /** Deadline for the current grace period — after this instant, the scheduler suspends the tenant. Null when not in GRACE_PERIOD. */
+    @Column(name = "grace_period_end")
+    private LocalDateTime gracePeriodEnd;
+
+    /** When the tenant was actually suspended (grace period elapsed, or a manual Super-Admin suspend). */
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
+    /** Dedup marker: "grace period started" notice already sent for the current grace window. */
+    @Column(name = "grace_started_notified_at")
+    private LocalDateTime graceStartedNotifiedAt;
+
+    /** Dedup marker: "suspended tomorrow" (grace ends within 24h) warning already sent for the current grace window. */
+    @Column(name = "grace_suspension_warning_notified_at")
+    private LocalDateTime graceSuspensionWarningNotifiedAt;
+
+    /** Dedup marker: renewal-in-5-days reminder already sent for the current period. */
+    @Column(name = "renewal_reminder_5_sent_at")
+    private LocalDateTime renewalReminder5SentAt;
+
+    /** Dedup marker: renewal-in-3-days reminder already sent for the current period. */
+    @Column(name = "renewal_reminder_3_sent_at")
+    private LocalDateTime renewalReminder3SentAt;
+
+    /** Dedup marker: renewal-in-1-day reminder already sent for the current period. */
+    @Column(name = "renewal_reminder_1_sent_at")
+    private LocalDateTime renewalReminder1SentAt;
+
+    /**
+     * Display-only IANA timezone (e.g. "Africa/Casablanca") used to format
+     * timestamps in the UI/emails. Never used for backend arithmetic — grace/
+     * trial/period deadlines are always plain {@link LocalDateTime} deltas on
+     * the server's own clock, exactly as {@link #isTrialExpired()} already did
+     * before this field existed.
+     */
+    @Column(name = "timezone")
+    private String timezone;
+
     /** When the tenant was created */
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -210,10 +274,11 @@ public class Tenant {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) status = "TRIAL";
+        if (status == null) status = SubscriptionStatus.TRIAL;
         if (planName == null) planName = "Trial";
         if (verificationStatus == null) verificationStatus = "PENDING_VERIFICATION";
         if (balance == null) balance = java.math.BigDecimal.ZERO;
+        if (timezone == null) timezone = "Africa/Casablanca";
     }
 
     @PreUpdate
@@ -232,11 +297,19 @@ public class Tenant {
      * This must out-rank everything else — even an active free-access override or
      * a paid plan — per the access-priority rules: blocked/suspended/inactive
      * agencies are blocked first, before plan/subscription state is even considered.
+     *
+     * <p>BLOCKED/INACTIVE are manual Super-Admin states tracked on
+     * {@link #accountState} (not part of {@link SubscriptionStatus} — see that
+     * enum's Javadoc). SUSPENDED is a real billing-lifecycle terminal state
+     * (manual suspend and automated post-grace-period suspension both land on
+     * {@code status == SUSPENDED}), so it's checked on {@link #status} instead.
      */
     public boolean isAccountBlocked() {
-        return status != null && (status.equalsIgnoreCase("BLOCKED")
-                || status.equalsIgnoreCase("SUSPENDED")
-                || status.equalsIgnoreCase("INACTIVE"));
+        if (accountState != null
+                && ("BLOCKED".equalsIgnoreCase(accountState) || "INACTIVE".equalsIgnoreCase(accountState))) {
+            return true;
+        }
+        return status == SubscriptionStatus.SUSPENDED;
     }
 
     /**
@@ -258,9 +331,11 @@ public class Tenant {
     public boolean isSubscriptionValid() {
         if (isAccountBlocked()) return false;
         if (hasActiveFreeAccess()) return true;
-        // CANCEL_SCHEDULED: paid access continues until cancelEffectiveAt
+        // CANCEL_AT_PERIOD_END: paid access continues until cancelEffectiveAt
         if (isCancelScheduled() && cancelEffectiveAt != null && LocalDateTime.now().isBefore(cancelEffectiveAt)) return true;
-        if ("TRIAL".equalsIgnoreCase(status)) return isInTrial();
+        // GRACE_PERIOD is deliberately fully usable — grace is NOT blocked (per spec).
+        if (status == SubscriptionStatus.GRACE_PERIOD) return true;
+        if (status == SubscriptionStatus.TRIAL) return isInTrial();
         if (!subscriptionActive) return false;
         if (subscriptionEndDate != null && LocalDate.now().isAfter(subscriptionEndDate)) return false;
         return true;
@@ -316,6 +391,6 @@ public class Tenant {
      * The subscription remains active and usable until {@link #cancelEffectiveAt}.
      */
     public boolean isCancelScheduled() {
-        return "CANCEL_SCHEDULED".equalsIgnoreCase(status);
+        return status == SubscriptionStatus.CANCEL_AT_PERIOD_END;
     }
 }

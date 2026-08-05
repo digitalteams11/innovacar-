@@ -52,8 +52,10 @@ public class MeController {
         if (tenant != null) {
             boolean blocked = tenant.isAccountBlocked();
             boolean subscriptionValid = tenant.isSubscriptionValid();
-            String agencyStatus = tenant.getStatus();
-            boolean wasTrial = "TRIAL".equalsIgnoreCase(agencyStatus);
+            String agencyStatus = tenant.getAccountState() != null
+                    ? tenant.getAccountState()
+                    : (tenant.getStatus() == null ? null : tenant.getStatus().name());
+            boolean wasTrial = tenant.getStatus() == com.carrental.entity.SubscriptionStatus.TRIAL;
             // A trial tenant must report TRIAL while active and EXPIRED once its
             // exact trialEndsAt has passed — reporting "ACTIVE" here (the old
             // behavior) was indistinguishable from a genuine paid subscription

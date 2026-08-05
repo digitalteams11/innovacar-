@@ -1,5 +1,6 @@
 package com.carrental.repository;
 
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,21 +33,21 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
             """)
     Page<Tenant> searchForEmailRecipients(@Param("q") String q, Pageable pageable);
 
-    List<Tenant> findAllByStatusIgnoreCaseAndCancelEffectiveAtBefore(String status, LocalDateTime threshold);
+    List<Tenant> findAllByStatusAndCancelEffectiveAtBefore(SubscriptionStatus status, LocalDateTime threshold);
 
-    List<Tenant> findAllByStatusIgnoreCase(String status);
+    List<Tenant> findAllByStatus(SubscriptionStatus status);
 
-    long countByStatusIgnoreCase(String status);
+    long countByStatus(SubscriptionStatus status);
 
     @Modifying
     @Transactional
     @Query("""
             update Tenant t
-               set t.status = 'ACTIVE',
+               set t.status = com.carrental.entity.SubscriptionStatus.ACTIVE,
                    t.subscriptionActive = true,
                    t.trialStartDate = null,
                    t.trialEndDate = null
-             where upper(t.status) = 'TRIAL'
+             where t.status = com.carrental.entity.SubscriptionStatus.TRIAL
                and upper(coalesce(t.planName, 'TRIAL')) <> 'TRIAL'
             """)
     int repairPaidPlansMarkedAsTrial();

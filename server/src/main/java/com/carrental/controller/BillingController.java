@@ -75,7 +75,7 @@ public class BillingController {
         Tenant tenant = tenantId != null ? tenantRepository.findById(tenantId).orElse(null) : null;
         String planName   = tenant != null ? tenant.getPlanName()  : null;
         String planCode   = planName  != null ? planName.toUpperCase(java.util.Locale.ROOT) : null;
-        String subStatus  = tenant != null ? tenant.getStatus() : "UNKNOWN";
+        String subStatus  = tenant != null && tenant.getStatus() != null ? tenant.getStatus().name() : "UNKNOWN";
 
         // â”€â”€ Feature access matrix â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Map<String, Object> rawAccess = featureAccessService.getCurrentTenantAccess();
@@ -330,7 +330,7 @@ public class BillingController {
         result.put("subscriptionActive", tenant.isSubscriptionValid());
         result.put("subscriptionEndDate", tenant.getSubscriptionEndDate());
         result.put("isTrial", "TRIAL".equalsIgnoreCase(tenant.getPlanName())
-                || "TRIAL".equalsIgnoreCase(tenant.getStatus()));
+                || tenant.getStatus() == com.carrental.entity.SubscriptionStatus.TRIAL);
         return ResponseEntity.ok(result);
     }
 

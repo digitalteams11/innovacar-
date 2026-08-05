@@ -144,7 +144,7 @@ public class PhoneAuthService {
                 .trialStartedAt(trial.startedAt())
                 .trialEndsAt(trial.endsAt())
                 .planName("Trial")
-                .status(trial.hasTrial() ? "TRIAL" : "ACTIVE")
+                .status(trial.hasTrial() ? com.carrental.entity.SubscriptionStatus.TRIAL : com.carrental.entity.SubscriptionStatus.ACTIVE)
                 .build());
 
         User user = userRepository.save(User.builder()

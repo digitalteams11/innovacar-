@@ -182,7 +182,7 @@ public class DashboardIntelligenceService {
         List<Map<String, Object>> queue = new ArrayList<>();
         LocalDate warnDate = today.plusDays(30);
 
-        if (tenant != null && "TRIAL".equalsIgnoreCase(tenant.getStatus()) && tenant.isTrialExpired()) {
+        if (tenant != null && tenant.getStatus() == com.carrental.entity.SubscriptionStatus.TRIAL && tenant.isTrialExpired()) {
             queue.add(actionItem("CRITICAL", "SUBSCRIPTION_EXPIRED", "Your free trial has ended",
                     "No further access until a plan is chosen.", "SUBSCRIPTION", null, "OPEN_SUBSCRIPTION"));
         }

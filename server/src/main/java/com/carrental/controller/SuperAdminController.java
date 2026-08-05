@@ -104,10 +104,10 @@ public class SuperAdminController {
         long trialAgencies = allTenants.stream()
                 .filter(t -> !t.isAccountBlocked()).filter(Tenant::isInTrial).count();
         long blockedAgencies = allTenants.stream()
-                .filter(t -> "BLOCKED".equalsIgnoreCase(t.getStatus()) || "INACTIVE".equalsIgnoreCase(t.getStatus()))
+                .filter(t -> "BLOCKED".equalsIgnoreCase(t.getAccountState()) || "INACTIVE".equalsIgnoreCase(t.getAccountState()))
                 .count();
         long suspendedAgencies = allTenants.stream()
-                .filter(t -> "SUSPENDED".equalsIgnoreCase(t.getStatus())).count();
+                .filter(t -> t.getStatus() == SubscriptionStatus.SUSPENDED).count();
         long expiredAgencies = allTenants.stream()
                 .filter(t -> !t.isAccountBlocked() && !t.isSubscriptionValid() && !t.isInTrial())
                 .count();
@@ -228,7 +228,7 @@ public class SuperAdminController {
             @RequestParam(required = false) String search) {
         List<Tenant> tenants = tenantRepository.findAll();
         List<Map<String, Object>> result = tenants.stream()
-                .filter(t -> status == null || status.equals(t.getStatus()))
+                .filter(t -> status == null || status.equalsIgnoreCase(t.getStatus() == null ? null : t.getStatus().name()))
                 .filter(t -> search == null ||
                         t.getName().toLowerCase().contains(search.toLowerCase()) ||
                         t.getEmail().toLowerCase().contains(search.toLowerCase()))
@@ -288,7 +288,7 @@ public class SuperAdminController {
                 .city(t.getCity())
                 .country(t.getCountry())
                 .taxId(t.getTaxId())
-                .status(t.getStatus())
+                .status(t.getStatus() == null ? null : t.getStatus().name())
                 .verificationStatus(t.getVerificationStatus())
                 .verifiedAt(t.getVerifiedAt())
                 .verifiedBy(t.getVerifiedBy())
@@ -346,17 +346,31 @@ public class SuperAdminController {
     public ResponseEntity<Map<String, Object>> updateAgencyStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         Tenant t = tenantRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agency not found"));
-        String previousStatus = t.getStatus();
+        String previousStatus = t.getAccountState() != null ? t.getAccountState() : (t.getStatus() == null ? null : t.getStatus().name());
         String newStatus = body.get("status");
-        t.setStatus(newStatus);
-        if ("SUSPENDED".equals(newStatus) || "BLOCKED".equals(newStatus) || "INACTIVE".equals(newStatus)) {
+        // BLOCKED/INACTIVE are manual Super-Admin states outside the billing-lifecycle
+        // enum (see SubscriptionStatus Javadoc) — they go on accountState, not status.
+        if ("BLOCKED".equalsIgnoreCase(newStatus) || "INACTIVE".equalsIgnoreCase(newStatus)) {
+            t.setAccountState(newStatus.toUpperCase(Locale.ROOT));
             t.setSubscriptionActive(false);
-        } else if ("ACTIVE".equals(newStatus)) {
-            t.setSubscriptionActive(true);
+        } else {
+            t.setAccountState(null);
+            SubscriptionStatus resolved;
+            try {
+                resolved = SubscriptionStatus.valueOf(newStatus == null ? "" : newStatus.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Unknown status: " + newStatus));
+            }
+            t.setStatus(resolved);
+            if (resolved == SubscriptionStatus.SUSPENDED) {
+                t.setSubscriptionActive(false);
+            } else if (resolved == SubscriptionStatus.ACTIVE) {
+                t.setSubscriptionActive(true);
+            }
         }
         tenantRepository.save(t);
-        String action = "SUSPENDED".equals(newStatus) ? "AGENCY_SUSPENDED"
-                : "ACTIVE".equals(newStatus) ? "AGENCY_REACTIVATED"
+        String action = "SUSPENDED".equalsIgnoreCase(newStatus) ? "AGENCY_SUSPENDED"
+                : "ACTIVE".equalsIgnoreCase(newStatus) ? "AGENCY_REACTIVATED"
                 : "AGENCY_STATUS_CHANGED";
         logAgencyAction(t, action, "Status changed from " + previousStatus + " to " + newStatus
                 + (body.get("reason") != null ? " — " + body.get("reason") : ""));
@@ -465,7 +479,7 @@ public class SuperAdminController {
         t.setMaxGpsDevices(plan.getMaxGpsDevices());
         t.setMaxReservations(plan.getMaxReservations());
         t.setStorageLimitMb(plan.getStorageLimitMb());
-        t.setStatus("ACTIVE");
+        t.setStatus(SubscriptionStatus.ACTIVE);
         tenantRepository.save(t);
 
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency subscribed to " + plan.getName()));
@@ -482,7 +496,7 @@ public class SuperAdminController {
         t.setTrialEndDate(newEndsAt.toLocalDate());
         t.setTrialEndsAt(newEndsAt);
         if (t.getTrialStartedAt() == null) t.setTrialStartedAt(LocalDateTime.now());
-        t.setStatus("TRIAL");
+        t.setStatus(SubscriptionStatus.TRIAL);
         tenantRepository.save(t);
         logAgencyAction(t, "TRIAL_MANUALLY_EXTENDED",
                 "Trial extended by " + days + " day(s) by " + currentSuperAdminEmail()
@@ -989,7 +1003,8 @@ public class SuperAdminController {
     @GetMapping("/analytics/agencies")
     public ResponseEntity<Map<String, Object>> getAgencyAnalytics() {
         List<Tenant> tenants = tenantRepository.findAll();
-        Map<String, Long> byStatus = tenants.stream().collect(Collectors.groupingBy(Tenant::getStatus, Collectors.counting()));
+        Map<String, Long> byStatus = tenants.stream().collect(Collectors.groupingBy(
+                t -> t.getStatus() == null ? "UNKNOWN" : t.getStatus().name(), Collectors.counting()));
         Map<String, Long> byPlan = tenants.stream().collect(Collectors.groupingBy(t -> t.getPlanName() != null ? t.getPlanName() : "Unknown", Collectors.counting()));
         Map<String, Long> byCountry = tenants.stream().collect(Collectors.groupingBy(t -> t.getCountry() != null ? t.getCountry() : "Unknown", Collectors.counting()));
 
@@ -1217,7 +1232,7 @@ public class SuperAdminController {
                 .city((String) body.get("city"))
                 .country((String) body.get("country"))
                 .taxId((String) body.get("taxId"))
-                .status(trial.hasTrial() ? "TRIAL" : "ACTIVE")
+                .status(trial.hasTrial() ? SubscriptionStatus.TRIAL : SubscriptionStatus.ACTIVE)
                 .subscriptionActive(false)
                 .trialStartDate(trial.hasTrial() ? trial.startedAt().toLocalDate() : null)
                 .trialEndDate(trial.hasTrial() ? trial.endsAt().toLocalDate() : null)
@@ -1233,7 +1248,7 @@ public class SuperAdminController {
     public ResponseEntity<Map<String, Object>> restoreAgency(@PathVariable Long id) {
         Tenant t = tenantRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agency not found"));
-        t.setStatus("ACTIVE");
+        t.setStatus(SubscriptionStatus.ACTIVE);
         tenantRepository.save(t);
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency restored"));
     }
@@ -1343,7 +1358,7 @@ public class SuperAdminController {
     @PatchMapping("/agencies/{id}/block")
     public ResponseEntity<Map<String, Object>> blockAgency(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         Tenant t = tenantRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Agency not found"));
-        t.setStatus("BLOCKED");
+        t.setAccountState("BLOCKED");
         tenantRepository.save(t);
         logAgencyAction(t, "AGENCY_BLOCKED", body == null ? null : String.valueOf(body.getOrDefault("reason", "")));
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency blocked. It cannot create contracts, reservations, or users until unblocked."));
@@ -1364,13 +1379,14 @@ public class SuperAdminController {
         boolean trialLapsedWhileBlocked = "TRIAL".equalsIgnoreCase(t.getPlanName())
                 && t.getTrialEndDate() != null
                 && LocalDate.now().isAfter(t.getTrialEndDate());
+        t.setAccountState(null);
         if (stillOnTrial) {
-            t.setStatus("TRIAL");
+            t.setStatus(SubscriptionStatus.TRIAL);
         } else if (trialLapsedWhileBlocked) {
-            t.setStatus("EXPIRED");
+            t.setStatus(SubscriptionStatus.TRIAL_EXPIRED);
             t.setSubscriptionActive(false);
         } else {
-            t.setStatus("ACTIVE");
+            t.setStatus(SubscriptionStatus.ACTIVE);
         }
         tenantRepository.save(t);
         logAgencyAction(t, "AGENCY_UNBLOCKED", null);
@@ -1384,7 +1400,8 @@ public class SuperAdminController {
         // repairSubscriptionState's drift-correction logic will silently flip
         // subscriptionActive back to true the next time /api/subscriptions/status
         // is loaded, undoing this suspension invisibly.
-        t.setStatus("SUSPENDED");
+        t.setStatus(SubscriptionStatus.SUSPENDED);
+        t.setSuspendedAt(LocalDateTime.now());
         t.setSubscriptionActive(false);
         tenantRepository.save(t);
         logAgencyAction(t, "SUBSCRIPTION_SUSPENDED", body == null ? null : String.valueOf(body.getOrDefault("reason", "")));
@@ -1394,8 +1411,10 @@ public class SuperAdminController {
     @PatchMapping("/agencies/{id}/reactivate-subscription")
     public ResponseEntity<Map<String, Object>> reactivateSubscription(@PathVariable Long id) {
         Tenant t = tenantRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Agency not found"));
-        if ("SUSPENDED".equalsIgnoreCase(t.getStatus())) {
-            t.setStatus("ACTIVE");
+        if (t.getStatus() == SubscriptionStatus.SUSPENDED) {
+            t.setStatus(SubscriptionStatus.ACTIVE);
+            t.setSuspendedAt(null);
+            t.setGracePeriodEnd(null);
         }
         t.setSubscriptionActive(true);
         if (t.getSubscriptionEndDate() != null && LocalDate.now().isAfter(t.getSubscriptionEndDate())) {
@@ -2693,7 +2712,7 @@ public class SuperAdminController {
                     "success", false, "message", "Only pending requests can be approved."));
         }
         Tenant tenant = request.getTenant();
-        tenant.setStatus("CANCELLED");
+        tenant.setStatus(SubscriptionStatus.CANCELLED);
         tenant.setSubscriptionActive(false);
         tenantRepository.save(tenant);
 

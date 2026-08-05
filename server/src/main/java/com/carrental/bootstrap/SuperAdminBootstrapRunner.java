@@ -116,7 +116,7 @@ public class SuperAdminBootstrapRunner implements ApplicationRunner {
                             .email(SYSTEM_TENANT_EMAIL)
                             .subscriptionActive(true)
                             .subscriptionEndDate(LocalDate.now().plusYears(100))
-                            .status("ACTIVE")
+                            .status(com.carrental.entity.SubscriptionStatus.ACTIVE)
                             .planName("Enterprise")
                             .maxVehicles(9999)
                             .maxEmployees(9999)

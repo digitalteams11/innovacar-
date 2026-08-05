@@ -92,7 +92,12 @@ public class SubscriptionFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response);
                     return;
                 }
-                String status = tenant.getStatus() == null ? "SUSPENDED" : tenant.getStatus().toUpperCase();
+                // BLOCKED/INACTIVE (manual, on accountState) vs SUSPENDED (billing-lifecycle terminal
+                // state, on status) — both are "account blocked", but BLOCKED alone gets its own
+                // error code, everything else (INACTIVE, SUSPENDED) reuses AGENCY_SUSPENDED as before.
+                String status = tenant.getAccountState() != null
+                        ? tenant.getAccountState().toUpperCase()
+                        : (tenant.getStatus() == null ? "SUSPENDED" : tenant.getStatus().name());
                 String errorCode = "BLOCKED".equals(status) ? "AGENCY_BLOCKED" : "AGENCY_SUSPENDED";
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("agencyStatus", status);
@@ -109,7 +114,7 @@ public class SubscriptionFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response);
                     return;
                 }
-                boolean wasTrial = "TRIAL".equalsIgnoreCase(tenant.getStatus());
+                boolean wasTrial = tenant.getStatus() == com.carrental.entity.SubscriptionStatus.TRIAL;
                 // A trial tenant never has a subscriptionEndDate (that field describes
                 // a paid renewal window) — checking it here misclassified every expired
                 // trial as SUBSCRIPTION_SUSPENDED instead of SUBSCRIPTION_EXPIRED.

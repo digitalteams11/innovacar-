@@ -993,7 +993,7 @@ public class AuthService {
                 .trialStartedAt(trial.startedAt())
                 .trialEndsAt(trial.endsAt())
                 .planName("Trial")
-                .status(trial.hasTrial() ? "TRIAL" : "ACTIVE")
+                .status(trial.hasTrial() ? com.carrental.entity.SubscriptionStatus.TRIAL : com.carrental.entity.SubscriptionStatus.ACTIVE)
                 .verificationStatus("PENDING_VERIFICATION")
                 .build());
         return tenant;

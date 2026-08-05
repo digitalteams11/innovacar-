@@ -148,6 +148,10 @@ public class SubscriptionPlan {
     @Column(name = "highlighted")
     private Boolean highlighted;
 
+    /** Days of full access after a payment failure before the tenant is suspended (Super-Admin-configurable, default 3). */
+    @Column(name = "grace_period_days")
+    private Integer gracePeriodDays;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -167,6 +171,7 @@ public class SubscriptionPlan {
         if (isTrialEnabled == null) isTrialEnabled = trialDays > 0;
         if (billingCycleAllowedMonthly == null) billingCycleAllowedMonthly = true;
         if (billingCycleAllowedYearly == null) billingCycleAllowedYearly = true;
+        if (gracePeriodDays == null) gracePeriodDays = 3;
     }
 
     @PreUpdate
