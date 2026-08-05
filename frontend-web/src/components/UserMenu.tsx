@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -41,6 +42,11 @@ const THEME_MODES: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
   { value: 'dark',  label: 'Dark',  icon: Moon },
   { value: 'system', label: 'System', icon: Monitor },
 ];
+
+const MENU_WIDTH = 296;
+const VIEWPORT_MARGIN = 8;
+/** Below this, render as a full-width bottom sheet with a real overlay instead of an anchored dropdown. */
+const MOBILE_BREAKPOINT = 640;
 
 /** First + last initials (or first two letters of a single name), for the avatar fallback. */
 function getInitials(name: string): string {
@@ -87,7 +93,10 @@ function Avatar({
 export default function UserMenu() {
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user, profile, logout, updateCurrentUser } = useAuth();
@@ -96,24 +105,62 @@ export default function UserMenu() {
   const { status: subscription } = useSubscription();
 
   useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const recalculate = () => {
+    const trigger = triggerRef.current;
+    if (!trigger || isMobile) return;
+    const rect = trigger.getBoundingClientRect();
+    const isRtl = document.documentElement.dir === 'rtl';
+    let left = isRtl ? rect.left : rect.right - MENU_WIDTH;
+    left = Math.min(Math.max(left, VIEWPORT_MARGIN), window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN);
+    const top = Math.min(rect.bottom + 10, window.innerHeight - VIEWPORT_MARGIN);
+    setCoords({ top, left });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    recalculate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isMobile]);
+
+  const closeMenu = () => {
+    setOpen(false);
+    // Accessibility: restore focus to the trigger that opened the menu
+    // (spec: "focus restore to avatar trigger") instead of leaving focus
+    // trapped on a now-unmounted (portaled) menu item.
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  };
+
+  useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') closeMenu();
     };
+    const onReposition = () => recalculate();
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
     return () => {
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
     };
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isMobile]);
 
-  const goTo = (path: string) => { setOpen(false); navigate(path); };
+  const goTo = (path: string) => { closeMenu(); navigate(path); };
 
   const handleLogout = async () => {
     setConfirmLogout(false);
@@ -160,11 +207,153 @@ export default function UserMenu() {
     );
   }
 
+  // Shared menu body — rendered once, wrapped differently for the mobile
+  // bottom-sheet vs. desktop anchored-dropdown shell below.
+  const menuBody = (
+    <>
+      {/* Identity block */}
+      <div className="px-4 pt-4 pb-3 bg-[var(--bg-hover)]">
+        <div className="flex items-start gap-3">
+          <div className="relative shrink-0">
+            <Avatar src={avatarSrc} displayName={displayName} sizeClass="w-11 h-11" textSizeClass="text-sm" />
+            <span
+              className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[var(--bg-hover)]"
+              aria-hidden="true"
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <strong className="block text-sm font-semibold text-[var(--text-primary)] truncate leading-snug">
+              {displayName}
+            </strong>
+            <span className="block text-[11px] text-[var(--text-muted)] truncate mt-0.5">
+              {emailLabel}
+            </span>
+            <span className="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+              style={{
+                color: 'var(--brand-primary)',
+                background: 'color-mix(in srgb, var(--brand-primary) 12%, transparent)',
+              }}
+            >
+              {roleLabel}
+            </span>
+            {/* Subscription badge row */}
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <SubscriptionBadge
+                planCode={subscription?.planCode || user?.planCode}
+                status={subscription?.status || user?.subscriptionStatus}
+                size="sm"
+                showLabel
+                showTooltip={false}
+              />
+              {subscriptionHint}
+            </div>
+          </div>
+        </div>
+
+        {/* Status badges */}
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          <StatusBadge ok={!!user?.emailVerified} okLabel="Email verified" koLabel="Email not verified" />
+          <StatusBadge ok={!!user?.twoFactorEnabled} okLabel="2FA enabled" koLabel="2FA off" />
+        </div>
+      </div>
+
+      <div className="h-px bg-[var(--border-subtle)]" />
+
+      {/* Account */}
+      <div className="py-1.5 px-1.5">
+        <MenuSectionLabel>{t('userMenu.account', 'Account')}</MenuSectionLabel>
+        <NavItem icon={UserIcon}    label={t('userMenu.myProfile', 'My Profile')}             onClick={() => goTo('/settings?tab=profile')} />
+        <NavItem icon={ShieldCheck} label={t('userMenu.security', 'Account Security')}        onClick={() => goTo('/settings?tab=security')} />
+        <NavItem icon={Bell}        label={t('userMenu.notifications', 'Notifications')}      onClick={() => goTo('/settings?tab=notifications')} />
+        <NavItem icon={CreditCard}  label={t('userMenu.billing', 'Billing')}                 onClick={() => goTo('/settings?tab=billing')} />
+      </div>
+
+      <div className="h-px bg-[var(--border-subtle)]" />
+
+      {/* Preferences */}
+      <div className="px-3.5 py-3 space-y-3.5">
+        <MenuSectionLabel>{t('userMenu.preferences', 'Preferences')}</MenuSectionLabel>
+
+        {/* Language */}
+        <PreferenceRow label={t('userMenu.language', 'Language')}>
+          <SegmentedControl>
+            {LANGUAGES.map((lang) => {
+              const active = i18n.language === lang.code || i18n.language.startsWith(lang.code + '-');
+              return (
+                <SegmentedButton
+                  key={lang.code}
+                  active={active}
+                  onClick={() => selectLanguage(lang.code)}
+                  aria-label={lang.label}
+                >
+                  {lang.label}
+                </SegmentedButton>
+              );
+            })}
+          </SegmentedControl>
+        </PreferenceRow>
+
+        {/* Theme */}
+        <PreferenceRow label={t('userMenu.theme', 'Theme')}>
+          <SegmentedControl>
+            {THEME_MODES.map((mode) => {
+              const active = theme === mode.value;
+              return (
+                <SegmentedButton
+                  key={mode.value}
+                  active={active}
+                  onClick={() => setTheme(mode.value)}
+                  aria-label={mode.label}
+                >
+                  <mode.icon size={12} aria-hidden="true" />
+                  <span className="hidden sm:inline">{mode.label}</span>
+                  <span className="sm:hidden">{mode.label.slice(0, 2)}</span>
+                </SegmentedButton>
+              );
+            })}
+          </SegmentedControl>
+        </PreferenceRow>
+      </div>
+
+      <div className="h-px bg-[var(--border-subtle)]" />
+
+      {/* Support */}
+      <div className="py-1.5 px-1.5">
+        <MenuSectionLabel>{t('userMenu.support', 'Support')}</MenuSectionLabel>
+        <NavItem
+          icon={HelpCircle}
+          label={t('userMenu.helpCenter', 'Help Center')}
+          onClick={() => { closeMenu(); window.dispatchEvent(new CustomEvent('open-help-center')); }}
+        />
+      </div>
+
+      <div className="h-px bg-[var(--border-subtle)]" />
+
+      {/* Logout */}
+      <div className="p-1.5">
+        <button
+          role="menuitem"
+          onClick={() => { setOpen(false); setConfirmLogout(true); }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-500/80 hover:bg-rose-500/8 hover:text-rose-500 transition-colors group"
+        >
+          <LogOut size={15} className="shrink-0 transition-transform group-hover:-translate-x-0.5" />
+          {t('userMenu.signOut', 'Sign out')}
+        </button>
+      </div>
+    </>
+  );
+
+  // Solid opaque surface everywhere (--bg-card-solid, never the translucent
+  // --bg-card "glass" token) — a critical account menu must never let
+  // dashboard content show through, on first paint or any theme.
+  const panelSurfaceClass = 'border border-[var(--border-subtle)] bg-[var(--bg-card-solid)] shadow-[0_12px_48px_-8px_rgba(0,0,0,0.22),0_0_0_1px_rgba(0,0,0,0.04)]';
+
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative">
 
       {/* ── Trigger ─────────────────────────────────────────────────────── */}
       <button
+        ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -182,144 +371,40 @@ export default function UserMenu() {
         </span>
       </button>
 
-      {/* ── Dropdown ────────────────────────────────────────────────────── */}
-      {open && (
-        <div
-          role="menu"
-          aria-label="User menu"
-          className="absolute end-0 top-[calc(100%+10px)] z-[100] w-[296px] max-h-[calc(100vh-5rem)] overflow-y-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_12px_48px_-8px_rgba(0,0,0,0.22),0_0_0_1px_rgba(0,0,0,0.04)] animate-scale-in overflow-hidden"
-        >
-
-          {/* Identity block */}
-          <div className="px-4 pt-4 pb-3 bg-[var(--bg-hover)]">
-            <div className="flex items-start gap-3">
-              <div className="relative shrink-0">
-                <Avatar src={avatarSrc} displayName={displayName} sizeClass="w-11 h-11" textSizeClass="text-sm" />
-                <span
-                  className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[var(--bg-hover)]"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <strong className="block text-sm font-semibold text-[var(--text-primary)] truncate leading-snug">
-                  {displayName}
-                </strong>
-                <span className="block text-[11px] text-[var(--text-muted)] truncate mt-0.5">
-                  {emailLabel}
-                </span>
-                <span className="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
-                  style={{
-                    color: 'var(--brand-primary)',
-                    background: 'color-mix(in srgb, var(--brand-primary) 12%, transparent)',
-                  }}
-                >
-                  {roleLabel}
-                </span>
-                {/* Subscription badge row */}
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <SubscriptionBadge
-                    planCode={subscription?.planCode || user?.planCode}
-                    status={subscription?.status || user?.subscriptionStatus}
-                    size="sm"
-                    showLabel
-                    showTooltip={false}
-                  />
-                  {subscriptionHint}
-                </div>
-              </div>
-            </div>
-
-            {/* Status badges */}
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              <StatusBadge ok={!!user?.emailVerified} okLabel="Email verified" koLabel="Email not verified" />
-              <StatusBadge ok={!!user?.twoFactorEnabled} okLabel="2FA enabled" koLabel="2FA off" />
-            </div>
-          </div>
-
-          <div className="h-px bg-[var(--border-subtle)]" />
-
-          {/* Account */}
-          <div className="py-1.5 px-1.5">
-            <MenuSectionLabel>{t('userMenu.account', 'Account')}</MenuSectionLabel>
-            <NavItem icon={UserIcon}    label={t('userMenu.myProfile', 'My Profile')}             onClick={() => goTo('/settings?tab=profile')} />
-            <NavItem icon={ShieldCheck} label={t('userMenu.security', 'Account Security')}        onClick={() => goTo('/settings?tab=security')} />
-            <NavItem icon={Bell}        label={t('userMenu.notifications', 'Notifications')}      onClick={() => goTo('/settings?tab=notifications')} />
-            <NavItem icon={CreditCard}  label={t('userMenu.billing', 'Billing')}                 onClick={() => goTo('/settings?tab=billing')} />
-          </div>
-
-          <div className="h-px bg-[var(--border-subtle)]" />
-
-          {/* Preferences */}
-          <div className="px-3.5 py-3 space-y-3.5">
-            <MenuSectionLabel>{t('userMenu.preferences', 'Preferences')}</MenuSectionLabel>
-
-            {/* Language */}
-            <PreferenceRow label={t('userMenu.language', 'Language')}>
-              <SegmentedControl>
-                {LANGUAGES.map((lang) => {
-                  const active = i18n.language === lang.code || i18n.language.startsWith(lang.code + '-');
-                  return (
-                    <SegmentedButton
-                      key={lang.code}
-                      active={active}
-                      onClick={() => selectLanguage(lang.code)}
-                      aria-label={lang.label}
-                    >
-                      {lang.label}
-                    </SegmentedButton>
-                  );
-                })}
-              </SegmentedControl>
-            </PreferenceRow>
-
-            {/* Theme */}
-            <PreferenceRow label={t('userMenu.theme', 'Theme')}>
-              <SegmentedControl>
-                {THEME_MODES.map((mode) => {
-                  const active = theme === mode.value;
-                  return (
-                    <SegmentedButton
-                      key={mode.value}
-                      active={active}
-                      onClick={() => setTheme(mode.value)}
-                      aria-label={mode.label}
-                    >
-                      <mode.icon size={12} aria-hidden="true" />
-                      <span className="hidden sm:inline">{mode.label}</span>
-                      <span className="sm:hidden">{mode.label.slice(0, 2)}</span>
-                    </SegmentedButton>
-                  );
-                })}
-              </SegmentedControl>
-            </PreferenceRow>
-          </div>
-
-          <div className="h-px bg-[var(--border-subtle)]" />
-
-          {/* Support */}
-          <div className="py-1.5 px-1.5">
-            <MenuSectionLabel>{t('userMenu.support', 'Support')}</MenuSectionLabel>
-            <NavItem
-              icon={HelpCircle}
-              label={t('userMenu.helpCenter', 'Help Center')}
-              onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('open-help-center')); }}
+      {/* ── Dropdown / drawer — portaled to escape header clipping & stacking contexts ── */}
+      {open && createPortal(
+        isMobile ? (
+          <div className="fixed inset-0 z-[var(--z-popover)] flex items-end justify-center">
+            {/* Real page overlay (spec: "the menu itself must remain opaque" — this
+                dims the page behind it, the panel below never inherits this alpha). */}
+            <div
+              className="absolute inset-0"
+              style={{ background: 'rgba(15, 23, 42, 0.45)' }}
+              onClick={closeMenu}
+              aria-hidden="true"
             />
-          </div>
-
-          <div className="h-px bg-[var(--border-subtle)]" />
-
-          {/* Logout */}
-          <div className="p-1.5">
-            <button
-              role="menuitem"
-              onClick={() => { setOpen(false); setConfirmLogout(true); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-500/80 hover:bg-rose-500/8 hover:text-rose-500 transition-colors group"
+            <div
+              ref={panelRef}
+              role="menu"
+              aria-label="User menu"
+              className={`relative w-full max-h-[85dvh] overflow-y-auto rounded-t-3xl animate-scale-in ${panelSurfaceClass}`}
+              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
             >
-              <LogOut size={15} className="shrink-0 transition-transform group-hover:-translate-x-0.5" />
-              {t('userMenu.signOut', 'Sign out')}
-            </button>
+              {menuBody}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            ref={panelRef}
+            role="menu"
+            aria-label="User menu"
+            className={`fixed w-[296px] max-h-[calc(100vh-5rem)] overflow-y-auto rounded-2xl animate-scale-in overflow-hidden z-[var(--z-popover)] ${panelSurfaceClass}`}
+            style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, visibility: coords ? 'visible' : 'hidden' }}
+          >
+            {menuBody}
+          </div>
+        ),
+        document.body,
       )}
 
       {/* Logout confirmation */}
@@ -431,7 +516,7 @@ function SegmentedButton({
       onClick={onClick}
       className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
         active
-          ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]'
+          ? 'bg-[var(--bg-card-solid)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]'
           : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
       }`}
     >
@@ -439,4 +524,3 @@ function SegmentedButton({
     </button>
   );
 }
-

@@ -24,9 +24,10 @@ export default function UpgradeModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-[var(--z-modal-overlay)] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-[var(--bg-card)] shadow-elevated animate-fade sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
+      {/* Billing/upgrade surface — solid, never the translucent --bg-card glass token (spec: critical/billing surfaces must be opaque). */}
+      <div className="relative flex w-full max-h-[100dvh] flex-col overflow-hidden rounded-t-2xl bg-[var(--bg-card-solid)] shadow-elevated animate-fade sm:max-h-[90dvh] sm:max-w-md sm:rounded-2xl">
         {/* Header — always brand-navy regardless of theme (fixed CTA identity, same as .premium-action) */}
         <div className="shrink-0 bg-[var(--brand-primary)] px-6 py-8 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5" />
