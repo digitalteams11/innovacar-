@@ -1,6 +1,7 @@
 package com.carrental.service;
 
 import com.carrental.entity.Notification;
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,13 +36,13 @@ public class TrialExpiryJob {
     @Scheduled(cron = "${app.subscription.trial-expiry.cron:0 0 * * * *}")
     public void processTrials() {
         LocalDateTime startedAt = automationRunRecorder.start();
-        List<Tenant> trialTenants = tenantRepository.findAllByStatusIgnoreCase("TRIAL");
+        List<Tenant> trialTenants = tenantRepository.findAllByStatus(SubscriptionStatus.TRIAL);
         if (trialTenants.isEmpty()) {
             automationRunRecorder.recordSuccess(null, AutomationAgentKeys.SUBSCRIPTION_TRIAL, startedAt, "No tenants currently in trial.");
             return;
         }
 
-        long paidCount = tenantRepository.countByStatusIgnoreCase("ACTIVE");
+        long paidCount = tenantRepository.countByStatus(SubscriptionStatus.ACTIVE);
         int expiredCount = 0;
         int failedCount = 0;
 
@@ -75,7 +76,7 @@ public class TrialExpiryJob {
         }
 
         if (tenant.isTrialExpired()) {
-            tenant.setStatus("EXPIRED");
+            tenant.setStatus(SubscriptionStatus.TRIAL_EXPIRED);
             tenant.setSubscriptionActive(false);
             boolean alreadyNotified = tenant.getTrialExpiredNotifiedAt() != null;
             tenant.setTrialExpiredNotifiedAt(LocalDateTime.now());

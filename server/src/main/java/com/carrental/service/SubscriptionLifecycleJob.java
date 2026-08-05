@@ -1,6 +1,7 @@
 package com.carrental.service;
 
 import com.carrental.entity.AuditLog;
+import com.carrental.entity.SubscriptionStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.repository.AuditLogRepository;
 import com.carrental.repository.TenantRepository;
@@ -29,7 +30,7 @@ public class SubscriptionLifecycleJob {
     public void processScheduledCancellations() {
         LocalDateTime now = LocalDateTime.now();
         List<Tenant> due = tenantRepository
-                .findAllByStatusIgnoreCaseAndCancelEffectiveAtBefore("CANCEL_SCHEDULED", now);
+                .findAllByStatusAndCancelEffectiveAtBefore(SubscriptionStatus.CANCEL_AT_PERIOD_END, now);
 
         if (due.isEmpty()) {
             return;
@@ -38,7 +39,7 @@ public class SubscriptionLifecycleJob {
 
         for (Tenant tenant : due) {
             try {
-                tenant.setStatus("CANCELLED");
+                tenant.setStatus(SubscriptionStatus.CANCELLED);
                 tenant.setSubscriptionActive(false);
                 tenant.setCancelledAt(now);
                 tenantRepository.save(tenant);

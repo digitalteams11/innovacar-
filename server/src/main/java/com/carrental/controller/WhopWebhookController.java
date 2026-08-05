@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -41,6 +42,11 @@ public class WhopWebhookController {
     private final PromoCodeRedemptionRepository promoCodeRedemptionRepository;
     private final SubscriptionEventRepository subscriptionEventRepository;
     private final SubscriptionService subscriptionService;
+    private final AuditLogRepository auditLogRepository;
+    private final com.carrental.service.PlatformEmailService platformEmailService;
+
+    /** Actor string for AuditLog entries written from this webhook, matching this codebase's "system actor" convention (see SubscriptionLifecycleJob's "system"). */
+    private static final String WHOP_SYSTEM_ACTOR = "whop-webhook";
 
     @Value("${whop.webhook.secret:}")
     private String webhookSecret;
@@ -132,25 +138,30 @@ public class WhopWebhookController {
     private ResponseEntity<Map<String, Object>> handleActivation(
             Tenant tenant, String whopPlanId, String membershipId, String eventType, String promoCode) {
 
-        // Resolve plan by whopPlanId or whopProductId
-        SubscriptionPlan plan = null;
-        if (whopPlanId != null && !whopPlanId.isBlank()) {
-            plan = planRepository.findAll().stream()
-                    .filter(p -> whopPlanId.equals(p.getWhopPlanId())
-                            || whopPlanId.equals(p.getWhopPriceId())
-                            || whopPlanId.equals(p.getWhopProductId()))
-                    .findFirst().orElse(null);
-        }
-        if (plan == null && tenant.getPlanName() != null) {
-            String tenantPlanName = tenant.getPlanName();
-            plan = planRepository.findByName(tenantPlanName)
-                    .or(() -> planRepository.findByCode(tenantPlanName))
-                    .orElse(null);
-        }
+        SubscriptionStatus previousStatus = tenant.getStatus();
+
+        // Resolve plan by whopPlanId or whopProductId (shared with handlePaymentFailed's grace-period-days lookup)
+        SubscriptionPlan plan = resolvePlan(tenant, whopPlanId);
 
         int months = 1;
         if (plan != null) {
             tenant = subscriptionService.activatePaidPlan(tenant, plan, months);
+            if (previousStatus == SubscriptionStatus.GRACE_PERIOD || previousStatus == SubscriptionStatus.SUSPENDED) {
+                LocalDateTime periodStart = LocalDateTime.now();
+                LocalDateTime periodEnd = periodStart.plusMonths(months);
+                // reactivate() already sends its own "welcome back" email (sendAccountReactivated) —
+                // this is coming back from a lapsed payment, not a fresh first-time activation.
+                tenant = subscriptionService.reactivate(tenant, periodStart, periodEnd);
+            } else {
+                // A genuinely fresh activation (from TRIAL/TRIAL_EXPIRED/CHECKOUT_PENDING/CANCELLED,
+                // or a brand-new tenant) — send the one-time "welcome to Innovacar Complete" email.
+                // Never fires for the grace/suspended path above, which has its own email.
+                try {
+                    platformEmailService.sendSubscriptionActivated(tenant);
+                } catch (Exception e) {
+                    log.warn("[WHOP_WEBHOOK] sendSubscriptionActivated failed for tenantId={}: {}", tenant.getId(), e.getMessage());
+                }
+            }
         } else {
             // No plan resolved — extend subscription by 1 month
             subscriptionService.extendSubscription(30);
@@ -159,6 +170,17 @@ public class WhopWebhookController {
         Long activatedTenantId = tenant.getId();
         log.info("[WHOP_WEBHOOK] ACTIVATED tenantId={} plan={} event={} membershipId={}",
                 activatedTenantId, plan != null ? plan.getCode() : "UNKNOWN", eventType, membershipId);
+
+        auditLogRepository.save(AuditLog.builder()
+                .action("WHOP_SUBSCRIPTION_ACTIVATED")
+                .entityType("TENANT")
+                .entityId(activatedTenantId)
+                .tenantId(activatedTenantId)
+                .description("Whop event " + eventType + " activated plan " + (plan != null ? plan.getCode() : "UNKNOWN")
+                        + " (previous status: " + previousStatus + ")")
+                .performedBy(WHOP_SYSTEM_ACTOR)
+                .isSuccess(true)
+                .build());
 
         // Redeem the promo reservation (RESERVED → USED) only now that a real
         // provider event confirms the checkout actually went through — never
@@ -181,26 +203,66 @@ public class WhopWebhookController {
     }
 
     private ResponseEntity<Map<String, Object>> handlePaymentFailed(Tenant tenant, String eventType) {
-        tenant.setStatus("PAST_DUE");
-        tenantRepository.save(tenant);
+        SubscriptionPlan plan = resolvePlan(tenant, null);
+        Tenant saved = subscriptionService.startGracePeriod(tenant, plan);
 
-        log.info("[WHOP_WEBHOOK] PAYMENT_FAILED tenantId={} event={}", tenant.getId(), eventType);
+        log.info("[WHOP_WEBHOOK] PAYMENT_FAILED tenantId={} event={} gracePeriodEnd={}",
+                saved.getId(), eventType, saved.getGracePeriodEnd());
+
+        auditLogRepository.save(AuditLog.builder()
+                .action("WHOP_PAYMENT_FAILED")
+                .entityType("TENANT")
+                .entityId(saved.getId())
+                .tenantId(saved.getId())
+                .description("Whop event " + eventType + " — grace period started, ends " + saved.getGracePeriodEnd())
+                .performedBy(WHOP_SYSTEM_ACTOR)
+                .isSuccess(true)
+                .build());
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Subscription marked as past due for tenant " + tenant.getId()));
+                "message", "Subscription in grace period for tenant " + saved.getId()));
     }
 
     private ResponseEntity<Map<String, Object>> handleCancellation(Tenant tenant, String eventType) {
-        tenant.setStatus("CANCELLED");
+        tenant.setStatus(SubscriptionStatus.CANCELLED);
         tenant.setSubscriptionActive(false);
         tenantRepository.save(tenant);
 
         log.info("[WHOP_WEBHOOK] CANCELLED tenantId={} event={}", tenant.getId(), eventType);
 
+        auditLogRepository.save(AuditLog.builder()
+                .action("WHOP_SUBSCRIPTION_CANCELLED")
+                .entityType("TENANT")
+                .entityId(tenant.getId())
+                .tenantId(tenant.getId())
+                .description("Whop event " + eventType + " — subscription cancelled")
+                .performedBy(WHOP_SYSTEM_ACTOR)
+                .isSuccess(true)
+                .build());
+
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Subscription cancelled for tenant " + tenant.getId()));
+    }
+
+    /** Shared plan resolution: by Whop plan/price/product id first, falling back to the tenant's current plan name/code. */
+    private SubscriptionPlan resolvePlan(Tenant tenant, String whopPlanId) {
+        SubscriptionPlan plan = null;
+        if (whopPlanId != null && !whopPlanId.isBlank()) {
+            plan = planRepository.findAll().stream()
+                    .filter(p -> whopPlanId.equals(p.getWhopPlanId())
+                            || whopPlanId.equals(p.getWhopPriceId())
+                            || whopPlanId.equals(p.getWhopProductId()))
+                    .findFirst().orElse(null);
+        }
+        if (plan == null && tenant.getPlanName() != null) {
+            String tenantPlanName = tenant.getPlanName();
+            plan = planRepository.findByName(tenantPlanName)
+                    .or(() -> planRepository.findByCode(tenantPlanName))
+                    .orElse(null);
+        }
+        return plan;
     }
 
     // ── Signature verification ────────────────────────────────────────────────────
