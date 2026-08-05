@@ -5,6 +5,7 @@ import { RefreshCw, ServerOff, WifiOff } from 'lucide-react';
 
 import { checkHealth } from './lib/api';
 import { useAuth } from './context/AuthContext';
+import { useSubscription } from './hooks/useSubscription';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -120,10 +121,16 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Pages a blocked/suspended agency must still be able to reach: billing
-// (to fix the subscription), settings (profile), and the lock screen itself.
+// (to fix the subscription), settings (profile/security), support, and the
+// lock screen itself — mirrors SubscriptionFilter.ALWAYS_ALLOWED_PREFIXES'
+// intent (subscriptions/support/profile) on the frontend route guard.
 // /checkout doesn't need to be listed here — it uses AuthOnlyRoute (below),
 // not ProtectedRoute, so this blocked-agency gate never applies to it at all.
-const ALWAYS_ALLOWED_PATHS_WHEN_BLOCKED = ['/subscription', '/settings', '/account-suspended'];
+const ALWAYS_ALLOWED_PATHS_WHEN_BLOCKED = [
+  '/subscription', '/settings', '/account-suspended', '/help', '/support', '/tickets',
+];
+const isAlwaysAllowedWhenBlocked = (pathname: string) =>
+  ALWAYS_ALLOWED_PATHS_WHEN_BLOCKED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
 /**
  * Stashes the route the visitor was trying to reach so Login can send them
@@ -139,6 +146,12 @@ function stashIntendedRoute(location: ReturnType<typeof useLocation>) {
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, isSuperAdmin, loading } = useAuth();
+  // Proactive gate: read the tenant's live accessMode from /subscriptions/status
+  // instead of only reacting once a blocked write request fails (the reactive
+  // 'account-blocked' event path in AuthContext still exists as a same-request
+  // fallback, but a user who only ever issues GETs after going TRIAL_EXPIRED/
+  // SUSPENDED must still be blocked on navigation, not just on the next write).
+  const { status: subscription, loading: subscriptionLoading } = useSubscription();
   const location = useLocation();
 
   if (loading) return (
@@ -148,8 +161,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (!isAuthenticated) { stashIntendedRoute(location); return <Navigate to="/login" replace />; }
   if (isSuperAdmin) return <Navigate to="/super-admin" replace />;
 
-  const blocked = user?.accountAccess?.canUsePlatform === false;
-  if (blocked && !ALWAYS_ALLOWED_PATHS_WHEN_BLOCKED.includes(location.pathname)) {
+  const manuallyBlocked = user?.accountAccess?.canUsePlatform === false;
+  const subscriptionBlocked = !subscriptionLoading && subscription?.accessMode === 'BLOCKED';
+  const blocked = manuallyBlocked || subscriptionBlocked;
+  if (blocked && !isAlwaysAllowedWhenBlocked(location.pathname)) {
     return <Navigate to="/account-suspended" replace />;
   }
 

@@ -2493,7 +2493,14 @@
       "agency": "Agence",
       "currentPlan": "Plan Actuel",
       "changePlan": "Changer de Plan",
-      "actions": "Actions"
+      "actions": "Actions",
+      "gracePeriodDays": "Jours de Période de Grâce",
+      "trialDays": "jours",
+      "trialEnabled": "Essai activé",
+      "trialDisabled": "Essai désactivé",
+      "archivedPlans": "Plans archivés",
+      "checkoutNotConfigured": "Paiement non configuré",
+      "days": "jours"
     },
     "gps": {
       "title": "Centre de Gestion GPS",
@@ -3002,11 +3009,17 @@
       "standard": "Standard",
       "basic": "Basique",
       "premium": "Premium",
-      "enterprise": "Entreprise"
+      "enterprise": "Entreprise",
+      "complete": "Innovacar Complete"
     },
     "statuses": {
       "TRIAL": "Essai",
+      "TRIAL_EXPIRED": "Essai expiré",
+      "CHECKOUT_PENDING": "Paiement en cours",
       "ACTIVE": "Actif",
+      "PAYMENT_DUE": "Paiement dû",
+      "GRACE_PERIOD": "Période de grâce",
+      "CANCEL_AT_PERIOD_END": "Annulation en fin de période",
       "INACTIVE": "Inactif",
       "CANCELLED": "Annulé",
       "CANCELED": "Annulé",
@@ -3030,6 +3043,34 @@
       "expired": "Essai expiré",
       "endsOn": "Se termine le {{date}}",
       "upgradePlan": "Mettre à niveau"
+    },
+    "graceBanner": {
+      "message": "Votre paiement est en attente. Votre accès reste actif jusqu'au {{date}}.",
+      "cta": "Mettre à jour le paiement"
+    },
+    "blocked": {
+      "trialExpired": {
+        "title": "Votre essai gratuit est terminé",
+        "body": "Vos données sont conservées. Activez Innovacar Complete pour continuer à gérer votre agence.",
+        "primaryCta": "Activer Innovacar Complete"
+      },
+      "suspended": {
+        "title": "Votre abonnement est suspendu",
+        "body": "Votre abonnement est suspendu. Vos données sont conservées. Réactivez Innovacar Complete pour retrouver l'accès.",
+        "primaryCta": "Réactiver Innovacar Complete"
+      },
+      "contactSupport": "Contacter le support",
+      "secureCheckout": "Paiement sécurisé via Whop",
+      "feature": {
+        "vehicles": "Gestion illimitée des véhicules",
+        "employees": "Gestion de l'équipe et des employés",
+        "contracts": "Contrats numériques et signatures",
+        "support": "Support prioritaire"
+      }
+    },
+    "gracePeriod": {
+      "deadline": "Accès maintenu jusqu'au {{date}}",
+      "updatePayment": "Mettre à jour le paiement"
     }
   },
   "userMenu": {

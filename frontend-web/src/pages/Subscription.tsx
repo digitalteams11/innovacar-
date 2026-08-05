@@ -20,7 +20,10 @@ const planIcons: Record<string, any> = {
   Standard: Shield,
   Premium: Crown,
   Enterprise: Rocket,
+  'Innovacar Complete': Crown,
 };
+
+const isCompletePlan = (plan: any) => String(plan?.code ?? '').toUpperCase() === 'COMPLETE';
 
 const features = [
   { key: 'maxVehicles', label: 'Max Vehicles', icon: Car },
@@ -137,12 +140,12 @@ export default function Subscription() {
   };
 
   const getPrice = (plan: any) => {
-    if (plan.code === 'trial') return 0;
+    if (!isCompletePlan(plan)) return 0;
     return billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
   };
 
   const getYearlySavings = (plan: any) => {
-    if (plan.code === 'trial' || !plan.monthlyPrice || !plan.yearlyPrice) return 0;
+    if (!isCompletePlan(plan) || !plan.monthlyPrice || !plan.yearlyPrice) return 0;
     const monthlyTotal = plan.monthlyPrice * 12;
     const savings = monthlyTotal - plan.yearlyPrice;
     return Math.round((savings / monthlyTotal) * 100);
@@ -156,9 +159,9 @@ export default function Subscription() {
   };
 
   const getFeatureValue = (plan: any, featureKey: string) => {
-    if (featureKey === 'analytics') return plan.code !== 'trial' && plan.code !== 'basic';
-    if (featureKey === 'digitalSignatures') return plan.code !== 'trial';
-    if (featureKey === 'qrContracts') return plan.code !== 'trial';
+    if (featureKey === 'analytics') return isCompletePlan(plan);
+    if (featureKey === 'digitalSignatures') return isCompletePlan(plan);
+    if (featureKey === 'qrContracts') return isCompletePlan(plan);
     if (featureKey === 'whiteLabel') return plan.whiteLabel;
     if (featureKey === 'prioritySupport') return plan.prioritySupport;
     if (featureKey === 'maxVehicles') return plan.maxVehicles;
@@ -231,9 +234,15 @@ export default function Subscription() {
     );
   }
 
-  const isCancelScheduled = status?.cancelScheduled === true || status?.status === 'CANCEL_SCHEDULED';
+  const isCancelScheduled = status?.cancelScheduled === true || status?.status === 'CANCEL_SCHEDULED' || status?.status === 'CANCEL_AT_PERIOD_END';
   const isPaidActive = !status?.isTrial && status?.subscriptionActive && !isCancelScheduled;
   const canCancelSubscription = isPaidActive;
+  const completePlan = plans.find(isCompletePlan);
+  const yearlyAllowed = completePlan?.billingCycleAllowedYearly !== false;
+  const isGracePeriod = status?.status === 'GRACE_PERIOD' || status?.statusEnum === 'GRACE_PERIOD';
+  const gracePeriodEndStr = status?.gracePeriodEnd
+    ? new Date(status.gracePeriodEnd).toLocaleDateString(i18n.resolvedLanguage || i18n.language, { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
 
   return (
     <div className="space-y-8 animate-fade max-w-7xl mx-auto w-full">
@@ -249,6 +258,33 @@ export default function Subscription() {
               {status.freeAccessUntil && ` Active until ${new Date(status.freeAccessUntil).toLocaleDateString()}.`}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Grace Period — this page shows the exact deadline plus a direct payment
+          action (the global GracePeriodBanner already covers every other page;
+          a user landing here is likely already trying to fix their payment). */}
+      {isGracePeriod && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">{t('subscription.statuses.GRACE_PERIOD')}</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                {t('subscription.gracePeriod.deadline', { date: gracePeriodEndStr || '—' })}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const complete = plans.find(isCompletePlan);
+              if (complete) openUpgrade(complete);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-100 dark:bg-amber-500/20 hover:bg-amber-200 dark:hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 rounded-xl text-sm font-semibold transition-colors shrink-0"
+          >
+            <CreditCard size={14} />
+            {t('subscription.gracePeriod.updatePayment')}
+          </button>
         </div>
       )}
 
@@ -339,8 +375,8 @@ export default function Subscription() {
               )}
               <button
                 onClick={() => {
-                  const premium = plans.find(p => p.code === 'premium');
-                  if (premium) openUpgrade(premium);
+                  const complete = plans.find(isCompletePlan);
+                  if (complete) openUpgrade(complete);
                 }}
                 className="bg-[var(--brand-primary)] hover:opacity-90 text-[var(--brand-primary-foreground)] px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
               >
@@ -371,58 +407,58 @@ export default function Subscription() {
         </div>
       )}
 
-      {/* Billing Toggle */}
-      <div className="flex items-center justify-center gap-4">
-        <div className="bg-white p-1.5 rounded-xl border border-[#e8e6e1]/80 shadow-soft inline-flex">
-          <button
-            onClick={() => setBillingCycle('monthly')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-              billingCycle === 'monthly'
-                ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
-                : 'text-slate-500 hover:text-[#1e293b]'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingCycle('yearly')}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-              billingCycle === 'yearly'
-                ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
-                : 'text-slate-500 hover:text-[#1e293b]'
-            }`}
-          >
-            Yearly
-            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md border border-emerald-200">
-              Save 17%
-            </span>
-          </button>
+      {/* Billing Toggle — annual tab only shown when the plan itself allows yearly billing */}
+      {yearlyAllowed && (
+        <div className="flex items-center justify-center gap-4">
+          <div className="bg-white p-1.5 rounded-xl border border-[#e8e6e1]/80 shadow-soft inline-flex">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                billingCycle === 'monthly'
+                  ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
+                  : 'text-slate-500 hover:text-[#1e293b]'
+              }`}
+            >
+              {t('subscription.monthly')}
+            </button>
+            <button
+              onClick={() => setBillingCycle('yearly')}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                billingCycle === 'yearly'
+                  ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
+                  : 'text-slate-500 hover:text-[#1e293b]'
+              }`}
+            >
+              {t('subscription.yearly')}
+              {completePlan && getYearlySavings(completePlan) > 0 && (
+                <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md border border-emerald-200">
+                  {t('subscription.save', { percent: getYearlySavings(completePlan) })}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Pricing Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+      {/* Pricing Card — exactly one purchasable plan (Innovacar Complete) */}
+      <div className="grid grid-cols-1 max-w-sm mx-auto gap-3 sm:gap-4 w-full">
         {plans.map((plan) => {
           const Icon = planIcons[plan.name] || CreditCard;
           const isCurrent = isCurrentPlan(plan.name);
           const price = getPrice(plan);
           const savings = getYearlySavings(plan);
+          const currency = plan.currency || 'MAD';
 
           return (
             <div
               key={plan.id}
               className={`bg-white rounded-2xl p-5 border shadow-soft transition-all hover:shadow-md relative flex flex-col ${
                 isCurrent ? 'border-brand-500 ring-1 ring-brand-500' : 'border-[#e8e6e1]/80'
-              } ${plan.code === 'standard' ? 'xl:scale-105 xl:z-10' : ''}`}
+              }`}
             >
-              {plan.code === 'standard' && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-brand-500 text-[var(--brand-primary-foreground)] text-[10px] font-bold uppercase tracking-wider rounded-full">
-                  Most Popular
-                </div>
-              )}
               {isCurrent && (
                 <div className="absolute -top-3 end-4 px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1">
-                  <CheckCircle2 size={10} /> Current
+                  <CheckCircle2 size={10} /> {t('subscription.currentPlanLabel')}
                 </div>
               )}
 
@@ -437,28 +473,28 @@ export default function Subscription() {
               <div className="mb-4">
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-[#1e293b]">
-                    {price === 0 ? 'Free' : `${price}`}
+                    {price === 0 ? '-' : `${price}`}
                   </span>
                   {price > 0 && (
-                    <span className="text-sm text-slate-400">MAD/{billingCycle === 'yearly' ? 'year' : 'mo'}</span>
+                    <span className="text-sm text-slate-400">{currency}/{billingCycle === 'yearly' ? t('subscription.yearly') : t('subscription.perMonth')}</span>
                   )}
                 </div>
                 {savings > 0 && billingCycle === 'yearly' && (
-                  <p className="text-xs text-emerald-600 font-medium mt-1">Save {savings}% yearly</p>
+                  <p className="text-xs text-emerald-600 font-medium mt-1">{t('subscription.save', { percent: savings })}</p>
                 )}
               </div>
 
               <div className="space-y-2 mb-5 flex-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Vehicles</span>
+                  <span className="text-slate-500">{t('subscription.vehicles')}</span>
                   <span className="font-medium text-[#1e293b]">{plan.maxVehicles}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Employees</span>
+                  <span className="text-slate-500">{t('subscription.employees')}</span>
                   <span className="font-medium text-[#1e293b]">{plan.maxEmployees}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">GPS</span>
+                  <span className="text-slate-500">{t('subscription.gpsDevices')}</span>
                   <span className="font-medium text-[#1e293b]">{plan.maxGpsDevices}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -473,12 +509,10 @@ export default function Subscription() {
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                   isCurrent
                     ? 'bg-slate-100 text-slate-400 cursor-default'
-                    : plan.code === 'standard'
-                    ? 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:opacity-90'
-                    : 'bg-slate-100 text-[#1e293b] hover:bg-slate-200'
+                    : 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:opacity-90'
                 }`}
               >
-                {isCurrent ? 'Current Plan' : 'Upgrade'}
+                {isCurrent ? t('subscription.currentPlanLabel') : t('subscription.selectPlan')}
               </button>
             </div>
           );
@@ -741,7 +775,7 @@ export default function Subscription() {
               <div className="border-t border-[#e8e6e1]/60 pt-2 flex justify-between items-center">
                 <span className="text-sm font-medium text-[#1e293b]">Total</span>
                 <span className="text-lg font-bold text-[#1e293b]">
-                  {getPrice(selectedPlan)} MAD
+                  {getPrice(selectedPlan)} {selectedPlan.currency || 'MAD'}
                 </span>
               </div>
             </div>

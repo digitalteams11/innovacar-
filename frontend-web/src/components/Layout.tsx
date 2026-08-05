@@ -14,6 +14,7 @@ import { usePermissions } from '../context/PermissionContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api/axios';
 import TrialBanner from './TrialBanner';
+import GracePeriodBanner from './GracePeriodBanner';
 import AnnouncementBanner from './AnnouncementBanner';
 import NotificationBell from './shared/NotificationBell';
 import GuidanceSystem from './GuidanceSystem';
@@ -237,6 +238,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           : (appearance.sidebarStyle === 'compact' || sidebarCollapsed ? 'lg:ms-[76px]' : 'lg:ms-[248px]'),
       )}>
         <TrialBanner />
+        <GracePeriodBanner />
         <header className="app-topbar sticky top-2 lg:top-4 z-40 h-[58px] lg:h-[64px] mx-2 lg:mx-4 px-3 sm:px-4 lg:px-5 flex items-center gap-3 rounded-lg">
           <Link to="/" className="lg:hidden flex items-center gap-2 shrink-0" aria-label={t('layout.innovacarDashboard', 'Innovacar Dashboard')}>
             <span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm shrink-0">

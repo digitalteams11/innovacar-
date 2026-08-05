@@ -2493,7 +2493,14 @@
       "agency": "Agency",
       "currentPlan": "Current Plan",
       "changePlan": "Change Plan",
-      "actions": "Actions"
+      "actions": "Actions",
+      "gracePeriodDays": "Grace Period Days",
+      "trialDays": "days",
+      "trialEnabled": "Trial enabled",
+      "trialDisabled": "Trial disabled",
+      "archivedPlans": "Archived plans",
+      "checkoutNotConfigured": "Checkout not configured",
+      "days": "days"
     },
     "gps": {
       "title": "GPS Management Center",
@@ -3002,11 +3009,17 @@
       "standard": "Standard",
       "basic": "Basic",
       "premium": "Premium",
-      "enterprise": "Enterprise"
+      "enterprise": "Enterprise",
+      "complete": "Innovacar Complete"
     },
     "statuses": {
       "TRIAL": "Trial",
+      "TRIAL_EXPIRED": "Trial expired",
+      "CHECKOUT_PENDING": "Checkout pending",
       "ACTIVE": "Active",
+      "PAYMENT_DUE": "Payment due",
+      "GRACE_PERIOD": "Grace period",
+      "CANCEL_AT_PERIOD_END": "Cancels at period end",
       "INACTIVE": "Inactive",
       "CANCELLED": "Cancelled",
       "CANCELED": "Cancelled",
@@ -3030,6 +3043,34 @@
       "expired": "Trial expired",
       "endsOn": "Ends on {{date}}",
       "upgradePlan": "Upgrade plan"
+    },
+    "graceBanner": {
+      "message": "Your payment is pending. Your access remains active until {{date}}.",
+      "cta": "Update payment"
+    },
+    "blocked": {
+      "trialExpired": {
+        "title": "Your free trial has ended",
+        "body": "Your data is preserved. Activate Innovacar Complete to keep managing your agency.",
+        "primaryCta": "Activate Innovacar Complete"
+      },
+      "suspended": {
+        "title": "Your subscription is suspended",
+        "body": "Your subscription is suspended. Your data is preserved. Reactivate Innovacar Complete to regain access.",
+        "primaryCta": "Reactivate Innovacar Complete"
+      },
+      "contactSupport": "Contact support",
+      "secureCheckout": "Secure checkout powered by Whop",
+      "feature": {
+        "vehicles": "Unlimited vehicle management",
+        "employees": "Team & employee management",
+        "contracts": "Digital contracts & signatures",
+        "support": "Priority support"
+      }
+    },
+    "gracePeriod": {
+      "deadline": "Access continues until {{date}}",
+      "updatePayment": "Update payment"
     }
   },
   "userMenu": {

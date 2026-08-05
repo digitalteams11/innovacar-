@@ -2493,7 +2493,14 @@
       "agency": "الوكالة",
       "currentPlan": "الخطة الحالية",
       "changePlan": "تغيير الخطة",
-      "actions": "إجراءات"
+      "actions": "إجراءات",
+      "gracePeriodDays": "أيام فترة السماح",
+      "trialDays": "أيام",
+      "trialEnabled": "التجربة مفعّلة",
+      "trialDisabled": "التجربة معطّلة",
+      "archivedPlans": "الخطط المؤرشفة",
+      "checkoutNotConfigured": "الدفع غير مُعد",
+      "days": "أيام"
     },
     "gps": {
       "title": "مركز إدارة GPS",
@@ -3002,11 +3009,17 @@
       "standard": "قياسي",
       "basic": "أساسي",
       "premium": "مميز",
-      "enterprise": "مؤسسات"
+      "enterprise": "مؤسسات",
+      "complete": "Innovacar Complete"
     },
     "statuses": {
       "TRIAL": "تجريبي",
+      "TRIAL_EXPIRED": "انتهت التجربة",
+      "CHECKOUT_PENDING": "الدفع قيد المعالجة",
       "ACTIVE": "نشط",
+      "PAYMENT_DUE": "الدفع مستحق",
+      "GRACE_PERIOD": "فترة سماح",
+      "CANCEL_AT_PERIOD_END": "إلغاء في نهاية الفترة",
       "INACTIVE": "غير نشط",
       "CANCELLED": "ملغى",
       "CANCELED": "ملغى",
@@ -3030,6 +3043,34 @@
       "expired": "انتهت الفترة التجريبية",
       "endsOn": "تنتهي في {{date}}",
       "upgradePlan": "ترقية الباقة"
+    },
+    "graceBanner": {
+      "message": "دفعتك قيد الانتظار. يبقى وصولك نشطاً حتى {{date}}.",
+      "cta": "تحديث الدفع"
+    },
+    "blocked": {
+      "trialExpired": {
+        "title": "انتهت فترتك التجريبية المجانية",
+        "body": "بياناتك محفوظة. فعّل Innovacar Complete لمواصلة إدارة وكالتك.",
+        "primaryCta": "تفعيل Innovacar Complete"
+      },
+      "suspended": {
+        "title": "اشتراكك موقوف",
+        "body": "اشتراكك موقوف. بياناتك محفوظة. أعد تفعيل Innovacar Complete لاستعادة الوصول.",
+        "primaryCta": "إعادة تفعيل Innovacar Complete"
+      },
+      "contactSupport": "تواصل مع الدعم",
+      "secureCheckout": "دفع آمن عبر Whop",
+      "feature": {
+        "vehicles": "إدارة غير محدودة للمركبات",
+        "employees": "إدارة الفريق والموظفين",
+        "contracts": "عقود رقمية وتوقيعات",
+        "support": "دعم ذو أولوية"
+      }
+    },
+    "gracePeriod": {
+      "deadline": "يستمر الوصول حتى {{date}}",
+      "updatePayment": "تحديث الدفع"
     }
   },
   "userMenu": {

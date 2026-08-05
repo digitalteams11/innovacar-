@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
 
+/** SubscriptionStatus enum values from the backend (com.carrental.entity.SubscriptionStatus). */
+export type SubscriptionStatusEnum =
+  | 'TRIAL'
+  | 'TRIAL_EXPIRED'
+  | 'CHECKOUT_PENDING'
+  | 'ACTIVE'
+  | 'PAYMENT_DUE'
+  | 'GRACE_PERIOD'
+  | 'SUSPENDED'
+  | 'CANCEL_AT_PERIOD_END'
+  | 'CANCELLED';
+
+export type AccessMode = 'FULL' | 'READ_ONLY' | 'BLOCKED';
+
 interface SubscriptionStatus {
   planCode: string;
   planName: string;
@@ -29,6 +43,12 @@ interface SubscriptionStatus {
   employeeCount: number;
   reservationCount: number;
   gpsCount: number;
+  /** Normalized spec-§25 fields, additive on top of the legacy shape above. */
+  gracePeriodEnd: string | null;
+  accessMode: AccessMode;
+  canCheckout: boolean;
+  /** Exact enum name as returned by the backend (e.g. "TRIAL_EXPIRED"), independent of the legacy `status` string. */
+  statusEnum: SubscriptionStatusEnum | null;
 }
 
 const unavailableSubscriptionStatus: SubscriptionStatus = {
@@ -58,6 +78,10 @@ const unavailableSubscriptionStatus: SubscriptionStatus = {
   employeeCount: 0,
   reservationCount: 0,
   gpsCount: 0,
+  gracePeriodEnd: null,
+  accessMode: 'FULL',
+  canCheckout: false,
+  statusEnum: null,
 };
 
 let cachedSubscriptionStatus: SubscriptionStatus | null = null;
@@ -101,7 +125,11 @@ function normalizeSubscriptionStatus(payload: any): SubscriptionStatus {
     trialDaysRemaining,
     trialSecondsRemaining,
     daysRemaining: Number(source.daysRemaining ?? source.remainingDays ?? 0),
-    currentPeriodEnd: source.currentPeriodEnd || source.subscriptionEndDate || null,
+    currentPeriodEnd: source.currentPeriodEndPrecise || source.currentPeriodEnd || source.subscriptionEndDate || null,
+    gracePeriodEnd: source.gracePeriodEnd || null,
+    accessMode: (source.accessMode === 'BLOCKED' || source.accessMode === 'READ_ONLY') ? source.accessMode : 'FULL',
+    canCheckout: Boolean(source.canCheckout),
+    statusEnum: source.statusEnum || null,
   };
 }
 
@@ -155,6 +183,8 @@ export function useSubscription() {
   const canAddGps = status ? status.gpsCount < status.maxGpsDevices : true;
   const isTrial = status?.isTrial === true;
   const isExpired = status ? status.status === 'EXPIRED' : false;
+  const isBlocked = status?.accessMode === 'BLOCKED';
+  const isGracePeriod = status?.statusEnum === 'GRACE_PERIOD' || status?.status === 'GRACE_PERIOD';
 
   return {
     status,
@@ -166,5 +196,7 @@ export function useSubscription() {
     canAddGps,
     isTrial,
     isExpired,
+    isBlocked,
+    isGracePeriod,
   };
 }

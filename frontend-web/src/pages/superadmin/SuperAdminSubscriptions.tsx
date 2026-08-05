@@ -2,20 +2,20 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { superAdminApi } from '../../api/superAdminApi';
 import {
-  CreditCard, Plus, Edit2, Trash2, Crown,
-  Zap, Shield, Rocket, Tag, Users
+  Edit2, Crown, Trash2,
+  Zap, Tag, Users, Archive, ChevronDown,
 } from 'lucide-react';
 import { PageHeader, Modal, FormField, TextInput, ToggleSwitch, Badge } from '../../components/superadmin';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 
-const planIcons: Record<string, any> = {
-  Trial: Zap,
-  Basic: CreditCard,
-  Standard: Shield,
-  Premium: Crown,
-  Enterprise: Rocket,
-};
+// The catalog is now exactly two commercial concepts: Trial (info-only,
+// never purchasable, `isTrialEnabled`/`trialDays`) and Innovacar Complete
+// (the single paid plan, code "COMPLETE"). Basic/Standard rows still exist
+// in the DB (archived, is_active=false) for historical FK integrity only —
+// they are never rendered as editable cards, just listed read-only below.
+const isTrialPlan = (plan: any) => String(plan?.code ?? '').toUpperCase() === 'TRIAL';
+const isCompletePlan = (plan: any) => String(plan?.code ?? '').toUpperCase() === 'COMPLETE';
 
 export default function SuperAdminSubscriptions() {
   const { t } = useTranslation();
@@ -77,24 +77,6 @@ export default function SuperAdminSubscriptions() {
       setPlanForm({});
       fetchData();
       showToast('Plan saved successfully', 'success');
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleDeletePlan = async (id: number) => {
-    const confirmed = await confirm({
-      title: t('confirm.deleteItem.title', 'Delete this item?'),
-      description: t('superAdmin.subscriptions.confirmDelete'),
-      confirmLabel: t('common.delete', 'Delete'),
-      cancelLabel: t('actions.cancel', 'Cancel'),
-      tone: 'danger',
-    });
-    if (!confirmed) return;
-    try {
-      await superAdminApi.deletePlan(id);
-      fetchData();
-      showToast('Plan deleted successfully', 'success');
     } catch (err) {
       console.error(err);
     }
@@ -188,18 +170,6 @@ export default function SuperAdminSubscriptions() {
     setShowPlanModal(true);
   };
 
-  const openCreate = () => {
-    setEditingPlan(null);
-    setPlanForm({
-      name: '', code: '', monthlyPrice: 0, yearlyPrice: 0,
-      description: '', maxVehicles: 0, maxEmployees: 0, maxGpsDevices: 0,
-      maxReservations: 0, storageLimitMb: 0, apiAccess: false,
-      whiteLabel: false, prioritySupport: false, isActive: true, highlighted: false,
-      featuresJson: '', displayOrder: 0,
-    });
-    setShowPlanModal(true);
-  };
-
   const subscribeAgency = async (agencyId: number, planCode: string) => {
     try {
       await superAdminApi.subscribeAgency(agencyId, planCode);
@@ -214,58 +184,89 @@ export default function SuperAdminSubscriptions() {
 
   return (
     <div className="space-y-8 animate-fade">
-      <PageHeader title={t('superAdmin.subscriptions.title')} subtitle={t('superAdmin.subscriptions.subtitle')}>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-[#0a0f2c] hover:bg-[#0a0f2c]/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-soft">
-          <Plus size={16} />
-          <span className="hidden sm:inline">{t('superAdmin.subscriptions.newPlan')}</span>
-        </button>
-      </PageHeader>
+      <PageHeader title={t('superAdmin.subscriptions.title')} subtitle={t('superAdmin.subscriptions.subtitle')} />
 
-      {/* Plans Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+      {/* Exactly two conceptual sections: Trial config and Innovacar Complete config. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {loading ? (
-          Array.from({ length: 5 }).map((_, i) => (
+          Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-[#1a2332]/70 rounded-2xl p-5 border border-[#e8e6e1]/80 dark:border-white/5 shadow-soft animate-pulse h-64" />
           ))
-        ) : plans.map((plan) => {
-          const Icon = planIcons[plan.name] || CreditCard;
-          const count = planCounts(plan.name);
-          return (
-            <div key={plan.id} className={`bg-white dark:bg-[#1a2332]/70 rounded-2xl p-5 border shadow-soft transition-all hover:shadow-md ${plan.isActive ? 'border-[#e8e6e1]/80 dark:border-white/5' : 'border-slate-200 dark:border-white/5 opacity-60'}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#0a0f2c]/5 dark:bg-white/5 flex items-center justify-center">
-                  <Icon size={18} className="text-[#0a0f2c] dark:text-white/70" />
-                </div>
-                <div className="flex gap-1">
+        ) : (
+          [plans.find(isTrialPlan), plans.find(isCompletePlan)].filter(Boolean).map((plan: any) => {
+            const isTrial = isTrialPlan(plan);
+            const Icon = isTrial ? Zap : Crown;
+            const count = planCounts(plan.name);
+            return (
+              <div key={plan.id} className="bg-white dark:bg-[#1a2332]/70 rounded-2xl p-5 border border-[#e8e6e1]/80 dark:border-white/5 shadow-soft transition-all hover:shadow-md">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#0a0f2c]/5 dark:bg-white/5 flex items-center justify-center">
+                    <Icon size={18} className="text-[#0a0f2c] dark:text-white/70" />
+                  </div>
                   <button onClick={() => openEdit(plan)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400 hover:text-brand-600 transition-colors">
                     <Edit2 size={14} />
                   </button>
-                  <button onClick={() => handleDeletePlan(plan.id)} className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg text-slate-400 hover:text-rose-600 transition-colors">
-                    <Trash2 size={14} />
-                  </button>
                 </div>
-              </div>
-              <h3 className="text-base font-bold text-[#1e293b] dark:text-white mb-1">{plan.name}</h3>
-              <p className="text-2xl font-bold text-[#1e293b] dark:text-white mb-1">{plan.monthlyPrice} <span className="text-sm font-normal text-slate-500">MAD/{t('superAdmin.subscriptions.month')}</span></p>
-              <p className="text-xs text-slate-500 mb-4">{plan.yearlyPrice} MAD/year</p>
-              <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4">
-                <div className="flex justify-between"><span>{t('superAdmin.subscriptions.vehicles')}</span><span className="font-medium">{plan.maxVehicles}</span></div>
-                <div className="flex justify-between"><span>{t('superAdmin.subscriptions.employees')}</span><span className="font-medium">{plan.maxEmployees}</span></div>
-                <div className="flex justify-between"><span>{t('superAdmin.subscriptions.gpsDevices')}</span><span className="font-medium">{plan.maxGpsDevices}</span></div>
-              </div>
-              <div className="pt-3 border-t border-[#e8e6e1]/40 dark:border-white/5 space-y-1.5">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <Users size={12} />
-                  <span>{count} {t('superAdmin.subscriptions.agenciesOnPlan')}</span>
-                </div>
-                {plan.monthlyPrice > 0 && !plan.whopCheckoutUrlMonthly && !plan.whopCheckoutUrlYearly && !plan.whopPlanId && (
-                  <div className="text-[10px] text-amber-600 font-medium">⚠ Checkout not configured</div>
+                <h3 className="text-base font-bold text-[#1e293b] dark:text-white mb-1">{plan.name}</h3>
+                {isTrial ? (
+                  <>
+                    <p className="text-2xl font-bold text-[#1e293b] dark:text-white mb-1">
+                      {plan.trialDays ?? 0} <span className="text-sm font-normal text-slate-500">{t('superAdmin.subscriptions.trialDays', 'days')}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mb-4">
+                      {plan.isTrialEnabled === false
+                        ? t('superAdmin.subscriptions.trialDisabled', 'Trial disabled')
+                        : t('superAdmin.subscriptions.trialEnabled', 'Trial enabled')}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-[#1e293b] dark:text-white mb-1">
+                      {plan.monthlyPrice} <span className="text-sm font-normal text-slate-500">{plan.currency || 'MAD'}/{t('superAdmin.subscriptions.month')}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mb-4">{plan.yearlyPrice} {plan.currency || 'MAD'}/year</p>
+                  </>
                 )}
+                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4">
+                  <div className="flex justify-between"><span>{t('superAdmin.subscriptions.vehicles')}</span><span className="font-medium">{plan.maxVehicles}</span></div>
+                  <div className="flex justify-between"><span>{t('superAdmin.subscriptions.employees')}</span><span className="font-medium">{plan.maxEmployees}</span></div>
+                  <div className="flex justify-between"><span>{t('superAdmin.subscriptions.gpsDevices')}</span><span className="font-medium">{plan.maxGpsDevices}</span></div>
+                  {!isTrial && (
+                    <div className="flex justify-between"><span>{t('superAdmin.subscriptions.gracePeriodDays', 'Grace period')}</span><span className="font-medium">{plan.gracePeriodDays ?? 3} {t('superAdmin.subscriptions.days', 'days')}</span></div>
+                  )}
+                </div>
+                <div className="pt-3 border-t border-[#e8e6e1]/40 dark:border-white/5 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <Users size={12} />
+                    <span>{count} {t('superAdmin.subscriptions.agenciesOnPlan')}</span>
+                  </div>
+                  {!isTrial && plan.monthlyPrice > 0 && !plan.whopCheckoutUrlMonthly && !plan.whopCheckoutUrlYearly && !plan.whopPlanId && (
+                    <div className="text-[10px] text-amber-600 font-medium">⚠ {t('superAdmin.subscriptions.checkoutNotConfigured', 'Checkout not configured')}</div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
+
+      {/* Archived plans — historical rows kept for FK integrity (is_active=false), never editable here. */}
+      {!loading && plans.some((p: any) => !p.isActive && !isTrialPlan(p) && !isCompletePlan(p)) && (
+        <details className="bg-white dark:bg-[#1a2332]/70 rounded-2xl border border-[#e8e6e1]/80 dark:border-white/5 shadow-soft overflow-hidden">
+          <summary className="flex items-center justify-between px-5 py-3 cursor-pointer select-none text-sm font-medium text-slate-500">
+            <span className="flex items-center gap-2"><Archive size={14} /> {t('superAdmin.subscriptions.archivedPlans', 'Archived plans')}</span>
+            <ChevronDown size={14} />
+          </summary>
+          <div className="px-5 pb-4 space-y-1.5 border-t border-[#e8e6e1]/40 dark:border-white/5 pt-3">
+            {plans.filter((p: any) => !p.isActive && !isTrialPlan(p) && !isCompletePlan(p)).map((p: any) => (
+              <div key={p.id} className="flex items-center justify-between text-xs text-slate-500">
+                <span>{p.name} ({p.code})</span>
+                <span>{planCounts(p.name)} {t('superAdmin.subscriptions.agenciesOnPlan')}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {/* Promo Codes Section */}
       <div>
@@ -389,6 +390,7 @@ export default function SuperAdminSubscriptions() {
           <FormField label="Max Clients"><TextInput value={planForm.clientLimit ?? ''} onChange={(v) => setPlanForm({ ...planForm, clientLimit: Number(v) })} type="number" /></FormField>
           <FormField label="Max Contracts"><TextInput value={planForm.contractLimit ?? ''} onChange={(v) => setPlanForm({ ...planForm, contractLimit: Number(v) })} type="number" /></FormField>
           <FormField label="Trial Days"><TextInput value={planForm.trialDays ?? ''} onChange={(v) => setPlanForm({ ...planForm, trialDays: Number(v) })} type="number" /></FormField>
+          <FormField label={t('superAdmin.subscriptions.gracePeriodDays', 'Grace Period Days')} hint="Days a paid tenant stays fully usable after a failed payment before suspension (default 3)."><TextInput value={planForm.gracePeriodDays ?? 3} onChange={(v) => setPlanForm({ ...planForm, gracePeriodDays: Number(v) })} type="number" /></FormField>
           <FormField label="Currency"><TextInput value={planForm.currency || 'MAD'} onChange={(v) => setPlanForm({ ...planForm, currency: v })} placeholder="MAD" /></FormField>
           <FormField label="Whop Product ID"><TextInput value={planForm.whopProductId || ''} onChange={(v) => setPlanForm({ ...planForm, whopProductId: v })} placeholder="prod_xxx" /></FormField>
           <FormField label="Whop Plan ID (Monthly)"><TextInput value={planForm.whopPlanId || ''} onChange={(v) => setPlanForm({ ...planForm, whopPlanId: v })} placeholder="plan_xxx" /></FormField>
