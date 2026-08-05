@@ -49,7 +49,8 @@ class EmailServiceTest {
         resolver.setCacheable(false);
         SpringTemplateEngine engine = new SpringTemplateEngine();
         engine.setTemplateResolver(resolver);
-        emailService = new EmailService(smtpMailService, new EmailTemplateRenderer(engine));
+        emailService = new EmailService(smtpMailService, new EmailTemplateRenderer(engine),
+                new EmailActionUrlBuilder("https://innovacar.app"));
     }
 
     @Test
@@ -81,6 +82,11 @@ class EmailServiceTest {
         when(smtpMailService.sendPlatform(anyString(), anyString(), htmlCaptor.capture(), plainCaptor.capture()))
                 .thenReturn(new SmtpMailService.SmtpResult(true, "ZEPTOMAIL", null, null, null, null));
 
+        // The 3rd (frontendUrl) argument is legacy/vestigial — EmailActionUrlBuilder
+        // (injected in setUp, rooted at https://innovacar.app) is now the single
+        // source of truth for the actual URL, and it always emits the HashRouter's
+        // required /#/ prefix — a bare "/verify-email?token=" (no hash) doesn't
+        // route anywhere in the deployed SPA. See EmailActionUrlBuilder.
         emailService.sendVerificationEmail("user@example.com", "raw-token-123", "https://app.innovacar.app");
 
         String html = htmlCaptor.getValue();
@@ -88,9 +94,9 @@ class EmailServiceTest {
 
         assertThat(html).startsWith("<!DOCTYPE html>");
         assertThat(html).doesNotContain("=====");
-        assertThat(html).contains("https://app.innovacar.app/verify-email?token=raw-token-123");
+        assertThat(html).contains("href=\"https://innovacar.app/#/verify-email?token=raw-token-123\"");
 
         assertThat(plain).doesNotContain("<");
-        assertThat(plain).contains("https://app.innovacar.app/verify-email?token=raw-token-123");
+        assertThat(plain).contains("https://innovacar.app/#/verify-email?token=raw-token-123");
     }
 }

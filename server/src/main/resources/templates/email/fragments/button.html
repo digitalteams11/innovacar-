@@ -1,11 +1,24 @@
 <!--
-  Shared branded CTA button fragment — green gradient, degrades to a plain
-  link if a client strips inline styles.
-  Usage: th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}"
+  Shared branded CTA button fragment — table-based (Outlook-safe) layout,
+  real <a href> anchor (never onclick/javascript:/relative URL), plus a
+  visible plain-text fallback URL underneath for clients that strip inline
+  styles or block the styled button entirely. See EmailActionUrlBuilder for
+  how `url` is built — every caller passes an absolute https:// URL.
+  Usage: th:replace="~{email/fragments/button :: button(label=${'View report'}, url=${reportUrl})}"
 -->
-<div th:fragment="button(label, url)" style="text-align:center;margin:28px 0;">
-  <a th:href="${url}" th:text="${label}"
-     style="display:inline-block;padding:14px 34px;background:linear-gradient(135deg,#0f766e,#10b981);
-            color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px;
-            letter-spacing:0.02em;box-shadow:0 4px 14px rgba(15,118,110,0.35);">Open dashboard</a>
+<div th:fragment="button(label, url)">
+  <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:28px auto;">
+    <tr>
+      <td align="center" bgcolor="#0f766e" style="border-radius:12px;background:linear-gradient(135deg,#0f766e,#10b981);">
+        <a th:href="${url}" th:text="${label}" target="_blank" rel="noopener noreferrer"
+           style="display:inline-block;padding:14px 34px;font-family:Arial,Helvetica,sans-serif;
+                  font-size:15px;font-weight:700;line-height:20px;letter-spacing:0.02em;
+                  color:#ffffff;text-decoration:none;border-radius:12px;">Open dashboard</a>
+      </td>
+    </tr>
+  </table>
+  <p style="margin:0 0 20px;text-align:center;font-size:12px;color:#6b7280;">
+    If the button doesn't work, copy and paste this link into your browser:<br>
+    <a th:href="${url}" th:text="${url}" style="color:#0f766e;word-break:break-all;">https://innovacar.app</a>
+  </p>
 </div>

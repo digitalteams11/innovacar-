@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriUtils;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -159,7 +160,16 @@ public class EmailActionUrlBuilder {
         return raw == null ? "" : UriUtils.encodePathSegment(raw, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Full application/x-www-form-urlencoded encoding (via {@link URLEncoder}),
+     * not just RFC 3986 query-component encoding — the frontend reads these
+     * values with {@code URLSearchParams}, which decodes '+' as a literal space.
+     * Spring's {@code UriUtils.encodeQueryParam} leaves '+' and '/' unescaped
+     * (both are legal literal query characters per RFC 3986), which would
+     * silently corrupt a token/path containing either once the browser parses
+     * it back — this is stricter on purpose.
+     */
     private static String encodeQueryComponent(String raw) {
-        return raw == null ? "" : UriUtils.encodeQueryParam(raw, StandardCharsets.UTF_8);
+        return raw == null ? "" : URLEncoder.encode(raw, StandardCharsets.UTF_8);
     }
 }

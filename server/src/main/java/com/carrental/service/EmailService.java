@@ -24,6 +24,7 @@ public class EmailService {
 
     private final SmtpMailService smtpMailService;
     private final EmailTemplateRenderer emailTemplateRenderer;
+    private final EmailActionUrlBuilder actionUrlBuilder;
 
     /** Builds a template-variable map, silently skipping any null values (Thymeleaf treats a missing key as null anyway). */
     private static Map<String, Object> vars(Object... keyValuePairs) {
@@ -103,7 +104,7 @@ public class EmailService {
      */
     @Deprecated
     public void sendPasswordResetEmail(String toEmail, String resetToken, String frontendUrl) {
-        String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
+        String resetLink = actionUrlBuilder.passwordResetUrl(resetToken);
         String subject = "Password Reset Request";
         String body = buildPasswordResetEmail(resetLink);
         deliver(smtpMailService.sendPlatform(toEmail, subject, body), toEmail, subject);
@@ -120,7 +121,7 @@ public class EmailService {
      * Sends an email verification email with a verification link, addressed by name.
      */
     public void sendVerificationEmail(String toEmail, String firstName, String verificationToken, String frontendUrl) {
-        String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
+        String verifyLink = actionUrlBuilder.emailVerificationUrl(verificationToken);
         String subject = "Verify your email address - Innovacar";
         String htmlBody = emailTemplateRenderer.render("verify-email", vars(
                 "firstName", displayName(firstName), "verificationUrl", verifyLink));
@@ -175,7 +176,7 @@ public class EmailService {
      * Sends a welcome email after successful registration.
      */
     public void sendWelcomeEmail(String toEmail, String firstName) {
-        sendWelcomeEmail(toEmail, firstName, null, null, null);
+        sendWelcomeEmail(toEmail, firstName, null, null, actionUrlBuilder.dashboardUrl());
     }
 
     /**

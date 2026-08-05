@@ -50,6 +50,7 @@ public class AuthService {
     private final RateLimitService         rateLimitService;
     private final RefreshTokenService      refreshTokenService;
     private final EmailService             emailService;
+    private final EmailActionUrlBuilder    emailActionUrlBuilder;
     private final SmtpMailService          smtpMailService;
     private final SessionService           sessionService;
     private final PasswordPolicyService    passwordPolicyService;
@@ -307,7 +308,7 @@ public class AuthService {
         emailService.sendWelcomeEmail(user.getEmail(), user.getFirstName(),
                 tenant.getPlanName(),
                 tenant.getTrialEndDate() != null ? tenant.getTrialEndDate().toString() : null,
-                frontendUrl + "/dashboard");
+                emailActionUrlBuilder.dashboardUrl());
 
         return buildAuthResponse(user);
     }

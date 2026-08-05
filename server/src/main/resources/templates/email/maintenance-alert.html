@@ -16,7 +16,9 @@
     <p th:if="${dueDate}" style="margin:2px 0;font-size:14px;">Due date: <strong th:text="${dueDate}">—</strong></p>
   </div>
 
-  <div th:replace="~{email/fragments/button :: button(label=${'View maintenance'}, url=${dashboardUrl})}" th:if="${dashboardUrl}"></div>
+  <th:block th:if="${dashboardUrl}">
+    <div th:replace="~{email/fragments/button :: button(label=${'View maintenance'}, url=${dashboardUrl})}"></div>
+  </th:block>
 </div>
 </body>
 </html>

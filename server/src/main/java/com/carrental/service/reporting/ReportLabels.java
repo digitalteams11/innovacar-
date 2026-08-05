@@ -64,7 +64,8 @@ public final class ReportLabels {
             entry("field.change_vs_previous", "vs periode precedente", "vs previous period", "مقارنة بالفترة السابقة"),
             entry("footer.confidential", "Confidentiel - usage interne uniquement", "Confidential - internal use only", "سري - للاستخدام الداخلي فقط"),
             entry("footer.report_id", "Rapport N", "Report ID", "رقم التقرير"),
-            entry("footer.page", "Page", "Page", "صفحة")
+            entry("footer.page", "Page", "Page", "صفحة"),
+            entry("button.viewReport", "Voir le rapport", "View report", "عرض التقرير")
     );
 
     public static String get(String key, String language) {

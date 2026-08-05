@@ -72,6 +72,7 @@ public class ReportGenerationService {
     private final ReportPdfStorage pdfStorage;
     private final SmtpMailService smtpMailService;
     private final com.carrental.service.EmailTemplateRenderer emailTemplateRenderer;
+    private final com.carrental.service.EmailActionUrlBuilder emailActionUrlBuilder;
     private final ObjectMapper objectMapper;
 
     public enum SkipReason {
@@ -397,9 +398,15 @@ public class ReportGenerationService {
     private String emailBody(Tenant tenant, Report report) {
         String periodLabel = report.getPeriodStart().toLocalDate() + " - " + report.getPeriodEnd().toLocalDate().minusDays(1);
         String templateName = report.getReportType() == ReportType.MONTHLY ? "monthly-report" : "yearly-report";
+        // The CTA must open this exact report in the report archive, not the generic
+        // dashboard — a mislabeled "Open dashboard" button that actually opened an
+        // unrelated page (or, before this fix, silently never rendered at all because
+        // th:if="${dashboardUrl}" saw an always-null variable) was the reported bug.
         return emailTemplateRenderer.render(templateName, java.util.Map.of(
                 "tenantName", tenant != null && tenant.getName() != null ? tenant.getName() : "there",
-                "periodLabel", periodLabel));
+                "periodLabel", periodLabel,
+                "reportUrl", emailActionUrlBuilder.reportArchiveUrl(report.getId()),
+                "buttonLabel", ReportLabels.get("button.viewReport", report.getLanguage())));
     }
 
     private String safeMessage(Exception e) {

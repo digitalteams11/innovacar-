@@ -125,6 +125,18 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 // not ProtectedRoute, so this blocked-agency gate never applies to it at all.
 const ALWAYS_ALLOWED_PATHS_WHEN_BLOCKED = ['/subscription', '/settings', '/account-suspended'];
 
+/**
+ * Stashes the route the visitor was trying to reach so Login can send them
+ * back to it (see Login.tsx's navigateByRole) — reuses the same sessionStorage
+ * key/format AuthContext's triggerSessionExpired already writes on a mid-
+ * session 401, so both paths (email deep-link while logged out, session
+ * expiring while browsing) converge on one restore mechanism.
+ */
+function stashIntendedRoute(location: ReturnType<typeof useLocation>) {
+  const route = `${location.pathname}${location.search}` || '/dashboard';
+  if (route !== '/login') sessionStorage.setItem('postLoginRedirect', route);
+}
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, isSuperAdmin, loading } = useAuth();
   const location = useLocation();
@@ -133,7 +145,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     <PremiumLoader fullScreen />
   );
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) { stashIntendedRoute(location); return <Navigate to="/login" replace />; }
   if (isSuperAdmin) return <Navigate to="/super-admin" replace />;
 
   const blocked = user?.accountAccess?.canUsePlatform === false;
@@ -159,12 +171,13 @@ const AuthOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 
 const SuperAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isSuperAdmin, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) return (
     <PremiumLoader fullScreen />
   );
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) { stashIntendedRoute(location); return <Navigate to="/login" replace />; }
   if (!isSuperAdmin) return <Navigate to="/" replace />;
 
   return (

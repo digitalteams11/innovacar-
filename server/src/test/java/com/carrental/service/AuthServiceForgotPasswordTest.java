@@ -38,6 +38,7 @@ class AuthServiceForgotPasswordTest {
     private final RateLimitService rateLimitService = mock(RateLimitService.class);
     private final RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
     private final EmailService emailService = mock(EmailService.class);
+    private final EmailActionUrlBuilder emailActionUrlBuilder = new EmailActionUrlBuilder("https://innovacar.app");
     private final SmtpMailService smtpMailService = mock(SmtpMailService.class);
     private final SessionService sessionService = mock(SessionService.class);
     private final PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
@@ -57,7 +58,7 @@ class AuthServiceForgotPasswordTest {
         authService = new AuthService(
                 tenantRepository, userRepository, refreshTokenRepository, passwordResetTokenRepository,
                 emailVerificationTokenRepository, passwordEncoder, jwtTokenProvider, authenticationManager,
-                rateLimitService, refreshTokenService, emailService, smtpMailService, sessionService,
+                rateLimitService, refreshTokenService, emailService, emailActionUrlBuilder, smtpMailService, sessionService,
                 passwordPolicyService, deviceSecurityService, twoFactorService, emailOtpService,
                 employeeRepository, rolePermissionService, subscriptionPlanRepository, subscriptionService,
                 // Synchronous "executor" so the async email dispatch runs inline and
@@ -175,7 +176,7 @@ class AuthServiceForgotPasswordTest {
         AuthService serviceWithTrackedExecutor = new AuthService(
                 tenantRepository, userRepository, refreshTokenRepository, passwordResetTokenRepository,
                 emailVerificationTokenRepository, passwordEncoder, jwtTokenProvider, authenticationManager,
-                rateLimitService, refreshTokenService, emailService, smtpMailService, sessionService,
+                rateLimitService, refreshTokenService, emailService, emailActionUrlBuilder, smtpMailService, sessionService,
                 passwordPolicyService, deviceSecurityService, twoFactorService, emailOtpService,
                 employeeRepository, rolePermissionService, subscriptionPlanRepository, subscriptionService,
                 trackingExecutor);

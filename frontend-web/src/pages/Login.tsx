@@ -119,13 +119,28 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  /** Same-origin-only guard: a relative path starting with a single '/' and no scheme — never an absolute/external URL. */
+  const isSafeInternalPath = (path: string) =>
+    path.startsWith('/') && !path.startsWith('//') && !path.includes('://');
+
   const navigateByRole = (role: string) => {
+    // Transactional emails (report/dashboard/invoice/etc. links) route an
+    // unauthenticated click through /#/login?returnTo=<path> — see
+    // EmailActionUrlBuilder.withLoginReturnTo on the backend. Takes priority
+    // over the session-expired stash below since it reflects what the user
+    // just explicitly clicked this session.
+    const returnTo = searchParams.get('returnTo');
+    if (returnTo && isSafeInternalPath(returnTo)) {
+      navigate(returnTo);
+      return;
+    }
+
     // Session-expired flow stashes the route the user was on so "Sign in
     // again" lands them back where they left off instead of the dashboard.
     const savedRedirect = sessionStorage.getItem('postLoginRedirect');
     if (savedRedirect) {
       sessionStorage.removeItem('postLoginRedirect');
-      if (savedRedirect.startsWith('/') && !savedRedirect.startsWith('//')) {
+      if (isSafeInternalPath(savedRedirect)) {
         navigate(savedRedirect);
         return;
       }

@@ -25,7 +25,9 @@
     <p th:if="${trialEndDate}" style="margin:2px 0;font-size:14px;">Trial ends: <strong th:text="${trialEndDate}">—</strong></p>
   </div>
 
-  <div th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}"></div>
+  <th:block th:if="${dashboardUrl}">
+    <div th:replace="~{email/fragments/button :: button(label=${'Open dashboard'}, url=${dashboardUrl})}"></div>
+  </th:block>
 </div>
 </body>
 </html>

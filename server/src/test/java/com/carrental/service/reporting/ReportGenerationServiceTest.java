@@ -6,6 +6,7 @@ import com.carrental.repository.ReportEmailAttemptRepository;
 import com.carrental.repository.ReportPreferencesRepository;
 import com.carrental.repository.ReportRepository;
 import com.carrental.repository.TenantRepository;
+import com.carrental.service.EmailActionUrlBuilder;
 import com.carrental.service.EmailTemplateRenderer;
 import com.carrental.service.FeatureAccessService;
 import com.carrental.service.SmtpMailService;
@@ -52,7 +53,7 @@ class ReportGenerationServiceTest {
         return new ReportGenerationService(tenantRepository, reportRepository, preferencesRepository,
                 emailAttemptRepository, featureAccessService, periodResolver, calculationService,
                 deterministicSummaryService, aiReportSummaryService, pdfGenerator, pdfStorage, smtpMailService,
-                emailTemplateRenderer, objectMapper);
+                emailTemplateRenderer, new EmailActionUrlBuilder("https://innovacar.app"), objectMapper);
     }
 
     private Tenant tenant() {
