@@ -57,6 +57,12 @@ public class EmailTemplateService {
     public static final String KEY_GPS_GEOFENCE_ALERT        = "GPS_GEOFENCE_ALERT";
     public static final String KEY_GPS_MOVEMENT_ALERT        = "GPS_MOVEMENT_ALERT";
     public static final String KEY_INVOICE_SENT_CLIENT       = "INVOICE_SENT_CLIENT";
+    public static final String KEY_SUBSCRIPTION_ACTIVATED       = "SUBSCRIPTION_ACTIVATED";
+    public static final String KEY_SUBSCRIPTION_RENEWAL_UPCOMING = "SUBSCRIPTION_RENEWAL_UPCOMING";
+    public static final String KEY_SUBSCRIPTION_PAYMENT_FAILED_GRACE = "SUBSCRIPTION_PAYMENT_FAILED_GRACE";
+    public static final String KEY_SUBSCRIPTION_SUSPENSION_WARNING = "SUBSCRIPTION_SUSPENSION_WARNING";
+    public static final String KEY_SUBSCRIPTION_SUSPENDED       = "SUBSCRIPTION_SUSPENDED";
+    public static final String KEY_SUBSCRIPTION_REACTIVATED     = "SUBSCRIPTION_REACTIVATED";
 
     // ── Startup seeding ───────────────────────────────────────────────────────
 
@@ -226,6 +232,12 @@ public class EmailTemplateService {
     // ── Default template builders ─────────────────────────────────────────────
 
     private List<EmailTemplate> buildAllDefaults() {
+        List<EmailTemplate> defaults = new ArrayList<>(buildAllDefaultsCore());
+        defaults.addAll(buildAllDefaultsExtra());
+        return defaults;
+    }
+
+    private List<EmailTemplate> buildAllDefaultsCore() {
         return List.of(
             buildWelcomeAgency(),
             buildWelcomeEmployee(),
@@ -246,13 +258,36 @@ public class EmailTemplateService {
         );
     }
 
+    /**
+     * Additional defaults kept in a second list (rather than folded into
+     * {@link #buildAllDefaults()} directly) so the many language variants of
+     * the subscription-lifecycle emails below don't have to be threaded
+     * one-by-one through that flat {@code List.of(...)} — each
+     * {@code buildXyz()} here returns all of its language rows at once.
+     */
+    private List<EmailTemplate> buildAllDefaultsExtra() {
+        List<EmailTemplate> all = new ArrayList<>();
+        all.addAll(buildSubscriptionActivated());
+        all.addAll(buildSubscriptionRenewalUpcoming());
+        all.addAll(buildSubscriptionPaymentFailedGrace());
+        all.addAll(buildSubscriptionSuspensionWarning());
+        all.addAll(buildSubscriptionSuspended());
+        all.addAll(buildSubscriptionReactivated());
+        return all;
+    }
+
     private EmailTemplate tpl(String key, String type, String name, String subject,
+                               String htmlBody, String plainBody) {
+        return tpl(key, type, name, "EN", subject, htmlBody, plainBody);
+    }
+
+    private EmailTemplate tpl(String key, String type, String name, String language, String subject,
                                String htmlBody, String plainBody) {
         return EmailTemplate.builder()
                 .templateKey(key)
                 .type(type)
                 .name(name)
-                .language("EN")
+                .language(language)
                 .subject(subject)
                 .bodyHtml(htmlBody)
                 .bodyText(plainBody)
@@ -840,6 +875,497 @@ View on GPS dashboard: {{dashboardUrl}}
                 "GPS — Movement Alert",
                 "GPS movement detected — {{vehicleName}}",
                 body, plain);
+    }
+
+    // ── Subscription lifecycle emails (Innovacar Complete) — EN/FR/AR ─────────
+
+    // O. SUBSCRIPTION_ACTIVATED ────────────────────────────────────────────────
+    private List<EmailTemplate> buildSubscriptionActivated() {
+        List<EmailTemplate> list = new ArrayList<>();
+
+        String bodyEn = shell(
+            "Welcome to Innovacar Complete",
+            "Your subscription is now active.",
+            para("Hello " + bold("{{agencyName}}") + ",")
+          + para("Thank you — your payment was received and " + bold("Innovacar Complete") + " is now active on your account.")
+          + infoBox(
+              "&#127775; " + bold("Plan:") + " {{planName}}",
+              "&#128197; " + bold("Renews on:") + " {{periodEndDate}}"
+            )
+          + cta("Open My Dashboard", "{{dashboardUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Thank you for choosing Innovacar.</span>")
+        );
+        String plainEn = """
+Hello {{agencyName}},
+
+Thank you — your payment was received and Innovacar Complete is now active on your account.
+
+Plan: {{planName}}
+Renews on: {{periodEndDate}}
+
+Open your dashboard: {{dashboardUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_ACTIVATED, CAT_PAYMENT, "Subscription — Activated", "EN",
+                "Welcome to Innovacar Complete", bodyEn, plainEn));
+
+        String bodyFr = shell(
+            "Bienvenue dans Innovacar Complete",
+            "Votre abonnement est maintenant actif.",
+            para("Bonjour " + bold("{{agencyName}}") + ",")
+          + para("Merci — votre paiement a bien été reçu et " + bold("Innovacar Complete") + " est désormais actif sur votre compte.")
+          + infoBox(
+              "&#127775; " + bold("Formule :") + " {{planName}}",
+              "&#128197; " + bold("Renouvellement le :") + " {{periodEndDate}}"
+            )
+          + cta("Accéder à mon tableau de bord", "{{dashboardUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Merci de votre confiance envers Innovacar.</span>")
+        );
+        String plainFr = """
+Bonjour {{agencyName}},
+
+Merci — votre paiement a bien été reçu et Innovacar Complete est désormais actif sur votre compte.
+
+Formule : {{planName}}
+Renouvellement le : {{periodEndDate}}
+
+Accéder à votre tableau de bord : {{dashboardUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_ACTIVATED, CAT_PAYMENT, "Subscription — Activated", "FR",
+                "Bienvenue dans Innovacar Complete", bodyFr, plainFr));
+
+        String bodyAr = shell(
+            "مرحبًا بك في Innovacar Complete",
+            "تم تفعيل اشتراكك الآن.",
+            para("مرحبًا " + bold("{{agencyName}}") + "،")
+          + para("شكرًا لك — تم استلام دفعتك وتم الآن تفعيل " + bold("Innovacar Complete") + " على حسابك.")
+          + infoBox(
+              "&#127775; " + bold("الخطة:") + " {{planName}}",
+              "&#128197; " + bold("تاريخ التجديد:") + " {{periodEndDate}}"
+            )
+          + cta("فتح لوحة التحكم", "{{dashboardUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">شكرًا لاختيارك Innovacar.</span>")
+        );
+        String plainAr = """
+مرحبًا {{agencyName}}،
+
+شكرًا لك — تم استلام دفعتك وتم الآن تفعيل Innovacar Complete على حسابك.
+
+الخطة: {{planName}}
+تاريخ التجديد: {{periodEndDate}}
+
+فتح لوحة التحكم: {{dashboardUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_ACTIVATED, CAT_PAYMENT, "Subscription — Activated", "AR",
+                "مرحبًا بك في Innovacar Complete", bodyAr, plainAr));
+
+        return list;
+    }
+
+    // P. SUBSCRIPTION_RENEWAL_UPCOMING ─────────────────────────────────────────
+    private List<EmailTemplate> buildSubscriptionRenewalUpcoming() {
+        List<EmailTemplate> list = new ArrayList<>();
+
+        String bodyEn = shell(
+            "Your Subscription Renews Soon",
+            "Innovacar Complete renews in {{daysRemaining}} day(s).",
+            para("Hello " + bold("{{agencyName}}") + ",")
+          + para("Your " + bold("Innovacar Complete") + " subscription renews in " + bold("{{daysRemaining}} day(s)") + ".")
+          + infoBox(
+              "&#127775; " + bold("Plan:") + " {{planName}}",
+              "&#128197; " + bold("Renewal date:") + " {{periodEndDate}}"
+            )
+          + cta("Manage My Subscription", "{{subscriptionUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">No action is required if your payment method is up to date.</span>")
+        );
+        String plainEn = """
+Hello {{agencyName}},
+
+Your Innovacar Complete subscription renews in {{daysRemaining}} day(s), on {{periodEndDate}}.
+
+Manage your subscription: {{subscriptionUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_RENEWAL_UPCOMING, CAT_PAYMENT, "Subscription — Renewal Upcoming", "EN",
+                "Your Innovacar Complete subscription renews in {{daysRemaining}} day(s)", bodyEn, plainEn));
+
+        String bodyFr = shell(
+            "Votre abonnement se renouvelle bientôt",
+            "Innovacar Complete se renouvelle dans {{daysRemaining}} jour(s).",
+            para("Bonjour " + bold("{{agencyName}}") + ",")
+          + para("Votre abonnement " + bold("Innovacar Complete") + " se renouvelle dans " + bold("{{daysRemaining}} jours") + ".")
+          + infoBox(
+              "&#127775; " + bold("Formule :") + " {{planName}}",
+              "&#128197; " + bold("Date de renouvellement :") + " {{periodEndDate}}"
+            )
+          + cta("Gérer mon abonnement", "{{subscriptionUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Aucune action n'est requise si votre moyen de paiement est à jour.</span>")
+        );
+        String plainFr = """
+Bonjour {{agencyName}},
+
+Votre abonnement Innovacar Complete se renouvelle dans {{daysRemaining}} jours, le {{periodEndDate}}.
+
+Gérer votre abonnement : {{subscriptionUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_RENEWAL_UPCOMING, CAT_PAYMENT, "Subscription — Renewal Upcoming", "FR",
+                "Votre abonnement Innovacar Complete se renouvelle dans {{daysRemaining}} jours", bodyFr, plainFr));
+
+        String bodyAr = shell(
+            "سيتم تجديد اشتراكك قريبًا",
+            "يتم تجديد Innovacar Complete خلال {{daysRemaining}} يوم.",
+            para("مرحبًا " + bold("{{agencyName}}") + "،")
+          + para("سيتم تجديد اشتراكك في " + bold("Innovacar Complete") + " خلال " + bold("{{daysRemaining}} يوم") + ".")
+          + infoBox(
+              "&#127775; " + bold("الخطة:") + " {{planName}}",
+              "&#128197; " + bold("تاريخ التجديد:") + " {{periodEndDate}}"
+            )
+          + cta("إدارة اشتراكي", "{{subscriptionUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">لا حاجة لأي إجراء إذا كانت وسيلة الدفع محدّثة.</span>")
+        );
+        String plainAr = """
+مرحبًا {{agencyName}}،
+
+سيتم تجديد اشتراكك في Innovacar Complete خلال {{daysRemaining}} يوم، بتاريخ {{periodEndDate}}.
+
+إدارة اشتراكك: {{subscriptionUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_RENEWAL_UPCOMING, CAT_PAYMENT, "Subscription — Renewal Upcoming", "AR",
+                "سيتم تجديد اشتراكك في Innovacar Complete خلال {{daysRemaining}} يوم", bodyAr, plainAr));
+
+        return list;
+    }
+
+    // Q. SUBSCRIPTION_PAYMENT_FAILED_GRACE ─────────────────────────────────────
+    private List<EmailTemplate> buildSubscriptionPaymentFailedGrace() {
+        List<EmailTemplate> list = new ArrayList<>();
+
+        String bodyEn = shell(
+            "Payment Pending",
+            "We couldn't confirm your last payment.",
+            para("Hello " + bold("{{agencyName}}") + ",")
+          + para("We were unable to confirm your payment. Your access remains active for " + bold("{{graceDays}} day(s)") + " while we retry.")
+          + alertBox(
+              "&#9203; " + bold("Access remains active until:") + " {{gracePeriodEndDate}}",
+              "&#9888; " + bold("After this date, access will be suspended.")
+            )
+          + cta("Update Payment Method", "{{checkoutUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Need help? Contact support anytime.</span>")
+        );
+        String plainEn = """
+Hello {{agencyName}},
+
+Your payment could not be confirmed. Your access remains active for {{graceDays}} day(s), until {{gracePeriodEndDate}}.
+
+Update your payment method: {{checkoutUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_PAYMENT_FAILED_GRACE, CAT_PAYMENT, "Subscription — Payment Failed (Grace Started)", "EN",
+                "Payment pending — action needed", bodyEn, plainEn));
+
+        String bodyFr = shell(
+            "Paiement en attente",
+            "Votre paiement n'a pas pu être confirmé.",
+            para("Bonjour " + bold("{{agencyName}}") + ",")
+          + para("Votre paiement n'a pas pu être confirmé. Votre accès reste actif pendant " + bold("{{graceDays}} jours") + " le temps que nous réessayions.")
+          + alertBox(
+              "&#9203; " + bold("Accès actif jusqu'au :") + " {{gracePeriodEndDate}}",
+              "&#9888; " + bold("Passé ce délai, votre accès sera suspendu.")
+            )
+          + cta("Mettre à jour mon paiement", "{{checkoutUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Besoin d'aide ? Contactez le support à tout moment.</span>")
+        );
+        String plainFr = """
+Bonjour {{agencyName}},
+
+Votre paiement n'a pas pu être confirmé. Votre accès reste actif pendant {{graceDays}} jours, jusqu'au {{gracePeriodEndDate}}.
+
+Mettre à jour votre moyen de paiement : {{checkoutUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_PAYMENT_FAILED_GRACE, CAT_PAYMENT, "Subscription — Payment Failed (Grace Started)", "FR",
+                "Paiement en attente — action requise", bodyFr, plainFr));
+
+        String bodyAr = shell(
+            "الدفع قيد الانتظار",
+            "لم نتمكن من تأكيد آخر عملية دفع.",
+            para("مرحبًا " + bold("{{agencyName}}") + "،")
+          + para("لم نتمكن من تأكيد دفعتك. يبقى وصولك نشطًا لمدة " + bold("{{graceDays}} يوم") + " بينما نعيد المحاولة.")
+          + alertBox(
+              "&#9203; " + bold("الوصول نشط حتى:") + " {{gracePeriodEndDate}}",
+              "&#9888; " + bold("بعد هذا التاريخ، سيتم تعليق الوصول.")
+            )
+          + cta("تحديث وسيلة الدفع", "{{checkoutUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">هل تحتاج مساعدة؟ تواصل مع الدعم في أي وقت.</span>")
+        );
+        String plainAr = """
+مرحبًا {{agencyName}}،
+
+لم نتمكن من تأكيد دفعتك. يبقى وصولك نشطًا لمدة {{graceDays}} يوم، حتى {{gracePeriodEndDate}}.
+
+تحديث وسيلة الدفع: {{checkoutUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_PAYMENT_FAILED_GRACE, CAT_PAYMENT, "Subscription — Payment Failed (Grace Started)", "AR",
+                "الدفع قيد الانتظار — إجراء مطلوب", bodyAr, plainAr));
+
+        return list;
+    }
+
+    // R. SUBSCRIPTION_SUSPENSION_WARNING ───────────────────────────────────────
+    private List<EmailTemplate> buildSubscriptionSuspensionWarning() {
+        List<EmailTemplate> list = new ArrayList<>();
+
+        String bodyEn = shell(
+            "Your Access Will Be Suspended Tomorrow",
+            "Final notice — please act now.",
+            para("Hello " + bold("{{agencyName}}") + ",")
+          + para("This is a final reminder: we still have not been able to confirm your payment.")
+          + dangerBox(
+              "&#128683; " + bold("Access will be suspended on:") + " {{suspensionDate}}",
+              "&#9888; Pay now to keep your account fully active."
+            )
+          + cta("Pay Now", "{{checkoutUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Your data will not be lost even if suspended.</span>")
+        );
+        String plainEn = """
+Hello {{agencyName}},
+
+FINAL NOTICE: we still have not been able to confirm your payment.
+Your access will be suspended on {{suspensionDate}} unless you pay now.
+
+Pay now: {{checkoutUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_SUSPENSION_WARNING, CAT_PAYMENT, "Subscription — Suspension Warning", "EN",
+                "Your access will be suspended tomorrow", bodyEn, plainEn));
+
+        String bodyFr = shell(
+            "Votre accès sera suspendu demain",
+            "Dernier avertissement — merci d'agir maintenant.",
+            para("Bonjour " + bold("{{agencyName}}") + ",")
+          + para("Ceci est un dernier rappel : nous n'avons toujours pas pu confirmer votre paiement.")
+          + dangerBox(
+              "&#128683; " + bold("Votre accès sera suspendu le :") + " {{suspensionDate}}",
+              "&#9888; Payez maintenant pour garder votre compte pleinement actif."
+            )
+          + cta("Payer maintenant", "{{checkoutUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Vos données ne seront pas perdues, même en cas de suspension.</span>")
+        );
+        String plainFr = """
+Bonjour {{agencyName}},
+
+DERNIER AVERTISSEMENT : nous n'avons toujours pas pu confirmer votre paiement.
+Votre accès sera suspendu le {{suspensionDate}} si vous ne payez pas maintenant.
+
+Payer maintenant : {{checkoutUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_SUSPENSION_WARNING, CAT_PAYMENT, "Subscription — Suspension Warning", "FR",
+                "Votre accès sera suspendu demain", bodyFr, plainFr));
+
+        String bodyAr = shell(
+            "سيتم تعليق وصولك غدًا",
+            "إشعار أخير — يرجى اتخاذ إجراء الآن.",
+            para("مرحبًا " + bold("{{agencyName}}") + "،")
+          + para("هذا تذكير أخير: لم نتمكن حتى الآن من تأكيد دفعتك.")
+          + dangerBox(
+              "&#128683; " + bold("سيتم تعليق الوصول بتاريخ:") + " {{suspensionDate}}",
+              "&#9888; ادفع الآن للحفاظ على تفعيل حسابك بالكامل."
+            )
+          + cta("ادفع الآن", "{{checkoutUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">لن تُفقد بياناتك حتى في حال التعليق.</span>")
+        );
+        String plainAr = """
+مرحبًا {{agencyName}}،
+
+إشعار أخير: لم نتمكن حتى الآن من تأكيد دفعتك.
+سيتم تعليق وصولك بتاريخ {{suspensionDate}} ما لم تدفع الآن.
+
+ادفع الآن: {{checkoutUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_SUSPENSION_WARNING, CAT_PAYMENT, "Subscription — Suspension Warning", "AR",
+                "سيتم تعليق وصولك غدًا", bodyAr, plainAr));
+
+        return list;
+    }
+
+    // S. SUBSCRIPTION_SUSPENDED ─────────────────────────────────────────────────
+    private List<EmailTemplate> buildSubscriptionSuspended() {
+        List<EmailTemplate> list = new ArrayList<>();
+
+        String bodyEn = shell(
+            "Your Subscription Is Suspended",
+            "Your data is safe and preserved.",
+            para("Hello " + bold("{{agencyName}}") + ",")
+          + para("Your " + bold("Innovacar Complete") + " subscription is now suspended because we could not confirm payment.")
+          + infoBox("&#128274; Your data is preserved. Reactivate Innovacar Complete to regain access.")
+          + cta("Reactivate My Subscription", "{{reactivateUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Questions? We are happy to help.</span>")
+        );
+        String plainEn = """
+Hello {{agencyName}},
+
+Your Innovacar Complete subscription is now suspended because we could not confirm payment.
+Your data is preserved. Reactivate Innovacar Complete to regain access.
+
+Reactivate: {{reactivateUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_SUSPENDED, CAT_PAYMENT, "Subscription — Suspended", "EN",
+                "Your subscription is suspended", bodyEn, plainEn));
+
+        String bodyFr = shell(
+            "Votre abonnement est suspendu",
+            "Vos données sont en sécurité et conservées.",
+            para("Bonjour " + bold("{{agencyName}}") + ",")
+          + para("Votre abonnement " + bold("Innovacar Complete") + " est désormais suspendu car nous n'avons pas pu confirmer le paiement.")
+          + infoBox("&#128274; Vos données sont conservées. Réactivez Innovacar Complete pour retrouver l'accès.")
+          + cta("Réactiver mon abonnement", "{{reactivateUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Des questions ? Nous sommes là pour vous aider.</span>")
+        );
+        String plainFr = """
+Bonjour {{agencyName}},
+
+Votre abonnement Innovacar Complete est suspendu. Vos données sont conservées.
+Réactivez Innovacar Complete pour retrouver l'accès.
+
+Réactiver : {{reactivateUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_SUSPENDED, CAT_PAYMENT, "Subscription — Suspended", "FR",
+                "Votre abonnement est suspendu", bodyFr, plainFr));
+
+        String bodyAr = shell(
+            "تم تعليق اشتراكك",
+            "بياناتك آمنة ومحفوظة.",
+            para("مرحبًا " + bold("{{agencyName}}") + "،")
+          + para("تم الآن تعليق اشتراكك في " + bold("Innovacar Complete") + " لأننا لم نتمكن من تأكيد الدفع.")
+          + infoBox("&#128274; بياناتك محفوظة. أعد تفعيل Innovacar Complete لاستعادة الوصول.")
+          + cta("إعادة تفعيل اشتراكي", "{{reactivateUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">هل لديك أسئلة؟ يسعدنا مساعدتك.</span>")
+        );
+        String plainAr = """
+مرحبًا {{agencyName}}،
+
+تم تعليق اشتراكك في Innovacar Complete. بياناتك محفوظة.
+أعد تفعيل Innovacar Complete لاستعادة الوصول.
+
+إعادة التفعيل: {{reactivateUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_SUSPENDED, CAT_PAYMENT, "Subscription — Suspended", "AR",
+                "تم تعليق اشتراكك", bodyAr, plainAr));
+
+        return list;
+    }
+
+    // T. SUBSCRIPTION_REACTIVATED ───────────────────────────────────────────────
+    private List<EmailTemplate> buildSubscriptionReactivated() {
+        List<EmailTemplate> list = new ArrayList<>();
+
+        String bodyEn = shell(
+            "You're Back!",
+            "Innovacar Complete is active again.",
+            para("Hello " + bold("{{agencyName}}") + ",")
+          + para("Great news — your " + bold("Innovacar Complete") + " subscription is active again.")
+          + infoBox(
+              "&#127775; " + bold("Plan:") + " {{planName}}",
+              "&#128197; " + bold("Renews on:") + " {{periodEndDate}}"
+            )
+          + cta("Open My Dashboard", "{{dashboardUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Thank you for staying with Innovacar.</span>")
+        );
+        String plainEn = """
+Hello {{agencyName}},
+
+Great news — your Innovacar Complete subscription is active again.
+
+Plan: {{planName}}
+Renews on: {{periodEndDate}}
+
+Open your dashboard: {{dashboardUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_REACTIVATED, CAT_PAYMENT, "Subscription — Reactivated", "EN",
+                "Your Innovacar Complete subscription is active again", bodyEn, plainEn));
+
+        String bodyFr = shell(
+            "Vous êtes de retour !",
+            "Innovacar Complete est de nouveau actif.",
+            para("Bonjour " + bold("{{agencyName}}") + ",")
+          + para("Bonne nouvelle — votre abonnement " + bold("Innovacar Complete") + " est de nouveau actif.")
+          + infoBox(
+              "&#127775; " + bold("Formule :") + " {{planName}}",
+              "&#128197; " + bold("Renouvellement le :") + " {{periodEndDate}}"
+            )
+          + cta("Accéder à mon tableau de bord", "{{dashboardUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">Merci de rester fidèle à Innovacar.</span>")
+        );
+        String plainFr = """
+Bonjour {{agencyName}},
+
+Bonne nouvelle — votre abonnement Innovacar Complete est de nouveau actif.
+
+Formule : {{planName}}
+Renouvellement le : {{periodEndDate}}
+
+Accéder à votre tableau de bord : {{dashboardUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_REACTIVATED, CAT_PAYMENT, "Subscription — Reactivated", "FR",
+                "Votre abonnement Innovacar Complete est de nouveau actif", bodyFr, plainFr));
+
+        String bodyAr = shell(
+            "لقد عدت!",
+            "Innovacar Complete نشط من جديد.",
+            para("مرحبًا " + bold("{{agencyName}}") + "،")
+          + para("خبر سار — تم تفعيل اشتراكك في " + bold("Innovacar Complete") + " من جديد.")
+          + infoBox(
+              "&#127775; " + bold("الخطة:") + " {{planName}}",
+              "&#128197; " + bold("تاريخ التجديد:") + " {{periodEndDate}}"
+            )
+          + cta("فتح لوحة التحكم", "{{dashboardUrl}}")
+          + para("<span style=\"font-size:13px;color:#94a3b8;\">شكرًا لبقائك مع Innovacar.</span>")
+        );
+        String plainAr = """
+مرحبًا {{agencyName}}،
+
+خبر سار — تم تفعيل اشتراكك في Innovacar Complete من جديد.
+
+الخطة: {{planName}}
+تاريخ التجديد: {{periodEndDate}}
+
+فتح لوحة التحكم: {{dashboardUrl}}
+
+— Innovacar / Innovax Technologies
+""";
+        list.add(tpl(KEY_SUBSCRIPTION_REACTIVATED, CAT_PAYMENT, "Subscription — Reactivated", "AR",
+                "اشتراكك في Innovacar Complete نشط من جديد", bodyAr, plainAr));
+
+        return list;
     }
 
     // ── Variable definitions per template key ─────────────────────────────────

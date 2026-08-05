@@ -99,4 +99,10 @@ public class EmailLog {
     public static final String TYPE_TRIAL_REMINDER                = "TRIAL_REMINDER";
     public static final String TYPE_TRIAL_EXPIRED                 = "TRIAL_EXPIRED";
     public static final String TYPE_INVOICE_SENT_CLIENT            = "INVOICE_SENT_CLIENT";
+    public static final String TYPE_SUBSCRIPTION_ACTIVATED         = "SUBSCRIPTION_ACTIVATED";
+    public static final String TYPE_SUBSCRIPTION_RENEWAL_UPCOMING  = "SUBSCRIPTION_RENEWAL_UPCOMING";
+    public static final String TYPE_SUBSCRIPTION_PAYMENT_FAILED_GRACE = "SUBSCRIPTION_PAYMENT_FAILED_GRACE";
+    public static final String TYPE_SUBSCRIPTION_SUSPENSION_WARNING = "SUBSCRIPTION_SUSPENSION_WARNING";
+    public static final String TYPE_SUBSCRIPTION_SUSPENDED         = "SUBSCRIPTION_SUSPENDED";
+    public static final String TYPE_SUBSCRIPTION_REACTIVATED       = "SUBSCRIPTION_REACTIVATED";
 }

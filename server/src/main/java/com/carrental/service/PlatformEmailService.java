@@ -854,6 +854,206 @@ public class PlatformEmailService {
         log.info("[EMAIL] {} tenantId={} to={} status={}", EmailLog.TYPE_TRIAL_EXPIRED, tenantId, tenantEmail, status);
     }
 
+    // ── Renewal / grace-period emails ─────────────────────────────────────────
+    // Implemented following the sendTrialReminder/sendTrialExpired shape:
+    // resolve tenant language + owner email, render via EmailTemplateService,
+    // send via SmtpMailService#sendForTenant, log the result to EmailLog.
+    // Every CTA URL comes from EmailActionUrlBuilder — never string concat.
+
+    /** Subscription activated for the first time (new paid checkout, not a reactivation). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendSubscriptionActivated(Tenant tenant) {
+        if (tenant == null) {
+            log.warn("[EMAIL] sendSubscriptionActivated: tenant is null");
+            return;
+        }
+        String toEmail = tenant.getEmail();
+        if (!StringUtils.hasText(toEmail)) {
+            log.warn("[EMAIL] sendSubscriptionActivated: tenantId={} has no email", tenant.getId());
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("agencyName", StringUtils.hasText(tenant.getName()) ? tenant.getName() : "there");
+        vars.put("planName", StringUtils.hasText(tenant.getPlanName()) ? tenant.getPlanName() : "Innovacar Complete");
+        vars.put("periodEndDate", formatInTenantZone(tenant.getCurrentPeriodEnd(), tenant));
+        vars.put("dashboardUrl", emailActionUrlBuilder.dashboardUrl());
+
+        sendSubscriptionLifecycleEmail(tenant, toEmail,
+                EmailTemplateService.KEY_SUBSCRIPTION_ACTIVATED, EmailLog.TYPE_SUBSCRIPTION_ACTIVATED,
+                "Welcome to Innovacar Complete", vars);
+    }
+
+    /** Renewal reminder, {@code daysRemaining} in {5,3,1}. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendRenewalUpcoming(Tenant tenant, long daysRemaining) {
+        if (tenant == null) {
+            log.warn("[EMAIL] sendRenewalUpcoming: tenant is null");
+            return;
+        }
+        String toEmail = tenant.getEmail();
+        if (!StringUtils.hasText(toEmail)) {
+            log.warn("[EMAIL] sendRenewalUpcoming: tenantId={} has no email", tenant.getId());
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("agencyName", StringUtils.hasText(tenant.getName()) ? tenant.getName() : "there");
+        vars.put("planName", StringUtils.hasText(tenant.getPlanName()) ? tenant.getPlanName() : "Innovacar Complete");
+        vars.put("daysRemaining", String.valueOf(daysRemaining));
+        vars.put("periodEndDate", formatInTenantZone(tenant.getCurrentPeriodEnd(), tenant));
+        vars.put("subscriptionUrl", emailActionUrlBuilder.subscriptionUrl());
+
+        sendSubscriptionLifecycleEmail(tenant, toEmail,
+                EmailTemplateService.KEY_SUBSCRIPTION_RENEWAL_UPCOMING, EmailLog.TYPE_SUBSCRIPTION_RENEWAL_UPCOMING,
+                "Your subscription renews in " + daysRemaining + " day(s)", vars);
+    }
+
+    /** Payment failed — grace period just started. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendPaymentFailedGraceStarted(Tenant tenant) {
+        if (tenant == null) {
+            log.warn("[EMAIL] sendPaymentFailedGraceStarted: tenant is null");
+            return;
+        }
+        String toEmail = tenant.getEmail();
+        if (!StringUtils.hasText(toEmail)) {
+            log.warn("[EMAIL] sendPaymentFailedGraceStarted: tenantId={} has no email", tenant.getId());
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("agencyName", StringUtils.hasText(tenant.getName()) ? tenant.getName() : "there");
+        vars.put("graceDays", String.valueOf(graceDaysRemaining(tenant)));
+        vars.put("gracePeriodEndDate", formatInTenantZone(tenant.getGracePeriodEnd(), tenant));
+        vars.put("checkoutUrl", emailActionUrlBuilder.subscriptionUrl());
+
+        sendSubscriptionLifecycleEmail(tenant, toEmail,
+                EmailTemplateService.KEY_SUBSCRIPTION_PAYMENT_FAILED_GRACE, EmailLog.TYPE_SUBSCRIPTION_PAYMENT_FAILED_GRACE,
+                "Payment pending — action needed", vars);
+    }
+
+    /** Grace period ends within 24h — final warning before suspension. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendSuspensionWarning(Tenant tenant) {
+        if (tenant == null) {
+            log.warn("[EMAIL] sendSuspensionWarning: tenant is null");
+            return;
+        }
+        String toEmail = tenant.getEmail();
+        if (!StringUtils.hasText(toEmail)) {
+            log.warn("[EMAIL] sendSuspensionWarning: tenantId={} has no email", tenant.getId());
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("agencyName", StringUtils.hasText(tenant.getName()) ? tenant.getName() : "there");
+        vars.put("suspensionDate", formatInTenantZone(tenant.getGracePeriodEnd(), tenant));
+        vars.put("checkoutUrl", emailActionUrlBuilder.subscriptionUrl());
+
+        sendSubscriptionLifecycleEmail(tenant, toEmail,
+                EmailTemplateService.KEY_SUBSCRIPTION_SUSPENSION_WARNING, EmailLog.TYPE_SUBSCRIPTION_SUSPENSION_WARNING,
+                "Your access will be suspended tomorrow", vars);
+    }
+
+    /** Grace period elapsed — account just suspended. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendAccountSuspended(Tenant tenant) {
+        if (tenant == null) {
+            log.warn("[EMAIL] sendAccountSuspended: tenant is null");
+            return;
+        }
+        String toEmail = tenant.getEmail();
+        if (!StringUtils.hasText(toEmail)) {
+            log.warn("[EMAIL] sendAccountSuspended: tenantId={} has no email", tenant.getId());
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("agencyName", StringUtils.hasText(tenant.getName()) ? tenant.getName() : "there");
+        vars.put("reactivateUrl", emailActionUrlBuilder.subscriptionUrl());
+
+        sendSubscriptionLifecycleEmail(tenant, toEmail,
+                EmailTemplateService.KEY_SUBSCRIPTION_SUSPENDED, EmailLog.TYPE_SUBSCRIPTION_SUSPENDED,
+                "Your subscription is suspended", vars);
+    }
+
+    /** Tenant paid during grace or after suspension and is ACTIVE again. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendAccountReactivated(Tenant tenant) {
+        if (tenant == null) {
+            log.warn("[EMAIL] sendAccountReactivated: tenant is null");
+            return;
+        }
+        String toEmail = tenant.getEmail();
+        if (!StringUtils.hasText(toEmail)) {
+            log.warn("[EMAIL] sendAccountReactivated: tenantId={} has no email", tenant.getId());
+            return;
+        }
+
+        Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("agencyName", StringUtils.hasText(tenant.getName()) ? tenant.getName() : "there");
+        vars.put("planName", StringUtils.hasText(tenant.getPlanName()) ? tenant.getPlanName() : "Innovacar Complete");
+        vars.put("periodEndDate", formatInTenantZone(tenant.getCurrentPeriodEnd(), tenant));
+        vars.put("dashboardUrl", emailActionUrlBuilder.dashboardUrl());
+
+        sendSubscriptionLifecycleEmail(tenant, toEmail,
+                EmailTemplateService.KEY_SUBSCRIPTION_REACTIVATED, EmailLog.TYPE_SUBSCRIPTION_REACTIVATED,
+                "Your Innovacar Complete subscription is active again", vars);
+    }
+
+    /**
+     * Shared send/log plumbing for the six subscription-lifecycle emails above:
+     * renders the managed template (falling back to the given plain subject/body
+     * if no template row exists), sends via {@link SmtpMailService#sendForTenant},
+     * and writes the {@link EmailLog} row — same shape as {@link #sendTrialReminder}.
+     */
+    private void sendSubscriptionLifecycleEmail(Tenant tenant, String toEmail, String templateKey,
+                                                 String emailLogType, String fallbackSubject,
+                                                 Map<String, String> vars) {
+        Long tenantId = tenant.getId();
+        var rendered = emailTemplateService.render(templateKey, resolveTenantEmailLanguage(tenant), vars);
+        String subject = rendered.map(EmailTemplateService.RenderedEmail::subject)
+                .filter(StringUtils::hasText).orElse(fallbackSubject);
+        String htmlBody = rendered.map(EmailTemplateService.RenderedEmail::htmlBody)
+                .filter(StringUtils::hasText).orElse(null);
+        String plainBody = rendered.map(EmailTemplateService.RenderedEmail::plainBody)
+                .filter(StringUtils::hasText).orElse(subject);
+
+        SmtpMailService.SmtpResult result = smtpMailService.sendForTenant(tenantId, toEmail, subject, htmlBody, plainBody);
+        String status = result.sent() ? "SENT" : "FAILED";
+        String errorCode = result.sent() ? null : classifyError(result);
+        saveLog(null, tenantId, toEmail, emailLogType, subject, status, errorCode, truncate(result.errorMessage(), 900));
+        log.info("[EMAIL] {} tenantId={} to={} status={}", emailLogType, tenantId, toEmail, status);
+    }
+
+    /** Whole days remaining until {@code tenant.getGracePeriodEnd()}, floored at 0; used for the {{graceDays}} var. */
+    private long graceDaysRemaining(Tenant tenant) {
+        if (tenant.getGracePeriodEnd() == null) return 0;
+        long days = java.time.temporal.ChronoUnit.DAYS.between(LocalDateTime.now(), tenant.getGracePeriodEnd());
+        return Math.max(days, 0);
+    }
+
+    /**
+     * Formats a server-stored (UTC) {@link LocalDateTime} in the tenant's display
+     * timezone (see {@link Tenant#getTimezone()}), falling back to UTC for a
+     * missing/invalid zone id — matches {@code ReportPeriodResolver#resolveZone}'s
+     * existing fallback convention elsewhere in this codebase.
+     */
+    private String formatInTenantZone(LocalDateTime utcDateTime, Tenant tenant) {
+        if (utcDateTime == null) return "N/A";
+        java.time.ZoneId zone;
+        try {
+            zone = (tenant != null && StringUtils.hasText(tenant.getTimezone()))
+                    ? java.time.ZoneId.of(tenant.getTimezone())
+                    : java.time.ZoneOffset.UTC;
+        } catch (Exception e) {
+            zone = java.time.ZoneOffset.UTC;
+        }
+        java.time.ZonedDateTime zdt = utcDateTime.atZone(java.time.ZoneOffset.UTC).withZoneSameInstant(zone);
+        return zdt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+    }
+
     // ── Support Center emails ─────────────────────────────────────────────────
 
     /**
