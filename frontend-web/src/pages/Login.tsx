@@ -50,6 +50,8 @@ function GlassInput({
   required,
   rightElement,
   className,
+  autoComplete,
+  inputMode,
 }: {
   icon?: React.ElementType;
   type?: string;
@@ -59,6 +61,8 @@ function GlassInput({
   required?: boolean;
   rightElement?: React.ReactNode;
   className?: string;
+  autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -82,6 +86,8 @@ function GlassInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
         className="flex-1 bg-transparent border-none outline-none py-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -597,7 +603,7 @@ export default function Login() {
                     <>
                       <div>
                         <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('login.email')}</label>
-                        <GlassInput icon={Mail} type="email" value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder')} required />
+                        <GlassInput icon={Mail} type="email" value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder')} autoComplete="username" inputMode="email" required />
                       </div>
 
                       <div>
@@ -614,6 +620,7 @@ export default function Login() {
                           onChange={setPassword}
                           placeholder="********"
                           required
+                          autoComplete="current-password"
                           rightElement={
                             <button type="button" onClick={() => setShowPassword(v => !v)} className="text-[var(--text-muted)] hover:text-brand-500 transition-colors" tabIndex={-1}>
                               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

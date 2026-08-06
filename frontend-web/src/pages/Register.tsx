@@ -37,10 +37,11 @@ function AnimatedBackground() {
    GLASS INPUT
    ============================================ */
 function GlassInput({
-  icon: Icon, type = 'text', value, onChange, placeholder, required, rightElement, className, minLength,
+  icon: Icon, type = 'text', value, onChange, placeholder, required, rightElement, className, minLength, autoComplete, inputMode,
 }: {
   icon?: React.ElementType; type?: string; value: string; onChange: (v: string) => void;
   placeholder: string; required?: boolean; rightElement?: React.ReactNode; className?: string; minLength?: number;
+  autoComplete?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -60,6 +61,7 @@ function GlassInput({
       <input
         type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} required={required} minLength={minLength}
+        autoComplete={autoComplete} inputMode={inputMode}
         className="flex-1 bg-transparent border-none outline-none py-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       />
@@ -146,29 +148,70 @@ export default function Register() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Deliberately permissive — accepts any personal or professional domain
+  // (gmail.com, outlook.com, a company's own domain, etc). Only checks basic
+  // shape; the backend's @Email annotation is the source of truth.
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const mapRegisterError = (err: any): string => {
+    const data = err?.response?.data;
+    if (!data) return t('register.failed', 'Registration failed. Please try again.');
+    if (data.errorCode === 'EMAIL_ALREADY_EXISTS') {
+      return t('register.emailAlreadyRegistered', 'This email is already registered.');
+    }
+    if (data.errorCode === 'VALIDATION_ERROR') {
+      const details = data.details || {};
+      if (details.email) return t('register.emailInvalid', 'Please enter a valid email address.');
+      if (details.firstName) return t('register.firstNameRequired', 'Please enter your first name.');
+      if (details.lastName) return t('register.lastNameRequired', 'Please enter your last name.');
+    }
+    return t('register.failed', 'Registration failed. Please try again.');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
+    // Trim before validating/submitting — never store a name/email that's
+    // blank-but-for-whitespace, and never alter the name's own characters
+    // (Unicode/accents/Arabic script pass through untouched).
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedFirstName) {
+      setError(t('register.firstNameRequired', 'Please enter your first name.'));
+      return;
+    }
+    if (!trimmedLastName) {
+      setError(t('register.lastNameRequired', 'Please enter your last name.'));
+      return;
+    }
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setError(t('register.emailInvalid', 'Please enter a valid email address.'));
+      return;
+    }
     if (password !== confirmPassword) {
       setError(t('register.passwordMismatch', 'Passwords do not match'));
-      setLoading(false);
       return;
     }
     if (!isPasswordStrong(password)) {
       setError(t('errors.strongPassword', 'Use at least 8 characters with uppercase, lowercase, a number, and a symbol.'));
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
-      await register({ email, password, firstName, lastName });
+      await register({
+        email: trimmedEmail.toLowerCase(),
+        password,
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+      });
       showToast(t('register.success', 'Account created successfully!'), 'success');
       navigate('/');
     } catch (err: any) {
-      const msg = err?.response?.data?.message || t('register.failed', 'Registration failed. Please try again.');
-      setError(msg);
+      setError(mapRegisterError(err));
     } finally {
       setLoading(false);
     }
@@ -238,17 +281,41 @@ export default function Register() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('register.firstName', 'First Name')}</label>
-                  <GlassInput value={firstName} onChange={setFirstName} placeholder="John" required />
+                  <GlassInput
+                    value={firstName}
+                    onChange={setFirstName}
+                    placeholder={t('register.firstNamePlaceholder', 'Your first name')}
+                    autoComplete="given-name"
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('register.lastName', 'Last Name')}</label>
-                  <GlassInput value={lastName} onChange={setLastName} placeholder="Doe" required />
+                  <GlassInput
+                    value={lastName}
+                    onChange={setLastName}
+                    placeholder={t('register.lastNamePlaceholder', 'Your last name')}
+                    autoComplete="family-name"
+                    required
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('login.email', 'Email Address')}</label>
-                <GlassInput icon={Mail} type="email" value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder', 'name@company.com')} required />
+                <GlassInput
+                  icon={Mail}
+                  type="email"
+                  value={email}
+                  onChange={setEmail}
+                  placeholder={t('login.emailPlaceholder', 'you@example.com')}
+                  autoComplete="email"
+                  inputMode="email"
+                  required
+                />
+                <p className="mt-1.5 ms-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {t('login.emailHelper', 'You can use a personal or business email.')}
+                </p>
               </div>
 
               <div>
@@ -261,6 +328,7 @@ export default function Register() {
                   placeholder="••••••••"
                   required
                   minLength={8}
+                  autoComplete="new-password"
                   rightElement={
                     <button type="button" onClick={() => setShowPassword(v => !v)} className="text-[var(--text-muted)] hover:text-brand-500 transition-colors" tabIndex={-1}>
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -279,6 +347,7 @@ export default function Register() {
                   onChange={setConfirmPassword}
                   placeholder="••••••••"
                   required
+                  autoComplete="new-password"
                   rightElement={
                     <button type="button" onClick={() => setShowConfirmPassword(v => !v)} className="text-[var(--text-muted)] hover:text-brand-500 transition-colors" tabIndex={-1}>
                       {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}

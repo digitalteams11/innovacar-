@@ -70,7 +70,9 @@ export default function ForgotPassword() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   className={inputCls}
-                  placeholder={t('login.emailPlaceholder', 'name@company.com')}
+                  placeholder={t('login.emailPlaceholder', 'you@example.com')}
+                  autoComplete="email"
+                  inputMode="email"
                   required
                 />
               </div>
