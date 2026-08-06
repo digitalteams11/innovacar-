@@ -63,6 +63,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -77,6 +79,8 @@ class SuperAdminControllerTest {
     @Mock private ContractRepository contractRepository;
     @Mock private InvoiceRepository invoiceRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private com.carrental.repository.ClientRepository clientRepository;
+    @Mock private com.carrental.repository.ClientIdentityDocumentRepository clientIdentityDocumentRepository;
     @Mock private EmployeeRepository employeeRepository;
     @Mock private GpsSettingsRepository gpsSettingsRepository;
     @Mock private GpsAlertRepository gpsAlertRepository;
@@ -638,6 +642,173 @@ class SuperAdminControllerTest {
         assertThat(request.getReviewNote()).isEqualTo("Retention offer accepted");
         assertThat(body).containsEntry("success", true);
         verify(cancellationRequestRepository).save(request);
+    }
+
+    // ── Agency archive/delete lifecycle ─────────────────────────────────────
+
+    @Test
+    void archiveAgency_setsArchiveFieldsAndAccountState() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals").email("owner@atlas.example").build();
+        when(tenantRepository.findById(5L)).thenReturn(Optional.of(tenant));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Map<String, Object> body = superAdminController.archiveAgency(5L, Map.of("reason", "Non-payment")).getBody();
+
+        assertThat(tenant.isArchived()).isTrue();
+        assertThat(tenant.getArchivedBy()).isEqualTo("superadmin@test.com");
+        assertThat(tenant.getArchiveReason()).isEqualTo("Non-payment");
+        assertThat(tenant.getAccountState()).isEqualTo("ARCHIVED");
+        assertThat(tenant.isAccountBlocked()).isTrue();
+        assertThat(body).containsEntry("success", true);
+        verify(auditLogRepository).save(any());
+    }
+
+    @Test
+    void archiveAgency_protectedSystemTenant_throwsWithoutModifying() {
+        Tenant systemTenant = Tenant.builder().id(1L).name("System").email("system@innovax.tech").build();
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(systemTenant));
+
+        assertThatThrownBy(() -> superAdminController.archiveAgency(1L, null))
+                .isInstanceOf(com.carrental.exception.ClientValidationException.class)
+                .hasMessageContaining("protected");
+        assertThat(systemTenant.isArchived()).isFalse();
+        verify(tenantRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void restoreAgency_clearsArchiveFieldsAndAccountState() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals")
+                .archivedAt(LocalDateTime.now()).archivedBy("superadmin@test.com").archiveReason("Non-payment")
+                .accountState("ARCHIVED").build();
+        when(tenantRepository.findById(5L)).thenReturn(Optional.of(tenant));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        superAdminController.restoreAgency(5L);
+
+        assertThat(tenant.isArchived()).isFalse();
+        assertThat(tenant.getArchivedBy()).isNull();
+        assertThat(tenant.getAccountState()).isNull();
+        assertThat(tenant.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        verify(auditLogRepository).save(any());
+    }
+
+    @Test
+    void deletionImpact_missingAgency_returns404() {
+        when(tenantRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> superAdminController.getDeletionImpact(999L))
+                .isInstanceOf(com.carrental.exception.ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deletionImpact_activeSubscriptionAndContracts_returnsBlockingReasons() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals")
+                .status(SubscriptionStatus.ACTIVE).subscriptionActive(true).build();
+        when(tenantRepository.findById(5L)).thenReturn(Optional.of(tenant));
+        when(userRepository.countByTenantId(5L)).thenReturn(2L);
+        when(vehicleRepository.countByTenantId(5L)).thenReturn(3L);
+        when(clientRepository.countByTenantId(5L)).thenReturn(10L);
+        when(reservationRepository.countByTenantId(5L)).thenReturn(20L);
+        when(contractRepository.countByTenantId(5L)).thenReturn(15L);
+        when(contractRepository.countByTenantIdAndStatusIn(eq(5L), any())).thenReturn(2L);
+        when(paymentRepository.countByTenantId(5L)).thenReturn(12L);
+        when(invoiceRepository.countByTenantId(5L)).thenReturn(8L);
+        when(clientIdentityDocumentRepository.countByTenantId(5L)).thenReturn(4L);
+
+        com.carrental.dto.superadmin.AgencyDeletionImpactDto impact =
+                superAdminController.getDeletionImpact(5L).getBody();
+
+        assertThat(impact.isCanDeleteImmediately()).isFalse();
+        assertThat(impact.getBlockingReasons())
+                .extracting(com.carrental.dto.superadmin.AgencyDeletionImpactDto.BlockingReason::getCode)
+                .contains("ACTIVE_SUBSCRIPTION", "ACTIVE_CONTRACTS", "EXISTING_USERS");
+    }
+
+    @Test
+    void deletionImpact_emptyAgency_canDeleteImmediately() {
+        Tenant tenant = Tenant.builder().id(6L).name("Empty Agency")
+                .status(SubscriptionStatus.TRIAL_EXPIRED).subscriptionActive(false).build();
+        when(tenantRepository.findById(6L)).thenReturn(Optional.of(tenant));
+        when(userRepository.countByTenantId(6L)).thenReturn(0L);
+        when(vehicleRepository.countByTenantId(6L)).thenReturn(0L);
+        when(clientRepository.countByTenantId(6L)).thenReturn(0L);
+        when(reservationRepository.countByTenantId(6L)).thenReturn(0L);
+        when(contractRepository.countByTenantId(6L)).thenReturn(0L);
+        when(contractRepository.countByTenantIdAndStatusIn(eq(6L), any())).thenReturn(0L);
+        when(paymentRepository.countByTenantId(6L)).thenReturn(0L);
+        when(invoiceRepository.countByTenantId(6L)).thenReturn(0L);
+        when(clientIdentityDocumentRepository.countByTenantId(6L)).thenReturn(0L);
+
+        com.carrental.dto.superadmin.AgencyDeletionImpactDto impact =
+                superAdminController.getDeletionImpact(6L).getBody();
+
+        assertThat(impact.isCanDeleteImmediately()).isTrue();
+        assertThat(impact.getBlockingReasons()).isEmpty();
+    }
+
+    @Test
+    void permanentDelete_wrongConfirmationName_returns422WithoutDeleting() {
+        Tenant tenant = Tenant.builder().id(6L).name("Empty Agency")
+                .status(SubscriptionStatus.TRIAL_EXPIRED).subscriptionActive(false).build();
+        when(tenantRepository.findById(6L)).thenReturn(Optional.of(tenant));
+
+        var response = superAdminController.permanentlyDeleteAgency(6L, Map.of("confirmName", "Wrong Name"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(422);
+        assertThat(response.getBody()).containsEntry("errorCode", "CONFIRMATION_INVALID");
+        verify(tenantRepository, org.mockito.Mockito.never()).delete(any());
+    }
+
+    @Test
+    void permanentDelete_populatedAgency_returns409WithBlockingReasons() {
+        Tenant tenant = Tenant.builder().id(5L).name("Atlas Rentals")
+                .status(SubscriptionStatus.ACTIVE).subscriptionActive(true).build();
+        when(tenantRepository.findById(5L)).thenReturn(Optional.of(tenant));
+        when(userRepository.countByTenantId(5L)).thenReturn(1L);
+        when(vehicleRepository.countByTenantId(5L)).thenReturn(0L);
+        when(clientRepository.countByTenantId(5L)).thenReturn(0L);
+        when(reservationRepository.countByTenantId(5L)).thenReturn(0L);
+        when(contractRepository.countByTenantId(5L)).thenReturn(0L);
+        when(contractRepository.countByTenantIdAndStatusIn(eq(5L), any())).thenReturn(0L);
+        when(paymentRepository.countByTenantId(5L)).thenReturn(0L);
+        when(invoiceRepository.countByTenantId(5L)).thenReturn(0L);
+        when(clientIdentityDocumentRepository.countByTenantId(5L)).thenReturn(0L);
+
+        var response = superAdminController.permanentlyDeleteAgency(5L, Map.of("confirmName", "Atlas Rentals"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).containsEntry("errorCode", "AGENCY_HAS_DEPENDENT_DATA");
+        verify(tenantRepository, org.mockito.Mockito.never()).delete(any());
+    }
+
+    @Test
+    void permanentDelete_emptyAgencyWithCorrectConfirmation_deletesAndAudits() {
+        Tenant tenant = Tenant.builder().id(6L).name("Empty Agency")
+                .status(SubscriptionStatus.TRIAL_EXPIRED).subscriptionActive(false).build();
+        when(tenantRepository.findById(6L)).thenReturn(Optional.of(tenant));
+        when(userRepository.countByTenantId(6L)).thenReturn(0L);
+        when(vehicleRepository.countByTenantId(6L)).thenReturn(0L);
+        when(clientRepository.countByTenantId(6L)).thenReturn(0L);
+        when(reservationRepository.countByTenantId(6L)).thenReturn(0L);
+        when(contractRepository.countByTenantId(6L)).thenReturn(0L);
+        when(contractRepository.countByTenantIdAndStatusIn(eq(6L), any())).thenReturn(0L);
+        when(paymentRepository.countByTenantId(6L)).thenReturn(0L);
+        when(invoiceRepository.countByTenantId(6L)).thenReturn(0L);
+        when(clientIdentityDocumentRepository.countByTenantId(6L)).thenReturn(0L);
+
+        var response = superAdminController.permanentlyDeleteAgency(6L, Map.of("confirmName", "Empty Agency"));
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        verify(tenantRepository).delete(tenant);
+        verify(auditLogRepository).save(argThat(log -> "AGENCY_DELETION_COMPLETED".equals(log.getAction())));
+    }
+
+    @Test
+    void permanentDelete_missingAgency_returns404() {
+        when(tenantRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> superAdminController.permanentlyDeleteAgency(999L, Map.of("confirmName", "x")))
+                .isInstanceOf(com.carrental.exception.ResourceNotFoundException.class);
     }
 
     private Payment payment(String number, Tenant tenant, String amount, LocalDateTime paymentDate) {

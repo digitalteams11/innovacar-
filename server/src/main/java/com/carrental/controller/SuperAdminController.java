@@ -46,6 +46,8 @@ public class SuperAdminController {
     private final ContractRepository contractRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final ClientRepository clientRepository;
+    private final ClientIdentityDocumentRepository clientIdentityDocumentRepository;
     private final EmployeeRepository employeeRepository;
     private final GpsSettingsRepository gpsSettingsRepository;
     private final GpsAlertRepository gpsAlertRepository;
@@ -242,6 +244,10 @@ public class SuperAdminController {
                     map.put("country", t.getCountry());
                     map.put("status", t.getStatus());
                     map.put("verificationStatus", t.getVerificationStatus());
+                    map.put("archivedAt", t.getArchivedAt());
+                    map.put("archivedBy", t.getArchivedBy());
+                    map.put("archiveReason", t.getArchiveReason());
+                    map.put("accountState", t.getAccountState());
                     map.put("verifiedAt", t.getVerifiedAt());
                     map.put("planName", t.getPlanName());
                     map.put("subscriptionActive", t.isSubscriptionValid());
@@ -377,10 +383,190 @@ public class SuperAdminController {
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency status updated to " + newStatus));
     }
 
-    @DeleteMapping("/agencies/{id}")
-    public ResponseEntity<Map<String, Object>> deleteAgency(@PathVariable Long id) {
-        tenantRepository.deleteById(id);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Agency deleted successfully"));
+    /**
+     * Fixed literal identifying the platform's own system tenant (see
+     * {@code SuperAdminBootstrapRunner.SYSTEM_TENANT_EMAIL}) — never
+     * archivable or deletable through this controller.
+     */
+    private static final String PROTECTED_SYSTEM_TENANT_EMAIL = "system@innovax.tech";
+
+    /** Contract statuses that count as "still in progress" for deletion-impact purposes — mirrors DashboardIntelligenceService's convention. */
+    private static final List<ContractStatus> ACTIVE_CONTRACT_STATUSES =
+            List.of(ContractStatus.ACTIVE, ContractStatus.SIGNED, ContractStatus.PAID);
+
+    private boolean isProtectedAgency(Tenant t) {
+        return PROTECTED_SYSTEM_TENANT_EMAIL.equalsIgnoreCase(t.getEmail());
+    }
+
+    /**
+     * Real-database-count summary of what deleting this agency would touch.
+     * Used both to render the confirmation dialog before a permanent delete
+     * is attempted, and as the authoritative check {@link #permanentlyDeleteAgency}
+     * re-runs server-side (the frontend's copy of these counts is never trusted).
+     */
+    @GetMapping("/agencies/{id}/deletion-impact")
+    public ResponseEntity<AgencyDeletionImpactDto> getDeletionImpact(@PathVariable Long id) {
+        Tenant t = tenantRepository.findById(id)
+                .orElseThrow(() -> new com.carrental.exception.ResourceNotFoundException("Agency not found"));
+        return ResponseEntity.ok(computeDeletionImpact(t));
+    }
+
+    private AgencyDeletionImpactDto computeDeletionImpact(Tenant t) {
+        long users = userRepository.countByTenantId(t.getId());
+        long vehicles = vehicleRepository.countByTenantId(t.getId());
+        long clients = clientRepository.countByTenantId(t.getId());
+        long reservations = reservationRepository.countByTenantId(t.getId());
+        long contracts = contractRepository.countByTenantId(t.getId());
+        long activeContracts = contractRepository.countByTenantIdAndStatusIn(t.getId(), ACTIVE_CONTRACT_STATUSES);
+        long payments = paymentRepository.countByTenantId(t.getId());
+        long invoices = invoiceRepository.countByTenantId(t.getId());
+        long documents = clientIdentityDocumentRepository.countByTenantId(t.getId());
+        boolean activeSubscription = t.isSubscriptionValid();
+        boolean protectedAgency = isProtectedAgency(t);
+
+        List<AgencyDeletionImpactDto.BlockingReason> reasons = new ArrayList<>();
+        if (protectedAgency) {
+            reasons.add(AgencyDeletionImpactDto.BlockingReason.builder()
+                    .code("PROTECTED_AGENCY")
+                    .message("This agency is a protected system tenant and cannot be deleted.")
+                    .build());
+        }
+        if (activeSubscription) {
+            reasons.add(AgencyDeletionImpactDto.BlockingReason.builder()
+                    .code("ACTIVE_SUBSCRIPTION")
+                    .message("The agency still has an active subscription.")
+                    .build());
+        }
+        if (activeContracts > 0) {
+            reasons.add(AgencyDeletionImpactDto.BlockingReason.builder()
+                    .code("ACTIVE_CONTRACTS")
+                    .message("The agency has " + activeContracts + " active contract(s).")
+                    .build());
+        }
+        if (users > 0) {
+            reasons.add(AgencyDeletionImpactDto.BlockingReason.builder()
+                    .code("EXISTING_USERS")
+                    .message("The agency still has " + users + " user account(s).")
+                    .build());
+        }
+        if (vehicles > 0) {
+            reasons.add(AgencyDeletionImpactDto.BlockingReason.builder()
+                    .code("EXISTING_VEHICLES")
+                    .message("The agency still has " + vehicles + " vehicle(s) on file.")
+                    .build());
+        }
+        if (clients > 0) {
+            reasons.add(AgencyDeletionImpactDto.BlockingReason.builder()
+                    .code("EXISTING_CLIENTS")
+                    .message("The agency still has " + clients + " client record(s).")
+                    .build());
+        }
+        if (payments > 0 || invoices > 0) {
+            reasons.add(AgencyDeletionImpactDto.BlockingReason.builder()
+                    .code("EXISTING_FINANCIAL_RECORDS")
+                    .message("The agency has " + payments + " payment(s) and " + invoices + " invoice(s) that must be retained.")
+                    .build());
+        }
+
+        return AgencyDeletionImpactDto.builder()
+                .agencyId(t.getId())
+                .agencyName(t.getName())
+                .users(users).vehicles(vehicles).clients(clients)
+                .reservations(reservations).contracts(contracts).activeContracts(activeContracts)
+                .payments(payments).invoices(invoices).documents(documents)
+                .activeSubscription(activeSubscription)
+                .protectedAgency(protectedAgency)
+                .canDeleteImmediately(reasons.isEmpty())
+                .blockingReasons(reasons)
+                .build();
+    }
+
+    /**
+     * Safe reversible action that replaces the old raw-delete flow for a
+     * populated agency: blocks access (via {@code accountState = ARCHIVED},
+     * which {@link Tenant#isAccountBlocked()} already enforces everywhere)
+     * without touching a single business record.
+     */
+    @PostMapping("/agencies/{id}/archive")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> archiveAgency(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+        Tenant t = tenantRepository.findById(id)
+                .orElseThrow(() -> new com.carrental.exception.ResourceNotFoundException("Agency not found"));
+        if (isProtectedAgency(t)) {
+            throw new com.carrental.exception.ClientValidationException(
+                    "This agency is a protected system tenant and cannot be archived.", "PROTECTED_AGENCY");
+        }
+        String reason = body != null ? body.get("reason") : null;
+        t.setArchivedAt(LocalDateTime.now());
+        t.setArchivedBy(currentSuperAdminEmail());
+        t.setArchiveReason(reason);
+        t.setAccountState("ARCHIVED");
+        tenantRepository.save(t);
+        logAgencyAction(t, "AGENCY_ARCHIVED", "Agency archived" + (reason != null && !reason.isBlank() ? ": " + reason : ""));
+        return ResponseEntity.ok(Map.of("success", true, "message", "Agency archived successfully."));
+    }
+
+    /**
+     * Permanent, irreversible delete. Only proceeds when
+     * {@link #computeDeletionImpact} reports no blocking reasons at all —
+     * the frontend's own copy of the impact summary is never trusted, this
+     * re-checks server-side. Requires the caller to echo back the agency's
+     * exact current name as {@code confirmName} (mirrors the UI's
+     * type-to-confirm requirement, enforced here too so no other client of
+     * this endpoint can skip it).
+     */
+    @DeleteMapping("/agencies/{id}/permanent")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> permanentlyDeleteAgency(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+        Tenant t = tenantRepository.findById(id)
+                .orElseThrow(() -> new com.carrental.exception.ResourceNotFoundException("Agency not found"));
+
+        String confirmName = body != null ? body.get("confirmName") : null;
+        if (confirmName == null || !confirmName.trim().equals(t.getName())) {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", false);
+            response.put("errorCode", "CONFIRMATION_INVALID");
+            response.put("message", "Type the exact agency name to confirm permanent deletion.");
+            return ResponseEntity.unprocessableEntity().body(response);
+        }
+
+        AgencyDeletionImpactDto impact = computeDeletionImpact(t);
+        if (!impact.isCanDeleteImmediately()) {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", false);
+            response.put("errorCode", "AGENCY_HAS_DEPENDENT_DATA");
+            response.put("message", "Agency cannot be deleted because related active data exists.");
+            response.put("blockingReasons", impact.getBlockingReasons());
+            return ResponseEntity.status(409).body(response);
+        }
+
+        String agencyName = t.getName();
+        try {
+            tenantRepository.delete(t);
+            tenantRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Safety net for a dependency this endpoint's own count didn't know
+            // about (e.g. a table not yet covered by computeDeletionImpact) —
+            // never let a raw FK violation leak to the client as a 500.
+            log.warn("[AGENCY_DELETE] Blocked by unexpected FK constraint for tenantId={}: {}", id, e.getMessage());
+            logAgencyAction(t, "AGENCY_DELETION_FAILED", "Permanent deletion blocked by an unexpected data dependency: " + e.getMessage());
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", false);
+            response.put("errorCode", "AGENCY_HAS_DEPENDENT_DATA");
+            response.put("message", "Agency cannot be deleted because related active data exists.");
+            return ResponseEntity.status(409).body(response);
+        }
+
+        auditLogRepository.save(AuditLog.builder()
+                .action("AGENCY_DELETION_COMPLETED")
+                .entityType("TENANT_" + id)
+                .entityId(id)
+                .description("Agency '" + agencyName + "' permanently deleted")
+                .performedBy(currentSuperAdminEmail())
+                .tenantId(id)
+                .isSuccess(true)
+                .build());
+        return ResponseEntity.ok(Map.of("success", true, "message", "Agency deleted permanently."));
     }
 
     @GetMapping("/agencies/{id}/users")
@@ -1248,8 +1434,23 @@ public class SuperAdminController {
     public ResponseEntity<Map<String, Object>> restoreAgency(@PathVariable Long id) {
         Tenant t = tenantRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agency not found"));
+        boolean wasArchived = t.isArchived();
+        // Un-archive as well as un-suspend: clears both the archive-lifecycle
+        // fields and, when accountState was the manual "ARCHIVED" marker set
+        // by archiveAgency() (as opposed to a real billing BLOCKED/INACTIVE
+        // state), the accountState itself — otherwise isAccountBlocked()
+        // would keep reporting the agency as blocked after "restoring" it.
+        if (wasArchived) {
+            t.setArchivedAt(null);
+            t.setArchivedBy(null);
+            t.setArchiveReason(null);
+            if ("ARCHIVED".equalsIgnoreCase(t.getAccountState())) {
+                t.setAccountState(null);
+            }
+        }
         t.setStatus(SubscriptionStatus.ACTIVE);
         tenantRepository.save(t);
+        if (wasArchived) logAgencyAction(t, "AGENCY_RESTORED", "Agency restored from archive");
         return ResponseEntity.ok(Map.of("success", true, "message", "Agency restored"));
     }
 

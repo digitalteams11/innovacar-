@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { superAdminApi } from '../../api/superAdminApi';
+import { translateApiError } from '../../api/axios';
 import {
   Building2, Eye, Edit2, Plus, PauseCircle, PlayCircle,
-  Trash2, Users, Car, ShieldCheck, RotateCcw, Copy
+  Trash2, Users, Car, ShieldCheck, RotateCcw, Copy, Archive, Loader2
 } from 'lucide-react';
 import { PageHeader, SearchBar, FilterSelect, DataTable, Modal, FormField, TextInput, Badge, ActionMenu } from '../../components/superadmin';
+import AgencyDeleteModal from '../../components/superadmin/AgencyDeleteModal';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 
@@ -36,6 +38,8 @@ export default function SuperAdminAgencies() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingAgency, setEditingAgency] = useState<any>(null);
+  const [deleteTargetAgency, setDeleteTargetAgency] = useState<any>(null);
+  const [pendingActionRowId, setPendingActionRowId] = useState<number | null>(null);
   const [createForm, setCreateForm] = useState({
     name: '', email: '', phone: '', address: '', city: '', country: '', taxId: '',
   });
@@ -54,7 +58,7 @@ export default function SuperAdminAgencies() {
       setAgencies(res.data);
     } catch (err) {
       console.error(err);
-      showToast('Unable to load agencies. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
     } finally {
       setLoading(false);
     }
@@ -69,7 +73,7 @@ export default function SuperAdminAgencies() {
       await fetchAgencies();
     } catch (err) {
       console.error(err);
-      showToast('Unable to create agency. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
     }
   };
 
@@ -80,37 +84,55 @@ export default function SuperAdminAgencies() {
       showToast(`Agency ${status.toLowerCase()} successfully`, 'success');
     } catch (err) {
       console.error(err);
-      showToast('Unable to update status. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
     }
   };
 
-  const handleDelete = async (id: number) => {
+  // Opens the real deletion-impact/confirmation modal (AgencyDeleteModal)
+  // instead of the generic yes/no confirm() dialog — permanent agency
+  // deletion needs the impact summary + type-to-confirm safeguard, not a
+  // one-click confirmation.
+  const handleDeleteClick = (agency: any) => setDeleteTargetAgency(agency);
+
+  const handleDeleted = (id: number) => {
+    setAgencies((current) => current.filter((a) => a.id !== id));
+    showToast(t('superAdmin.agencies.deleteModal.success', 'Agency deleted permanently.'), 'success');
+  };
+
+  const handleArchive = async (agency: any) => {
     const confirmed = await confirm({
-      title: t('confirm.deleteItem.title', 'Delete this item?'),
-      description: t('superAdmin.agencies.confirmDelete'),
-      confirmLabel: t('common.delete', 'Delete'),
+      title: t('superAdmin.agencies.archiveConfirm.title', 'Archive this agency?'),
+      description: t('superAdmin.agencies.archiveConfirm.description',
+        'Users will no longer be able to log in. All data is preserved and the agency can be restored later.'),
+      confirmLabel: t('superAdmin.agencies.archive', 'Archive'),
       cancelLabel: t('actions.cancel', 'Cancel'),
       tone: 'danger',
     });
     if (!confirmed) return;
+    setPendingActionRowId(agency.id);
     try {
-      await superAdminApi.deleteAgency(id);
+      await superAdminApi.archiveAgency(agency.id);
       await fetchAgencies();
-      showToast('Agency deleted successfully', 'success');
+      showToast(t('superAdmin.agencies.archiveSuccess', 'Agency archived successfully.'), 'success');
     } catch (err) {
       console.error(err);
-      showToast('Unable to delete agency. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
+    } finally {
+      setPendingActionRowId(null);
     }
   };
 
   const handleRestore = async (id: number) => {
+    setPendingActionRowId(id);
     try {
       await superAdminApi.restoreAgency(id);
       await fetchAgencies();
       showToast('Agency restored successfully', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Unable to restore agency. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
+    } finally {
+      setPendingActionRowId(null);
     }
   };
 
@@ -121,7 +143,7 @@ export default function SuperAdminAgencies() {
       showToast('Agency verified successfully', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Unable to verify agency. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
     }
   };
 
@@ -140,7 +162,7 @@ export default function SuperAdminAgencies() {
       showToast('Agency duplicated successfully', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Unable to duplicate agency. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
     }
   };
 
@@ -157,7 +179,7 @@ export default function SuperAdminAgencies() {
       showToast('Agency updated successfully', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Unable to update agency. Please try again later.', 'error');
+      showToast(translateApiError(err, t), 'error');
     }
   };
 
@@ -191,7 +213,12 @@ export default function SuperAdminAgencies() {
       key: 'status',
       header: t('superAdmin.agencies.status_label'),
       render: (row: any) => (
-        <Badge variant={statusBadgeVariant[row.status] || 'default'}>{row.status}</Badge>
+        <div className="flex flex-col gap-1 items-start">
+          <Badge variant={statusBadgeVariant[row.status] || 'default'}>{row.status}</Badge>
+          {row.archivedAt && (
+            <Badge variant="default">{t('superAdmin.agencies.archived', 'Archived')}</Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -218,8 +245,11 @@ export default function SuperAdminAgencies() {
       key: 'actions',
       header: t('superAdmin.agencies.actions'),
       align: 'right' as const,
-      render: (row: any) => (
+      render: (row: any) => {
+        const rowBusy = pendingActionRowId === row.id;
+        return (
         <div className="flex items-center justify-end gap-1">
+          {rowBusy && <Loader2 size={14} className="animate-spin text-slate-400 me-1" />}
           <button onClick={() => navigate(`/super-admin/agencies/${row.id}`)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-brand-600 dark:hover:text-brand-400" title={t('superAdmin.agencies.view')}>
             <Eye size={16} />
           </button>
@@ -227,22 +257,25 @@ export default function SuperAdminAgencies() {
             <Edit2 size={16} />
           </button>
           {row.status !== 'SUSPENDED' ? (
-            <button onClick={() => handleUpdateStatus(row.id, 'SUSPENDED')} className="p-2 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors text-slate-400 hover:text-rose-600 dark:hover:text-rose-400" title={t('superAdmin.agencies.suspend')}>
+            <button disabled={rowBusy} onClick={() => handleUpdateStatus(row.id, 'SUSPENDED')} className="p-2 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-40" title={t('superAdmin.agencies.suspend')}>
               <PauseCircle size={16} />
             </button>
           ) : (
-            <button onClick={() => handleUpdateStatus(row.id, 'ACTIVE')} className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400" title={t('superAdmin.agencies.activate')}>
+            <button disabled={rowBusy} onClick={() => handleUpdateStatus(row.id, 'ACTIVE')} className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-40" title={t('superAdmin.agencies.activate')}>
               <PlayCircle size={16} />
             </button>
           )}
           <ActionMenu items={[
-            ...(row.verificationStatus === 'VERIFIED' ? [] : [{ label: 'Verify', onClick: () => handleVerify(row.id), icon: <ShieldCheck size={14} /> }]),
-            { label: 'Restore', onClick: () => handleRestore(row.id), icon: <RotateCcw size={14} /> },
-            { label: 'Duplicate', onClick: () => handleDuplicate(row), icon: <Copy size={14} /> },
-            { label: 'Delete', onClick: () => handleDelete(row.id), danger: true, icon: <Trash2 size={14} /> },
+            ...(row.verificationStatus === 'VERIFIED' ? [] : [{ label: t('superAdmin.agencies.verify', 'Verify'), onClick: () => handleVerify(row.id), icon: <ShieldCheck size={14} /> }]),
+            ...(row.archivedAt
+              ? [{ label: t('superAdmin.agencies.restore', 'Restore'), onClick: () => handleRestore(row.id), icon: <RotateCcw size={14} /> }]
+              : [{ label: t('superAdmin.agencies.archive', 'Archive'), onClick: () => handleArchive(row), icon: <Archive size={14} /> }]),
+            { label: t('superAdmin.agencies.duplicate', 'Duplicate'), onClick: () => handleDuplicate(row), icon: <Copy size={14} /> },
+            { label: t('superAdmin.agencies.deletePermanently', 'Delete permanently'), onClick: () => handleDeleteClick(row), danger: true, icon: <Trash2 size={14} /> },
           ]} />
         </div>
-      ),
+        );
+      },
     },
   ];
 
@@ -358,6 +391,13 @@ export default function SuperAdminAgencies() {
           ))}
         </div>
       </Modal>
+
+      <AgencyDeleteModal
+        isOpen={Boolean(deleteTargetAgency)}
+        onClose={() => setDeleteTargetAgency(null)}
+        agency={deleteTargetAgency}
+        onDeleted={handleDeleted}
+      />
     </div>
   );
 }

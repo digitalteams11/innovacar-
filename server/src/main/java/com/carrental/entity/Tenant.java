@@ -56,6 +56,30 @@ public class Tenant {
     @Column(name = "tax_id")
     private String taxId;
 
+    /** Registered legal name — may differ from the agency's public display name */
+    @Column(name = "legal_name")
+    private String legalName;
+
+    /** WhatsApp contact number, separate from the regular phone field */
+    @Column
+    private String whatsapp;
+
+    /** Moroccan "Identifiant Commun de l'Entreprise" */
+    @Column
+    private String ice;
+
+    /** Moroccan "Identifiant Fiscal" — column is if_number since IF is a reserved word */
+    @Column(name = "if_number")
+    private String ifNumber;
+
+    /** Moroccan "Registre de Commerce" number */
+    @Column(name = "rc_number")
+    private String rcNumber;
+
+    /** Named representative who signs contracts on the agency's behalf */
+    @Column(name = "representative_name")
+    private String representativeName;
+
     /** City */
     @Column
     private String city;
@@ -105,6 +129,26 @@ public class Tenant {
      */
     @Column(name = "account_state")
     private String accountState;
+
+    /**
+     * Archive lifecycle — a safe, reversible Super-Admin action distinct from
+     * both {@link #status} (billing) and {@link #accountState} (manual
+     * block). Archiving sets {@code accountState = "ARCHIVED"} (so
+     * {@link #isAccountBlocked()} and every existing enforcement path that
+     * already checks it pick it up for free) and additionally records these
+     * three fields so the UI/audit trail can show who archived the agency,
+     * when, and why — none of which the boolean-ish accountState alone can
+     * express. {@code archivedAt == null} is the source of truth for
+     * "not archived"; restoring an agency must clear all three.
+     */
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
+    @Column(name = "archived_by")
+    private String archivedBy;
+
+    @Column(name = "archive_reason", length = 500)
+    private String archiveReason;
 
     /** Verification lifecycle is separate from subscription/account status. */
     @Column(name = "verification_status")
@@ -306,10 +350,16 @@ public class Tenant {
      */
     public boolean isAccountBlocked() {
         if (accountState != null
-                && ("BLOCKED".equalsIgnoreCase(accountState) || "INACTIVE".equalsIgnoreCase(accountState))) {
+                && ("BLOCKED".equalsIgnoreCase(accountState) || "INACTIVE".equalsIgnoreCase(accountState)
+                    || "ARCHIVED".equalsIgnoreCase(accountState))) {
             return true;
         }
         return status == SubscriptionStatus.SUSPENDED;
+    }
+
+    /** {@code archivedAt} is the single source of truth for the archive state — see the field's Javadoc. */
+    public boolean isArchived() {
+        return archivedAt != null;
     }
 
     /**

@@ -98,14 +98,17 @@ public class SubscriptionFilter extends OncePerRequestFilter {
                 String status = tenant.getAccountState() != null
                         ? tenant.getAccountState().toUpperCase()
                         : (tenant.getStatus() == null ? "SUSPENDED" : tenant.getStatus().name());
-                String errorCode = "BLOCKED".equals(status) ? "AGENCY_BLOCKED" : "AGENCY_SUSPENDED";
+                String errorCode = "BLOCKED".equals(status) ? "AGENCY_BLOCKED"
+                        : "ARCHIVED".equals(status) ? "AGENCY_ARCHIVED"
+                        : "AGENCY_SUSPENDED";
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("agencyStatus", status);
                 data.put("subscriptionStatus", status);
                 data.put("allowedPages", List.of("billing", "support", "profile"));
-                writeJson(response, HttpServletResponse.SC_FORBIDDEN, errorCode,
-                        "Your agency account is suspended. Please contact Innovax Technologies or update your subscription.",
-                        data);
+                String message = "ARCHIVED".equals(status)
+                        ? "This agency has been archived. Please contact Innovax Technologies to restore access."
+                        : "Your agency account is suspended. Please contact Innovax Technologies or update your subscription.";
+                writeJson(response, HttpServletResponse.SC_FORBIDDEN, errorCode, message, data);
                 return;
             }
 

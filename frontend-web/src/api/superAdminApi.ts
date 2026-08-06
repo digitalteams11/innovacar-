@@ -18,7 +18,11 @@ export const superAdminApi = {
   updateAgency: (id: number, data: any) => api.put(`/super-admin/agencies/${id}`, data),
   updateAgencyStatus: (id: number, status: string) =>
     api.patch(`/super-admin/agencies/${id}/status`, { status }),
-  deleteAgency: (id: number) => api.delete(`/super-admin/agencies/${id}`),
+  /** Permanent, irreversible delete — only succeeds when the server-side deletion-impact check reports no blocking reasons. */
+  deleteAgencyPermanently: (id: number, confirmName: string) =>
+    api.delete(`/super-admin/agencies/${id}/permanent`, { data: { confirmName } }),
+  getAgencyDeletionImpact: (id: number) => api.get(`/super-admin/agencies/${id}/deletion-impact`),
+  archiveAgency: (id: number, reason?: string) => api.post(`/super-admin/agencies/${id}/archive`, { reason }),
   restoreAgency: (id: number) => api.post(`/super-admin/agencies/${id}/restore`),
   verifyAgency: (id: number) => api.post(`/super-admin/agencies/${id}/verify`),
   resetAgencyVerification: (id: number) => api.post(`/super-admin/agencies/${id}/verification/reset`),

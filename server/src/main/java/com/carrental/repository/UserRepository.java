@@ -26,6 +26,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** All users belonging to a tenant — used by admin list endpoint. */
     List<User> findAllByTenantId(Long tenantId);
 
+    long countByTenantId(Long tenantId);
+
     /** All users of a given role within a tenant. */
     List<User> findAllByTenantIdAndRole(Long tenantId, Role role);
 

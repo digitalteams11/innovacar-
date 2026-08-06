@@ -76,7 +76,9 @@ public class MeController {
             accountAccess.put("canAccessBilling", true);
             accountAccess.put("canAccessSupport", true);
             accountAccess.put("blockedReason", canUsePlatform ? null
-                    : blocked ? ("BLOCKED".equalsIgnoreCase(agencyStatus) ? "AGENCY_BLOCKED" : "AGENCY_SUSPENDED")
+                    : blocked ? ("BLOCKED".equalsIgnoreCase(agencyStatus) ? "AGENCY_BLOCKED"
+                            : "ARCHIVED".equalsIgnoreCase(agencyStatus) ? "AGENCY_ARCHIVED"
+                            : "AGENCY_SUSPENDED")
                     : "SUBSCRIPTION_" + subscriptionStatus);
 
             body.put("agencyId", tenant.getId());

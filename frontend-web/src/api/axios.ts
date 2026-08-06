@@ -164,7 +164,7 @@ function dispatchAuthErrorOnce() {
 // same toast/redirect. Dispatch the lock-state update once per occurrence of
 // each code instead of on every single failed request.
 const ACCOUNT_BLOCK_ERROR_CODES = new Set([
-  'AGENCY_SUSPENDED', 'AGENCY_BLOCKED', 'SUBSCRIPTION_EXPIRED', 'SUBSCRIPTION_SUSPENDED', 'PLAN_LIMIT_REACHED',
+  'AGENCY_SUSPENDED', 'AGENCY_BLOCKED', 'AGENCY_ARCHIVED', 'SUBSCRIPTION_EXPIRED', 'SUBSCRIPTION_SUSPENDED', 'PLAN_LIMIT_REACHED',
 ]);
 let lastDispatchedBlockCode: string | null = null;
 
