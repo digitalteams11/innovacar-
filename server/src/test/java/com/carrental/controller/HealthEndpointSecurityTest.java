@@ -11,6 +11,7 @@ import com.carrental.security.SubscriptionFilter;
 import com.carrental.security.UserDetailsServiceImpl;
 import com.carrental.security.oauth2.CookieOAuth2AuthorizationRequestRepository;
 import com.carrental.security.oauth2.CustomOidcUserService;
+import com.carrental.security.oauth2.DesktopOAuthOriginFilter;
 import com.carrental.security.oauth2.OAuth2LoginFailureHandler;
 import com.carrental.security.oauth2.OAuth2LoginSuccessHandler;
 import org.junit.jupiter.api.BeforeEach;
@@ -186,6 +187,11 @@ class HealthEndpointSecurityTest {
         @Bean
         SubscriptionFilter subscriptionFilter() {
             return new SubscriptionFilter();
+        }
+
+        @Bean
+        DesktopOAuthOriginFilter desktopOAuthOriginFilter() {
+            return new DesktopOAuthOriginFilter(false);
         }
 
         @Bean

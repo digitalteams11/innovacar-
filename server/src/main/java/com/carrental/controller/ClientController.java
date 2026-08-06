@@ -196,6 +196,7 @@ public class ClientController {
      * "Client Details" dossier modal.
      */
     @GetMapping("/{id}/details")
+    @PreAuthorize("@rolePermissionService.has('CLIENT_DETAILS_VIEW')")
     public ResponseEntity<java.util.Map<String, Object>> getClientDetails(@PathVariable Long id) {
         return ResponseEntity.ok(clientService.getClientDetails(id));
     }

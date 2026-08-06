@@ -318,29 +318,48 @@ public class RolePermissionService {
         return Optional.empty();
     }
 
+    /**
+     * Sub-permissions of CLIENT_VIEW that ride along with it by default (the
+     * Client Details dossier's tabs) — any role whose default set below
+     * grants CLIENT_VIEW also gets these, so introducing the finer-grained
+     * codes never regresses a role that could already open a client's
+     * profile. CLIENT_IDENTITY_REVEAL is deliberately excluded — it stays
+     * elevated/admin-only by default, matching VIEW_CLIENT_DOCUMENTS_FULL.
+     */
+    private static final Set<String> CLIENT_VIEW_SUB_PERMISSIONS = Set.of(
+            "CLIENT_DETAILS_VIEW", "CLIENT_IDENTITY_VIEW", "CLIENT_DOCUMENT_VIEW", "CLIENT_ACTIVITY_VIEW");
+
     private boolean defaultEnabled(Role role, String code) {
         String c = canonical(code);
         if (role == Role.AGENCY_OWNER || role == Role.ADMIN) return true;
-        if (role == Role.MANAGER) return Set.of(
+        if (role == Role.MANAGER) return withClientSubPermissions(Set.of(
                 "DASHBOARD_VIEW", "VEHICLE_VIEW", "VEHICLE_CREATE", "VEHICLE_UPDATE", "CLIENT_VIEW", "CLIENT_CREATE", "CLIENT_UPDATE",
                 "RESERVATION_VIEW", "RESERVATION_CREATE", "RESERVATION_UPDATE", "RESERVATION_CANCEL", "CONTRACT_VIEW", "CONTRACT_CREATE",
                 "CONTRACT_UPDATE", "CONTRACT_EXPORT_PDF", "CONTRACT_QR_SIGNATURE", "CONTRACT_INSPECTION_MEDIA", "PAYMENT_VIEW",
-                "PAYMENT_CREATE", "PAYMENT_STATS_VIEW", "INVOICE_VIEW", "REPORT_VIEW", "GPS_VIEW", "EMPLOYEE_VIEW").contains(c);
-        if (role == Role.AGENT || role == Role.RECEPTIONIST || role == Role.EMPLOYEE) return Set.of(
+                "PAYMENT_CREATE", "PAYMENT_STATS_VIEW", "INVOICE_VIEW", "REPORT_VIEW", "GPS_VIEW", "EMPLOYEE_VIEW")).contains(c);
+        if (role == Role.AGENT || role == Role.RECEPTIONIST || role == Role.EMPLOYEE) return withClientSubPermissions(Set.of(
                 "DASHBOARD_VIEW", "VEHICLE_VIEW", "CLIENT_VIEW", "CLIENT_CREATE", "RESERVATION_VIEW", "RESERVATION_CREATE",
                 "RESERVATION_UPDATE", "CONTRACT_VIEW", "CONTRACT_CREATE", "CONTRACT_EXPORT_PDF", "CONTRACT_QR_SIGNATURE",
-                "CONTRACT_INSPECTION_MEDIA", "PAYMENT_VIEW", "PAYMENT_CREATE").contains(c);
-        if (role == Role.ACCOUNTANT) return Set.of(
+                "CONTRACT_INSPECTION_MEDIA", "PAYMENT_VIEW", "PAYMENT_CREATE")).contains(c);
+        if (role == Role.ACCOUNTANT) return withClientSubPermissions(Set.of(
                 "DASHBOARD_VIEW", "CLIENT_VIEW", "CONTRACT_VIEW", "PAYMENT_VIEW", "PAYMENT_CREATE", "PAYMENT_UPDATE",
-                "PAYMENT_STATS_VIEW", "INVOICE_VIEW", "INVOICE_EXPORT", "REPORT_VIEW", "REPORT_FINANCIAL").contains(c);
+                "PAYMENT_STATS_VIEW", "INVOICE_VIEW", "INVOICE_EXPORT", "REPORT_VIEW", "REPORT_FINANCIAL")).contains(c);
         if (role == Role.FLEET_MANAGER) return Set.of(
                 "DASHBOARD_VIEW", "VEHICLE_VIEW", "VEHICLE_CREATE", "VEHICLE_UPDATE", "VEHICLE_MAINTENANCE_MANAGE",
                 "RESERVATION_VIEW", "CONTRACT_VIEW", "GPS_VIEW", "GPS_ALERTS_VIEW").contains(c);
         if (role == Role.DRIVER) return Set.of(
                 "DASHBOARD_VIEW", "RESERVATION_VIEW", "CONTRACT_VIEW", "CONTRACT_INSPECTION_MEDIA", "VEHICLE_VIEW").contains(c);
-        if (role == Role.VIEWER) return Set.of(
-                "DASHBOARD_VIEW", "VEHICLE_VIEW", "CLIENT_VIEW", "RESERVATION_VIEW", "CONTRACT_VIEW", "REPORT_VIEW").contains(c);
+        if (role == Role.VIEWER) return withClientSubPermissions(Set.of(
+                "DASHBOARD_VIEW", "VEHICLE_VIEW", "CLIENT_VIEW", "RESERVATION_VIEW", "CONTRACT_VIEW", "REPORT_VIEW")).contains(c);
         return false;
+    }
+
+    /** Adds the CLIENT_VIEW sub-permissions to {@code base} iff it already grants CLIENT_VIEW. */
+    private static Set<String> withClientSubPermissions(Set<String> base) {
+        if (!base.contains("CLIENT_VIEW")) return base;
+        Set<String> expanded = new LinkedHashSet<>(base);
+        expanded.addAll(CLIENT_VIEW_SUB_PERMISSIONS);
+        return expanded;
     }
 
     public List<Role> configurableRoles() {

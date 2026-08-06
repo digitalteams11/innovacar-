@@ -93,6 +93,11 @@ public final class PermissionCatalog {
             Entry.of("CLIENT_CREATE", "CLIENTS", "CLIENT", "CREATE", NORMAL, List.of("CLIENT_VIEW"), next()),
             Entry.of("CLIENT_UPDATE", "CLIENTS", "CLIENT", "UPDATE", ELEVATED, List.of("CLIENT_VIEW"), next()),
             Entry.of("CLIENT_DELETE", "CLIENTS", "CLIENT", "DELETE", DANGEROUS, List.of("CLIENT_VIEW"), next()),
+            Entry.of("CLIENT_DETAILS_VIEW", "CLIENTS", "CLIENT", "DETAILS_VIEW", NORMAL, List.of("CLIENT_VIEW"), next()),
+            Entry.of("CLIENT_IDENTITY_VIEW", "CLIENTS", "CLIENT", "IDENTITY_VIEW", NORMAL, List.of("CLIENT_VIEW"), next()),
+            Entry.of("CLIENT_IDENTITY_REVEAL", "CLIENTS", "CLIENT", "IDENTITY_REVEAL", ELEVATED, List.of("CLIENT_VIEW"), next()),
+            Entry.of("CLIENT_DOCUMENT_VIEW", "CLIENTS", "CLIENT", "DOCUMENT_VIEW", NORMAL, List.of("CLIENT_VIEW"), next()),
+            Entry.of("CLIENT_ACTIVITY_VIEW", "CLIENTS", "CLIENT", "ACTIVITY_VIEW", NORMAL, List.of("CLIENT_VIEW"), next()),
 
             Entry.of("RESERVATION_VIEW", "RESERVATIONS", "RESERVATION", "VIEW", NORMAL, List.of(), next()),
             Entry.of("RESERVATION_CREATE", "RESERVATIONS", "RESERVATION", "CREATE", NORMAL, List.of("RESERVATION_VIEW"), next()),

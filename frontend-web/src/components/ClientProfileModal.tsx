@@ -53,33 +53,82 @@ export default function ClientProfileModal({ isOpen, onClose, client, onEdit }: 
   const [deposits, setDeposits] = useState<any>(null);
   const [depositsError, setDepositsError] = useState('');
 
+  const mapDossierError = (err: any): string => {
+    const status = err?.response?.status;
+    if (!err?.response) return t('clients.details.errorNetwork', 'Connection temporarily unavailable.');
+    if (status === 401) return t('clients.details.errorSessionExpired', 'Your session has expired. Please sign in again.');
+    if (status === 403) return t('clients.details.errorForbidden', 'You do not have permission to view these client details.');
+    if (status === 404) return t('clients.details.errorNotFound', 'Client not found.');
+    if (status >= 500) return t('clients.details.errorServer', 'Unable to load client details.');
+    return err?.userMessage || t('clients.details.sectionLoadError', 'Unable to load this section.');
+  };
+
+  const loadDetails = (clientId: number, signal: AbortSignal) => {
+    setDetailsLoading(true);
+    setDetailsError('');
+    api.get(`/clients/${clientId}/details`, { signal })
+      .then(({ data }) => setDetails(data))
+      .catch((err) => { if (!signal.aborted) setDetailsError(mapDossierError(err)); })
+      .finally(() => { if (!signal.aborted) setDetailsLoading(false); });
+  };
+
+  const loadProfileDocs = (clientId: number, signal: AbortSignal) => {
+    setProfileDocsError('');
+    api.get(`/clients/${clientId}/profile`, { signal })
+      .then(({ data }) => setProfileDocs(data))
+      .catch((err) => { if (!signal.aborted) setProfileDocsError(mapDossierError(err)); });
+  };
+
+  const loadInspections = (clientId: number, signal: AbortSignal) => {
+    setInspectionsError('');
+    api.get(`/clients/${clientId}/inspections`, { signal })
+      .then(({ data }) => setInspections(Array.isArray(data) ? data : []))
+      .catch((err) => { if (!signal.aborted) setInspectionsError(mapDossierError(err)); });
+  };
+
+  const loadDeposits = (clientId: number, signal: AbortSignal) => {
+    setDepositsError('');
+    api.get(`/deposits/client/${clientId}/summary`, { signal })
+      .then(({ data }) => setDeposits(data))
+      .catch((err) => { if (!signal.aborted) setDepositsError(mapDossierError(err)); });
+  };
+
   useEffect(() => {
-    if (!isOpen || !client?.id) return;
+    // Reset every section's state up front so a client switch (or a modal
+    // close before the previous fetch resolved) never leaves the previous
+    // client's data visible under the new client's id.
+    setDetails(null);
+    setProfileDocs(null);
+    setInspections([]);
+    setDeposits(null);
+    setDetailsError('');
+    setProfileDocsError('');
+    setInspectionsError('');
+    setDepositsError('');
     setTab('personal');
     setRevealDocument(false);
 
-    setDetailsLoading(true);
-    setDetailsError('');
-    api.get(`/clients/${client.id}/details`)
-      .then(({ data }) => setDetails(data))
-      .catch((err) => setDetailsError(err.userMessage || t('clients.loadError', 'Unable to load client information. Please try again later.')))
-      .finally(() => setDetailsLoading(false));
+    if (!isOpen || !client?.id) return;
+    const clientId = client.id;
+    const controller = new AbortController();
 
-    setProfileDocsError('');
-    api.get(`/clients/${client.id}/profile`)
-      .then(({ data }) => setProfileDocs(data))
-      .catch(() => setProfileDocsError(t('clients.details.sectionLoadError', 'Unable to load this section.')));
+    loadDetails(clientId, controller.signal);
+    loadProfileDocs(clientId, controller.signal);
+    loadInspections(clientId, controller.signal);
+    loadDeposits(clientId, controller.signal);
 
-    setInspectionsError('');
-    api.get(`/clients/${client.id}/inspections`)
-      .then(({ data }) => setInspections(Array.isArray(data) ? data : []))
-      .catch(() => setInspectionsError(t('clients.details.sectionLoadError', 'Unable to load this section.')));
-
-    setDepositsError('');
-    api.get(`/deposits/client/${client.id}/summary`)
-      .then(({ data }) => setDeposits(data))
-      .catch(() => setDepositsError(t('clients.details.sectionLoadError', 'Unable to load this section.')));
+    // Cancel in-flight requests when the modal closes or the selected
+    // client changes, so a slow response for client A can never land after
+    // client B's view is already showing (React Query's "cancel on unmount /
+    // don't reuse another client's cached details" behavior, implemented
+    // manually since this codebase doesn't use React Query).
+    return () => controller.abort();
   }, [isOpen, client?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const retryDetails = () => client?.id && loadDetails(client.id, new AbortController().signal);
+  const retryProfileDocs = () => client?.id && loadProfileDocs(client.id, new AbortController().signal);
+  const retryInspections = () => client?.id && loadInspections(client.id, new AbortController().signal);
+  const retryDeposits = () => client?.id && loadDeposits(client.id, new AbortController().signal);
 
   if (!client) return null;
 
@@ -184,7 +233,7 @@ export default function ClientProfileModal({ isOpen, onClose, client, onEdit }: 
           </div>
         )}
         {['personal', 'identity', 'contact', 'reservations', 'contracts', 'payments'].includes(tab) && !detailsLoading && detailsError && (
-          <SectionError message={detailsError} />
+          <SectionError message={detailsError} onRetry={retryDetails} />
         )}
         {!detailsLoading && !detailsError && (
           <>
@@ -239,13 +288,13 @@ export default function ClientProfileModal({ isOpen, onClose, client, onEdit }: 
 
         {tab === 'inspections' && (
           inspectionsError
-            ? <SectionError message={inspectionsError} />
+            ? <SectionError message={inspectionsError} onRetry={retryInspections} />
             : <InspectionGallery inspections={inspections} />
         )}
 
         {tab === 'deposits' && (
           depositsError
-            ? <SectionError message={depositsError} />
+            ? <SectionError message={depositsError} onRetry={retryDeposits} />
             : !deposits
               ? <div className="flex items-center justify-center py-16" style={{ color: 'var(--brand-500, #10b981)' }}><Loader2 size={26} className="animate-spin" /></div>
               : <DepositsTab deposits={deposits} />
@@ -253,7 +302,7 @@ export default function ClientProfileModal({ isOpen, onClose, client, onEdit }: 
 
         {tab === 'documents' && (
           profileDocsError
-            ? <SectionError message={profileDocsError} />
+            ? <SectionError message={profileDocsError} onRetry={retryProfileDocs} />
             : !profileDocs
               ? <div className="flex items-center justify-center py-16" style={{ color: 'var(--brand-500, #10b981)' }}><Loader2 size={26} className="animate-spin" /></div>
               : (
@@ -293,11 +342,19 @@ function Metric({ label, value, icon }: { label: string; value: string | number;
   );
 }
 
-function SectionError({ message }: { message: string }) {
+function SectionError({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const { t } = useTranslation();
   return (
-    <div className="py-10 text-center text-sm flex flex-col items-center gap-2" style={{ color: 'var(--danger-500, #ef4444)' }}>
+    <div className="py-10 text-center text-sm flex flex-col items-center gap-3" style={{ color: 'var(--danger-500, #ef4444)' }}>
       <AlertTriangle size={20} />
-      {message}
+      <span>{message}</span>
+      {onRetry && (
+        <button type="button" onClick={onRetry}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
+          style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}>
+          {t('common.retry', 'Retry')}
+        </button>
+      )}
     </div>
   );
 }
