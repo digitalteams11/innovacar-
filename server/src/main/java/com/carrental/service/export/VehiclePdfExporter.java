@@ -28,6 +28,8 @@ import java.util.Map;
 public class VehiclePdfExporter {
 
     private static final Font TITLE_FONT = new Font(Font.HELVETICA, 16, Font.BOLD, new Color(0x0a, 0x0f, 0x2c));
+    /** Fixed Innovax green for the "car" portion of the report title — same #10b981 as --brand-green (index.css) / BrandedEmailLayout. */
+    private static final Font TITLE_FONT_GREEN = new Font(Font.HELVETICA, 16, Font.BOLD, new Color(0x10, 0xb9, 0x81));
     private static final Font META_FONT = new Font(Font.HELVETICA, 9, Font.NORMAL, new Color(0x64, 0x74, 0x8b));
     private static final Font HEADER_FONT = new Font(Font.HELVETICA, 8, Font.BOLD, Color.WHITE);
     private static final Font CELL_FONT = new Font(Font.HELVETICA, 8, Font.NORMAL, Color.BLACK);
@@ -39,7 +41,11 @@ public class VehiclePdfExporter {
         writer.setPageEvent(new FooterEvent());
         document.open();
 
-        document.add(new Paragraph("Innovacar — Fleet Report", TITLE_FONT));
+        Paragraph titlePara = new Paragraph();
+        titlePara.add(new Chunk("Innova", TITLE_FONT));
+        titlePara.add(new Chunk("car", TITLE_FONT_GREEN));
+        titlePara.add(new Chunk(" — Fleet Report", TITLE_FONT));
+        document.add(titlePara);
         document.add(Chunk.NEWLINE);
 
         String agencyName = String.valueOf(reportMeta.getOrDefault("agencyName", ""));

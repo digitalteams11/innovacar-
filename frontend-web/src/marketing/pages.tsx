@@ -538,9 +538,9 @@ function Header() {
 
   return (
     <header className="im-header" ref={headerRef}>
-      <a href="/" className="im-brand">
-        <img src="/brand/innovacar-logo.png" alt="Innovacar" width={36} height={36} />
-        <span>Innovacar</span>
+      <a href="/" className="im-brand" aria-label="Innovacar by Innovax Technologies">
+        <img src="/brand/innovacar-logo.png" alt="" width={36} height={36} />
+        <span>Innova<span className="im-brand-accent">car</span></span>
       </a>
 
       <nav className="im-nav-desktop" aria-label="Navigation principale">

@@ -23,6 +23,7 @@ import SubscriptionBadge from './shared/SubscriptionBadge';
 import { GlobalSearchBar } from './search/GlobalSearchBar';
 import BottomNavigation from './BottomNavigation';
 import MobileMoreMenu from './MobileMoreMenu';
+import BrandLockup from './BrandLockup';
 import MobileAssistantFab from './shared/MobileAssistantFab';
 import { cn } from '../lib/utils';
 
@@ -162,15 +163,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         appearance.sidebarStyle === 'compact' || sidebarCollapsed ? 'w-[76px]' : 'w-[248px]',
       )}>
         <div className={cn('h-[68px] px-4 flex items-center', appearance.sidebarStyle === 'compact' || sidebarCollapsed ? 'justify-center' : 'justify-between')}>
-          <Link to="/" className="flex items-center gap-3 min-w-0">
+          <Link
+            to="/"
+            className="flex items-center gap-3 min-w-0"
+            title="Innovacar by Innovax Technologies"
+            aria-label="Innovacar by Innovax Technologies"
+          >
             <span className="w-10 h-10 rounded-xl border border-[color-mix(in_srgb,var(--text-sidebar)_12%,transparent)] bg-white/95 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
               <img src={logoSrc} alt="InnovaCar" className="h-full w-full object-contain p-0.5" onError={onLogoError} />
             </span>
             {appearance.sidebarStyle !== 'compact' && !sidebarCollapsed && (
-              <span className="min-w-0">
-                <strong className="block text-base text-[var(--text-sidebar)] tracking-tight">Innova<span className="text-[var(--brand-accent)]">Car</span></strong>
-                <span className="block text-[9px] uppercase tracking-[0.16em] text-[var(--text-sidebar-muted)]">by Innovax Technologies</span>
-              </span>
+              <BrandLockup variant="dark" size="md" />
             )}
           </Link>
           {appearance.sidebarStyle !== 'compact' && !sidebarCollapsed && (
@@ -247,7 +250,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* Wordmark only from the sm breakpoint (640px) up — previously
                 shown from 375px, which covers the entire 390-430px mobile
                 range this was meant to exclude, crowding the header icons. */}
-            <strong className="hidden sm:block text-sm">InnovaCar</strong>
+            <span className="hidden sm:block">
+              <BrandLockup variant="auto" size="sm" compact showSubtitle={false} />
+            </span>
           </Link>
 
           <GlobalSearchBar />

@@ -16,6 +16,7 @@ const DEFAULT_PLATFORM_NAME = 'InnovaCar';
 import { superAdminApi } from '../api/superAdminApi';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
+import BrandLockup from './BrandLockup';
 import {
   LayoutDashboard, Building2, CreditCard, Satellite,
   Users, Receipt, LifeBuoy, Bell, BarChart3, Settings,
@@ -211,8 +212,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             />
             {!sidebarCollapsed && (
               <div className="text-white">
-                <h1 className="text-base font-bold tracking-tight leading-tight">{platformName}</h1>
-                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
+                {platformName === DEFAULT_PLATFORM_NAME
+                  ? <BrandLockup variant="dark" size="sm" showSubtitle={false} />
+                  : <h1 className="text-base font-bold tracking-tight leading-tight">{platformName}</h1>}
+                <p className="text-[9px] text-white/85 font-medium uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
               </div>
             )}
           </div>
@@ -302,8 +305,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               className="w-10 h-10 rounded-xl object-contain bg-white shrink-0 shadow-sm p-0.5"
             />
                 <div className="text-white">
-                  <h1 className="text-base font-bold tracking-tight">{platformName}</h1>
-                  <p className="text-[9px] text-slate-400 uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
+                  {platformName === DEFAULT_PLATFORM_NAME
+                    ? <BrandLockup variant="dark" size="sm" showSubtitle={false} />
+                    : <h1 className="text-base font-bold tracking-tight">{platformName}</h1>}
+                  <p className="text-[9px] text-white/85 uppercase tracking-widest">{t('superAdmin.superAdminBadge', 'Super Admin')}</p>
                 </div>
               </div>
               <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white">

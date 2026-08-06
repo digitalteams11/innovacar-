@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import BrandLockup from './BrandLockup';
 
 const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
 
@@ -10,7 +10,6 @@ const INNOVACAR_LOGO_URL = '/brand/innovacar-logo.png';
 // (e.g. a dark-navy splash for a user on the light theme) — exactly the
 // class of bug this component exists to prevent for the rest of the app.
 export default function SplashScreen() {
-  const { t } = useTranslation();
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center"
@@ -22,8 +21,9 @@ export default function SplashScreen() {
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-xl overflow-hidden">
           <img src={INNOVACAR_LOGO_URL} alt="InnovaCar" className="h-full w-full object-contain p-1" />
         </div>
-        <h1 className="mt-5 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>InnovaCar</h1>
-        <p className="mt-1 text-xs uppercase" style={{ color: 'var(--text-muted)' }}>{t('guidance.innovax')}</p>
+        <div className="mt-5 flex justify-center">
+          <BrandLockup variant="auto" size="lg" />
+        </div>
         <div className="mx-auto mt-6 h-1 w-44 overflow-hidden rounded-full" style={{ background: 'var(--border-medium)' }}>
           <div className="splash-progress h-full bg-accent-400" />
         </div>

@@ -58,6 +58,13 @@
   flex-shrink: 0;
 }
 
+/* Fixed Innovax green — see --brand-green in index.css. Not the same as any
+   theme accent color: the product name itself must always read the same
+   regardless of page theme. */
+.im-brand-accent {
+  color: var(--brand-green);
+}
+
 .im-footer nav a {
   color: var(--text-primary);
   text-decoration: none;

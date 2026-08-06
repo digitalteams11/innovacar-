@@ -45,6 +45,17 @@
 
     /* Brand */
     --brand-primary: #10b981;
+    /* Fixed Innovax green — the official brand color for the "Innovacar" /
+       "Innovax Technologies" wordmark itself (sidebar/header brand lockup,
+       splash screen, emails, PDF report headers). Deliberately NOT the same
+       binding as --brand-primary above: --brand-primary is rewritten at
+       runtime per theme preset / white-label agency branding (see
+       ThemeContext.tsx `root.style.setProperty('--brand-primary', ...)`),
+       so the product's own name must never inherit a tenant's custom accent
+       color. Value matches the fixed green already hardcoded in
+       BrandedEmailLayout.java (#10b981) — same authoritative source, kept
+       in sync by hand since email HTML can't read CSS variables. */
+    --brand-green: #10b981;
     /* Pre-JS fallback only — ThemeContext.tsx recomputes this per-preset/white-label
        color via a luminance check the moment it mounts, same as --text-sidebar above. */
     --brand-primary-foreground: #ffffff;

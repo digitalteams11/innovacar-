@@ -60,8 +60,12 @@ final class BrandedEmailLayout {
              + "<td style=\"width:40px;height:40px;background:#10b981;border-radius:10px;text-align:center;"
              + "vertical-align:middle;font-weight:800;font-size:16px;color:#071827;\" role=\"img\" aria-label=\"" + escape(companyName) + " logo\">IC</td>"
              + "<td style=\"padding-left:12px;\">"
-             + "<div style=\"font-size:12px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.80;\">" + escape(companyName) + "</div>"
-             + "<div style=\"font-size:15px;font-weight:700;\">Innovacar</div>"
+             + companyNameLine(companyName)
+             // "Innova" white, "car" Innovax green (#10b981 — same fixed value
+             // as --brand-green in the web app's index.css; email clients
+             // can't read CSS variables, so it's inlined literally here).
+             + "<div style=\"font-size:15px;font-weight:700;\">"
+             + "<span style=\"color:#ffffff;\">Innova</span><span style=\"color:#10b981;\">car</span></div>"
              + "</td></tr></table>"
              + "<h1 style=\"margin:18px 0 0;font-size:24px;line-height:1.3;font-weight:800;\">" + title + "</h1>"
              + (subtitle != null && !subtitle.isBlank()
@@ -121,6 +125,26 @@ final class BrandedEmailLayout {
         }
         sb.append("</div>");
         return sb.toString();
+    }
+
+    /**
+     * The small uppercase line above the "Innovacar" wordmark. When this is
+     * a genuine Innovax-branded email (the common case — {@code companyName}
+     * is the default "Innovax Technologies"), it renders the fixed brand
+     * split: "BY INNOVAX" white, "TECHNOLOGIES" green. Some call sites (see
+     * EmailService's agency-triggered emails) pass the sending *agency's*
+     * own name here instead — that's tenant content, not the Innovax brand
+     * mark, so it stays a single white line rather than being forced into
+     * the two-tone split.
+     */
+    private static String companyNameLine(String companyName) {
+        if (DEFAULT_COMPANY_NAME.equalsIgnoreCase(companyName)) {
+            return "<div style=\"font-size:12px;letter-spacing:0.1em;text-transform:uppercase;\">"
+                 + "<span style=\"color:#ffffff;\">BY INNOVAX</span> "
+                 + "<span style=\"color:#10b981;\">TECHNOLOGIES</span></div>";
+        }
+        return "<div style=\"font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;\">"
+             + escape(companyName) + "</div>";
     }
 
     private static String escape(String value) {
