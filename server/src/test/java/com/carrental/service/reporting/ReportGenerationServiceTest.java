@@ -343,6 +343,24 @@ class ReportGenerationServiceTest {
     }
 
     @Test
+    void sendReportEmail_generationFailed_returnsDistinctErrorCodeNotGenericNotReady() {
+        // Regression: a report whose generation itself failed has no PDF and
+        // never will — the frontend used to leave the Send button clickable for
+        // this status, and the backend used to lump it in with the generic
+        // "still generating, wait" REPORT_NOT_READY response, which is actively
+        // misleading (there is nothing to wait for; regeneration is required).
+        Report report = readyReport();
+        report.setStatus(ReportStatus.FAILED);
+
+        ReportGenerationService.SendEmailOutcome outcome = service()
+                .sendReportEmail(report, ReportEmailAttempt.TRIGGERED_BY_MANUAL_SEND);
+
+        assertThat(outcome.success()).isFalse();
+        assertThat(outcome.errorCode()).isEqualTo("REPORT_GENERATION_FAILED");
+        verifyNoInteractions(pdfStorage, smtpMailService);
+    }
+
+    @Test
     void sendReportEmail_alreadySendingRecently_isRejectedAsInProgress_doesNotDuplicateSend() {
         Report report = readyReport();
         report.setEmailStatus(ReportEmailStatus.PENDING);

@@ -75,7 +75,11 @@ class EmailTemplateRendererTest {
         ));
 
         assertThat(html).contains("Innovacar");
-        assertThat(html).contains("Powered by Innovax Technologies");
+        // Footer brand lockup — split "BY INNOVAX" / "TECHNOLOGIES" spans
+        // (see BrandLockup.tsx / footer.html), not the old single "Powered by
+        // Innovax Technologies" line.
+        assertThat(html).contains("BY INNOVAX");
+        assertThat(html).contains("TECHNOLOGIES");
         assertThat(html).doesNotContain("RentCar");
         assertThat(html).doesNotContain("${"); // no unresolved expression leaked into output
     }

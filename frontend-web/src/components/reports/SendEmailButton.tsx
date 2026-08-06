@@ -12,6 +12,7 @@ type Phase = 'idle' | 'sending' | 'success' | 'error';
 const ERROR_MESSAGE_KEYS: Record<string, string> = {
   REPORT_RECIPIENT_MISSING: 'reports.email.recipientMissing',
   REPORT_NOT_READY: 'reports.email.notReady',
+  REPORT_GENERATION_FAILED: 'reports.email.generationFailed',
   REPORT_FILE_MISSING: 'reports.email.fileMissing',
   REPORT_EMAIL_PROVIDER_REJECTED: 'reports.email.providerRejected',
   REPORT_ATTACHMENT_FAILED: 'reports.email.providerRejected',
@@ -87,6 +88,18 @@ export default function SendEmailButton({ report, onSend, disabled }: SendEmailB
     return messageKey ? t(messageKey) : (report.emailFailureReason || t('reports.email.genericFailure'));
   };
 
+  // When the parent disables this button because the report itself isn't
+  // send-eligible yet (see ReportArchive's EMAIL_ELIGIBLE_STATUSES-mirroring
+  // check), the button used to just show a plain "Send" label with no
+  // explanation — indistinguishable from a report that's actually ready.
+  // Show the real reason instead (spec: never a vague "not ready yet").
+  const disabledReason = (): string | null => {
+    if (!disabled) return null;
+    if (report.status === 'FAILED') return t('reports.email.generationFailed');
+    if (report.status === 'GENERATING' || report.status === 'PENDING') return t('reports.email.generating');
+    return null;
+  };
+
   const label = armed
     ? t('reports.actions.resend') + '?'
     : isSent
@@ -95,9 +108,8 @@ export default function SendEmailButton({ report, onSend, disabled }: SendEmailB
         ? failureLabel()
         : isSending
           ? t('reports.email.sending')
-          : isResend
-            ? t('reports.actions.resend')
-            : t('reports.actions.send');
+          : disabledReason()
+            ?? (isResend ? t('reports.actions.resend') : t('reports.actions.send'));
 
   const displayPhase: StatusPhase = armed ? 'confirm' : effectivePhase === 'sending' ? 'loading' : effectivePhase;
 

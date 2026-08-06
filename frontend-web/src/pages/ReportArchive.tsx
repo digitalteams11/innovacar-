@@ -109,7 +109,12 @@ export default function ReportArchive() {
         <SendEmailButton
           report={r}
           onSend={sendReportEmail}
-          disabled={!['GENERATED', 'SENT', 'EMAIL_PENDING', 'FAILED'].includes(r.status)}
+          // Must mirror ReportGenerationService.EMAIL_ELIGIBLE_STATUSES exactly:
+          // only GENERATED (first send) and SENT (resend) have a PDF on disk.
+          // FAILED means generation itself failed — there is no file to attach,
+          // so it must never be clickable (previously it was, and every click
+          // came back with the backend's REPORT_NOT_READY rejection).
+          disabled={!['GENERATED', 'SENT'].includes(r.status)}
         />
       )}
     </div>

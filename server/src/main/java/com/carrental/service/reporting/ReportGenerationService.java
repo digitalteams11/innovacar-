@@ -187,6 +187,14 @@ public class ReportGenerationService {
      */
     @Transactional
     public SendEmailOutcome sendReportEmail(Report report, String triggeredBy) {
+        if (report.getStatus() == ReportStatus.FAILED) {
+            // Distinct from "still generating" — generation already failed, there
+            // is no PDF and never will be one for this row. Telling the user to
+            // "wait for generation to finish" here would be actively misleading;
+            // the only path forward is regenerating the report.
+            return SendEmailOutcome.fail("REPORT_GENERATION_FAILED",
+                    "Report generation failed, so there is no file to send. Regenerate the report first.", report);
+        }
         if (report.getStatus() == null || !EMAIL_ELIGIBLE_STATUSES.contains(report.getStatus())) {
             return SendEmailOutcome.fail("REPORT_NOT_READY",
                     "The report is not ready to be emailed yet. Wait for generation to finish.", report);

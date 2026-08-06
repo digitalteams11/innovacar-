@@ -1689,6 +1689,8 @@
       "sentAt": "Sent {{date}}",
       "recipientMissing": "Email could not be sent because no recipient is configured.",
       "notReady": "The report is not ready to be emailed yet.",
+      "generating": "The report is still being generated. Please wait.",
+      "generationFailed": "Report generation failed. Regenerate the report before sending.",
       "fileMissing": "The report file is missing. Please regenerate the report.",
       "providerRejected": "The email provider rejected the message. Please contact support.",
       "inProgress": "This report is already being sent.",

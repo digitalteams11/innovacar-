@@ -246,7 +246,7 @@ public class ReportController {
         response.put("message", outcome.message());
         response.put("data", data);
         int status = switch (outcome.errorCode()) {
-            case "REPORT_RECIPIENT_MISSING", "REPORT_NOT_READY" -> 400;
+            case "REPORT_RECIPIENT_MISSING", "REPORT_NOT_READY", "REPORT_GENERATION_FAILED" -> 400;
             default -> 200; // provider/attachment/transient failures are a legitimate business outcome, not a bad request
         };
         return ResponseEntity.status(status).body(response);

@@ -1689,6 +1689,8 @@
       "sentAt": "Envoyé le {{date}}",
       "recipientMissing": "L'email n'a pas pu être envoyé car aucun destinataire n'est configuré.",
       "notReady": "Le rapport n'est pas encore prêt à être envoyé.",
+      "generating": "Le rapport est en cours de génération. Veuillez patienter.",
+      "generationFailed": "La génération du rapport a échoué. Régénérez le rapport avant de l'envoyer.",
       "fileMissing": "Le fichier du rapport est manquant. Veuillez régénérer le rapport.",
       "providerRejected": "Le fournisseur d'email a rejeté le message. Veuillez contacter le support.",
       "inProgress": "Ce rapport est déjà en cours d'envoi.",
