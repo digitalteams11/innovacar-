@@ -58,6 +58,7 @@ public class ClientService {
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final RolePermissionService rolePermissionService;
+    private final DepositService depositService;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -567,6 +568,82 @@ public class ClientService {
                     return signature;
                 }).toList());
         return profile;
+    }
+
+    /**
+     * Aggregated client dossier: full identity/license/contact projection
+     * (masking respected), summary metrics, and the same operational
+     * collections returned by {@link #getClientProfile}, plus the active
+     * deposits total. Backs {@code GET /api/clients/{id}/details}.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getClientDetails(Long clientId) {
+        Long tenantId = requireTenantId();
+        Client client = fetchClientInTenant(clientId);
+
+        var reservations = reservationRepository.findAllByTenantIdAndClientId(tenantId, clientId);
+        var contracts = contractRepository.findAllByTenantIdAndClientId(tenantId, clientId);
+        var invoices = invoiceRepository.findAllByTenantIdAndClientId(tenantId, clientId);
+        var payments = paymentRepository.findAllByTenantIdAndClientIdOrderByPaymentDateDesc(tenantId, clientId);
+
+        long activeReservations = reservations.stream()
+                .filter(r -> r.getStatus() == ReservationStatus.PENDING
+                        || r.getStatus() == ReservationStatus.CONFIRMED
+                        || r.getStatus() == ReservationStatus.ACTIVE)
+                .count();
+        long completedRentals = reservations.stream()
+                .filter(r -> r.getStatus() == ReservationStatus.COMPLETED
+                        || r.getStatus() == ReservationStatus.CONVERTED_TO_CONTRACT)
+                .count();
+        long cancelledReservations = reservations.stream()
+                .filter(r -> r.getStatus() == ReservationStatus.CANCELLED)
+                .count();
+        long activeContracts = contracts.stream()
+                .filter(c -> c.getStatus() == ContractStatus.SIGNED
+                        || c.getStatus() == ContractStatus.ACTIVE
+                        || c.getStatus() == ContractStatus.PAID)
+                .count();
+
+        BigDecimal totalPaid = payments.stream()
+                .filter(p -> p.getStatus() == PaymentStatus.PAID || p.getStatus() == PaymentStatus.PARTIALLY_PAID)
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalInvoiced = invoices.stream()
+                .map(i -> i.getAmount() != null ? i.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal outstandingBalance = totalInvoiced.subtract(totalPaid).max(BigDecimal.ZERO);
+
+        LocalDate lastRentalDate = reservations.stream()
+                .map(Reservation::getDateEnd)
+                .filter(java.util.Objects::nonNull)
+                .max(LocalDate::compareTo)
+                .orElse(null);
+
+        BigDecimal activeDeposits = (BigDecimal) depositService.getClientDepositSummary(clientId)
+                .getOrDefault("activeDeposits", BigDecimal.ZERO);
+
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalReservations", reservations.size());
+        summary.put("activeReservations", activeReservations);
+        summary.put("completedRentals", completedRentals);
+        summary.put("cancelledReservations", cancelledReservations);
+        summary.put("totalContracts", contracts.size());
+        summary.put("activeContracts", activeContracts);
+        summary.put("totalInvoiced", totalInvoiced);
+        summary.put("totalPaid", totalPaid);
+        summary.put("outstandingBalance", outstandingBalance);
+        summary.put("activeDeposits", activeDeposits);
+        summary.put("lastRentalDate", lastRentalDate);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("client", ClientResponse.from(client,
+                identityDocumentRepository.findFirstByClientIdAndTenantIdAndIsPrimaryTrue(clientId, tenantId).orElse(null),
+                canSeeFullDocument()));
+        details.put("summary", summary);
+        details.put("reservationHistory", reservations.stream().map(ReservationResponse::from).toList());
+        details.put("contractHistory", contracts.stream().map(ContractResponse::from).toList());
+        details.put("paymentHistory", payments.stream().map(PaymentResponse::from).toList());
+        return details;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

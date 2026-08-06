@@ -190,6 +190,16 @@ public class ClientController {
         return ResponseEntity.ok(clientService.getClientProfile(id));
     }
 
+    /**
+     * Full client dossier: identity/license/contact (masked per permission),
+     * summary metrics, and reservation/contract/payment history. Backs the
+     * "Client Details" dossier modal.
+     */
+    @GetMapping("/{id}/details")
+    public ResponseEntity<java.util.Map<String, Object>> getClientDetails(@PathVariable Long id) {
+        return ResponseEntity.ok(clientService.getClientDetails(id));
+    }
+
     // ── GET /api/clients/export/pdf ──────────────────────────────────────────
 
     @GetMapping("/export/pdf")

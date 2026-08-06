@@ -879,7 +879,15 @@ export default function Clients() {
         </div>
       </Modal>
 
-      <ClientProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} client={selectedClient as any} />
+      <ClientProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        client={selectedClient as any}
+        onEdit={(c) => {
+          setIsProfileModalOpen(false);
+          openEdit(c as Client);
+        }}
+      />
     </div>
   );
 }

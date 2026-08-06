@@ -1,7 +1,7 @@
 # Theme Contrast Audit
 
-Generated: 2026-08-01T16:04:33.509Z
-Scanned source files: 245
+Generated: 2026-08-06T13:25:41.758Z
+Scanned source files: 254
 Hard failures: 0, Warnings (low-opacity, review manually): 1
 
 ## low-opacity-text (1)
