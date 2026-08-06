@@ -56,6 +56,10 @@
        BrandedEmailLayout.java (#10b981) — same authoritative source, kept
        in sync by hand since email HTML can't read CSS variables. */
     --brand-green: #10b981;
+    /* Darker shade of --brand-green — used for the subtle two-tone gradient
+       inside the brand lockup's "Car"/accent segments (BrandLockup.tsx).
+       Same fixed, non-themeable binding as --brand-green above. */
+    --brand-green-hover: #059669;
     /* Pre-JS fallback only — ThemeContext.tsx recomputes this per-preset/white-label
        color via a luminance check the moment it mounts, same as --text-sidebar above. */
     --brand-primary-foreground: #ffffff;
