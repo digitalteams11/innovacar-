@@ -13,6 +13,65 @@ function te(key: string, fallback: string): string {
 
 export type ApiSeverity = 'success' | 'warning' | 'error' | 'info';
 
+/**
+ * Central error classification. `!error.response` alone used to be treated
+ * as "the whole API server is unavailable" — but a cancelled request (an
+ * AbortController-based typeahead/debounce cancelling its own previous
+ * in-flight call, e.g. SmartVehicleSelector's `/availability/vehicles`
+ * lookup on every date/filter change), a single slow request that hit the
+ * client timeout, or one blip on an otherwise-healthy connection all share
+ * that exact same shape. Only BACKEND_UNAVAILABLE/DNS_UNREACHABLE — and
+ * only after the confirmation policy in the response interceptor below —
+ * may ever surface the global "API unavailable" toast.
+ */
+export type ApiErrorCategory =
+  | 'REQUEST_CANCELLED'
+  | 'VALIDATION_ERROR'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'RATE_LIMITED'
+  | 'SERVER_ERROR'
+  | 'TIMEOUT'
+  | 'NETWORK_CHANGED'
+  | 'DNS_UNREACHABLE'
+  | 'BACKEND_UNAVAILABLE'
+  | 'UNKNOWN';
+
+/** True for axios cancellation (CancelToken), fetch/DOM AbortError, and the ERR_CANCELED code axios assigns when an AbortSignal fires. */
+export function isCancelledError(error: any): boolean {
+  return axios.isCancel(error) || error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.name === 'AbortError';
+}
+
+/** Pure classification — no side effects, safe to unit test directly with a synthetic error object. */
+export function classifyApiError(error: any): ApiErrorCategory {
+  if (isCancelledError(error)) return 'REQUEST_CANCELLED';
+
+  const status = error?.response?.status;
+  if (!error?.response) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '');
+    if (code === 'ECONNABORTED' || /timeout/i.test(message)) return 'TIMEOUT';
+    if (code === 'ERR_NETWORK_CHANGED') return 'NETWORK_CHANGED';
+    if (/ERR_NAME_NOT_RESOLVED|ERR_ADDRESS_UNREACHABLE|ERR_INTERNET_DISCONNECTED/.test(code)
+        || /ERR_NAME_NOT_RESOLVED|ERR_ADDRESS_UNREACHABLE|ERR_INTERNET_DISCONNECTED|dns/i.test(message)) {
+      return 'DNS_UNREACHABLE';
+    }
+    return 'BACKEND_UNAVAILABLE';
+  }
+
+  if (status === 400 || status === 422) return 'VALIDATION_ERROR';
+  if (status === 401) return 'UNAUTHORIZED';
+  if (status === 403) return 'FORBIDDEN';
+  if (status === 404) return 'NOT_FOUND';
+  if (status === 409) return 'CONFLICT';
+  if (status === 429) return 'RATE_LIMITED';
+  if (status === 502 || status === 503 || status === 504) return 'BACKEND_UNAVAILABLE';
+  if (typeof status === 'number' && status >= 500) return 'SERVER_ERROR';
+  return 'UNKNOWN';
+}
+
 export interface NormalizedApiError extends AxiosError {
   userMessage: string;
   severity: ApiSeverity;
@@ -139,6 +198,9 @@ function isSafeBusinessMessage(message: unknown): boolean {
 
 /**
  * Notify about network failure with throttling to prevent spam.
+ * Callers must already have confirmed this is worth surfacing — see
+ * `recordNetworkFailureAndShouldNotify` below — this function only adds the
+ * "don't repeat the same toast" throttle on top of that decision.
  */
 function notifyNetworkFailure() {
   const now = Date.now();
@@ -150,6 +212,37 @@ function notifyNetworkFailure() {
       message: te('errors.NETWORK_ERROR', 'API server unavailable. Please check your connection and try again.'),
     },
   }));
+}
+
+// ── "Confirm before declaring an outage" policy (spec: never after one failed
+// request) ───────────────────────────────────────────────────────────────
+// Mirrors BackendHealthGate's own multi-check confirmation, but at the
+// per-request layer: a single BACKEND_UNAVAILABLE/DNS_UNREACHABLE-shaped
+// failure only starts the clock. The global toast fires only once at least
+// two such failures land within a short rolling window — one flaky request
+// among many in-flight parallel calls must never alone read as "the whole
+// API is down" (that's still true even while data on the current page is
+// visibly loading fine from the requests that did succeed).
+const recentNetworkFailureTimestamps: number[] = [];
+const NETWORK_FAILURE_CONFIRM_WINDOW_MS = 4000;
+const NETWORK_FAILURE_CONFIRM_COUNT = 2;
+
+function recordNetworkFailureAndShouldNotify(): boolean {
+  const now = Date.now();
+  while (recentNetworkFailureTimestamps.length && now - recentNetworkFailureTimestamps[0] > NETWORK_FAILURE_CONFIRM_WINDOW_MS) {
+    recentNetworkFailureTimestamps.shift();
+  }
+  recentNetworkFailureTimestamps.push(now);
+  return recentNetworkFailureTimestamps.length >= NETWORK_FAILURE_CONFIRM_COUNT;
+}
+
+function isBrowserOnline(): boolean {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+
+/** One-time brief wait before retrying a request that failed with ERR_NETWORK_CHANGED (spec §11: wait briefly, retry once, don't immediately show an outage toast). */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Request interceptor: use bearer tokens stored for the current browser origin.
@@ -243,8 +336,33 @@ api.interceptors.response.use(
   },
   async (rawError: AxiosError<any>) => {
     const error = rawError as NormalizedApiError;
-    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean; _networkChangeRetry?: boolean }) | undefined;
     if (!originalRequest) return Promise.reject(error);
+
+    // Cancelled requests (AbortController.abort() on unmount/route-change/a
+    // typeahead debounce superseding its own previous call, or an axios
+    // CancelToken) are normal application behavior, not a failure — no
+    // toast, no client-error log, no touching auth/session state. This must
+    // be the very first check: a cancelled request has no `.response`, so
+    // without this it would otherwise fall into the same bucket as a real
+    // network outage below.
+    if (isCancelledError(error)) {
+      error.errorCode = 'REQUEST_CANCELLED';
+      error.userMessage = '';
+      return Promise.reject(error);
+    }
+
+    // ERR_NETWORK_CHANGED (wifi/cell handoff, VPN toggle mid-request) is
+    // usually transient — wait briefly and retry the exact same request
+    // once before treating it as anything worth telling the user about.
+    if (classifyApiError(error) === 'NETWORK_CHANGED' && !originalRequest._networkChangeRetry) {
+      originalRequest._networkChangeRetry = true;
+      await delay(600);
+      // Re-entering api(...) re-runs this same interceptor chain, so a
+      // second failure is already fully classified/toasted (if warranted)
+      // by that recursive pass — nothing more to do here than propagate it.
+      return api(originalRequest);
+    }
 
     const status = error.response?.status;
     const responseData = error.response?.data;
@@ -346,10 +464,29 @@ api.interceptors.response.use(
     }
 
     if (!error.response) {
-      // Network error — no response from server
-      error.networkError = true;
-      error.userMessage = te('errors.NETWORK_ERROR', 'API server unavailable. Please check your connection and try again.');
-      notifyNetworkFailure();
+      // No response reached the client at all — but that shape covers several
+      // very different situations, only one of which is a real outage.
+      const category = classifyApiError(error);
+      error.errorCode = category;
+
+      if (category === 'TIMEOUT') {
+        // A single slow request, not a server-wide problem — no global toast.
+        // Whatever section/action made this call decides how to show it.
+        error.userMessage = te('errors.TIMEOUT', 'The request took too long. Please try again.');
+      } else {
+        error.networkError = true;
+        error.userMessage = te('errors.NETWORK_ERROR', 'API server unavailable. Please check your connection and try again.');
+        // Never declare an outage while the browser itself reports being
+        // offline — BackendHealthGate's dedicated OfflineBanner already owns
+        // that state, so this must not fire a second, conflicting message.
+        // Otherwise, only surface the toast once at least two independent
+        // requests have failed this way within a short window (never after
+        // a single failed request, matching BackendHealthGate's own
+        // multi-check confirmation policy one layer up).
+        if (isBrowserOnline() && recordNetworkFailureAndShouldNotify()) {
+          notifyNetworkFailure();
+        }
+      }
     } else if (status === 401) {
       error.userMessage = codeTranslation || te('errors.UNAUTHORIZED', 'Your session has expired. Please sign in again.');
     } else if (featureLocked) {

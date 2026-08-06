@@ -215,6 +215,8 @@
     "subtitle": "Join your team on Innovacar",
     "firstName": "First Name",
     "lastName": "Last Name",
+    "firstNamePlaceholder": "Your first name",
+    "lastNamePlaceholder": "Your last name",
     "tenantId": "Tenant ID",
     "tenantHint": "Ask your admin for the tenant ID",
     "confirmPassword": "Confirm Password",
@@ -223,6 +225,10 @@
     "createAccount": "Create Account",
     "success": "Account created successfully!",
     "failed": "Registration failed. Please try again.",
+    "firstNameRequired": "Please enter your first name.",
+    "lastNameRequired": "Please enter your last name.",
+    "emailInvalid": "Please enter a valid email address.",
+    "emailAlreadyRegistered": "This email is already registered.",
     "backToLogin": "Already have an account? Sign in"
   },
   "forgotPassword": {
@@ -3466,6 +3472,7 @@
     "SUBSCRIPTION_REQUIRED": "This feature requires an active subscription.",
     "GENERIC": "Something went wrong. Please try again.",
     "NETWORK_ERROR": "API server unavailable. Please check your connection and try again.",
+    "TIMEOUT": "The request took too long. Please try again.",
     "ENDPOINT_NOT_FOUND": "This feature could not be reached. The app may be misconfigured — please contact support.",
     "ACCOUNT_SUSPENDED": "Your agency account is suspended. Please contact Innovax Technologies or update your subscription.",
     "ACCOUNT_BLOCKED": "Your account has been blocked. Please contact support.",
