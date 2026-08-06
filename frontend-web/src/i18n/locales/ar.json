@@ -4557,6 +4557,19 @@
       "unavailable": "معلومات الإصدار غير متوفرة مؤقتاً.",
       "unsupportedOs": "يتطلب هذا المثبت نظام Windows 10 أو أحدث.",
       "downloadExpired": "انتهت صلاحية رابط التحميل هذا - يرجى تحديث الصفحة والمحاولة مرة أخرى."
+    },
+    "update": {
+      "availableTitle": "يتوفر تحديث",
+      "availableBody": "الإصدار {{version}} من Innovacar جاهز للتنزيل.",
+      "downloading": "جارٍ تنزيل التحديث…",
+      "downloadedTitle": "التحديث جاهز للتثبيت",
+      "downloadedBody": "أعد تشغيل Innovacar لإتمام تثبيت الإصدار {{version}}.",
+      "download": "تنزيل التحديث",
+      "restartNow": "إعادة التشغيل الآن",
+      "later": "لاحقاً",
+      "viewNotes": "ما الجديد",
+      "errorTitle": "فشل التحديث",
+      "dismiss": "تجاهل"
     }
   },
   "actions": {

@@ -11,6 +11,7 @@ import ErrorBoundary from '../../frontend-web/src/components/ErrorBoundary';
 import { installLazyLoadRecovery } from '../../frontend-web/src/lazyLoadRecovery';
 import '../../frontend-web/src/index.css';
 import '../../frontend-web/src/i18n';
+import UpdateNotifier from './desktop/UpdateNotifier';
 
 installLazyLoadRecovery();
 
@@ -27,6 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <HashRouter>
         <AuthProvider>
           <App />
+          <UpdateNotifier />
         </AuthProvider>
       </HashRouter>
     </ErrorBoundary>

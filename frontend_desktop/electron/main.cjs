@@ -1,6 +1,7 @@
 const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
+const { initUpdater } = require('./updater.cjs');
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -277,6 +278,10 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  // Update checks are gated on mainWindowRef (set inside createWindow) so
+  // 'updater:event' has somewhere to send to — checkForUpdates() itself
+  // no-ops safely if the window is ever destroyed before a check resolves.
+  initUpdater(() => mainWindowRef);
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

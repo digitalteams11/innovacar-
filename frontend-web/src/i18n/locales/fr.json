@@ -4518,6 +4518,19 @@
       "unavailable": "Les informations de version sont temporairement indisponibles.",
       "unsupportedOs": "Cet installateur necessite Windows 10 ou plus recent.",
       "downloadExpired": "Ce lien de telechargement a expire - veuillez actualiser la page et reessayer."
+    },
+    "update": {
+      "availableTitle": "Mise a jour disponible",
+      "availableBody": "Innovacar {{version}} est pret a etre telecharge.",
+      "downloading": "Telechargement de la mise a jour…",
+      "downloadedTitle": "Mise a jour prete a etre installee",
+      "downloadedBody": "Redemarrez Innovacar pour terminer l'installation de la version {{version}}.",
+      "download": "Telecharger la mise a jour",
+      "restartNow": "Redemarrer maintenant",
+      "later": "Plus tard",
+      "viewNotes": "Nouveautes",
+      "errorTitle": "Echec de la mise a jour",
+      "dismiss": "Ignorer"
     }
   },
   "actions": {

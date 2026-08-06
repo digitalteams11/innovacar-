@@ -17,4 +17,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('oauth-callback', subscription);
     return () => ipcRenderer.removeListener('oauth-callback', subscription);
   },
+  // Auto-update surface — backed by electron/updater.cjs. Every call is a
+  // narrow, validated main-process action (never raw shell/fs access); see
+  // that file for the download-host allowlist and SHA-256 verification.
+  updater: {
+    getAppVersion: () => ipcRenderer.invoke('updater:get-version'),
+    getChannel: () => ipcRenderer.invoke('updater:get-channel'),
+    setChannel: (channel) => ipcRenderer.invoke('updater:set-channel', channel),
+    check: (channel) => ipcRenderer.invoke('updater:check', channel),
+    download: () => ipcRenderer.invoke('updater:download'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    dismiss: (version) => ipcRenderer.invoke('updater:dismiss', version),
+    getLogsDir: () => ipcRenderer.invoke('updater:get-logs-dir'),
+    onEvent: (callback) => {
+      const subscription = (_event, payload) => callback(payload);
+      ipcRenderer.on('updater:event', subscription);
+      return () => ipcRenderer.removeListener('updater:event', subscription);
+    },
+  },
 });

@@ -4518,6 +4518,19 @@
       "unavailable": "Release information is temporarily unavailable.",
       "unsupportedOs": "This installer requires Windows 10 or later.",
       "downloadExpired": "This download link has expired — please refresh the page and try again."
+    },
+    "update": {
+      "availableTitle": "Update available",
+      "availableBody": "Innovacar {{version}} is ready to download.",
+      "downloading": "Downloading update…",
+      "downloadedTitle": "Update ready to install",
+      "downloadedBody": "Restart Innovacar to finish installing version {{version}}.",
+      "download": "Download update",
+      "restartNow": "Restart now",
+      "later": "Later",
+      "viewNotes": "What's new",
+      "errorTitle": "Update failed",
+      "dismiss": "Dismiss"
     }
   },
   "actions": {
