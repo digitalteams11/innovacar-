@@ -96,14 +96,18 @@ const SuperAdminAiSettings = React.lazy(() => import('./pages/superadmin/SuperAd
 // ThemeProvider is NOT included here — it now wraps the whole route tree in
 // App() below, because public routes (Login's Google-button theming) need
 // useTheme() too. Only nest the providers that are genuinely authenticated-only.
+// FeatureAccessProvider is NOT included here — it now wraps ThemeProvider in
+// AppShell below (same reasoning as ThemeProvider's own placement: it needs
+// to be reachable before the authenticated route tree mounts, this time so
+// ThemeContext's white-label branding fetch can check the WHITE_LABEL
+// entitlement instead of unconditionally calling GET /white-label for every
+// agency regardless of plan/entitlement).
 const AuthenticatedAppProviders = ({ children }: { children: React.ReactNode }) => (
-  <FeatureAccessProvider>
-    <PermissionProvider>
-      <OnboardingProvider>
-        {children}
-      </OnboardingProvider>
-    </PermissionProvider>
-  </FeatureAccessProvider>
+  <PermissionProvider>
+    <OnboardingProvider>
+      {children}
+    </OnboardingProvider>
+  </PermissionProvider>
 );
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
@@ -290,7 +294,7 @@ function AppRoutes() {
       {/* Full-bleed like the account-lock screen — a premium checkout page
           shouldn't be wrapped in the regular dashboard sidebar/topbar. */}
       <Route path="/checkout" element={<AuthOnlyRoute><CheckoutTrial /></AuthOnlyRoute>} />
-      <Route path="/white-label" element={<ProtectedRoute><FeatureGate feature="WHITE_LABEL"><WhiteLabel /></FeatureGate></ProtectedRoute>} />
+      <Route path="/white-label" element={<ProtectedRoute><FeatureGate feature="WHITE_LABEL" onDenied="redirect"><WhiteLabel /></FeatureGate></ProtectedRoute>} />
       <Route path="/automation-center" element={<ProtectedRoute><FeatureGate feature="AUTOMATION_CENTER"><AutomationCenter /></FeatureGate></ProtectedRoute>} />
       <Route path="/maintenance" element={<ProtectedRoute><PermissionGate permission="VIEW_MAINTENANCE"><FeatureGate feature="VEHICLE_MANAGEMENT"><Maintenance /></FeatureGate></PermissionGate></ProtectedRoute>} />
       <Route path="/role-permissions" element={<ProtectedRoute><PermissionGate permission="MANAGE_EMPLOYEES"><RolePermissions /></PermissionGate></ProtectedRoute>} />
@@ -465,21 +469,22 @@ function AppShell() {
   return (
     <>
       {authLoading && <SplashScreen />}
-      {/* ThemeProvider wraps ALL routes (public + protected) — public pages
-          (Login, Register, landing) need the resolved theme/CSS vars too,
-          and it only talks to the backend when isAuthenticated, so it's
-          safe/inert on public routes. Always mounted (even during the splash) so the resolved
-          theme/CSS vars are ready the instant route content does mount —
-          see ThemeContext's synchronous initial state + useLayoutEffect. */}
-      <ThemeProvider>
-        {!authLoading && (
-          <BackendHealthGate>
-            <AppRoutes />
-          </BackendHealthGate>
-        )}
-        <CookieConsentBanner />
-        <SessionExpiredModal />
-      </ThemeProvider>
+      {/* FeatureAccessProvider wraps ThemeProvider (which wraps ALL routes,
+          public + protected) so ThemeContext can gate its white-label
+          branding fetch behind the WHITE_LABEL entitlement — like
+          ThemeProvider itself, it only talks to the backend when
+          isAuthenticated, so it's safe/inert on public routes. */}
+      <FeatureAccessProvider>
+        <ThemeProvider>
+          {!authLoading && (
+            <BackendHealthGate>
+              <AppRoutes />
+            </BackendHealthGate>
+          )}
+          <CookieConsentBanner />
+          <SessionExpiredModal />
+        </ThemeProvider>
+      </FeatureAccessProvider>
     </>
   );
 }

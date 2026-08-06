@@ -257,7 +257,11 @@ export default function WhiteLabel() {
         )}
       </section>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* Enterprise white-label still carries a small, fixed legal footer —
+            this page never exposes a way to remove it; only Super Admin can
+            grant that (not implemented as self-serve, see product spec). */}
+        <p className="text-xs text-slate-400">{t('agencyBranding.poweredBy')}</p>
         <button onClick={save} disabled={saving} className="px-5 py-2.5 bg-brand-500 text-white rounded-lg text-sm font-semibold hover:bg-brand-600 disabled:opacity-60">
           {saving ? t('agencyBranding.saving') : t('agencyBranding.saveBranding')}
         </button>

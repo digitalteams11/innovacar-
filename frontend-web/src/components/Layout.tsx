@@ -100,7 +100,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const adminToolItems = useMemo<NavigationItem[]>(() => [
     { to: '/agency', icon: Info, label: t('nav.agency') },
     { to: '/role-permissions', icon: ShieldCheck, label: t('nav.roleAccess'), permission: 'MANAGE_EMPLOYEES' },
-    { to: '/white-label', icon: Palette, label: t('nav.whiteLabel'), feature: 'WHITE_LABEL' },
+    { to: '/white-label', icon: Palette, label: t('nav.whiteLabel'), feature: 'WHITE_LABEL', hideWhenLocked: true },
     { to: '/automation-center', icon: Sparkles, label: t('nav.automationCenter', 'AI & Automation'), feature: 'AUTOMATION_CENTER' },
     { to: '/operations-center', icon: HelpCircle, label: t('nav.operationsCenter') },
     { to: '/desktop-app', icon: Monitor, label: t('nav.desktopApp', 'Desktop App') },

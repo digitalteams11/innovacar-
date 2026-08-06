@@ -9,7 +9,7 @@ import {
   Save, ShieldCheck, Briefcase, FileText, Globe,
   Palette, Signature, Stamp, Image, FileCheck,
   Bell, Server, Settings as SettingsIcon, Lock, CreditCard, Database,
-  HelpCircle, ArrowRight, Archive,
+  HelpCircle, ArrowRight, Archive, MessageCircle, IdCard, UserCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import SignaturePad from '../components/shared/SignaturePad';
@@ -32,10 +32,16 @@ interface ProfileData {
 
 interface AgencyData {
   name: string;
+  legalName: string;
   address: string;
   phone: string;
+  whatsapp: string;
   email: string;
   taxId: string;
+  ice: string;
+  ifNumber: string;
+  rcNumber: string;
+  representativeName: string;
   city: string;
   country: string;
   logoUrl: string;
@@ -80,10 +86,16 @@ export default function Settings() {
 
   const [agency, setAgency] = useState<AgencyData>({
     name: '',
+    legalName: '',
     address: '',
     phone: '',
+    whatsapp: '',
     email: '',
     taxId: '',
+    ice: '',
+    ifNumber: '',
+    rcNumber: '',
+    representativeName: '',
     city: '',
     country: '',
     logoUrl: '',
@@ -114,10 +126,16 @@ export default function Settings() {
         const { data } = await api.get('/agency');
         const agencyData = {
           name: data.name || '',
+          legalName: data.legalName || '',
           address: data.address || '',
           phone: data.phone || '',
+          whatsapp: data.whatsapp || '',
           email: data.email || '',
           taxId: data.taxId || '',
+          ice: data.ice || '',
+          ifNumber: data.ifNumber || '',
+          rcNumber: data.rcNumber || '',
+          representativeName: data.representativeName || '',
           city: data.city || '',
           country: data.country || '',
           logoUrl: data.logoUrl || '',
@@ -435,6 +453,18 @@ export default function Settings() {
               </div>
             </div>
             <div>
+              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.legalName')}</label>
+              <div className="relative">
+                <Briefcase size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={agency.legalName}
+                  onChange={(e) => handleAgencyChange('legalName', e.target.value)}
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                />
+              </div>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.taxId')}</label>
               <div className="relative">
                 <FileText size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -502,6 +532,66 @@ export default function Settings() {
                   type="tel"
                   value={agency.phone}
                   onChange={(e) => handleAgencyChange('phone', e.target.value)}
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.whatsapp')}</label>
+              <div className="relative">
+                <MessageCircle size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="tel"
+                  value={agency.whatsapp}
+                  onChange={(e) => handleAgencyChange('whatsapp', e.target.value)}
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.representativeName')}</label>
+              <div className="relative">
+                <UserCheck size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={agency.representativeName}
+                  onChange={(e) => handleAgencyChange('representativeName', e.target.value)}
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.ice')}</label>
+              <div className="relative">
+                <IdCard size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={agency.ice}
+                  onChange={(e) => handleAgencyChange('ice', e.target.value)}
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.ifNumber')}</label>
+              <div className="relative">
+                <IdCard size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={agency.ifNumber}
+                  onChange={(e) => handleAgencyChange('ifNumber', e.target.value)}
+                  className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('settings.rcNumber')}</label>
+              <div className="relative">
+                <IdCard size={16} className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={agency.rcNumber}
+                  onChange={(e) => handleAgencyChange('rcNumber', e.target.value)}
                   className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>

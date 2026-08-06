@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
+import { useFeatureAccess } from './FeatureAccessContext';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -449,6 +450,7 @@ function loadAppearance(): AppearanceSettings {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user, updateCurrentUser } = useAuth();
+  const { loading: featureAccessLoading, hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
   const [appearance, setAppearance] = useState<AppearanceSettings>(loadAppearance);
   const [loadedRemoteAppearance, setLoadedRemoteAppearance] = useState(false);
@@ -509,7 +511,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   const fetchBranding = useCallback(() => {
-    if (!isAuthenticated) {
+    // WHITE_LABEL is an enterprise-only entitlement — calling GET /white-label
+    // for every agency regardless of plan was dead weight on every load for
+    // the vast majority who can never have custom branding (POST already
+    // rejects them server-side). Wait for FeatureAccessContext to finish
+    // loading rather than skip-then-never-retry: on a fresh mount hasFeature()
+    // is transiently false before the real entitlement list arrives.
+    if (!isAuthenticated || featureAccessLoading || !hasFeature('WHITE_LABEL')) {
       setBranding(null);
       return;
     }
@@ -526,7 +534,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => setBranding(null));
-  }, [isAuthenticated]);
+  }, [isAuthenticated, featureAccessLoading, hasFeature]);
 
   useEffect(() => {
     fetchBranding();

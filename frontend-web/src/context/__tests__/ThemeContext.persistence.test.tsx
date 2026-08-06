@@ -12,6 +12,15 @@ vi.mock('../ToastContext', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }));
 
+// ThemeContext now gates its white-label branding fetch behind the
+// WHITE_LABEL entitlement (see fetchBranding in ThemeContext.tsx) — these
+// tests exercise dark/light-mode persistence, not branding, so a fixed
+// "not entitled" FeatureAccessContext keeps them decoupled from that fetch
+// entirely (no /white-label call to reason about here).
+vi.mock('../FeatureAccessContext', () => ({
+  useFeatureAccess: () => ({ loading: false, hasFeature: () => false, getFeature: () => undefined }),
+}));
+
 // A genuinely reactive mock of useAuth: setMockAuth() below pushes a new
 // value to every mounted consumer (wrapped in act()), the same way a real
 // AuthContext re-render would when isAuthenticated flips after login/logout —

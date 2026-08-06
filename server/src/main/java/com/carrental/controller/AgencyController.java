@@ -54,6 +54,12 @@ public class AgencyController {
         result.put("address", tenant.getAddress() != null ? tenant.getAddress() : "");
         result.put("phone", tenant.getPhone() != null ? tenant.getPhone() : "");
         result.put("taxId", tenant.getTaxId() != null ? tenant.getTaxId() : "");
+        result.put("legalName", tenant.getLegalName() != null ? tenant.getLegalName() : "");
+        result.put("whatsapp", tenant.getWhatsapp() != null ? tenant.getWhatsapp() : "");
+        result.put("ice", tenant.getIce() != null ? tenant.getIce() : "");
+        result.put("ifNumber", tenant.getIfNumber() != null ? tenant.getIfNumber() : "");
+        result.put("rcNumber", tenant.getRcNumber() != null ? tenant.getRcNumber() : "");
+        result.put("representativeName", tenant.getRepresentativeName() != null ? tenant.getRepresentativeName() : "");
         result.put("city", tenant.getCity() != null ? tenant.getCity() : "");
         result.put("country", tenant.getCountry() != null ? tenant.getCountry() : "");
         result.put("logoUrl", tenant.getLogoUrl() != null ? tenant.getLogoUrl() : "");
@@ -116,6 +122,24 @@ public class AgencyController {
         if (updates.containsKey("taxId")) {
             tenant.setTaxId(StringUtils.hasText(updates.get("taxId")) ? updates.get("taxId") : null);
         }
+        if (updates.containsKey("legalName")) {
+            tenant.setLegalName(StringUtils.hasText(updates.get("legalName")) ? updates.get("legalName") : null);
+        }
+        if (updates.containsKey("whatsapp")) {
+            tenant.setWhatsapp(StringUtils.hasText(updates.get("whatsapp")) ? updates.get("whatsapp") : null);
+        }
+        if (updates.containsKey("ice")) {
+            tenant.setIce(StringUtils.hasText(updates.get("ice")) ? updates.get("ice") : null);
+        }
+        if (updates.containsKey("ifNumber")) {
+            tenant.setIfNumber(StringUtils.hasText(updates.get("ifNumber")) ? updates.get("ifNumber") : null);
+        }
+        if (updates.containsKey("rcNumber")) {
+            tenant.setRcNumber(StringUtils.hasText(updates.get("rcNumber")) ? updates.get("rcNumber") : null);
+        }
+        if (updates.containsKey("representativeName")) {
+            tenant.setRepresentativeName(StringUtils.hasText(updates.get("representativeName")) ? updates.get("representativeName") : null);
+        }
         if (updates.containsKey("city")) {
             tenant.setCity(StringUtils.hasText(updates.get("city")) ? updates.get("city") : null);
         }
@@ -143,6 +167,12 @@ public class AgencyController {
         result.put("address", saved.getAddress() != null ? saved.getAddress() : "");
         result.put("phone", saved.getPhone() != null ? saved.getPhone() : "");
         result.put("taxId", saved.getTaxId() != null ? saved.getTaxId() : "");
+        result.put("legalName", saved.getLegalName() != null ? saved.getLegalName() : "");
+        result.put("whatsapp", saved.getWhatsapp() != null ? saved.getWhatsapp() : "");
+        result.put("ice", saved.getIce() != null ? saved.getIce() : "");
+        result.put("ifNumber", saved.getIfNumber() != null ? saved.getIfNumber() : "");
+        result.put("rcNumber", saved.getRcNumber() != null ? saved.getRcNumber() : "");
+        result.put("representativeName", saved.getRepresentativeName() != null ? saved.getRepresentativeName() : "");
         result.put("city", saved.getCity() != null ? saved.getCity() : "");
         result.put("country", saved.getCountry() != null ? saved.getCountry() : "");
         result.put("logoUrl", saved.getLogoUrl() != null ? saved.getLogoUrl() : "");
