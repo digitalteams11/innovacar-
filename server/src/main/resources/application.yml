@@ -194,8 +194,20 @@ app:
   # CORS rather than accidentally allowing a dev origin. Override via
   # CORS_ALLOWED_ORIGINS (comma-separated, no wildcards) if a third origin is
   # ever added.
+  #
+  # "null" is included because the packaged Windows/Electron desktop app
+  # (frontend_desktop) serves its production build via file:// (see
+  # main.cjs's mainWindow.loadFile) — Chromium sends the literal Origin
+  # header value "null" for a file://-loaded page making a cross-origin
+  # fetch. Without it here, every API call (login, refresh, etc.) from the
+  # installed desktop app would fail CORS in production even with a valid
+  # JWT, since allowCredentials(true) in SecurityConfig requires an exact
+  # origin-pattern match, never a wildcard — see SecurityConfig.java's own
+  # comment on this exact value for why it's safe to allow (contextIsolation
+  # + disabled nodeIntegration keep that file:// origin from ever running
+  # attacker-controlled script).
   cors:
-    allowed-origins: "${CORS_ALLOWED_ORIGINS:https://innovacar.app,https://www.innovacar.app}"
+    allowed-origins: "${CORS_ALLOWED_ORIGINS:https://innovacar.app,https://www.innovacar.app,null}"
 
   # ── Google OAuth (legacy) ────────────────────────────────────────────────────
   # No longer used for verification — the server-side OAuth2 login flow
