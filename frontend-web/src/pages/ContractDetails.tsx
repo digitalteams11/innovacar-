@@ -74,6 +74,15 @@ interface ContractDetail {
   vehicleTransmission: string;
   fuelType: string;
 
+  // Vehicle document checklist — frozen snapshot, same source the generated
+  // PDF's "DOCUMENTS DE BORD" section renders from (see server's
+  // PdfService#addDocuments / ContractService#applyDocumentSnapshot).
+  documentCarteGrise?: boolean | null;
+  documentAssurance?: boolean | null;
+  documentVignette?: boolean | null;
+  documentVisiteTechnique?: boolean | null;
+  documentAutorisationCirculation?: boolean | null;
+
   // Dates
   startDate: string;
   endDate: string;
@@ -1321,6 +1330,37 @@ export default function ContractDetails() {
                 <InfoRow label={t('contractDetails.fields.transmission')} value={contract.vehicleTransmission} />
                 <InfoRow label={t('contractDetails.fields.fuelType')} value={contract.fuelType} />
                 <InfoRow label={t('contractDetails.fields.fuelLevel')} value={contract.fuelLevelStart} />
+              </div>
+
+              {/* Frozen at contract-creation time by the backend (see
+                  ContractService#applyDocumentSnapshot) — never computed here,
+                  and always the exact same source the generated PDF's
+                  "DOCUMENTS DE BORD" section reads from, so this view and the
+                  PDF can never disagree. */}
+              <div className="pt-2 border-t border-slate-100">
+                <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.vehicleDocuments.title')}</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  {([
+                    [t('contractDetails.vehicleDocuments.carteGrise'), contract.documentCarteGrise],
+                    [t('contractDetails.vehicleDocuments.assurance'), contract.documentAssurance],
+                    [t('contractDetails.vehicleDocuments.vignette'), contract.documentVignette],
+                    [t('contractDetails.vehicleDocuments.visiteTechnique'), contract.documentVisiteTechnique],
+                    [t('contractDetails.vehicleDocuments.autorisationCirculation'), contract.documentAutorisationCirculation],
+                  ] as const).map(([label, present]) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between rounded-xl px-3 py-2 text-sm"
+                      style={{ background: present ? 'rgba(16,185,129,0.06)' : 'rgba(148,163,184,0.08)' }}
+                    >
+                      <span className="text-slate-600">{label}</span>
+                      {present ? (
+                        <Check size={16} className="text-emerald-500" aria-label={t('contractDetails.vehicleDocuments.present')} />
+                      ) : (
+                        <XCircle size={16} className="text-slate-400" aria-label={t('contractDetails.vehicleDocuments.missing')} />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

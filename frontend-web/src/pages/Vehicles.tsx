@@ -1089,11 +1089,6 @@ export default function Vehicles() {
                 [t('vehicles.fuel'), selectedVehicle.fuel ? translateFuelType(selectedVehicle.fuel) : '—'],
                 [t('vehicles.transmission'), selectedVehicle.transmission ? translateTransmission(selectedVehicle.transmission) : '—'],
                 [t('vehicles.seatCount'), selectedVehicle.seatCount ?? '—'],
-                [t('vehicles.documents.licenseExpiryDate'), selectedVehicle.licenseExpiryDate ? selectedVehicle.licenseExpiryDate.slice(0, 10) : '—'],
-                [t('vehicles.documents.insuranceExpiration'), selectedVehicle.insuranceExpiration ? selectedVehicle.insuranceExpiration.slice(0, 10) : '—'],
-                [t('vehicles.documents.vignetteExpiration'), selectedVehicle.vignetteExpiration ? selectedVehicle.vignetteExpiration.slice(0, 10) : '—'],
-                [t('vehicles.documents.technicalInspectionExpiration'), selectedVehicle.technicalInspectionExpiration ? selectedVehicle.technicalInspectionExpiration.slice(0, 10) : '—'],
-                [t('vehicles.documents.circulationAuthorizationExpiryDate'), selectedVehicle.circulationAuthorizationExpiryDate ? selectedVehicle.circulationAuthorizationExpiryDate.slice(0, 10) : '—'],
               ] as const).map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</dt>
@@ -1101,6 +1096,39 @@ export default function Vehicles() {
                 </div>
               ))}
             </dl>
+
+            {/* Document checklist — this is the same data the generated
+                contract PDF's "DOCUMENTS DE BORD" section snapshots at
+                contract-creation time (see server's ContractService
+                #applyDocumentSnapshot). A document counts as "Available"
+                once its expiry date is recorded here, regardless of
+                whether that date has since passed. */}
+            <div className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{t('vehicles.documents.title')}</p>
+              <div className="space-y-2">
+                {([
+                  [t('vehicles.documents.licenseExpiryDate'), selectedVehicle.licenseExpiryDate],
+                  [t('vehicles.documents.insuranceExpiration'), selectedVehicle.insuranceExpiration],
+                  [t('vehicles.documents.vignetteExpiration'), selectedVehicle.vignetteExpiration],
+                  [t('vehicles.documents.technicalInspectionExpiration'), selectedVehicle.technicalInspectionExpiration],
+                  [t('vehicles.documents.circulationAuthorizationExpiryDate'), selectedVehicle.circulationAuthorizationExpiryDate],
+                ] as const).map(([label, date]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-[var(--text-secondary)]">{label}</span>
+                    <span className="flex items-center gap-2">
+                      {date ? (
+                        <>
+                          <span className="text-xs text-[var(--text-muted)]">{date.slice(0, 10)}</span>
+                          <StatusBadge variant="available">{t('vehicles.documents.available')}</StatusBadge>
+                        </>
+                      ) : (
+                        <StatusBadge variant="neutral">{t('vehicles.documents.missing')}</StatusBadge>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
         <div className="space-y-4">
