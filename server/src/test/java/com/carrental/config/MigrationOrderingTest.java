@@ -28,6 +28,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       2026-07-31T03:42) but reached a Railway deploy <em>after</em> V83 had
  *       already applied in production — renumbered to V84, the next version
  *       above everything already resolved in this repo.</li>
+ *   <li>V92 (agency_identity_fields) was pushed to origin/main at
+ *       2026-08-06T17:27:40+01:00, ~6.5 minutes <em>after</em> V93
+ *       (agency_archive_lifecycle, pushed 2026-08-06T17:21:06+01:00) had
+ *       already been deployed and applied in production — renumbered to
+ *       V96, the next free version above everything already resolved in
+ *       this repo (V94 and V95 were other pending, uncommitted migrations
+ *       at the time of the fix).</li>
  * </ul>
  *
  * <p>No DB/Docker is required — this only checks filesystem invariants that
@@ -45,6 +52,9 @@ class MigrationOrderingTest {
 
     /** The highest version production had actually applied (V83) when V82/dashboard_layout_persistence collided with it. */
     private static final int PRODUCTION_WATERMARK_AT_DASHBOARD_INCIDENT = 83;
+
+    /** The highest version production had actually applied (V93) when V92/agency_identity_fields collided with it. */
+    private static final int PRODUCTION_WATERMARK_AT_AGENCY_IDENTITY_INCIDENT = 93;
 
     private File migrationDir() {
         File dir = new File("src/main/resources/db/migration");
@@ -91,6 +101,17 @@ class MigrationOrderingTest {
                         + "was already recorded as applied in production under a different migration (V83) "
                         + "by the time V82 was deployed")
                 .isGreaterThan(PRODUCTION_WATERMARK_AT_DASHBOARD_INCIDENT);
+    }
+
+    @Test
+    void agencyIdentityFieldsMigration_isAboveTheIncidentWatermark() {
+        int version = versionOf(migrationDir(), "agency_identity_fields");
+
+        assertThat(version)
+                .as("agency_identity_fields must never regress to V92 or below — that version "
+                        + "was already recorded as applied in production under a different migration (V93) "
+                        + "by the time V92 was deployed")
+                .isGreaterThan(PRODUCTION_WATERMARK_AT_AGENCY_IDENTITY_INCIDENT);
     }
 
     private int versionOf(File dir, String descriptionContains) {
