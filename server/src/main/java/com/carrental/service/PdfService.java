@@ -618,12 +618,26 @@ public class PdfService {
      * base64 data URL (signature-pad / upload-as-base64 style), a plain
      * http(s) URL, or a local file path — and never lets a bad/unreachable
      * source crash PDF generation. Returns null (never throws) on failure.
+     *
+     * <p>Every non-success path logs one of a fixed set of diagnostic codes
+     * (STAMP_NOT_CONFIGURED / STAMP_FILE_MISSING / STAMP_UNSUPPORTED_FORMAT /
+     * STAMP_LOAD_FAILED, or the LOGO_ equivalent per {@code assetLabel}) so a
+     * "stamp missing from this PDF" report can be diagnosed from production
+     * logs alone instead of re-reading this method's source — e.g.
+     * distinguishing "no stamp uploaded at all" from "uploaded, but the file
+     * is gone from this instance's local disk" (the latter being the
+     * expected symptom of local-disk storage on a redeployed/ephemeral
+     * filesystem, a real risk documented in AgencyController).
      */
     private Image agencyAssetImage(String source, String assetLabel) {
-        if (source == null || source.isBlank()) return null;
+        String prefix = assetLabel.toUpperCase(java.util.Locale.ROOT);
+        if (source == null || source.isBlank()) {
+            log.debug("[{}_NOT_CONFIGURED] asset={}", prefix, assetLabel);
+            return null;
+        }
+        byte[] bytes;
+        String resolvedFrom;
         try {
-            byte[] bytes;
-            String resolvedFrom;
             if (source.startsWith("data:") && source.contains(",")) {
                 bytes = Base64.getDecoder().decode(source.substring(source.indexOf(",") + 1));
                 resolvedFrom = "base64";
@@ -649,16 +663,27 @@ public class PdfService {
                     bytes = Files.readAllBytes(localPath);
                     resolvedFrom = "local-file";
                 } else {
-                    // Last resort: raw base64 without a data: prefix.
-                    bytes = Base64.getDecoder().decode(source);
-                    resolvedFrom = "raw-base64";
+                    try {
+                        // Last resort: raw base64 without a data: prefix.
+                        bytes = Base64.getDecoder().decode(source);
+                        resolvedFrom = "raw-base64";
+                    } catch (IllegalArgumentException notBase64) {
+                        log.warn("[{}_FILE_MISSING] asset={} path={} reason=file does not exist on this instance's local disk",
+                                prefix, assetLabel, localPath);
+                        return null;
+                    }
                 }
             }
+        } catch (Exception e) {
+            log.warn("[{}_LOAD_FAILED] asset={} reason={}", prefix, assetLabel, e.getMessage());
+            return null;
+        }
+        try {
             Image image = Image.getInstance(bytes);
             log.debug("[AGENCY_ASSET_LOADED] asset={} source={}", assetLabel, resolvedFrom);
             return image;
         } catch (Exception e) {
-            log.warn("AGENCY_LOGO_LOAD_FAILED asset={} reason={}", assetLabel, e.getMessage());
+            log.warn("[{}_UNSUPPORTED_FORMAT] asset={} source={} reason={}", prefix, assetLabel, resolvedFrom, e.getMessage());
             return null;
         }
     }

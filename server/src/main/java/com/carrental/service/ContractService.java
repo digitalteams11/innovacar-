@@ -1719,15 +1719,39 @@ public class ContractService {
     }
 
     /**
+     * A fully signed/finalized contract's PDF is a legal document and must
+     * never be silently altered after the fact — same client+owner-signature
+     * check {@link #signPublicContract} already uses to refuse a second
+     * client signature. See {@link #regenerateContractPdf}.
+     */
+    private boolean isFullySigned(Contract c) {
+        return c.getClientSignature() != null && !c.getClientSignature().isEmpty()
+                && c.getOwnerSignature() != null && !c.getOwnerSignature().isEmpty();
+    }
+
+    /**
      * Forces a fresh PDF render from the agency's *current* settings and
-     * overwrites the stored file/pdfUrl — used so a signed contract's frozen
-     * PDF snapshot (captured at signing time) can be refreshed after the
-     * agency updates its branding (logo, name, terms, etc.), instead of the
-     * download/preview endpoints silently keeping serving the stale file.
+     * overwrites the stored file/pdfUrl — used so a draft/unsigned contract's
+     * PDF can be refreshed after the agency updates its branding (logo, name,
+     * terms, etc.), instead of the download/preview endpoints keeping serving
+     * a stale file forever.
+     *
+     * <p>Once a contract is fully signed, its PDF is a legal document and its
+     * branding/signature snapshot was already frozen at signing time (see
+     * {@link #signPublicContract}'s {@code contract.setBrandingStampUrl(...)}
+     * etc.) — this method refuses to overwrite the stored file for one, so a
+     * later agency-branding change (e.g. replacing the stamp) can never
+     * retroactively alter a document a client already signed and downloaded.
      */
     @Transactional
     public ContractResponse regenerateContractPdf(Long id) {
         Contract contract = fetchContractInTenant(id);
+        if (isFullySigned(contract)) {
+            logAudit(contract, "PDF_REGENERATE_BLOCKED",
+                    "PDF regeneration refused — contract is fully signed and its PDF is immutable", null, null);
+            throw new IllegalStateException(
+                    "This contract is fully signed. Its PDF is a legal document and cannot be regenerated with updated branding.");
+        }
         Tenant tenant = tenantRepository.findById(contract.getTenant().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
         com.carrental.entity.Deposit deposit = depositRepository.findByContractId(contract.getId()).orElse(null);
@@ -1736,6 +1760,7 @@ public class ContractService {
         contract.setPdfUrl(pdfUrl);
         contract.setUpdatedAt(LocalDateTime.now());
         Contract saved = contractRepository.save(contract);
+        logAudit(saved, "PDF_REGENERATED", "PDF regenerated from current agency branding", null, null);
         log.info("[PDF_REGENERATE] contractId={} tenantId={} regenerated=true", id, tenant.getId());
         return ContractResponse.from(saved);
     }

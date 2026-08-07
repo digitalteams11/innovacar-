@@ -581,9 +581,11 @@ public class ContractController {
 
     /**
      * Forces a fresh PDF render from the agency's current settings (logo, name,
-     * address, terms, etc.) and overwrites the stored file — even for an already
-     * signed contract whose PDF was frozen at signing time. Use this after
-     * updating agency branding so Preview/Download stop serving the old file.
+     * address, terms, etc.) and overwrites the stored file — for a draft/
+     * unsigned contract only. A fully signed contract's PDF is a legal
+     * document already frozen at signing time; regenerating it is refused
+     * (see {@link ContractService#regenerateContractPdf}) rather than
+     * silently altering a document the client already signed.
      */
     @PostMapping("/contracts/{id}/pdf/regenerate")
     @PreAuthorize("@rolePermissionService.has('EDIT_CONTRACT')")
@@ -598,6 +600,9 @@ public class ContractController {
         } catch (com.carrental.exception.ResourceNotFoundException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(
                     "Contract not found", "CONTRACT_NOT_FOUND", null));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody(
+                    ex.getMessage(), "CONTRACT_PDF_LOCKED", null));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorBody(
                     "Unable to regenerate contract PDF", "CONTRACT_TEMPLATE_PDF_FAILED", null));

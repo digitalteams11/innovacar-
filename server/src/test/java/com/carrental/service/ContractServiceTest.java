@@ -38,8 +38,10 @@ import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -193,6 +195,50 @@ class ContractServiceTest {
         byte[] pdf = contractService.generateContractPdfPublic(50L);
 
         assertThat(pdf).isEqualTo(expectedPdf);
+    }
+
+    /**
+     * A fully signed contract's PDF is a legal document, frozen at signing
+     * time — regenerateContractPdf must refuse to overwrite it rather than
+     * silently applying whatever the agency's branding looks like today
+     * (e.g. a replaced stamp) to a document the client already signed.
+     */
+    @Test
+    void regenerateContractPdf_refusesToOverwriteFullySignedContract() {
+        Contract contract = Contract.builder()
+                .id(80L).contractNumber("CTR-2026-00080").tenant(tenant)
+                .clientSignature("data:image/png;base64,AAAA")
+                .ownerSignature("data:image/png;base64,BBBB")
+                .pdfUrl("/uploads/contracts/CTR-2026-00080.pdf")
+                .build();
+        when(contractRepository.findByIdAndTenantId(80L, 1L)).thenReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.regenerateContractPdf(80L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fully signed");
+
+        verify(pdfService, never()).generateContractPdf(any(), any(), any());
+        verify(contractRepository, never()).save(any());
+    }
+
+    /** A draft/unsigned contract must still regenerate normally — only a fully signed one is locked. */
+    @Test
+    void regenerateContractPdf_stillWorksForUnsignedDraftContract() {
+        Contract contract = Contract.builder()
+                .id(81L).contractNumber("CTR-2026-00081").tenant(tenant)
+                .build();
+        when(contractRepository.findByIdAndTenantId(81L, 1L)).thenReturn(Optional.of(contract));
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
+        when(depositRepository.findByContractId(81L)).thenReturn(Optional.empty());
+        byte[] freshPdf = "FRESH-PDF".getBytes();
+        when(pdfService.generateContractPdf(contract, tenant, null)).thenReturn(freshPdf);
+        when(pdfService.saveContractPdf(contract, freshPdf)).thenReturn("/uploads/contracts/CTR-2026-00081.pdf");
+        when(contractRepository.save(contract)).thenReturn(contract);
+
+        contractService.regenerateContractPdf(81L);
+
+        verify(pdfService).generateContractPdf(contract, tenant, null);
+        verify(contractRepository).save(contract);
     }
 
     /**
