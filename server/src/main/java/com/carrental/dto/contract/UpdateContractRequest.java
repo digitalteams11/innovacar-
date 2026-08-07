@@ -88,7 +88,13 @@ public class UpdateContractRequest {
     private BigDecimal depositAmount;
     private String depositCurrency;
     private com.carrental.entity.DepositStatus depositStatus;
+    /** @deprecated ignored by ContractService#updateContract on purpose — paidAmount is only
+     *  ever derived from real Payment rows (see PaymentService#recalculateContractFinancials).
+     *  Kept only so older request bodies still deserialize without error. */
+    @Deprecated
     private BigDecimal paidAmount;
+    /** @deprecated ignored by ContractService#updateContract on purpose — same as {@link #paidAmount}. */
+    @Deprecated
     private BigDecimal remainingAmount;
     private BigDecimal taxAmount;
     private BigDecimal discountAmount;

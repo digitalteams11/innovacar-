@@ -43,6 +43,7 @@ public class ContractService {
     private final ContractAuditLogRepository contractAuditLogRepository;
     private final DepositRepository depositRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
     private final PdfService pdfService;
     private final NotificationService notificationService;
     private final SseService sseService;
@@ -1036,12 +1037,15 @@ public class ContractService {
         }
         updateField(request.getDepositCurrency(), contract::setDepositCurrency);
         if (request.getDepositStatus() != null) contract.setDepositStatus(request.getDepositStatus());
-        updateField(request.getPaidAmount(), contract::setPaidAmount);
-        updateField(request.getRemainingAmount(), contract::setRemainingAmount);
+        // paidAmount/remainingAmount/paymentStatus are deliberately NOT settable
+        // from this request — they must only ever be derived from real Payment
+        // rows (see PaymentService#recalculateContractFinancials below), never
+        // overwritten as free-form fields. UpdateContractRequest still declares
+        // getPaidAmount()/getRemainingAmount() for backward-compatible request
+        // deserialization, but their values are ignored here on purpose.
         updateField(request.getTaxAmount(), contract::setTaxAmount);
         updateField(request.getDiscountAmount(), contract::setDiscountAmount);
         updateField(request.getPaymentMethod(), contract::setPaymentMethod);
-        updateField(request.getPaymentStatus(), contract::setPaymentStatus);
         updateField(request.getPaymentDate(), contract::setPaymentDate);
         updateField(request.getInvoiceNumber(), contract::setInvoiceNumber);
 
@@ -1050,6 +1054,12 @@ public class ContractService {
         updateField(request.getFuelLevelEnd(), contract::setFuelLevelEnd);
 
         updateField(request.getNotes(), contract::setNotes);
+
+        // Re-derive paidAmount/remainingAmount/paymentStatus from the real
+        // Payment ledger now that totalPrice/discountAmount/fees above may
+        // have changed — never leave remainingAmount stale relative to a
+        // just-edited total, and never trust a client-supplied value for it.
+        paymentService.recalculateContractFinancials(contract);
 
         Contract saved = contractRepository.save(contract);
         logAudit(saved, "UPDATE", "Contract updated", null, null);
@@ -1541,6 +1551,10 @@ public class ContractService {
 
         String token = generateSecureToken();
         contract.setQrToken(token);
+        // 30 days from issuance — long enough that a client rarely hits it
+        // in the normal course of signing, short enough that a leaked/old
+        // link doesn't stay valid indefinitely. See SignatureLinkException.
+        contract.setQrTokenExpiresAt(LocalDateTime.now().plusDays(30));
         contract.setPublicSigningUrl(buildPublicSigningUrl(id, token));
         Contract saved = contractRepository.save(contract);
 
@@ -1771,6 +1785,7 @@ public class ContractService {
     public PublicContractResponse getPublicContract(String qrToken) {
         Contract contract = contractRepository.findByQrToken(qrToken)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        rejectIfSignatureLinkExpired(contract);
 
         Tenant tenant = contract.getTenant();
 
@@ -1891,10 +1906,19 @@ public class ContractService {
                 .build();
     }
 
+    /** Shared by every public-signing entry point (view + sign) — see {@link SignatureLinkException}. */
+    private void rejectIfSignatureLinkExpired(Contract contract) {
+        LocalDateTime expiresAt = contract.getQrTokenExpiresAt();
+        if (expiresAt != null && LocalDateTime.now().isAfter(expiresAt)) {
+            throw com.carrental.exception.SignatureLinkException.expired();
+        }
+    }
+
     @Transactional
     public PublicContractResponse signPublicContract(String qrToken, ContractSignatureRequest request) {
         Contract contract = contractRepository.findByQrToken(qrToken)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        rejectIfSignatureLinkExpired(contract);
 
         // ── Enforce: agency must have signed first ─────────────────────────────
         if (contract.getOwnerSignature() == null || contract.getOwnerSignature().isEmpty()) {
@@ -1907,7 +1931,7 @@ public class ContractService {
                 && contract.getOwnerSignature() != null
                 && !contract.getOwnerSignature().isEmpty();
         if (alreadyFullySigned) {
-            throw new IllegalStateException("This contract has already been fully signed.");
+            throw com.carrental.exception.SignatureLinkException.alreadySigned();
         }
 
         contract.setClientSignature(request.getSignatureData());

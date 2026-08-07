@@ -299,7 +299,7 @@ public class PaymentService {
 
     private void syncRelatedBusinessState(Payment payment) {
         if (payment.getContract() != null) {
-            updateContractPaymentStatus(payment.getContract());
+            recalculateContractFinancials(payment.getContract());
         }
         if (payment.getReservation() != null) {
             updateReservationPaymentStatus(payment.getReservation());
@@ -309,7 +309,18 @@ public class PaymentService {
         }
     }
 
-    private void updateContractPaymentStatus(Contract contract) {
+    /**
+     * The single authoritative place that derives a contract's paidAmount/
+     * remainingAmount/paymentStatus from real {@link Payment} rows — never
+     * trust a client-supplied value for these three fields (see
+     * ContractService#updateContract, which calls this instead of letting
+     * UpdateContractRequest.paidAmount/remainingAmount overwrite the entity
+     * directly — that was the exact bug this method exists to prevent:
+     * financial totals silently drifting from the actual payment ledger).
+     * Package-private on purpose — same package as ContractService, no need
+     * for a wider public surface than that one cross-service call needs.
+     */
+    void recalculateContractFinancials(Contract contract) {
         Long tenantId = contract.getTenant().getId();
         BigDecimal collected = paymentRepository.sumCollectedAmountByTenantIdAndContractId(tenantId, contract.getId());
         if (collected == null) collected = BigDecimal.ZERO;

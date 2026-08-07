@@ -3,6 +3,7 @@ package com.carrental.service;
 import com.carrental.dto.contract.ContractResponse;
 import com.carrental.dto.contract.CreateContractRequest;
 import com.carrental.dto.contract.PublicContractResponse;
+import com.carrental.dto.contract.UpdateContractRequest;
 import com.carrental.entity.Client;
 import com.carrental.entity.Contract;
 import com.carrental.entity.ContractStatus;
@@ -34,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
 
@@ -41,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,6 +63,7 @@ class ContractServiceTest {
     @Mock private ContractAuditLogRepository contractAuditLogRepository;
     @Mock private DepositRepository depositRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private PaymentService paymentService;
     @Mock private PdfService pdfService;
     @Mock private NotificationService notificationService;
     @Mock private SseService sseService;
@@ -198,6 +202,46 @@ class ContractServiceTest {
     }
 
     /**
+     * Regression test for the bug where PUT /contracts/{id} let a caller
+     * directly overwrite paidAmount/remainingAmount via UpdateContractRequest
+     * fields, bypassing the real Payment ledger entirely — those two fields
+     * must be silently ignored, and the contract's financials must instead
+     * be re-derived from actual Payment rows via
+     * PaymentService#recalculateContractFinancials.
+     */
+    @Test
+    void updateContract_ignoresClientSuppliedPaidAndRemainingAmount() {
+        Contract contract = Contract.builder()
+                .id(90L).contractNumber("CTR-2026-00090").tenant(tenant)
+                .totalPrice(new BigDecimal("5000"))
+                .paidAmount(new BigDecimal("2000"))
+                .remainingAmount(new BigDecimal("3000"))
+                .build();
+        when(contractRepository.findByIdAndTenantId(90L, 1L)).thenReturn(Optional.of(contract));
+        when(contractRepository.save(any(Contract.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Simulate what the real PaymentService would do: derive from actual
+        // payments (here: still 2000 paid) regardless of the bogus request values below.
+        doAnswer(inv -> {
+            Contract c = inv.getArgument(0);
+            c.setPaidAmount(new BigDecimal("2000"));
+            c.setRemainingAmount(new BigDecimal("3000"));
+            return null;
+        }).when(paymentService).recalculateContractFinancials(contract);
+
+        UpdateContractRequest request = new UpdateContractRequest();
+        // A malicious/buggy caller tries to claim the contract is fully paid
+        // and owes nothing — this must have zero effect on the saved entity.
+        request.setPaidAmount(new BigDecimal("5000"));
+        request.setRemainingAmount(BigDecimal.ZERO);
+
+        ContractResponse response = contractService.updateContract(90L, request);
+
+        assertThat(response.getPaidAmount()).isEqualByComparingTo("2000");
+        assertThat(response.getRemainingAmount()).isEqualByComparingTo("3000");
+        verify(paymentService).recalculateContractFinancials(contract);
+    }
+
+    /**
      * A fully signed contract's PDF is a legal document, frozen at signing
      * time — regenerateContractPdf must refuse to overwrite it rather than
      * silently applying whatever the agency's branding looks like today
@@ -318,5 +362,91 @@ class ContractServiceTest {
 
         assertThat(vehicle.getMileageCurrent()).isEqualTo(15000);
         assertThat(contract.getStatus()).isEqualTo(ContractStatus.COMPLETED);
+    }
+
+    // ── Public signature link: expiry / already-signed ─────────────────────
+
+    @Test
+    void expiredSignatureLinkIsRejectedBeforeAnythingElse() {
+        Contract contract = Contract.builder()
+                .id(80L).contractNumber("CTR-2026-00080").tenant(tenant)
+                .qrToken("tok-expired")
+                .qrTokenExpiresAt(LocalDateTime.now().minusMinutes(1))
+                .build();
+        when(contractRepository.findByQrToken("tok-expired")).thenReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.getPublicContract("tok-expired"))
+                .isInstanceOf(com.carrental.exception.SignatureLinkException.class)
+                .satisfies(ex -> assertThat(((com.carrental.exception.SignatureLinkException) ex).getErrorCode())
+                        .isEqualTo("SIGNATURE_LINK_EXPIRED"));
+    }
+
+    @Test
+    void signingAgainstAnExpiredLinkIsRejected() {
+        Contract contract = Contract.builder()
+                .id(81L).contractNumber("CTR-2026-00081").tenant(tenant)
+                .qrToken("tok-expired-sign")
+                .qrTokenExpiresAt(LocalDateTime.now().minusDays(1))
+                .ownerSignature("data:image/png;base64,agency")
+                .build();
+        when(contractRepository.findByQrToken("tok-expired-sign")).thenReturn(Optional.of(contract));
+
+        com.carrental.dto.contract.ContractSignatureRequest request = new com.carrental.dto.contract.ContractSignatureRequest();
+        request.setSignatureData("data:image/png;base64,client");
+        request.setSignerType(com.carrental.dto.contract.ContractSignatureRequest.SignerType.CLIENT);
+
+        assertThatThrownBy(() -> contractService.signPublicContract("tok-expired-sign", request))
+                .isInstanceOf(com.carrental.exception.SignatureLinkException.class)
+                .satisfies(ex -> assertThat(((com.carrental.exception.SignatureLinkException) ex).getErrorCode())
+                        .isEqualTo("SIGNATURE_LINK_EXPIRED"));
+    }
+
+    @Test
+    void reSigningAnAlreadyFullySignedContractIsRejectedWithDedicatedCode() {
+        Contract contract = Contract.builder()
+                .id(82L).contractNumber("CTR-2026-00082").tenant(tenant)
+                .qrToken("tok-already-signed")
+                .qrTokenExpiresAt(LocalDateTime.now().plusDays(29))
+                .ownerSignature("data:image/png;base64,agency")
+                .clientSignature("data:image/png;base64,client")
+                .build();
+        when(contractRepository.findByQrToken("tok-already-signed")).thenReturn(Optional.of(contract));
+
+        com.carrental.dto.contract.ContractSignatureRequest request = new com.carrental.dto.contract.ContractSignatureRequest();
+        request.setSignatureData("data:image/png;base64,client-again");
+        request.setSignerType(com.carrental.dto.contract.ContractSignatureRequest.SignerType.CLIENT);
+
+        assertThatThrownBy(() -> contractService.signPublicContract("tok-already-signed", request))
+                .isInstanceOf(com.carrental.exception.SignatureLinkException.class)
+                .satisfies(ex -> assertThat(((com.carrental.exception.SignatureLinkException) ex).getErrorCode())
+                        .isEqualTo("CONTRACT_ALREADY_SIGNED"));
+    }
+
+    @Test
+    void validNonExpiredLinkLoadsSuccessfully() {
+        Contract contract = Contract.builder()
+                .id(83L).contractNumber("CTR-2026-00083").tenant(tenant)
+                .qrToken("tok-valid")
+                .qrTokenExpiresAt(LocalDateTime.now().plusDays(10))
+                .build();
+        when(contractRepository.findByQrToken("tok-valid")).thenReturn(Optional.of(contract));
+
+        PublicContractResponse response = contractService.getPublicContract("tok-valid");
+
+        assertThat(response.getContractNumber()).isEqualTo("CTR-2026-00083");
+    }
+
+    @Test
+    void nullExpiryNeverExpiresAnOlderLinkThatPredatesTheExpiryFeature() {
+        Contract contract = Contract.builder()
+                .id(84L).contractNumber("CTR-2026-00084").tenant(tenant)
+                .qrToken("tok-legacy")
+                .qrTokenExpiresAt(null)
+                .build();
+        when(contractRepository.findByQrToken("tok-legacy")).thenReturn(Optional.of(contract));
+
+        PublicContractResponse response = contractService.getPublicContract("tok-legacy");
+
+        assertThat(response.getContractNumber()).isEqualTo("CTR-2026-00084");
     }
 }
