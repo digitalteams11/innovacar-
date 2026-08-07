@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Copy, Check, MessageCircle, Mail, Smartphone, Download, CheckCircle2 } from 'lucide-react';
+import { X, Copy, Check, MessageCircle, Mail, Download, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -182,13 +182,6 @@ export default function QRCodeModal({
     window.open(`https://wa.me/${digits}?text=${text}`, '_blank');
   };
 
-  const handleShareSms = () => {
-    const text = encodeURIComponent(
-      `Please sign your rental contract: ${fullUrl}`
-    );
-    window.open(`sms:${clientPhone || ''}?body=${text}`, '_blank');
-  };
-
   const handleShareEmail = () => {
     const subject = encodeURIComponent(`Rental Contract ${contractNumber} - Signature Required`);
     const body = encodeURIComponent(
@@ -330,20 +323,13 @@ export default function QRCodeModal({
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               {t('contracts.shareVia') || 'Share via'}
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={handleShareWhatsApp}
                 className="flex flex-col items-center gap-2 p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all active:scale-95"
               >
                 <MessageCircle size={22} />
                 <span className="text-xs font-medium">WhatsApp</span>
-              </button>
-              <button
-                onClick={handleShareSms}
-                className="flex flex-col items-center gap-2 p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all active:scale-95"
-              >
-                <Smartphone size={22} />
-                <span className="text-xs font-medium">SMS</span>
               </button>
               <button
                 onClick={handleShareEmail}
