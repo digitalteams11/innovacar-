@@ -121,6 +121,19 @@ public class GlobalExceptionHandler {
                 safeBusinessMessage(ex.getMessage(), "Inspection link expired."), "warning", "INSPECTION_TOKEN_EXPIRED");
     }
 
+    /**
+     * Public contract-signature link rejected for a reason specific to the
+     * link itself (expired, already used) — see {@link SignatureLinkException}.
+     * SIGNATURE_LINK_EXPIRED uses 410 GONE (the link once worked, now
+     * doesn't); CONTRACT_ALREADY_SIGNED uses 409 CONFLICT (the underlying
+     * resource is in a state that makes this request redundant, not gone).
+     */
+    @ExceptionHandler(SignatureLinkException.class)
+    public ResponseEntity<Map<String, Object>> handleSignatureLink(SignatureLinkException ex) {
+        HttpStatus status = "SIGNATURE_LINK_EXPIRED".equals(ex.getErrorCode()) ? HttpStatus.GONE : HttpStatus.CONFLICT;
+        return bodyWithCode(status, ex.getMessage(), "warning", ex.getErrorCode());
+    }
+
     @ExceptionHandler(InspectionUploadException.class)
     public ResponseEntity<Map<String, Object>> handleInspectionUpload(InspectionUploadException ex) {
         log.warn("Inspection upload failed: {}", ex.getMessage());

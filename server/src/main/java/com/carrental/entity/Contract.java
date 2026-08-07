@@ -359,6 +359,11 @@ public class Contract {
     @Column(name = "qr_token", unique = true, length = 128)
     private String qrToken;
 
+    /** Set the moment the token is issued (see ContractService#generateQrToken) — a
+     *  NULL value means the contract has no signing link yet, not "never expires". */
+    @Column(name = "qr_token_expires_at")
+    private LocalDateTime qrTokenExpiresAt;
+
     @Column(name = "public_signing_url", length = 512)
     private String publicSigningUrl;
 
