@@ -9,6 +9,7 @@ import type { AppNotification } from '../../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../context/ToastContext';
+import { formatRelativeTime } from '../../utils/dateFormat';
 
 // ── Module icons ───────────────────────────────────────────────────────────────
 
@@ -86,20 +87,6 @@ function getSeverityColors(severity: string) {
     case 'CRITICAL': return { bg: 'rgba(239,68,68,0.12)', dot: '#dc2626', icon: 'rgba(239,68,68,0.18)' };
     default:         return { bg: 'rgba(var(--brand-primary-rgb, 16,185,129), 0.06)', dot: 'var(--brand-primary)', icon: 'var(--bg-hover)' };
   }
-}
-
-// ── Time display ───────────────────────────────────────────────────────────────
-
-function getRelativeTime(dateStr: string, t: (k: string, opts?: Record<string, unknown>) => string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return t('notifications.justNow');
-  if (minutes < 60) return t('notifications.minutesAgo', { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t('notifications.hoursAgo', { count: hours });
-  const days = Math.floor(hours / 24);
-  if (days === 1) return t('notifications.yesterday');
-  return t('notifications.daysAgo', { count: days, defaultValue: `${days} days ago` });
 }
 
 function getNotificationTypeKey(n: AppNotification): string | null {
@@ -366,7 +353,7 @@ export default function NotificationBell() {
                             {display.message}
                           </p>
                           <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                            {getRelativeTime(n.createdAt, t)}
+                            {formatRelativeTime(n.createdAt, t)}
                           </p>
                         </div>
                         {!n.read && (

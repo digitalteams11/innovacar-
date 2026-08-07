@@ -1,5 +1,7 @@
 package com.carrental.entity;
 
+import com.carrental.util.UtcLocalDateTimeSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -66,9 +68,11 @@ public class Notification {
     private Boolean read = false;
 
     @Column(name = "read_at")
+    @JsonSerialize(using = UtcLocalDateTimeSerializer.class)
     private LocalDateTime readAt;
 
     @Column(name = "created_at", nullable = false)
+    @JsonSerialize(using = UtcLocalDateTimeSerializer.class)
     private LocalDateTime createdAt;
 
     @PrePersist

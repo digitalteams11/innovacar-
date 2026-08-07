@@ -269,7 +269,7 @@ public class NotificationService {
         m.put("contractId", n.getContractId());
         m.put("tenantId", n.getTenantId());
         m.put("read", n.getRead());
-        m.put("createdAt", n.getCreatedAt().toString());
+        m.put("createdAt", com.carrental.util.UtcDateTimeUtil.toIsoUtc(n.getCreatedAt()));
         return m;
     }
 
