@@ -117,6 +117,10 @@ public class Vehicle {
     @Column(name = "technical_inspection_expiration")
     private LocalDate technicalInspectionExpiration;
 
+    /** Vignette (annual road-tax sticker) expiration */
+    @Column(name = "vignette_expiration")
+    private LocalDate vignetteExpiration;
+
     // ── GPS Tracking fields ─────────────────────────────────────────────────
 
     @Column(name = "gps_device_id", length = 100)

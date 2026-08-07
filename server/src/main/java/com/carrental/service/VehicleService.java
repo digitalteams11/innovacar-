@@ -147,6 +147,11 @@ public class VehicleService {
                 .gpsDeviceId(request.getGpsDeviceId())
                 .gpsImei(request.getGpsImei())
                 .gpsEnabled(request.getGpsEnabled() != null ? request.getGpsEnabled() : false)
+                .licenseExpiryDate(request.getLicenseExpiryDate())
+                .insuranceExpiration(request.getInsuranceExpiration())
+                .vignetteExpiration(request.getVignetteExpiration())
+                .technicalInspectionExpiration(request.getTechnicalInspectionExpiration())
+                .circulationAuthorizationExpiryDate(request.getCirculationAuthorizationExpiryDate())
                 .tenant(tenant)
                 .build());
 
@@ -215,6 +220,21 @@ public class VehicleService {
         }
         if (request.getGpsEnabled() != null) {
             vehicle.setGpsEnabled(request.getGpsEnabled());
+        }
+        if (request.getLicenseExpiryDate() != null) {
+            vehicle.setLicenseExpiryDate(request.getLicenseExpiryDate());
+        }
+        if (request.getInsuranceExpiration() != null) {
+            vehicle.setInsuranceExpiration(request.getInsuranceExpiration());
+        }
+        if (request.getVignetteExpiration() != null) {
+            vehicle.setVignetteExpiration(request.getVignetteExpiration());
+        }
+        if (request.getTechnicalInspectionExpiration() != null) {
+            vehicle.setTechnicalInspectionExpiration(request.getTechnicalInspectionExpiration());
+        }
+        if (request.getCirculationAuthorizationExpiryDate() != null) {
+            vehicle.setCirculationAuthorizationExpiryDate(request.getCirculationAuthorizationExpiryDate());
         }
         if (request.getLastLatitude() != null) {
             vehicle.setLastLatitude(request.getLastLatitude());

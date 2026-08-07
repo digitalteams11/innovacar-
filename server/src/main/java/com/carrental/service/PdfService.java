@@ -232,11 +232,32 @@ public class PdfService {
         document.add(table);
     }
 
+    /** [X]/[ ] rather than a Unicode checkbox glyph (☑/☐) — the embedded Helvetica
+     *  base font used throughout this PDF (see Font.HELVETICA below) has no glyph
+     *  for those code points and would render a missing-glyph box instead. */
+    private static String checkbox(Boolean present) {
+        return Boolean.TRUE.equals(present) ? "[X]" : "[ ]";
+    }
+
+    /**
+     * Renders the vehicle document checklist from the contract's own
+     * document* snapshot fields (see Contract entity + ContractService
+     * #applyDocumentSnapshot) — never re-derived from the vehicle's current
+     * record. That snapshot is frozen at contract-creation time (and
+     * refreshed only while the contract is still editable, on explicit PDF
+     * regeneration — see ContractService#regenerateContractPdf), so a later
+     * edit to the vehicle can never retroactively change what an
+     * already-generated/signed PDF claims.
+     */
     private void addDocuments(Document document, Contract c) throws Exception {
         PdfPTable table = oneColumn();
         section(table, "DOCUMENTS DE BORD");
-        table.addCell(cell("[ ] Carte grise     [ ] Assurance     [ ] Vignette     [ ] Visite technique     [ ] Autorisation de circulation",
-                Rectangle.BOX, 4, Element.ALIGN_LEFT, Color.WHITE));
+        String checklist = checkbox(c.getDocumentCarteGrise()) + " Carte grise     "
+                + checkbox(c.getDocumentAssurance()) + " Assurance     "
+                + checkbox(c.getDocumentVignette()) + " Vignette     "
+                + checkbox(c.getDocumentVisiteTechnique()) + " Visite technique     "
+                + checkbox(c.getDocumentAutorisationCirculation()) + " Autorisation de circulation";
+        table.addCell(cell(checklist, Rectangle.BOX, 4, Element.ALIGN_LEFT, Color.WHITE));
         String inspection = c.getVehicleCondition() != null ? "Inspection vehicule: Oui" : "Inspection vehicule: Non renseignee";
         table.addCell(cell(inspection, Rectangle.BOX, 4, Element.ALIGN_LEFT, Color.WHITE));
         document.add(table);

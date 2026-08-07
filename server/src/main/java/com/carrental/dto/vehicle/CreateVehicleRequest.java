@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Request body for {@code POST /api/vehicles} — create a vehicle.
@@ -72,4 +73,20 @@ public class CreateVehicleRequest {
 
     /** Enable GPS tracking for this vehicle */
     private Boolean gpsEnabled;
+
+    // ── Document checklist (used to derive the contract's "DOCUMENTS DE
+    // BORD" checklist snapshot — see ContractService#applyDocumentSnapshot).
+    // A document is "present" once its expiry date is recorded, regardless
+    // of whether that date has since passed. ────────────────────────────────
+
+    /** Carte grise (vehicle registration card) expiry date */
+    private LocalDate licenseExpiryDate;
+    /** Assurance (insurance) expiry date */
+    private LocalDate insuranceExpiration;
+    /** Vignette (annual road-tax sticker) expiry date */
+    private LocalDate vignetteExpiration;
+    /** Visite technique (technical inspection) expiry date */
+    private LocalDate technicalInspectionExpiration;
+    /** Autorisation de circulation expiry date */
+    private LocalDate circulationAuthorizationExpiryDate;
 }

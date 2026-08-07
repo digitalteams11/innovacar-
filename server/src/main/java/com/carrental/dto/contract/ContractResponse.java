@@ -77,6 +77,14 @@ public class ContractResponse {
     private LocalDate insuranceExpiration;
     private LocalDate technicalInspectionExpiration;
 
+    // Vehicle document checklist — frozen snapshot, same source the PDF's
+    // "DOCUMENTS DE BORD" section renders from (see PdfService#addDocuments).
+    private Boolean documentCarteGrise;
+    private Boolean documentAssurance;
+    private Boolean documentVignette;
+    private Boolean documentVisiteTechnique;
+    private Boolean documentAutorisationCirculation;
+
     // Rental
     private String pickupAgency;
     private String returnAgency;
@@ -199,6 +207,11 @@ public class ContractResponse {
                 .vehicleTransmission(contract.getVehicleTransmission())
                 .insuranceProvider(contract.getInsuranceProvider())
                 .insuranceExpiration(contract.getInsuranceExpiration())
+                .documentCarteGrise(contract.getDocumentCarteGrise())
+                .documentAssurance(contract.getDocumentAssurance())
+                .documentVignette(contract.getDocumentVignette())
+                .documentVisiteTechnique(contract.getDocumentVisiteTechnique())
+                .documentAutorisationCirculation(contract.getDocumentAutorisationCirculation())
                 .technicalInspectionExpiration(contract.getTechnicalInspectionExpiration())
                 .pickupAgency(contract.getPickupAgency())
                 .returnAgency(contract.getReturnAgency())

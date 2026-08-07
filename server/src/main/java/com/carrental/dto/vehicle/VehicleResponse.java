@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -44,6 +45,13 @@ public class VehicleResponse {
     private Double        lastSpeed;
     private Boolean       gpsEnabled;
 
+    // Document checklist — see CreateVehicleRequest for semantics.
+    private LocalDate     licenseExpiryDate;
+    private LocalDate     insuranceExpiration;
+    private LocalDate     vignetteExpiration;
+    private LocalDate     technicalInspectionExpiration;
+    private LocalDate     circulationAuthorizationExpiryDate;
+
     // ── Static factory ───────────────────────────────────────────────────────
 
     public static VehicleResponse from(Vehicle v) {
@@ -72,6 +80,11 @@ public class VehicleResponse {
                 .gpsStatus(v.getGpsStatus())
                 .lastSpeed(v.getLastSpeed())
                 .gpsEnabled(Boolean.TRUE.equals(v.getGpsEnabled()))
+                .licenseExpiryDate(v.getLicenseExpiryDate())
+                .insuranceExpiration(v.getInsuranceExpiration())
+                .vignetteExpiration(v.getVignetteExpiration())
+                .technicalInspectionExpiration(v.getTechnicalInspectionExpiration())
+                .circulationAuthorizationExpiryDate(v.getCirculationAuthorizationExpiryDate())
                 .build();
     }
 }

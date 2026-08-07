@@ -30,6 +30,11 @@ interface Vehicle {
   transmission: string;
   seatCount?: number | null;
   imageUrl: string;
+  licenseExpiryDate?: string | null;
+  insuranceExpiration?: string | null;
+  vignetteExpiration?: string | null;
+  technicalInspectionExpiration?: string | null;
+  circulationAuthorizationExpiryDate?: string | null;
 }
 
 interface TrashedVehicle {
@@ -123,6 +128,11 @@ export default function Vehicles() {
     transmission: '',
     seatCount: '',
     imageUrl: '',
+    licenseExpiryDate: '',
+    insuranceExpiration: '',
+    vignetteExpiration: '',
+    technicalInspectionExpiration: '',
+    circulationAuthorizationExpiryDate: '',
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [initialForm, setInitialForm] = useState<typeof form | null>(null);
@@ -385,7 +395,10 @@ export default function Vehicles() {
     setModalMode('create');
     setInitialForm(null);
     setFieldErrors({});
-    setForm({ brand: '', model: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: '', transmission: '', seatCount: '', imageUrl: '' });
+    setForm({
+      brand: '', model: '', category: '', plate: '', statut: 'AVAILABLE', prixJour: '', fuel: '', transmission: '', seatCount: '', imageUrl: '',
+      licenseExpiryDate: '', insuranceExpiration: '', vignetteExpiration: '', technicalInspectionExpiration: '', circulationAuthorizationExpiryDate: '',
+    });
     setImagePreview(null);
     setIsModalOpen(true);
   };
@@ -401,6 +414,11 @@ export default function Vehicles() {
     transmission: vehicle.transmission || '',
     seatCount: vehicle.seatCount != null ? String(vehicle.seatCount) : '',
     imageUrl: vehicle.imageUrl || '',
+    licenseExpiryDate: vehicle.licenseExpiryDate ? vehicle.licenseExpiryDate.slice(0, 10) : '',
+    insuranceExpiration: vehicle.insuranceExpiration ? vehicle.insuranceExpiration.slice(0, 10) : '',
+    vignetteExpiration: vehicle.vignetteExpiration ? vehicle.vignetteExpiration.slice(0, 10) : '',
+    technicalInspectionExpiration: vehicle.technicalInspectionExpiration ? vehicle.technicalInspectionExpiration.slice(0, 10) : '',
+    circulationAuthorizationExpiryDate: vehicle.circulationAuthorizationExpiryDate ? vehicle.circulationAuthorizationExpiryDate.slice(0, 10) : '',
   });
 
   // Opens the read-only "vehicle details" view — the primary card action.
@@ -565,6 +583,11 @@ export default function Vehicles() {
         transmission: form.transmission,
         seatCount: form.seatCount.trim() ? Number(form.seatCount) : null,
         imageUrl: form.imageUrl || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
+        licenseExpiryDate: form.licenseExpiryDate || null,
+        insuranceExpiration: form.insuranceExpiration || null,
+        vignetteExpiration: form.vignetteExpiration || null,
+        technicalInspectionExpiration: form.technicalInspectionExpiration || null,
+        circulationAuthorizationExpiryDate: form.circulationAuthorizationExpiryDate || null,
       };
       if (editingId) {
         const { data: updated } = await api.put(`/vehicles/${editingId}`, payload);
@@ -1066,6 +1089,11 @@ export default function Vehicles() {
                 [t('vehicles.fuel'), selectedVehicle.fuel ? translateFuelType(selectedVehicle.fuel) : '—'],
                 [t('vehicles.transmission'), selectedVehicle.transmission ? translateTransmission(selectedVehicle.transmission) : '—'],
                 [t('vehicles.seatCount'), selectedVehicle.seatCount ?? '—'],
+                [t('vehicles.documents.licenseExpiryDate'), selectedVehicle.licenseExpiryDate ? selectedVehicle.licenseExpiryDate.slice(0, 10) : '—'],
+                [t('vehicles.documents.insuranceExpiration'), selectedVehicle.insuranceExpiration ? selectedVehicle.insuranceExpiration.slice(0, 10) : '—'],
+                [t('vehicles.documents.vignetteExpiration'), selectedVehicle.vignetteExpiration ? selectedVehicle.vignetteExpiration.slice(0, 10) : '—'],
+                [t('vehicles.documents.technicalInspectionExpiration'), selectedVehicle.technicalInspectionExpiration ? selectedVehicle.technicalInspectionExpiration.slice(0, 10) : '—'],
+                [t('vehicles.documents.circulationAuthorizationExpiryDate'), selectedVehicle.circulationAuthorizationExpiryDate ? selectedVehicle.circulationAuthorizationExpiryDate.slice(0, 10) : '—'],
               ] as const).map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</dt>
@@ -1213,6 +1241,66 @@ export default function Vehicles() {
                 style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('seatCount'), color: 'var(--text-primary)' }}
               />
               {fieldError('seatCount')}
+            </div>
+          </div>
+
+          {/* Document checklist — drives the generated contract PDF's
+              "DOCUMENTS DE BORD" checkboxes (see PdfService#addDocuments).
+              A document counts as present once its expiry date is set here,
+              regardless of whether that date has already passed. */}
+          <div className="pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('vehicles.documents.title')}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.documents.licenseExpiryDate')}</label>
+                <input
+                  type="date"
+                  value={form.licenseExpiryDate}
+                  onChange={(e) => updateFormField('licenseExpiryDate', e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('licenseExpiryDate'), color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.documents.insuranceExpiration')}</label>
+                <input
+                  type="date"
+                  value={form.insuranceExpiration}
+                  onChange={(e) => updateFormField('insuranceExpiration', e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('insuranceExpiration'), color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.documents.vignetteExpiration')}</label>
+                <input
+                  type="date"
+                  value={form.vignetteExpiration}
+                  onChange={(e) => updateFormField('vignetteExpiration', e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('vignetteExpiration'), color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.documents.technicalInspectionExpiration')}</label>
+                <input
+                  type="date"
+                  value={form.technicalInspectionExpiration}
+                  onChange={(e) => updateFormField('technicalInspectionExpiration', e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('technicalInspectionExpiration'), color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('vehicles.documents.circulationAuthorizationExpiryDate')}</label>
+                <input
+                  type="date"
+                  value={form.circulationAuthorizationExpiryDate}
+                  onChange={(e) => updateFormField('circulationAuthorizationExpiryDate', e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{ backgroundColor: 'var(--bg-hover)', border: fieldBorder('circulationAuthorizationExpiryDate'), color: 'var(--text-primary)' }}
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Request body for {@code PUT /api/vehicles/{id}} — partial update.
@@ -70,4 +71,17 @@ public class UpdateVehicleRequest {
 
     /** Current GPS device status */
     private com.carrental.entity.GpsDeviceStatus gpsStatus;
+
+    // ── Document checklist — see CreateVehicleRequest for semantics. Any
+    // field left null is ignored (existing value kept), same as every other
+    // field on this partial-update DTO. To explicitly clear a date, the
+    // vehicle form must not treat "no change" and "clear" as the same thing
+    // — out of scope for this endpoint's existing null-means-unchanged
+    // contract, consistent with every other optional field here. ──────────
+
+    private LocalDate licenseExpiryDate;
+    private LocalDate insuranceExpiration;
+    private LocalDate vignetteExpiration;
+    private LocalDate technicalInspectionExpiration;
+    private LocalDate circulationAuthorizationExpiryDate;
 }
