@@ -129,9 +129,15 @@ export default function PublicContract() {
       // Distinguish "token/contract genuinely doesn't exist" from a transient
       // server-side failure — do not label every exception "Invalid Link".
       console.error('[PublicContract] fetch failed:', path, 'errorCode=', errorCode, err);
-      if (errorCode === 'CONTRACT_NOT_FOUND' || status === 404) {
+      if (errorCode === 'SIGNATURE_LINK_EXPIRED') {
+        setErrorTitle(t('publicContract.errorTitles.linkExpired'));
+        setError(t('publicContract.errors.signatureLinkExpired'));
+      } else if (errorCode === 'CONTRACT_ALREADY_SIGNED') {
+        setErrorTitle(t('publicContract.errorTitles.alreadySigned'));
+        setError(t('publicContract.errors.contractAlreadySigned'));
+      } else if (errorCode === 'CONTRACT_NOT_FOUND' || status === 404) {
         setErrorTitle(t('publicContract.errorTitles.invalidLink'));
-        setError(t('publicContract.errors.invalidLinkContactAgency'));
+        setError(t('publicContract.errors.signatureLinkInvalid'));
       } else if (status && status >= 500) {
         setErrorTitle(t('publicContract.errorTitles.temporaryError'));
         setError(message || t('publicContract.errors.loadFailedTryAgain'));
@@ -162,8 +168,16 @@ export default function PublicContract() {
       setContract(data);
       setIsSigned(true);
       setShowSuccess(true);
-    } catch (err) {
-      setError(t('publicContract.errors.signatureSaveFailed'));
+    } catch (err: any) {
+      const errorCode = err?.response?.data?.errorCode;
+      if (errorCode === 'SIGNATURE_LINK_EXPIRED') {
+        setError(t('publicContract.errors.signatureLinkExpired'));
+      } else if (errorCode === 'CONTRACT_ALREADY_SIGNED') {
+        setIsSigned(true);
+        setError(t('publicContract.errors.contractAlreadySigned'));
+      } else {
+        setError(t('publicContract.errors.signatureSaveFailed'));
+      }
     } finally {
       setIsSubmitting(false);
     }

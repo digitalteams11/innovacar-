@@ -705,6 +705,14 @@
     "seatCount": "عدد المقاعد",
     "seatCountPlaceholder": "مثال: 5",
     "seatsNotSpecified": "عدد المقاعد غير محدد",
+    "documents": {
+      "title": "قائمة وثائق المركبة",
+      "licenseExpiryDate": "تاريخ انتهاء البطاقة الرمادية",
+      "insuranceExpiration": "تاريخ انتهاء التأمين",
+      "vignetteExpiration": "تاريخ انتهاء الضريبة السنوية (فينيات)",
+      "technicalInspectionExpiration": "تاريخ انتهاء الفحص التقني",
+      "circulationAuthorizationExpiryDate": "تاريخ انتهاء رخصة السير"
+    },
     "perDay": "درهم/يوم",
     "vehicle": "المركبة",
     "plate": "اللوحة",
@@ -2901,8 +2909,17 @@
     "pushEnabled": "الإشعارات الفورية مفعلة",
     "soundSettings": "إعدادات الصوت",
     "justNow": "الآن",
-    "minutesAgo": "منذ {{count}} دقيقة",
-    "hoursAgo": "منذ {{count}} ساعة",
+    "minutesAgo_zero": "منذ لحظات",
+    "minutesAgo_one": "منذ دقيقة",
+    "minutesAgo_two": "منذ دقيقتين",
+    "minutesAgo_few": "منذ {{count}} دقائق",
+    "minutesAgo_many": "منذ {{count}} دقيقة",
+    "minutesAgo_other": "منذ {{count}} دقيقة",
+    "hoursAgo_one": "منذ ساعة",
+    "hoursAgo_two": "منذ ساعتين",
+    "hoursAgo_few": "منذ {{count}} ساعات",
+    "hoursAgo_many": "منذ {{count}} ساعة",
+    "hoursAgo_other": "منذ {{count}} ساعة",
     "yesterday": "أمس",
     "daysAgo": "منذ {{count}} أيام",
     "deleteNotification": "حذف الإشعار",
@@ -4277,7 +4294,9 @@
     "errorTitles": {
       "invalidLink": "رابط غير صالح",
       "temporaryError": "خطأ مؤقت",
-      "unableToLoad": "تعذر تحميل العقد"
+      "unableToLoad": "تعذر تحميل العقد",
+      "linkExpired": "انتهت صلاحية رابط التوقيع",
+      "alreadySigned": "تم التوقيع مسبقًا"
     },
     "errors": {
       "invalidLinkContactAgency": "رابط العقد هذا غير صالح. يرجى التواصل مع وكالة التأجير للحصول على رابط جديد.",
@@ -4287,7 +4306,10 @@
       "signatureSaveFailed": "تعذر حفظ توقيعك. يرجى المحاولة مرة أخرى.",
       "pdfNotFound": "تعذر العثور على هذا العقد. يرجى التواصل مع وكالة التأجير للحصول على رابط جديد.",
       "pdfGenerationFailed": "العقد موجود، لكن تعذر إنشاء ملف PDF. يرجى المحاولة مرة أخرى.",
-      "pdfEmpty": "ملف PDF الذي تم إنشاؤه كان فارغًا. يرجى المحاولة مرة أخرى."
+      "pdfEmpty": "ملف PDF الذي تم إنشاؤه كان فارغًا. يرجى المحاولة مرة أخرى.",
+      "signatureLinkExpired": "انتهت صلاحية رابط التوقيع. يرجى طلب رابط جديد.",
+      "signatureLinkInvalid": "رابط التوقيع غير صالح.",
+      "contractAlreadySigned": "تم توقيع هذا العقد بالفعل."
     },
     "contactAgencyForAssistance": "يرجى التواصل مع وكالة التأجير للحصول على المساعدة.",
     "contractSigned": "تم توقيع العقد!",

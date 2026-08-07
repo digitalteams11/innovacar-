@@ -354,6 +354,33 @@ public class Contract {
     @Column(name = "branding_terms_snapshot", columnDefinition = "TEXT")
     private String brandingTermsSnapshot;
 
+    // ── Vehicle document checklist (snapshot) ────────────────────────────────
+    // "DOCUMENTS DE BORD" on the generated PDF. Captured once from the linked
+    // Vehicle's document-expiry fields at contract-creation time (see
+    // ContractService#applyDocumentSnapshot) and frozen from then on — a
+    // later edit to the vehicle record must never retroactively change an
+    // already-generated contract's checklist. See PdfService#addDocuments.
+
+    @Column(name = "document_carte_grise", nullable = false)
+    @Builder.Default
+    private Boolean documentCarteGrise = false;
+
+    @Column(name = "document_assurance", nullable = false)
+    @Builder.Default
+    private Boolean documentAssurance = false;
+
+    @Column(name = "document_vignette", nullable = false)
+    @Builder.Default
+    private Boolean documentVignette = false;
+
+    @Column(name = "document_visite_technique", nullable = false)
+    @Builder.Default
+    private Boolean documentVisiteTechnique = false;
+
+    @Column(name = "document_autorisation_circulation", nullable = false)
+    @Builder.Default
+    private Boolean documentAutorisationCirculation = false;
+
     // ── QR & Public Signing ──────────────────────────────────────────────────
 
     @Column(name = "qr_token", unique = true, length = 128)

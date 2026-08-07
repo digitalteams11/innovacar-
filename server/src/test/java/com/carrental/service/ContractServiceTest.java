@@ -143,6 +143,48 @@ class ContractServiceTest {
     }
 
     @Test
+    void newContractSnapshotsVehicleDocumentPresenceFromExpiryDates() {
+        vehicle.setInsuranceExpiration(LocalDate.now().plusMonths(6));
+        vehicle.setTechnicalInspectionExpiration(LocalDate.now().plusMonths(3));
+        // licenseExpiryDate, vignetteExpiration and circulationAuthorizationExpiryDate
+        // are deliberately left unset — must snapshot as "not present".
+
+        CreateContractRequest request = new CreateContractRequest();
+        request.setClientId(client.getId());
+        request.setVehicleId(vehicle.getId());
+        request.setStartDate(LocalDate.now().plusDays(1));
+        request.setEndDate(LocalDate.now().plusDays(3));
+        request.setPickupTime(LocalTime.of(9, 0));
+        request.setReturnTime(LocalTime.of(18, 0));
+
+        when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
+        when(clientRepository.findByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(client));
+        when(vehicleRepository.findByIdAndTenantIdForUpdate(3L, 1L)).thenReturn(Optional.of(vehicle));
+        when(availabilityService.isVehicleAvailable(
+                3L, request.getStartDate(), request.getPickupTime(), request.getEndDate(), request.getReturnTime(), null))
+                .thenReturn(true);
+        when(contractRepository.existsByContractNumberIncludingDeleted(any())).thenReturn(false);
+        when(reservationRepository.save(any())).thenAnswer(invocation -> {
+            Reservation value = invocation.getArgument(0);
+            if (value.getId() == null) value.setId(41L);
+            return value;
+        });
+        when(contractRepository.save(any())).thenAnswer(invocation -> {
+            Contract value = invocation.getArgument(0);
+            value.setId(11L);
+            return value;
+        });
+
+        ContractResponse response = contractService.createContract(request);
+
+        assertThat(response.getDocumentAssurance()).isTrue();
+        assertThat(response.getDocumentVisiteTechnique()).isTrue();
+        assertThat(response.getDocumentCarteGrise()).isFalse();
+        assertThat(response.getDocumentVignette()).isFalse();
+        assertThat(response.getDocumentAutorisationCirculation()).isFalse();
+    }
+
+    @Test
     void convertingReservationMakesItReadOnlyAndStartsRental() {
         Reservation reservation = Reservation.builder()
                 .id(20L).tenant(tenant).client(client).vehicle(vehicle)

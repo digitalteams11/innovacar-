@@ -721,6 +721,14 @@
     "seatCount": "Number of seats",
     "seatCountPlaceholder": "e.g. 5",
     "seatsNotSpecified": "Seats not specified",
+    "documents": {
+      "title": "Document checklist",
+      "licenseExpiryDate": "Carte grise expiry",
+      "insuranceExpiration": "Insurance expiry",
+      "vignetteExpiration": "Vignette expiry",
+      "technicalInspectionExpiration": "Technical inspection expiry",
+      "circulationAuthorizationExpiryDate": "Circulation authorization expiry"
+    },
     "perDay": "DH/day",
     "vehicle": "Vehicle",
     "plate": "Plate",
@@ -2902,7 +2910,8 @@
     "soundSettings": "Sound settings",
     "justNow": "Just now",
     "minutesAgo": "{{count}} min ago",
-    "hoursAgo": "{{count}}h ago",
+    "hoursAgo_one": "1 hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
     "yesterday": "Yesterday",
     "daysAgo": "{{count}} days ago",
     "deleteNotification": "Delete notification",
@@ -4242,7 +4251,9 @@
     "errorTitles": {
       "invalidLink": "Invalid Link",
       "temporaryError": "Temporary Error",
-      "unableToLoad": "Unable to Load Contract"
+      "unableToLoad": "Unable to Load Contract",
+      "linkExpired": "Signature Link Expired",
+      "alreadySigned": "Already Signed"
     },
     "errors": {
       "invalidLinkContactAgency": "This contract link is invalid. Please contact your rental agency for a new link.",
@@ -4252,7 +4263,10 @@
       "signatureSaveFailed": "Failed to save your signature. Please try again.",
       "pdfNotFound": "This contract could not be found. Please contact your rental agency for a new link.",
       "pdfGenerationFailed": "The contract exists, but the PDF could not be generated. Please try again.",
-      "pdfEmpty": "The generated PDF was empty. Please try again."
+      "pdfEmpty": "The generated PDF was empty. Please try again.",
+      "signatureLinkExpired": "This signature link has expired. Please request a new link.",
+      "signatureLinkInvalid": "Invalid signature link.",
+      "contractAlreadySigned": "This contract has already been signed."
     },
     "contactAgencyForAssistance": "Please contact your rental agency for assistance.",
     "contractSigned": "Contract Signed!",

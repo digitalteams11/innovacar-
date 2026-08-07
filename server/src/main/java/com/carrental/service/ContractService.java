@@ -374,6 +374,7 @@ public class ContractService {
         builder.fuelCharges(request.getFuelCharges());
 
         Contract contract = builder.build();
+        applyDocumentSnapshot(contract, vehicle);
         Contract saved = contractRepository.save(contract);
         savedReservation.setContract(saved);
         reservationRepository.save(savedReservation);
@@ -1744,6 +1745,39 @@ public class ContractService {
     }
 
     /**
+     * Single source of truth for "does this vehicle have this document on
+     * file", derived from the vehicle's document-expiry fields (a document
+     * is considered present once an expiry date has been recorded for it —
+     * see the vehicle create/edit form). Used to populate a Contract's
+     * document* snapshot fields at creation time and, for a still-editable
+     * (not fully signed) contract, when its PDF is explicitly regenerated.
+     */
+    private record VehicleDocumentPresence(
+            boolean carteGrise, boolean assurance, boolean vignette,
+            boolean visiteTechnique, boolean autorisationCirculation) {
+        static VehicleDocumentPresence of(Vehicle vehicle) {
+            if (vehicle == null) {
+                return new VehicleDocumentPresence(false, false, false, false, false);
+            }
+            return new VehicleDocumentPresence(
+                    vehicle.getLicenseExpiryDate() != null,
+                    vehicle.getInsuranceExpiration() != null,
+                    vehicle.getVignetteExpiration() != null,
+                    vehicle.getTechnicalInspectionExpiration() != null,
+                    vehicle.getCirculationAuthorizationExpiryDate() != null);
+        }
+    }
+
+    private void applyDocumentSnapshot(Contract contract, Vehicle vehicle) {
+        VehicleDocumentPresence docs = VehicleDocumentPresence.of(vehicle);
+        contract.setDocumentCarteGrise(docs.carteGrise());
+        contract.setDocumentAssurance(docs.assurance());
+        contract.setDocumentVignette(docs.vignette());
+        contract.setDocumentVisiteTechnique(docs.visiteTechnique());
+        contract.setDocumentAutorisationCirculation(docs.autorisationCirculation());
+    }
+
+    /**
      * Forces a fresh PDF render from the agency's *current* settings and
      * overwrites the stored file/pdfUrl — used so a draft/unsigned contract's
      * PDF can be refreshed after the agency updates its branding (logo, name,
@@ -1769,6 +1803,10 @@ public class ContractService {
         Tenant tenant = tenantRepository.findById(contract.getTenant().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
         com.carrental.entity.Deposit deposit = depositRepository.findByContractId(contract.getId()).orElse(null);
+        // Only reachable for a not-fully-signed contract (checked above) — safe
+        // to refresh the vehicle document checklist from the vehicle's current
+        // state here, same as branding/terms already do on regeneration.
+        applyDocumentSnapshot(contract, contract.getVehicle());
         byte[] pdf = pdfService.generateContractPdf(contract, tenant, deposit);
         String pdfUrl = pdfService.saveContractPdf(contract, pdf);
         contract.setPdfUrl(pdfUrl);
@@ -2167,6 +2205,7 @@ public class ContractService {
                 .tenant(tenant)
                 .termsAccepted(false)
                 .build();
+        applyDocumentSnapshot(contract, vehicle);
 
         Contract saved = contractRepository.save(contract);
         reservation.setContract(saved);

@@ -721,6 +721,14 @@
     "seatCount": "Nombre de places",
     "seatCountPlaceholder": "ex. 5",
     "seatsNotSpecified": "Places non précisées",
+    "documents": {
+      "title": "Documents du véhicule",
+      "licenseExpiryDate": "Expiration carte grise",
+      "insuranceExpiration": "Expiration assurance",
+      "vignetteExpiration": "Expiration vignette",
+      "technicalInspectionExpiration": "Expiration visite technique",
+      "circulationAuthorizationExpiryDate": "Expiration autorisation de circulation"
+    },
     "perDay": "DH/j",
     "vehicle": "Véhicule",
     "plate": "Plaque",
@@ -2902,7 +2910,8 @@
     "soundSettings": "Paramètres du son",
     "justNow": "À l'instant",
     "minutesAgo": "il y a {{count}} min",
-    "hoursAgo": "il y a {{count}}h",
+    "hoursAgo_one": "il y a 1 h",
+    "hoursAgo_other": "il y a {{count}} h",
     "yesterday": "Hier",
     "daysAgo": "il y a {{count}} jours",
     "deleteNotification": "Supprimer la notification",
@@ -4242,7 +4251,9 @@
     "errorTitles": {
       "invalidLink": "Lien invalide",
       "temporaryError": "Erreur temporaire",
-      "unableToLoad": "Impossible de charger le contrat"
+      "unableToLoad": "Impossible de charger le contrat",
+      "linkExpired": "Lien de signature expiré",
+      "alreadySigned": "Déjà signé"
     },
     "errors": {
       "invalidLinkContactAgency": "Ce lien de contrat est invalide. Veuillez contacter votre agence de location pour un nouveau lien.",
@@ -4252,7 +4263,10 @@
       "signatureSaveFailed": "Échec de l'enregistrement de votre signature. Veuillez réessayer.",
       "pdfNotFound": "Ce contrat est introuvable. Veuillez contacter votre agence de location pour un nouveau lien.",
       "pdfGenerationFailed": "Le contrat existe, mais le PDF n'a pas pu être généré. Veuillez réessayer.",
-      "pdfEmpty": "Le PDF généré était vide. Veuillez réessayer."
+      "pdfEmpty": "Le PDF généré était vide. Veuillez réessayer.",
+      "signatureLinkExpired": "Ce lien de signature a expiré. Veuillez demander un nouveau lien.",
+      "signatureLinkInvalid": "Lien de signature invalide.",
+      "contractAlreadySigned": "Ce contrat a déjà été signé."
     },
     "contactAgencyForAssistance": "Veuillez contacter votre agence de location pour obtenir de l'aide.",
     "contractSigned": "Contrat signé !",
