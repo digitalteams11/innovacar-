@@ -43,6 +43,7 @@ class PaymentServiceTest {
     @Mock private ClientRepository clientRepository;
     @Mock private VehicleRepository vehicleRepository;
     @Mock private TenantRepository tenantRepository;
+    @Mock private NotificationService notificationService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -203,5 +204,64 @@ class PaymentServiceTest {
 
         assertThat(response.getId()).isEqualTo(PAYMENT_ID);
         verify(paymentRepository, never()).save(any());
+    }
+
+    // ── updateInvoiceStatus: contract-linked invoices read the contract's own paidAmount ──
+
+    @Test
+    void updateInvoiceStatus_contractLinkedInvoiceBecomesPartiallyPaidFromContractPaidAmount() {
+        com.carrental.entity.Tenant tenant = com.carrental.entity.Tenant.builder().id(TENANT_ID).build();
+        com.carrental.entity.Contract contract = com.carrental.entity.Contract.builder()
+                .id(300L).tenant(tenant)
+                .totalPrice(new BigDecimal("7000.00"))
+                .paidAmount(new BigDecimal("2000.00")) // already recalculated by recalculateContractFinancials
+                .build();
+        com.carrental.entity.Invoice invoice = com.carrental.entity.Invoice.builder()
+                .id(400L).tenant(tenant).contract(contract)
+                .amount(new BigDecimal("7000.00"))
+                .dueDate(java.time.LocalDate.now().plusDays(10))
+                .status(com.carrental.entity.InvoiceStatus.ISSUED)
+                .build();
+        when(invoiceRepository.save(any(com.carrental.entity.Invoice.class))).thenAnswer(i -> i.getArgument(0));
+
+        paymentService.updateInvoiceStatus(invoice);
+
+        assertThat(invoice.getStatus()).isEqualTo(com.carrental.entity.InvoiceStatus.PARTIALLY_PAID);
+        // Never queries payments by invoice_id directly for a contract-linked invoice —
+        // the contract's own paidAmount is the source of truth (see method javadoc).
+        verify(paymentRepository, never()).sumCollectedAmountByTenantIdAndInvoiceId(anyLong(), anyLong());
+    }
+
+    @Test
+    void updateInvoiceStatus_contractLinkedInvoiceBecomesPaidWhenFullyCollected() {
+        com.carrental.entity.Tenant tenant = com.carrental.entity.Tenant.builder().id(TENANT_ID).build();
+        com.carrental.entity.Contract contract = com.carrental.entity.Contract.builder()
+                .id(301L).tenant(tenant)
+                .totalPrice(new BigDecimal("5000.00"))
+                .paidAmount(new BigDecimal("5000.00"))
+                .build();
+        com.carrental.entity.Invoice invoice = com.carrental.entity.Invoice.builder()
+                .id(401L).tenant(tenant).contract(contract)
+                .amount(new BigDecimal("5000.00"))
+                .status(com.carrental.entity.InvoiceStatus.PARTIALLY_PAID)
+                .build();
+        when(invoiceRepository.save(any(com.carrental.entity.Invoice.class))).thenAnswer(i -> i.getArgument(0));
+
+        paymentService.updateInvoiceStatus(invoice);
+
+        assertThat(invoice.getStatus()).isEqualTo(com.carrental.entity.InvoiceStatus.PAID);
+    }
+
+    @Test
+    void updateInvoiceStatus_neverOverwritesCancelledOrRefundedTerminalStates() {
+        com.carrental.entity.Tenant tenant = com.carrental.entity.Tenant.builder().id(TENANT_ID).build();
+        com.carrental.entity.Invoice cancelled = com.carrental.entity.Invoice.builder()
+                .id(402L).tenant(tenant).amount(new BigDecimal("1000.00"))
+                .status(com.carrental.entity.InvoiceStatus.CANCELLED).build();
+
+        paymentService.updateInvoiceStatus(cancelled);
+
+        assertThat(cancelled.getStatus()).isEqualTo(com.carrental.entity.InvoiceStatus.CANCELLED);
+        verify(invoiceRepository, never()).save(any());
     }
 }

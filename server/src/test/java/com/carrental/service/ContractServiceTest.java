@@ -46,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -67,6 +68,8 @@ class ContractServiceTest {
     @Mock private DepositRepository depositRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private InvoiceRepository invoiceRepository;
+    @Mock private InvoiceService invoiceService;
+    @Mock private com.carrental.repository.ContractExtensionRepository contractExtensionRepository;
     @Mock private PaymentService paymentService;
     @Mock private PdfService pdfService;
     @Mock private NotificationService notificationService;
@@ -521,5 +524,88 @@ class ContractServiceTest {
         assertThat(paidInvoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
         verify(invoiceRepository, times(1)).save(pendingInvoice);
         verify(invoiceRepository, never()).save(paidInvoice);
+    }
+
+    // ── extendContract: "Prolonger la location" ─────────────────────────────
+
+    @Test
+    void extendContract_addsDaysAndAmountWithoutTouchingPaymentHistory() {
+        Contract contract = Contract.builder()
+                .id(95L).contractNumber("CTR-2026-00095").tenant(tenant)
+                .status(ContractStatus.ACTIVE)
+                .vehicle(vehicle)
+                .startDate(LocalDate.now().plusDays(1))
+                .endDate(LocalDate.now().plusDays(6))
+                .rentalDays(5)
+                .dailyPrice(new BigDecimal("1000.00"))
+                .totalPrice(new BigDecimal("5000.00"))
+                .build();
+
+        when(contractRepository.findByIdAndTenantId(95L, 1L)).thenReturn(Optional.of(contract));
+        when(availabilityService.isVehicleAvailable(eq(vehicle.getId()), any(), any(), any(), any(), any(), eq(95L)))
+                .thenReturn(true);
+        when(contractRepository.save(any(Contract.class))).thenAnswer(i -> i.getArgument(0));
+        when(contractExtensionRepository.save(any(com.carrental.entity.ContractExtension.class)))
+                .thenAnswer(i -> i.getArgument(0));
+
+        com.carrental.dto.contract.ExtendContractRequest request = new com.carrental.dto.contract.ExtendContractRequest();
+        request.setAdditionalDays(2);
+        request.setReason("Client wants 2 more days");
+
+        com.carrental.dto.contract.ExtendContractResponse response = contractService.extendContract(95L, request);
+
+        assertThat(contract.getRentalDays()).isEqualTo(7);
+        assertThat(contract.getTotalPrice()).isEqualByComparingTo("7000.00");
+        assertThat(contract.getEndDate()).isEqualTo(LocalDate.now().plusDays(8));
+        assertThat(response.getExtension().getAdditionalDays()).isEqualTo(2);
+        assertThat(response.getExtension().getAdditionalAmount()).isEqualByComparingTo("2000.00");
+        verify(paymentService).recalculateContractFinancials(contract);
+        verify(invoiceService).syncInvoiceForContract(contract);
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void extendContract_rejectsWhenVehicleUnavailableForExtendedDates() {
+        Contract contract = Contract.builder()
+                .id(96L).contractNumber("CTR-2026-00096").tenant(tenant)
+                .status(ContractStatus.ACTIVE)
+                .vehicle(vehicle)
+                .startDate(LocalDate.now().plusDays(1))
+                .endDate(LocalDate.now().plusDays(6))
+                .rentalDays(5)
+                .dailyPrice(new BigDecimal("1000.00"))
+                .totalPrice(new BigDecimal("5000.00"))
+                .build();
+
+        when(contractRepository.findByIdAndTenantId(96L, 1L)).thenReturn(Optional.of(contract));
+        when(availabilityService.isVehicleAvailable(eq(vehicle.getId()), any(), any(), any(), any(), any(), eq(96L)))
+                .thenReturn(false);
+
+        com.carrental.dto.contract.ExtendContractRequest request = new com.carrental.dto.contract.ExtendContractRequest();
+        request.setAdditionalDays(2);
+
+        assertThatThrownBy(() -> contractService.extendContract(96L, request))
+                .isInstanceOf(com.carrental.exception.VehicleConflictException.class);
+
+        assertThat(contract.getTotalPrice()).isEqualByComparingTo("5000.00");
+        verify(contractRepository, never()).save(any());
+    }
+
+    @Test
+    void extendContract_rejectsCancelledContract() {
+        Contract contract = Contract.builder()
+                .id(97L).contractNumber("CTR-2026-00097").tenant(tenant)
+                .status(ContractStatus.CANCELLED)
+                .startDate(LocalDate.now().minusDays(5))
+                .endDate(LocalDate.now())
+                .build();
+
+        when(contractRepository.findByIdAndTenantId(97L, 1L)).thenReturn(Optional.of(contract));
+
+        com.carrental.dto.contract.ExtendContractRequest request = new com.carrental.dto.contract.ExtendContractRequest();
+        request.setAdditionalDays(2);
+
+        assertThatThrownBy(() -> contractService.extendContract(97L, request))
+                .isInstanceOf(IllegalStateException.class);
     }
 }

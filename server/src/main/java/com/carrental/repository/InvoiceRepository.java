@@ -37,6 +37,19 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
      *  invoice status in sync when the contract is cancelled (see ContractService#cancelContract). */
     List<Invoice> findAllByTenantIdAndContractId(Long tenantId, Long contractId);
 
+    /** Candidates for PaymentReminderJob's status-refresh sweep — still owing, due date passed,
+     *  not yet flagged OVERDUE. Global (no tenant filter) — mirrors ClientInfoRequestReminderJob's
+     *  cross-tenant sweep pattern; the job sets TenantContext per row. */
+    List<Invoice> findAllByStatusInAndDueDateBefore(List<InvoiceStatus> statuses, LocalDate before);
+
+    /** Candidates for PaymentReminderJob's "due soon" reminder — still owing, due within the
+     *  given window, never reminded before. */
+    List<Invoice> findAllByStatusInAndDueDateBetweenAndDueSoonReminderSentAtIsNull(
+            List<InvoiceStatus> statuses, LocalDate from, LocalDate to);
+
+    /** Candidates for PaymentReminderJob's "overdue" reminder — already OVERDUE, never reminded. */
+    List<Invoice> findAllByStatusAndOverdueReminderSentAtIsNull(InvoiceStatus status);
+
     /** Tenant-scoped lookup by invoice number. */
     Optional<Invoice> findByInvoiceNumberAndTenantId(String invoiceNumber, Long tenantId);
 

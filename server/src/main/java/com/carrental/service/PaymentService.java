@@ -43,6 +43,7 @@ public class PaymentService {
     private final ClientRepository clientRepository;
     private final VehicleRepository vehicleRepository;
     private final TenantRepository tenantRepository;
+    private final NotificationService notificationService;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -299,11 +300,34 @@ public class PaymentService {
         }
 
         syncRelatedBusinessState(saved);
+        notifyIfPartiallyPaid(saved.getContract());
 
         log.info("Recorded payment [id={}, number={}] amount={} for tenant [{}]",
                 saved.getId(), saved.getPaymentNumber(), request.getAmount(), tenantId);
 
         return PaymentResponse.from(saved);
+    }
+
+    /**
+     * "Payment partiel reçu" — fires only right after a payment leaves the contract
+     * PARTIALLY_PAID (never on every payment regardless of outcome, and never on a
+     * refund/extension recalculation, both of which also call
+     * {@link #recalculateContractFinancials} but aren't "a payment was just received").
+     * Real database state only — remaining amount comes straight from the just-recalculated
+     * Contract, never a fabricated figure.
+     */
+    private void notifyIfPartiallyPaid(Contract contract) {
+        if (contract == null || !"PARTIALLY_PAID".equals(contract.getPaymentStatus())) {
+            return;
+        }
+        BigDecimal remaining = contract.getRemainingAmount() != null ? contract.getRemainingAmount() : BigDecimal.ZERO;
+        notificationService.createNotification(
+                "Paiement partiel reçu",
+                "Paiement partiel reçu. " + remaining.stripTrailingZeros().toPlainString() + " MAD restant pour le contrat "
+                        + contract.getContractNumber() + ".",
+                com.carrental.entity.Notification.NotificationType.PAYMENT_PARTIAL,
+                contract.getId(),
+                contract.getTenant().getId());
     }
 
     // ── REFUND ────────────────────────────────────────────────────────────────
@@ -354,6 +378,14 @@ public class PaymentService {
     private void syncRelatedBusinessState(Payment payment) {
         if (payment.getContract() != null) {
             recalculateContractFinancials(payment.getContract());
+            // Most contract payments carry contract, not invoice, on the Payment row
+            // (see recordPayment) — sync any invoice(s) linked to this contract too,
+            // not just the one this specific payment happens to reference directly.
+            Long contractTenantId = payment.getContract().getTenant().getId();
+            for (Invoice contractInvoice : invoiceRepository.findAllByTenantIdAndContractId(
+                    contractTenantId, payment.getContract().getId())) {
+                updateInvoiceStatus(contractInvoice);
+            }
         }
         if (payment.getReservation() != null) {
             updateReservationPaymentStatus(payment.getReservation());
@@ -418,23 +450,69 @@ public class PaymentService {
                 reservation.getId(), reservation.getPaymentStatus(), collected, totalPrice);
     }
 
-    private void updateInvoiceStatus(Invoice invoice) {
-        Long tenantId = invoice.getTenant().getId();
-        BigDecimal collected = paymentRepository.sumCollectedAmountByTenantIdAndInvoiceId(tenantId, invoice.getId());
-        if (collected == null) collected = BigDecimal.ZERO;
-        BigDecimal invoiceAmount = invoice.getAmount() != null ? invoice.getAmount() : BigDecimal.ZERO;
-
-        if (invoiceAmount.compareTo(BigDecimal.ZERO) > 0 && collected.compareTo(invoiceAmount) >= 0) {
-            invoice.setStatus(InvoiceStatus.PAID);
-        } else if (invoice.getDueDate() != null && invoice.getDueDate().isBefore(LocalDate.now())) {
-            invoice.setStatus(InvoiceStatus.OVERDUE);
-        } else {
-            invoice.setStatus(InvoiceStatus.PENDING);
+    /**
+     * The single authoritative place that derives an invoice's status from real payment
+     * records — never settable by the client (see CreateInvoiceRequest, which has no
+     * status field at all) and never left to drift from what was actually collected.
+     * Package-private so {@link InvoiceService} can call it too (contract-generated
+     * invoices go through {@code InvoiceService#syncInvoiceForContract}, manual ones
+     * through {@code InvoiceService#createInvoice} — both end up here rather than each
+     * having their own copy of this calculation).
+     *
+     * <p>CANCELLED/REFUNDED are terminal states set only by dedicated cancellation/refund
+     * flows (ContractService#cancelContract, a future invoice-refund action) — never
+     * overwritten here regardless of what payments say, since "cancelled" and "refunded"
+     * describe something that happened to the invoice, not a function of amounts paid.
+     *
+     * <p>For a contract-linked invoice, "collected" is the contract's own paidAmount —
+     * the same {@link Payment} rows {@link #recalculateContractFinancials} already sums —
+     * rather than a separate sum of payments carrying this invoice's own FK directly.
+     * Most contract payments are recorded against the contract, not a specific invoice
+     * (see recordPayment), so summing by invoice_id alone would under-count and let the
+     * invoice and the contract it bills silently disagree on how much was paid.
+     */
+    void updateInvoiceStatus(Invoice invoice) {
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED || invoice.getStatus() == InvoiceStatus.REFUNDED) {
+            return;
         }
 
+        BigDecimal collected = collectedAmountFor(invoice);
+        BigDecimal invoiceAmount = invoice.getAmount() != null ? invoice.getAmount() : BigDecimal.ZERO;
+        boolean overdue = invoice.getDueDate() != null && invoice.getDueDate().isBefore(LocalDate.now());
+
+        InvoiceStatus newStatus;
+        if (invoiceAmount.compareTo(BigDecimal.ZERO) > 0 && collected.compareTo(invoiceAmount) >= 0) {
+            newStatus = InvoiceStatus.PAID;
+        } else if (overdue) {
+            newStatus = InvoiceStatus.OVERDUE;
+        } else if (collected.compareTo(BigDecimal.ZERO) > 0) {
+            newStatus = InvoiceStatus.PARTIALLY_PAID;
+        } else {
+            newStatus = InvoiceStatus.ISSUED;
+        }
+
+        invoice.setStatus(newStatus);
         invoiceRepository.save(invoice);
         log.debug("Updated invoice [id={}] status to {} (paid={}/total={})",
                 invoice.getId(), invoice.getStatus(), collected, invoiceAmount);
+    }
+
+    /**
+     * How much of an invoice has actually been collected — the same computation
+     * {@link #updateInvoiceStatus} uses, exposed so callers that only need the number
+     * (monthly accounting, invoice detail views) don't need their own copy of the
+     * contract-linked-vs-manual branch. See {@link #updateInvoiceStatus} javadoc for why
+     * a contract-linked invoice reads the contract's paidAmount rather than summing
+     * payments by invoice_id directly.
+     */
+    BigDecimal collectedAmountFor(Invoice invoice) {
+        if (invoice.getContract() != null) {
+            return invoice.getContract().getPaidAmount() != null
+                    ? invoice.getContract().getPaidAmount() : BigDecimal.ZERO;
+        }
+        Long tenantId = invoice.getTenant().getId();
+        BigDecimal collected = paymentRepository.sumCollectedAmountByTenantIdAndInvoiceId(tenantId, invoice.getId());
+        return collected != null ? collected : BigDecimal.ZERO;
     }
 
     private BigDecimal calculateMonthlyRevenue(Long tenantId) {

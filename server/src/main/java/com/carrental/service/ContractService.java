@@ -14,8 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -45,6 +47,8 @@ public class ContractService {
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
     private final InvoiceRepository invoiceRepository;
+    private final InvoiceService invoiceService;
+    private final ContractExtensionRepository contractExtensionRepository;
     private final PdfService pdfService;
     private final NotificationService notificationService;
     private final SseService sseService;
@@ -1633,7 +1637,127 @@ public class ContractService {
         Contract saved = contractRepository.save(contract);
         logAudit(saved, "FINALIZE", "Contract finalized and activated", null, null);
         log.info("Contract [id={}] finalized", id);
+
+        // The rental is now confirmed/activated — auto-generate (or, on a repeat call,
+        // just re-sync) its invoice from the contract's own totals. Never requires an
+        // admin to type the amount in separately (see InvoiceService#syncInvoiceForContract).
+        invoiceService.syncInvoiceForContract(saved);
+
         return ContractResponse.from(saved);
+    }
+
+    // ── EXTEND ("Prolonger la location") ─────────────────────────────────────
+
+    /**
+     * Extends a contract's rental period by a number of additional days —
+     * "Prolonger la location". Never overwrites the original rental history:
+     * records a {@link ContractExtension} row for the addition, then updates
+     * the contract's own endDate/rentalDays/totalPrice to the new current
+     * total (same convention every other part of this system already uses —
+     * Contract.totalPrice is always the live total, not the original quote).
+     * Existing {@link Payment} rows are never touched; only the remaining
+     * balance changes, via the same {@link PaymentService#recalculateContractFinancials}
+     * every payment already goes through.
+     *
+     * @throws IllegalStateException if the contract is cancelled/completed/expired
+     * @throws com.carrental.exception.VehicleConflictException if the additional days
+     *         conflict with another reservation/contract for the same vehicle
+     */
+    @Transactional
+    public ExtendContractResponse extendContract(Long id, com.carrental.dto.contract.ExtendContractRequest request) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        Contract contract = fetchContractInTenant(id);
+
+        if (isTerminalContractStatus(contract.getStatus())) {
+            throw new IllegalStateException("Cannot extend a " + contract.getStatus() + " contract");
+        }
+        if (contract.getEndDate() == null || contract.getStartDate() == null) {
+            throw new IllegalStateException("Contract has no rental period to extend");
+        }
+        int additionalDays = request.getAdditionalDays();
+        if (additionalDays <= 0) {
+            throw new IllegalArgumentException("Additional days must be at least 1");
+        }
+
+        LocalDate previousEndDate = contract.getEndDate();
+        LocalDate newEndDate = previousEndDate.plusDays(additionalDays);
+
+        // Check availability for the whole period (not just the added tail) but exclude
+        // this contract's own reservation/contract from conflict detection — otherwise
+        // the vehicle's own existing booking for the original days would false-positive
+        // as a conflict with itself.
+        if (contract.getVehicle() != null) {
+            java.time.LocalTime pickupTime = contract.getPickupTime() != null ? contract.getPickupTime() : java.time.LocalTime.of(9, 0);
+            java.time.LocalTime returnTime = contract.getReturnTime() != null ? contract.getReturnTime() : java.time.LocalTime.of(18, 0);
+            Long excludeReservationId = contract.getReservation() != null ? contract.getReservation().getId() : null;
+            boolean available = availabilityService.isVehicleAvailable(
+                    contract.getVehicle().getId(), contract.getStartDate(), pickupTime,
+                    newEndDate, returnTime, excludeReservationId, contract.getId());
+            if (!available) {
+                throw new com.carrental.exception.VehicleConflictException(
+                        "The vehicle is not available for the requested extension dates.",
+                        "VEHICLE_UNAVAILABLE_FOR_EXTENSION", "vehicleId", contract.getVehicle().getId(), "EXTENSION_CONFLICT");
+            }
+        }
+
+        BigDecimal dailyPrice = contract.getDailyPrice() != null ? contract.getDailyPrice() : BigDecimal.ZERO;
+        BigDecimal additionalAmount = dailyPrice.multiply(BigDecimal.valueOf(additionalDays));
+
+        contract.setEndDate(newEndDate);
+        contract.setRentalDays((contract.getRentalDays() != null ? contract.getRentalDays() : 0) + additionalDays);
+        contract.setTotalPrice((contract.getTotalPrice() != null ? contract.getTotalPrice() : BigDecimal.ZERO).add(additionalAmount));
+        Contract savedContract = contractRepository.save(contract);
+
+        // Keep the linked reservation's own dates/total in step — same fields
+        // AvailabilityService's conflict checks and the reservation list read from.
+        Reservation linkedReservation = contract.getReservation();
+        if (linkedReservation != null) {
+            linkedReservation.setDateEnd(newEndDate);
+            linkedReservation.setTotalPrice((linkedReservation.getTotalPrice() != null ? linkedReservation.getTotalPrice() : BigDecimal.ZERO).add(additionalAmount));
+            reservationRepository.save(linkedReservation);
+        }
+
+        ContractExtension extension = ContractExtension.builder()
+                .contract(savedContract)
+                .tenant(savedContract.getTenant())
+                .additionalDays(additionalDays)
+                .additionalAmount(additionalAmount)
+                .previousEndDate(previousEndDate)
+                .newEndDate(newEndDate)
+                .reason(request.getReason())
+                .performedBy(getCurrentUser())
+                .performedById(getCurrentUserIdOrNull())
+                .build();
+        ContractExtension savedExtension = contractExtensionRepository.save(extension);
+
+        // Never a new payment — only the balance changes, from the same authoritative
+        // place every payment already recalculates through.
+        paymentService.recalculateContractFinancials(savedContract);
+
+        // Bring the invoice's amount/status in line with the new total.
+        invoiceService.syncInvoiceForContract(savedContract);
+
+        logAudit(savedContract, "EXTEND",
+                "Extended rental by " + additionalDays + " day(s), +" + additionalAmount,
+                previousEndDate.toString(), newEndDate.toString());
+        log.info("[CONTRACT_ACTION] action=EXTEND contractId={} tenantId={} additionalDays={} additionalAmount={} previousEndDate={} newEndDate={}",
+                id, tenantId, additionalDays, additionalAmount, previousEndDate, newEndDate);
+
+        return ExtendContractResponse.builder()
+                .contract(ContractResponse.from(savedContract))
+                .extension(com.carrental.dto.contract.ContractExtensionResponse.from(savedExtension))
+                .build();
+    }
+
+    /** The extension timeline for a contract — oldest first. */
+    @Transactional(readOnly = true)
+    public List<com.carrental.dto.contract.ContractExtensionResponse> getExtensions(Long contractId) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        fetchContractInTenant(contractId); // 404s for a missing/cross-tenant contract before listing
+        return contractExtensionRepository.findAllByTenantIdAndContractIdOrderByCreatedAtAsc(tenantId, contractId)
+                .stream()
+                .map(com.carrental.dto.contract.ContractExtensionResponse::from)
+                .toList();
     }
 
     @Transactional
@@ -2426,6 +2550,16 @@ public class ContractService {
                     .getContext().getAuthentication().getName();
         } catch (Exception e) {
             return "system";
+        }
+    }
+
+    private Long getCurrentUserIdOrNull() {
+        try {
+            var principal = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getPrincipal();
+            return principal instanceof com.carrental.entity.User u ? u.getId() : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 

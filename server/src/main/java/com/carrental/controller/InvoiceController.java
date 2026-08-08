@@ -69,6 +69,20 @@ public class InvoiceController {
         return ResponseEntity.ok(invoiceService.getAllInvoices());
     }
 
+    // ── GET /api/invoices/monthly-summary ────────────────────────────────────
+
+    /**
+     * Monthly accounting rollup for the invoicing page. {@code month} is
+     * {@code yyyy-MM}; defaults to the current month when omitted.
+     */
+    @GetMapping("/monthly-summary")
+    @PreAuthorize("@rolePermissionService.has('INVOICE_VIEW')")
+    public ResponseEntity<com.carrental.dto.invoice.MonthlyAccountingSummary> monthlySummary(
+            @RequestParam(required = false) String month) {
+        YearMonth target = StringUtils.hasText(month) ? YearMonth.parse(month) : YearMonth.now();
+        return ResponseEntity.ok(invoiceService.getMonthlyAccountingSummary(target));
+    }
+
     // ── GET /api/invoices/{id} ───────────────────────────────────────────────
 
     /**

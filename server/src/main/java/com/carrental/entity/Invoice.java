@@ -80,6 +80,15 @@ public class Invoice {
     @Column(name = "emailed_to", length = 150)
     private String emailedTo;
 
+    // ── Payment reminders (PaymentReminderJob) — each fires at most once per
+    // invoice, tracked here so a slow-paying client is never spammed daily. ──
+
+    @Column(name = "due_soon_reminder_sent_at")
+    private LocalDateTime dueSoonReminderSentAt;
+
+    @Column(name = "overdue_reminder_sent_at")
+    private LocalDateTime overdueReminderSentAt;
+
     // ── Multi-tenancy link ──────────────────────────────────────────────────
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

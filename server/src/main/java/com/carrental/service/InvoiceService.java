@@ -4,9 +4,11 @@ import com.carrental.dto.invoice.CreateInvoiceRequest;
 import com.carrental.dto.invoice.UpdateInvoiceRequest;
 import com.carrental.dto.invoice.InvoiceResponse;
 import com.carrental.dto.invoice.InvoiceExportFilter;
+import com.carrental.dto.invoice.MonthlyAccountingSummary;
 import com.carrental.entity.*;
 import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.ClientRepository;
+import com.carrental.repository.ContractRepository;
 import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.TenantRepository;
@@ -18,7 +20,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Year;
+import java.time.YearMonth;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Invoice-management business logic.
@@ -40,7 +50,10 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final TenantRepository  tenantRepository;
     private final ClientRepository  clientRepository;
+    private final ContractRepository contractRepository;
+    private final com.carrental.repository.ContractExtensionRepository contractExtensionRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -56,6 +69,81 @@ public class InvoiceService {
                 .stream()
                 .map(InvoiceResponse::from)
                 .toList();
+    }
+
+    /**
+     * Monthly accounting rollup — every figure computed from real Invoice/Payment/
+     * ContractExtension rows for the caller's tenant, never estimated (see
+     * MonthlyAccountingSummary javadoc). "Outstanding" is every not-yet-fully-paid,
+     * not-cancelled/refunded invoice's remaining balance; "overdue"/"partially paid" are
+     * the same remaining balance narrowed to invoices currently in that specific status,
+     * so they're subsets of outstanding, not a separate pool.
+     */
+    @Transactional(readOnly = true)
+    public MonthlyAccountingSummary getMonthlyAccountingSummary(YearMonth month) {
+        Long tenantId = TenantContext.getCurrentTenantId();
+        LocalDate start = month.atDay(1);
+        LocalDate end = month.atEndOfMonth();
+
+        List<Invoice> invoices = invoiceRepository.findAllByTenantId(tenantId).stream()
+                .filter(i -> i.getIssueDate() != null && !i.getIssueDate().isBefore(start) && !i.getIssueDate().isAfter(end))
+                .toList();
+
+        BigDecimal totalInvoiced = BigDecimal.ZERO;
+        BigDecimal totalCollected = BigDecimal.ZERO;
+        BigDecimal totalOutstanding = BigDecimal.ZERO;
+        BigDecimal totalOverdue = BigDecimal.ZERO;
+        BigDecimal totalPartiallyPaid = BigDecimal.ZERO;
+        BigDecimal totalCancelled = BigDecimal.ZERO;
+        BigDecimal totalRefunded = BigDecimal.ZERO;
+        Set<Long> contractIds = new HashSet<>();
+
+        for (Invoice invoice : invoices) {
+            BigDecimal amount = invoice.getAmount() != null ? invoice.getAmount() : BigDecimal.ZERO;
+            BigDecimal collected = paymentService.collectedAmountFor(invoice);
+            BigDecimal remaining = amount.subtract(collected).max(BigDecimal.ZERO);
+
+            totalInvoiced = totalInvoiced.add(amount);
+            totalCollected = totalCollected.add(collected);
+            if (invoice.getContract() != null) contractIds.add(invoice.getContract().getId());
+
+            switch (invoice.getStatus()) {
+                case CANCELLED -> totalCancelled = totalCancelled.add(amount);
+                case REFUNDED -> totalRefunded = totalRefunded.add(amount);
+                case OVERDUE -> {
+                    totalOverdue = totalOverdue.add(remaining);
+                    totalOutstanding = totalOutstanding.add(remaining);
+                }
+                case PARTIALLY_PAID -> {
+                    totalPartiallyPaid = totalPartiallyPaid.add(remaining);
+                    totalOutstanding = totalOutstanding.add(remaining);
+                }
+                case ISSUED, PENDING, DRAFT -> totalOutstanding = totalOutstanding.add(remaining);
+                case PAID -> { /* fully settled — nothing outstanding */ }
+            }
+        }
+
+        BigDecimal extensionRevenue = contractExtensionRepository
+                .findAllByTenantIdAndCreatedAtBetween(tenantId, start.atStartOfDay(), end.plusDays(1).atStartOfDay())
+                .stream()
+                .map(ContractExtension::getAdditionalAmount)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return MonthlyAccountingSummary.builder()
+                .month(month.toString())
+                .totalInvoiced(totalInvoiced)
+                .totalCollected(totalCollected)
+                .totalOutstanding(totalOutstanding)
+                .totalOverdue(totalOverdue)
+                .totalPartiallyPaid(totalPartiallyPaid)
+                .totalCancelled(totalCancelled)
+                .totalRefunded(totalRefunded)
+                .invoiceCount(invoices.size())
+                .contractCount(contractIds.size())
+                .rentalRevenue(totalInvoiced.subtract(extensionRevenue).max(BigDecimal.ZERO))
+                .extensionRevenue(extensionRevenue)
+                .build();
     }
 
     /**
@@ -137,21 +225,42 @@ public class InvoiceService {
      */
     @Transactional
     public InvoiceResponse createInvoice(CreateInvoiceRequest request) {
-        Long   tenantId = TenantContext.getCurrentTenantId();
-        Tenant tenant   = tenantRepository.findById(tenantId)
+        Long tenantId = TenantContext.getCurrentTenantId();
+
+        // Contract-linked mode — see CreateInvoiceRequest javadoc. Idempotent: reuses/
+        // updates the existing invoice for this contract if one was already generated
+        // (e.g. by ContractService#finalizeContract) rather than creating a duplicate.
+        if (request.getContractId() != null) {
+            Contract contract = contractRepository.findByIdAndTenantId(request.getContractId(), tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + request.getContractId()));
+            return InvoiceResponse.from(syncInvoiceForContract(contract));
+        }
+
+        // Manual mode — these fields are only actually required here, not at the DTO
+        // validation level, because they're optional/ignored in contract-linked mode.
+        if (!StringUtils.hasText(request.getInvoiceNumber())) {
+            throw new IllegalArgumentException("Invoice number is required for a manual invoice");
+        }
+        if (request.getIssueDate() == null) {
+            throw new IllegalArgumentException("Issue date is required for a manual invoice");
+        }
+        if (request.getDueDate() == null) {
+            throw new IllegalArgumentException("Due date is required for a manual invoice");
+        }
+        if (request.getAmount() == null) {
+            throw new IllegalArgumentException("Amount is required for a manual invoice");
+        }
+
+        Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Tenant not found with id: " + tenantId));
-
-        InvoiceStatus status = request.getStatus() != null
-                ? request.getStatus()
-                : InvoiceStatus.PENDING;
 
         Invoice.InvoiceBuilder builder = Invoice.builder()
                 .invoiceNumber(request.getInvoiceNumber())
                 .issueDate(request.getIssueDate())
                 .dueDate(request.getDueDate())
                 .amount(request.getAmount())
-                .status(status)
+                .status(InvoiceStatus.ISSUED)
                 .tenant(tenant);
 
         // Link to client if provided
@@ -164,12 +273,68 @@ public class InvoiceService {
             builder.clientName(request.getClientName());
         }
 
-        Invoice invoice = invoiceRepository.save(builder.build());
+        Invoice invoice = builder.build();
+        paymentService.updateInvoiceStatus(invoice); // computes status (and persists) from real payments instead of trusting a client-supplied one
 
         log.info("Created invoice [id={}] '{}' in tenant [{}]",
                 invoice.getId(), invoice.getInvoiceNumber(), tenantId);
 
         return InvoiceResponse.from(invoice);
+    }
+
+    /**
+     * Idempotent create-or-sync: the single place that keeps a contract's invoice(s) in
+     * step with the contract's own current financial state (totalPrice/endDate). Called
+     * whenever the contract's total changes for a reason the client didn't directly pay
+     * for — activation (ContractService#finalizeContract) and extension
+     * (ContractService#extendContract) — never from a raw amount typed into a form.
+     *
+     * <p>An existing CANCELLED/REFUNDED invoice for this contract is left completely
+     * untouched (those are terminal states set by a dedicated cancellation/refund flow,
+     * not something a routine contract-total sync should ever revive or alter).
+     */
+    @Transactional
+    public Invoice syncInvoiceForContract(Contract contract) {
+        Long tenantId = contract.getTenant().getId();
+        BigDecimal total = contract.getTotalPrice() != null ? contract.getTotalPrice() : BigDecimal.ZERO;
+
+        Invoice invoice = invoiceRepository.findAllByTenantIdAndContractId(tenantId, contract.getId())
+                .stream()
+                .findFirst()
+                .orElse(null);
+
+        if (invoice == null) {
+            invoice = Invoice.builder()
+                    .invoiceNumber(generateInvoiceNumber())
+                    .client(contract.getClient())
+                    .clientName(contract.getClient() != null ? contract.getClient().getName() : contract.getClientName())
+                    .contract(contract)
+                    .issueDate(LocalDate.now())
+                    .dueDate(contract.getEndDate() != null ? contract.getEndDate() : LocalDate.now())
+                    .amount(total)
+                    .status(InvoiceStatus.ISSUED)
+                    .currency("MAD")
+                    .tenant(contract.getTenant())
+                    .build();
+            log.info("[INVOICE_AUTO_GENERATE] Created invoice for contract [id={}, number={}] tenant=[{}]",
+                    contract.getId(), contract.getContractNumber(), tenantId);
+        } else if (invoice.getStatus() == InvoiceStatus.CANCELLED || invoice.getStatus() == InvoiceStatus.REFUNDED) {
+            return invoice;
+        } else {
+            invoice.setAmount(total);
+            if (contract.getEndDate() != null) {
+                invoice.setDueDate(contract.getEndDate());
+            }
+        }
+
+        paymentService.updateInvoiceStatus(invoice); // computes status and persists (insert or update)
+        return invoice;
+    }
+
+    private String generateInvoiceNumber() {
+        return String.format("INV-%d-%s",
+                Year.now().getValue(),
+                UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────────────
@@ -205,11 +370,19 @@ public class InvoiceService {
         if (request.getAmount() != null) {
             invoice.setAmount(request.getAmount());
         }
-        if (request.getStatus() != null) {
-            invoice.setStatus(request.getStatus());
-        }
 
-        Invoice saved = invoiceRepository.save(invoice);
+        Invoice saved;
+        if (request.getStatus() != null) {
+            // Explicit admin override (e.g. correcting a manual invoice) — respected as-is.
+            invoice.setStatus(request.getStatus());
+            saved = invoiceRepository.save(invoice);
+        } else {
+            // No explicit status given — recompute from real payments rather than saving
+            // whatever status the row already had, so an amount/date change here can
+            // never leave the invoice's status stale (see PaymentService#updateInvoiceStatus).
+            paymentService.updateInvoiceStatus(invoice);
+            saved = invoice;
+        }
         log.info("Updated invoice [id={}] in tenant [{}]", id, TenantContext.getCurrentTenantId());
         return InvoiceResponse.from(saved);
     }
@@ -232,13 +405,22 @@ public class InvoiceService {
     // ── STATUS CHANGE ─────────────────────────────────────────────────────────
 
     /**
-     * Marks an invoice as PAID. ADMIN-only.
+     * Marks a MANUAL invoice as PAID, recording a matching payment. ADMIN-only.
+     *
+     * <p>Refused for a contract-linked invoice — its status must only ever move by
+     * recording a real {@link Payment} against the contract (PaymentService#recordPayment),
+     * never by a direct status flip, so it can never disagree with the contract's own
+     * paidAmount (see PaymentService#updateInvoiceStatus).
      *
      * @throws ResourceNotFoundException if the invoice is not found in this tenant
      */
     @Transactional
     public InvoiceResponse markAsPaid(Long id) {
         Invoice invoice = fetchInvoiceInTenant(id);
+        if (invoice.getContract() != null) {
+            throw new IllegalStateException(
+                    "This invoice is linked to a contract — record a payment on the contract instead of marking the invoice paid directly.");
+        }
         invoice.setStatus(InvoiceStatus.PAID);
         Invoice saved = invoiceRepository.save(invoice);
 

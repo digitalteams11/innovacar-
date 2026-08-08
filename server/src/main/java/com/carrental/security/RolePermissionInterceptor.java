@@ -38,7 +38,7 @@ public class RolePermissionInterceptor implements HandlerInterceptor {
         if (path.startsWith("/api/reservations")) return action(method, "RESERVATION_VIEW", "RESERVATION_CREATE", "RESERVATION_UPDATE", "RESERVATION_CANCEL");
         if (path.startsWith("/api/contracts")) {
             if (path.endsWith("/sign") || path.endsWith("/qr")) return "CONTRACT_QR_SIGNATURE";
-            if (path.endsWith("/complete") || path.endsWith("/finalize")) return "CONTRACT_UPDATE";
+            if (path.endsWith("/complete") || path.endsWith("/finalize") || path.endsWith("/extend")) return "CONTRACT_UPDATE";
             return action(method, "CONTRACT_VIEW", "CONTRACT_CREATE", "CONTRACT_UPDATE", "CONTRACT_DELETE");
         }
         if (path.startsWith("/api/payments")) {

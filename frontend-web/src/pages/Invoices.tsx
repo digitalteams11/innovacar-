@@ -72,7 +72,12 @@ export default function Invoices() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [clientData, setClientData] = useState<any>({});
-  const [form, setForm] = useState({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
+  const [form, setForm] = useState({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '' });
+  const [createMode, setCreateMode] = useState<'CONTRACT' | 'MANUAL'>('CONTRACT');
+  const [contractOptions, setContractOptions] = useState<any[]>([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [contractSearch, setContractSearch] = useState('');
+  const [selectedContract, setSelectedContract] = useState<any | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [exporting, setExporting] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
@@ -228,19 +233,46 @@ export default function Invoices() {
     setEditingId(null);
     setClientData({});
     setFieldErrors({});
-    setForm({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '', status: 'PENDING' });
+    setForm({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '' });
+    setCreateMode('CONTRACT');
+    setSelectedContract(null);
+    setContractSearch('');
     setIsModalOpen(true);
+    if (contractOptions.length === 0) {
+      setContractsLoading(true);
+      api.get('/contracts').then(({ data }) => setContractOptions(Array.isArray(data) ? data : []))
+        .catch(() => setContractOptions([]))
+        .finally(() => setContractsLoading(false));
+    }
   };
 
   const openEdit = (invoice: Invoice) => {
     setEditingId(invoice.id);
     setClientData({ clientId: invoice.clientId, clientFullName: invoice.clientName });
     setFieldErrors({});
-    setForm({ invoiceNumber: invoice.invoiceNumber, issueDate: invoice.issueDate, dueDate: invoice.dueDate, amount: String(invoice.amount), status: invoice.status });
+    setForm({ invoiceNumber: invoice.invoiceNumber, issueDate: invoice.issueDate, dueDate: invoice.dueDate, amount: String(invoice.amount) });
     setIsModalOpen(true);
   };
 
   const saveInvoice = async () => {
+    // Contract-linked mode: the only requirement is picking a contract — every other
+    // field is derived server-side from it (see InvoiceService#syncInvoiceForContract).
+    if (createMode === 'CONTRACT' && editingId === null) {
+      if (!selectedContract) {
+        showToast(t('invoices.selectContractRequired', 'Sélectionnez un contrat.'), 'warning');
+        return;
+      }
+      try {
+        await api.post('/invoices', { contractId: selectedContract.id });
+        showToast(t('toast.success', { action: t('invoices.invoiceCreatedAction') }));
+        setIsModalOpen(false);
+        fetchInvoices();
+      } catch (err: any) {
+        showToast((err as any).userMessage || t('invoices.saveFailed'), 'error');
+      }
+      return;
+    }
+
     const errors: Record<string, string> = {};
     if (!clientData.clientId) errors.client = t('invoices.validationErrors.clientRequired');
     if (!form.invoiceNumber.trim()) errors.invoiceNumber = t('invoices.validationErrors.invoiceNumberRequired');
@@ -258,7 +290,6 @@ export default function Invoices() {
         issueDate: form.issueDate,
         dueDate: form.dueDate,
         amount: Number(form.amount),
-        status: form.status,
       };
       if (clientData.clientId) {
         payload.clientId = clientData.clientId;
@@ -618,40 +649,97 @@ export default function Invoices() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingId ? 'Edit Invoice' : t('invoices.newInvoice')}
+        title={editingId ? t('invoices.editInvoice', 'Edit Invoice') : t('invoices.newInvoice')}
         footer={
-          <button onClick={saveInvoice} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">{editingId ? 'Save Changes' : t('invoices.newInvoice')}</button>
+          <button onClick={saveInvoice} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">{editingId ? t('invoices.saveChanges', 'Save Changes') : t('invoices.newInvoice')}</button>
         }
       >
-        <div className="space-y-4">
-          <SmartClientSearch value={clientData} onSelect={selectClient} required />
-          {fieldError('client')}
-          {clientData.clientFullName && (
-            <div className="p-3 bg-brand-50/50 rounded-xl border border-brand-100 text-sm">
-              <span className="text-brand-500 font-medium">{clientData.clientFullName}</span>
-            </div>
-          )}
-          <div><label className="block text-sm font-medium text-[#1e293b] mb-2">Invoice Number *</label><input type="text" value={form.invoiceNumber} onChange={(e) => updateFormField('invoiceNumber', e.target.value)} aria-invalid={Boolean(fieldErrors.invoiceNumber)} className={inputClass('invoiceNumber')} />{fieldError('invoiceNumber')}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.date')} *</label><input type="date" value={form.issueDate} onChange={(e) => updateFormField('issueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.issueDate)} className={inputClass('issueDate')} />{fieldError('issueDate')}</div>
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.dueDate')} *</label><input type="date" value={form.dueDate} onChange={(e) => updateFormField('dueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.dueDate)} className={inputClass('dueDate')} />{fieldError('dueDate')}</div>
+        {editingId === null && (
+          <div className="flex gap-2 mb-4 p-1 bg-[#f5f5f0] rounded-xl">
+            <button
+              type="button"
+              onClick={() => setCreateMode('CONTRACT')}
+              className={cn('flex-1 py-2 rounded-lg text-sm font-medium transition-all',
+                createMode === 'CONTRACT' ? 'bg-white shadow-sm text-brand-600' : 'text-slate-500')}
+            >
+              {t('invoices.linkedToContract', 'Facture liée à un contrat')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateMode('MANUAL')}
+              className={cn('flex-1 py-2 rounded-lg text-sm font-medium transition-all',
+                createMode === 'MANUAL' ? 'bg-white shadow-sm text-brand-600' : 'text-slate-500')}
+            >
+              {t('invoices.manualInvoice', 'Facture manuelle')}
+            </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        )}
+
+        {editingId === null && createMode === 'CONTRACT' ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.contract', 'Contract')} *</label>
+              <input
+                type="text"
+                value={contractSearch}
+                onChange={(e) => { setContractSearch(e.target.value); setSelectedContract(null); }}
+                placeholder={t('invoices.searchContract', 'Rechercher un contrat, client...') as string}
+                className={inputClass('contract')}
+              />
+              {contractsLoading && <p className="text-xs text-slate-400 mt-1.5">{t('common.loading', 'Loading...')}</p>}
+              {!contractsLoading && contractSearch && !selectedContract && (
+                <div className="mt-1.5 max-h-48 overflow-y-auto rounded-xl border border-[#e8e6e1] divide-y divide-[#e8e6e1]">
+                  {contractOptions
+                    .filter((c) => {
+                      const q = contractSearch.toLowerCase();
+                      return (c.contractNumber || '').toLowerCase().includes(q)
+                        || (c.clientName || c.clientFullName || '').toLowerCase().includes(q);
+                    })
+                    .slice(0, 20)
+                    .map((c) => (
+                      <button
+                        type="button"
+                        key={c.id}
+                        onClick={() => { setSelectedContract(c); setContractSearch(`${c.contractNumber} — ${c.clientName || c.clientFullName || ''}`); }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50/50 transition-colors"
+                      >
+                        <span className="font-medium">{c.contractNumber}</span>
+                        <span className="text-slate-400"> — {c.clientName || c.clientFullName}</span>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {selectedContract && (
+              <div className="p-4 bg-brand-50/50 rounded-xl border border-brand-100 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.client', 'Client')}</span><span className="font-medium">{selectedContract.clientName || selectedContract.clientFullName}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.vehicle', 'Vehicle')}</span><span className="font-medium">{selectedContract.vehicleBrand} {selectedContract.vehicleModel}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.rentalPeriod', 'Rental period')}</span><span className="font-medium">{selectedContract.startDate} → {selectedContract.endDate}</span></div>
+                <div className="flex justify-between border-t border-brand-100 pt-2"><span className="text-slate-500">{t('invoices.total', 'Total')}</span><span className="font-semibold">{selectedContract.totalPrice} MAD</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.paid', 'Paid')}</span><span className="font-medium">{selectedContract.paidAmount ?? 0} MAD</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.remaining', 'Remaining')}</span><span className="font-medium">{selectedContract.remainingAmount ?? selectedContract.totalPrice} MAD</span></div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <SmartClientSearch value={clientData} onSelect={selectClient} required />
+            {fieldError('client')}
+            {clientData.clientFullName && (
+              <div className="p-3 bg-brand-50/50 rounded-xl border border-brand-100 text-sm">
+                <span className="text-brand-500 font-medium">{clientData.clientFullName}</span>
+              </div>
+            )}
+            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.invoiceNumber', 'Invoice Number')} *</label><input type="text" value={form.invoiceNumber} onChange={(e) => updateFormField('invoiceNumber', e.target.value)} aria-invalid={Boolean(fieldErrors.invoiceNumber)} className={inputClass('invoiceNumber')} />{fieldError('invoiceNumber')}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.date')} *</label><input type="date" value={form.issueDate} onChange={(e) => updateFormField('issueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.issueDate)} className={inputClass('issueDate')} />{fieldError('issueDate')}</div>
+              <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.dueDate')} *</label><input type="date" value={form.dueDate} onChange={(e) => updateFormField('dueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.dueDate)} className={inputClass('dueDate')} />{fieldError('dueDate')}</div>
+            </div>
             <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.amount')} (MAD) *</label><input type="number" value={form.amount} onChange={(e) => updateFormField('amount', e.target.value)} aria-invalid={Boolean(fieldErrors.amount)} className={inputClass('amount')} />{fieldError('amount')}</div>
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.status')}</label>
-              <select value={form.status} onChange={(e) => updateFormField('status', e.target.value)} className="w-full px-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all">
-                <option value="DRAFT">{t('invoices.draft')}</option>
-                <option value="ISSUED">{t('invoices.issued')}</option>
-                <option value="PENDING">{t('invoices.pending')}</option>
-                <option value="PARTIALLY_PAID">{t('invoices.partiallyPaid')}</option>
-                <option value="PAID">{t('invoices.paid')}</option>
-                <option value="OVERDUE">{t('invoices.overdue')}</option>
-                <option value="CANCELLED">{t('invoices.cancelled')}</option>
-                <option value="REFUNDED">{t('invoices.refunded')}</option>
-              </select>
-            </div>
+            <p className="text-xs text-slate-400">{t('invoices.manualStatusNote', "Le statut est calculé automatiquement à partir des paiements enregistrés.")}</p>
           </div>
-        </div>
+        )}
       </Modal>
 
       {previewInvoice && (

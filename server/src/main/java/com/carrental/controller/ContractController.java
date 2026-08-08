@@ -521,6 +521,32 @@ public class ContractController {
         return ResponseEntity.ok(contractService.markCompleted(id));
     }
 
+    // ── GET /api/contracts/{id}/extensions ───────────────────────────────────
+
+    @GetMapping("/contracts/{id}/extensions")
+    @PreAuthorize("@rolePermissionService.has('CONTRACT_VIEW')")
+    public ResponseEntity<List<com.carrental.dto.contract.ContractExtensionResponse>> getExtensions(@PathVariable Long id) {
+        return ResponseEntity.ok(contractService.getExtensions(id));
+    }
+
+    // ── POST /api/contracts/{id}/extend — "Prolonger la location" ───────────
+
+    @PostMapping("/contracts/{id}/extend")
+    @PreAuthorize("@rolePermissionService.has('EDIT_CONTRACT')")
+    public ResponseEntity<?> extendContract(
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.carrental.dto.contract.ExtendContractRequest request) {
+        try {
+            return ResponseEntity.ok(contractService.extendContract(id, request));
+        } catch (com.carrental.exception.ResourceNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(
+                    "Contract not found.", "CONTRACT_NOT_FOUND", Map.of("contractId", id)));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody(
+                    ex.getMessage(), "CONTRACT_INVALID_STATE", Map.of("contractId", id)));
+        }
+    }
+
     @GetMapping("/contracts/{id}/pdf")
     @PreAuthorize("@rolePermissionService.has('VIEW_CONTRACTS')")
     public ResponseEntity<?> downloadContractPdf(@PathVariable Long id) {

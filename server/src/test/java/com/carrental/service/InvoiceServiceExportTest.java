@@ -7,6 +7,8 @@ import com.carrental.entity.InvoiceStatus;
 import com.carrental.entity.Tenant;
 import com.carrental.exception.ResourceNotFoundException;
 import com.carrental.repository.ClientRepository;
+import com.carrental.repository.ContractExtensionRepository;
+import com.carrental.repository.ContractRepository;
 import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.TenantRepository;
@@ -48,14 +50,18 @@ class InvoiceServiceExportTest {
     @Mock private InvoiceRepository invoiceRepository;
     @Mock private TenantRepository tenantRepository;
     @Mock private ClientRepository clientRepository;
+    @Mock private ContractRepository contractRepository;
+    @Mock private ContractExtensionRepository contractExtensionRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private PaymentService paymentService;
 
     private InvoiceService service;
     private Tenant tenantA;
 
     @BeforeEach
     void setUp() {
-        service = new InvoiceService(invoiceRepository, tenantRepository, clientRepository, paymentRepository);
+        service = new InvoiceService(invoiceRepository, tenantRepository, clientRepository, contractRepository,
+                contractExtensionRepository, paymentRepository, paymentService);
         tenantA = Tenant.builder().id(1L).name("Tenant A").build();
     }
 
