@@ -1306,6 +1306,7 @@
     "cancel": "إلغاء",
     "save": "حفظ",
     "editInformation": "تعديل المعلومات",
+    "saveChanges": "حفظ التغييرات",
     "notProvided": "غير متوفر",
     "header": {
       "subtitle": "استمارة معلومات العميل"

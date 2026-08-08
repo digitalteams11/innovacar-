@@ -1306,6 +1306,7 @@
     "cancel": "Annuler",
     "save": "Enregistrer",
     "editInformation": "Modifier les informations",
+    "saveChanges": "Enregistrer les modifications",
     "notProvided": "Non renseigné",
     "header": {
       "subtitle": "Formulaire d'informations client"

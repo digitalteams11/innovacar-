@@ -1306,6 +1306,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "editInformation": "Edit information",
+    "saveChanges": "Save changes",
     "notProvided": "Not provided",
     "header": {
       "subtitle": "Client Information Form"

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock, Pencil, Check, Plus, PenLine } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock, Plus, PenLine } from 'lucide-react';
 import api from '../api/axios';
 import { resolveMediaUrl } from '../utils/mediaUrl';
 import { PUBLIC_APP_URL } from '../lib/publicUrl';
@@ -95,9 +95,17 @@ export default function PublicClientInformation() {
   const [logoFailed, setLogoFailed] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
-  // Display-first / edit-on-demand: fields the client explicitly opened for editing.
-  // Everything else renders as a read-only row (see startEditing/stopEditing below).
-  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+  // Two independent mechanisms, matching the two different states a field can be in:
+  // - addedFields: a genuinely MISSING field the client clicked "+ Add" on. Once
+  //   added it just stays an input for the rest of the session (there's no prior
+  //   value to protect, so no Cancel/Save needed for these).
+  // - editingKnown / knownFieldsSnapshot: the single "Edit information" toggle that
+  //   puts every field that already HAS a value into edit mode together, with one
+  //   Cancel/Save changes pair for the whole batch. knownFieldsSnapshot is `form` as
+  //   it was the moment edit mode was entered, so Cancel can restore it exactly.
+  const [addedFields, setAddedFields] = useState<Set<string>>(new Set());
+  const [editingKnown, setEditingKnown] = useState(false);
+  const [knownFieldsSnapshot, setKnownFieldsSnapshot] = useState<typeof emptyForm | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [wasAlreadySubmitted, setWasAlreadySubmitted] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -193,27 +201,26 @@ export default function PublicClientInformation() {
       : t('clientInfo.form.cinNumber', 'CIN number')
   );
 
-  // Display-first / edit-on-demand: every field defaults to a read-only row (its value,
-  // or "Not provided" when empty) with an Edit/Add action — never a bare input by
-  // default, known or missing. Clicking Edit/Add reveals an input scoped to that one
-  // field, with its own Cancel/Save; Save commits the draft into `form` and returns to
-  // display mode, Cancel discards the draft and returns to display mode unchanged.
-  const startEditing = (key: string) => setEditingFields((prev) => new Set(prev).add(key));
-  const stopEditing = (key: string) => setEditingFields((prev) => {
-    const next = new Set(prev);
-    next.delete(key);
-    return next;
-  });
-  const saveField = (key: keyof typeof emptyForm, value: string) => {
-    update(key, value);
-    stopEditing(key as string);
-  };
+  // SmartField/SmartDocumentField each derive "has a value" straight from the `value`
+  // prop they're passed (`form.x`) — true whether that value came from the agency's
+  // existing record or from something the client just typed. Driving display-vs-input
+  // off `form` directly (rather than a separate "known" flag) means a field that was
+  // missing and just got Added never flips back to "Not provided", and reload always
+  // reflects the backend's actual current data since `form` starts out populated
+  // straight from it (see the load effect above).
+  const addField = (key: string) => setAddedFields((prev) => new Set(prev).add(key));
 
-  const ALL_FIELD_KEYS = [
-    'fullName', 'phone', 'secondaryPhone', 'email', 'birthDate', 'gender', 'nationality',
-    'companyName', 'documentNumber', 'driverLicenseNumber', 'address',
-  ];
-  const editAllFields = () => setEditingFields(new Set(ALL_FIELD_KEYS));
+  // The single "Edit information" action (spec section 2/3): snapshot the current
+  // values so Cancel can restore them exactly, then reveal inputs for every field
+  // that already has a value. Missing fields are untouched by this — they only ever
+  // become editable through their own "+ Add".
+  const startEditKnown = () => { setKnownFieldsSnapshot(form); setEditingKnown(true); };
+  const cancelEditKnown = () => {
+    if (knownFieldsSnapshot) setForm(knownFieldsSnapshot);
+    setEditingKnown(false);
+    setKnownFieldsSnapshot(null);
+  };
+  const saveEditKnown = () => { setEditingKnown(false); setKnownFieldsSnapshot(null); };
 
   const submit = async () => {
     setValidationError(null);
@@ -402,66 +409,56 @@ export default function PublicClientInformation() {
         {/* Personal information */}
         <Section
           title={t('clientInfo.sections.personal', 'Personal information')}
-          action={<EditAllButton onClick={editAllFields} />}
+          action={
+            editingKnown ? (
+              <div className="flex gap-2 shrink-0">
+                <button type="button" onClick={cancelEditKnown} className="text-xs font-semibold px-2.5 py-1 rounded-lg border" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                  {t('clientInfo.cancel', 'Cancel')}
+                </button>
+                <button type="button" onClick={saveEditKnown} className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #ffffff)' }}>
+                  {t('clientInfo.saveChanges', 'Save changes')}
+                </button>
+              </div>
+            ) : (
+              <EditInformationButton onClick={startEditKnown} />
+            )
+          }
         >
-          <ProgressiveField
-            label={t('clientInfo.form.fullName', 'Full name')} required
-            value={form.fullName}
-            editing={editingFields.has('fullName')}
-            onStartEdit={() => startEditing('fullName')}
-            onCancel={() => stopEditing('fullName')}
-            onSave={(v) => saveField('fullName', v)}
-            renderInput={(draft, setDraft) => <input className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+          <SmartField
+            fieldKey="fullName" label={t('clientInfo.form.fullName', 'Full name')} required
+            value={form.fullName} editingKnown={editingKnown} added={addedFields.has('fullName')} onAdd={() => addField('fullName')}
+            renderInput={() => <input className="form-input" value={form.fullName} onChange={(e) => update('fullName', e.target.value)} />}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ProgressiveField
-              label={t('clientInfo.form.phone', 'Primary phone')} required
-              value={form.phone}
-              editing={editingFields.has('phone')}
-              onStartEdit={() => startEditing('phone')}
-              onCancel={() => stopEditing('phone')}
-              onSave={(v) => saveField('phone', v)}
-              renderInput={(draft, setDraft) => <input dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            <SmartField
+              fieldKey="phone" label={t('clientInfo.form.phone', 'Primary phone')} required
+              value={form.phone} editingKnown={editingKnown} added={addedFields.has('phone')} onAdd={() => addField('phone')}
+              renderInput={() => <input dir="ltr" className="form-input text-start" value={form.phone} onChange={(e) => update('phone', e.target.value)} />}
             />
-            <ProgressiveField
-              label={t('clientInfo.form.secondaryPhone', 'Secondary phone')}
-              value={form.secondaryPhone}
-              editing={editingFields.has('secondaryPhone')}
-              onStartEdit={() => startEditing('secondaryPhone')}
-              onCancel={() => stopEditing('secondaryPhone')}
-              onSave={(v) => saveField('secondaryPhone', v)}
-              renderInput={(draft, setDraft) => <input dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            <SmartField
+              fieldKey="secondaryPhone" label={t('clientInfo.form.secondaryPhone', 'Secondary phone')}
+              value={form.secondaryPhone} editingKnown={editingKnown} added={addedFields.has('secondaryPhone')} onAdd={() => addField('secondaryPhone')}
+              renderInput={() => <input dir="ltr" className="form-input text-start" value={form.secondaryPhone} onChange={(e) => update('secondaryPhone', e.target.value)} />}
             />
           </div>
-          <ProgressiveField
-            label={t('clientInfo.form.email', 'Email')}
-            value={form.email}
-            editing={editingFields.has('email')}
-            onStartEdit={() => startEditing('email')}
-            onCancel={() => stopEditing('email')}
-            onSave={(v) => saveField('email', v)}
-            renderInput={(draft, setDraft) => <input dir="ltr" type="email" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+          <SmartField
+            fieldKey="email" label={t('clientInfo.form.email', 'Email')}
+            value={form.email} editingKnown={editingKnown} added={addedFields.has('email')} onAdd={() => addField('email')}
+            renderInput={() => <input dir="ltr" type="email" className="form-input text-start" value={form.email} onChange={(e) => update('email', e.target.value)} />}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ProgressiveField
-              label={t('clientInfo.form.birthDate', 'Date of birth')}
-              value={form.birthDate}
-              editing={editingFields.has('birthDate')}
-              onStartEdit={() => startEditing('birthDate')}
-              onCancel={() => stopEditing('birthDate')}
-              onSave={(v) => saveField('birthDate', v)}
-              renderInput={(draft, setDraft) => <input type="date" dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            <SmartField
+              fieldKey="birthDate" label={t('clientInfo.form.birthDate', 'Date of birth')}
+              value={form.birthDate} editingKnown={editingKnown} added={addedFields.has('birthDate')} onAdd={() => addField('birthDate')}
+              renderInput={() => <input type="date" dir="ltr" className="form-input text-start" value={form.birthDate} onChange={(e) => update('birthDate', e.target.value)} />}
             />
-            <ProgressiveField
-              label={t('clientInfo.form.gender', 'Gender')}
+            <SmartField
+              fieldKey="gender" label={t('clientInfo.form.gender', 'Gender')}
               value={form.gender}
               displayValue={form.gender === 'MALE' ? t('clientInfo.form.genderMale', 'Male') : form.gender === 'FEMALE' ? t('clientInfo.form.genderFemale', 'Female') : form.gender}
-              editing={editingFields.has('gender')}
-              onStartEdit={() => startEditing('gender')}
-              onCancel={() => stopEditing('gender')}
-              onSave={(v) => saveField('gender', v)}
-              renderInput={(draft, setDraft) => (
-                <select className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)}>
+              editingKnown={editingKnown} added={addedFields.has('gender')} onAdd={() => addField('gender')}
+              renderInput={() => (
+                <select className="form-input" value={form.gender} onChange={(e) => update('gender', e.target.value)}>
                   <option value="">{t('clientInfo.form.genderUnspecified', '—')}</option>
                   <option value="MALE">{t('clientInfo.form.genderMale', 'Male')}</option>
                   <option value="FEMALE">{t('clientInfo.form.genderFemale', 'Female')}</option>
@@ -470,54 +467,39 @@ export default function PublicClientInformation() {
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ProgressiveField
-              label={t('clientInfo.form.nationality', 'Nationality')} required
-              value={form.nationality}
-              editing={editingFields.has('nationality')}
-              onStartEdit={() => startEditing('nationality')}
-              onCancel={() => stopEditing('nationality')}
-              onSave={(v) => saveField('nationality', v)}
-              renderInput={(draft, setDraft) => <input className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            <SmartField
+              fieldKey="nationality" label={t('clientInfo.form.nationality', 'Nationality')} required
+              value={form.nationality} editingKnown={editingKnown} added={addedFields.has('nationality')} onAdd={() => addField('nationality')}
+              renderInput={() => <input className="form-input" value={form.nationality} onChange={(e) => update('nationality', e.target.value)} />}
             />
-            <ProgressiveField
-              label={t('clientInfo.form.companyName', 'Company')}
-              value={form.companyName}
-              editing={editingFields.has('companyName')}
-              onStartEdit={() => startEditing('companyName')}
-              onCancel={() => stopEditing('companyName')}
-              onSave={(v) => saveField('companyName', v)}
-              renderInput={(draft, setDraft) => <input className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            <SmartField
+              fieldKey="companyName" label={t('clientInfo.form.companyName', 'Company')}
+              value={form.companyName} editingKnown={editingKnown} added={addedFields.has('companyName')} onAdd={() => addField('companyName')}
+              renderInput={() => <input className="form-input" value={form.companyName} onChange={(e) => update('companyName', e.target.value)} />}
             />
           </div>
         </Section>
 
         {/* Identity document */}
         <Section title={t('clientInfo.sections.document', 'Identity document')}>
-          <DocumentProgressiveField
+          <SmartDocumentField
             documentType={form.documentType}
             documentNumber={form.documentNumber}
-            editing={editingFields.has('documentNumber')}
-            onStartEdit={() => startEditing('documentNumber')}
-            onCancel={() => stopEditing('documentNumber')}
-            onSave={(type, number) => {
-              update('documentType', type);
-              update('documentNumber', number);
-              stopEditing('documentNumber');
-            }}
+            editingKnown={editingKnown}
+            added={addedFields.has('documentNumber')}
+            onAdd={() => addField('documentNumber')}
+            onTypeChange={(v) => update('documentType', v)}
+            onNumberChange={(v) => update('documentNumber', v)}
             documentNumberLabel={documentNumberLabel}
           />
         </Section>
 
         {/* Driving licence */}
         <Section title={t('clientInfo.sections.license', 'Driving licence')}>
-          <ProgressiveField
-            label={t('clientInfo.form.licenseNumber', 'Driving licence number')}
-            value={form.driverLicenseNumber}
-            editing={editingFields.has('driverLicenseNumber')}
-            onStartEdit={() => startEditing('driverLicenseNumber')}
-            onCancel={() => stopEditing('driverLicenseNumber')}
-            onSave={(v) => saveField('driverLicenseNumber', v)}
-            renderInput={(draft, setDraft) => <input dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+          <SmartField
+            fieldKey="driverLicenseNumber" label={t('clientInfo.form.licenseNumber', 'Driving licence number')}
+            value={form.driverLicenseNumber} editingKnown={editingKnown} added={addedFields.has('driverLicenseNumber')} onAdd={() => addField('driverLicenseNumber')}
+            renderInput={() => <input dir="ltr" className="form-input text-start" value={form.driverLicenseNumber} onChange={(e) => update('driverLicenseNumber', e.target.value)} />}
           />
         </Section>
 
@@ -583,20 +565,16 @@ export default function PublicClientInformation() {
               )}
             </Field>
           </div>
-          <ProgressiveField
-            label={t('clientInfo.form.address', 'Address')} required
-            value={form.address}
-            editing={editingFields.has('address')}
-            onStartEdit={() => startEditing('address')}
-            onCancel={() => stopEditing('address')}
-            onSave={(v) => saveField('address', v)}
-            renderInput={(draft, setDraft) => (
+          <SmartField
+            fieldKey="address" label={t('clientInfo.form.address', 'Address')} required
+            value={form.address} editingKnown={editingKnown} added={addedFields.has('address')} onAdd={() => addField('address')}
+            renderInput={() => (
               <textarea
                 className="form-input"
                 rows={3}
                 placeholder={t('clientInfo.form.addressPlaceholder', 'Street, district and additional address details')}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                value={form.address}
+                onChange={(e) => update('address', e.target.value)}
               />
             )}
           />
@@ -697,10 +675,12 @@ function Section({ title, action, children }: { title: string; action?: React.Re
   );
 }
 
-/** "Edit information" — the global action near the section header (spec) that puts
- *  every field with a value into edit mode at once. Individual fields still have
- *  their own Edit/Add action regardless. */
-function EditAllButton({ onClick }: { onClick: () => void }) {
+/** "Edit information" — the single global action next to the Personal Information
+ *  header (spec section 2/3) that puts every field currently holding a value into
+ *  edit mode together, with one Cancel/Save changes pair for the whole section
+ *  (rendered by the caller in Section's `action` slot while editingKnown is true —
+ *  see the Personal Information section). */
+function EditInformationButton({ onClick }: { onClick: () => void }) {
   const { t } = useTranslation();
   return (
     <button
@@ -730,58 +710,67 @@ function LabelRow({ label, required }: { label: string; required?: boolean }) {
 }
 
 /**
- * Display-first / edit-on-demand field. DEFAULT state is always a read-only row —
- * the field's value with an Edit action when it has one, or "Not provided" with an
- * Add action when it doesn't — never a bare input, known or missing (spec: "Do NOT
- * display an empty input by default"). Clicking Edit/Add reveals an input holding a
- * local DRAFT, independent of the committed form value, with its own Cancel (discard
- * the draft, return to display unchanged) and Save (commit the draft, return to
- * display) — editing one field never puts any other field into edit mode.
+ * Two distinct states, driven entirely by the current form value (spec section 5):
+ *
+ * - STATE A (has a value): plain read-only text — no pill, no button — UNLESS the
+ *   section's "Edit information" bulk-edit mode is active, in which case it renders
+ *   the real input (Cancel/Save happen once for the whole section, not per field).
+ * - STATE B (no value): the "Not provided + Add" pill until the client clicks Add,
+ *   after which it's a plain input for the rest of the session (there's no existing
+ *   value to protect, so no separate Cancel/Save needed here).
  */
-function ProgressiveField({
-  label, required, value, displayValue, editing, onStartEdit, onCancel, onSave, renderInput,
+function SmartField({
+  label, required, value, displayValue, editingKnown, added, onAdd, renderInput,
 }: {
+  fieldKey: string;
   label: string;
   required?: boolean;
   value: string;
   /** How to render the value in display mode when it differs from the raw stored value (e.g. a translated gender label). */
   displayValue?: string;
-  editing: boolean;
-  onStartEdit: () => void;
-  onCancel: () => void;
-  onSave: (newValue: string) => void;
-  renderInput: (draft: string, setDraft: (v: string) => void) => React.ReactNode;
+  editingKnown: boolean;
+  added: boolean;
+  onAdd: () => void;
+  renderInput: () => React.ReactNode;
 }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState(value);
-
-  useEffect(() => {
-    if (editing) setDraft(value);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing]);
-
   const hasValue = value.trim().length > 0;
 
-  if (!editing) {
+  if (hasValue && !editingKnown) {
+    return (
+      <div className="space-y-1.5">
+        <LabelRow label={label} required={required} />
+        <p dir="auto" className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{displayValue || value}</p>
+      </div>
+    );
+  }
+
+  if (hasValue && editingKnown) {
+    return (
+      <div className="space-y-1.5">
+        <LabelRow label={label} required={required} />
+        {renderInput()}
+      </div>
+    );
+  }
+
+  if (!added) {
     return (
       <div className="space-y-1.5">
         <LabelRow label={label} required={required} />
         <div
           className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl"
-          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}
+          style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border-subtle)' }}
         >
-          <span dir="auto" className="text-sm flex items-center gap-1.5 min-w-0 truncate" style={{ color: hasValue ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-            {hasValue && <Check size={13} className="shrink-0" style={{ color: 'var(--success)' }} />}
-            <span className="truncate">{hasValue ? (displayValue || value) : t('clientInfo.notProvided', 'Not provided')}</span>
-          </span>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('clientInfo.notProvided', 'Not provided')}</span>
           <button
             type="button"
-            onClick={onStartEdit}
+            onClick={onAdd}
             className="text-xs font-semibold flex items-center gap-1 shrink-0"
             style={{ color: 'var(--brand-primary)' }}
           >
-            {hasValue ? <Pencil size={12} /> : <Plus size={12} />}
-            {hasValue ? t('clientInfo.edit', 'Edit') : t('clientInfo.add', 'Add')}
+            <Plus size={12} />
+            {t('clientInfo.add', 'Add')}
           </button>
         </div>
       </div>
@@ -791,75 +780,58 @@ function ProgressiveField({
   return (
     <div className="space-y-1.5">
       <LabelRow label={label} required={required} />
-      {renderInput(draft, setDraft)}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold border"
-          style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
-        >
-          {t('clientInfo.cancel', 'Cancel')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onSave(draft)}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold"
-          style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #ffffff)' }}
-        >
-          {t('clientInfo.save', 'Save')}
-        </button>
-      </div>
+      {renderInput()}
     </div>
   );
 }
 
 /** Document type + number are inherently paired (a type with no number is meaningless)
- *  so they share one display row / one edit session, same Cancel/Save shell as
- *  {@link ProgressiveField} but with a combined two-field draft. */
-function DocumentProgressiveField({
-  documentType, documentNumber, editing, onStartEdit, onCancel, onSave, documentNumberLabel,
+ *  so they share one display/edit state, same STATE A/B logic as {@link SmartField}. */
+function SmartDocumentField({
+  documentType, documentNumber, editingKnown, added, onAdd, onTypeChange, onNumberChange, documentNumberLabel,
 }: {
   documentType: string;
   documentNumber: string;
-  editing: boolean;
-  onStartEdit: () => void;
-  onCancel: () => void;
-  onSave: (type: string, number: string) => void;
+  editingKnown: boolean;
+  added: boolean;
+  onAdd: () => void;
+  onTypeChange: (v: string) => void;
+  onNumberChange: (v: string) => void;
   documentNumberLabel: () => string;
 }) {
   const { t } = useTranslation();
-  const [draftType, setDraftType] = useState(documentType);
-  const [draftNumber, setDraftNumber] = useState(documentNumber);
-
-  useEffect(() => {
-    if (editing) { setDraftType(documentType); setDraftNumber(documentNumber); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing]);
-
   const hasValue = documentNumber.trim().length > 0;
   const typeLabel = (type: string) => (type === 'PASSPORT' ? t('clientInfo.documentTypes.passport', 'Passport') : t('clientInfo.documentTypes.cin', 'CIN'));
+  const label = t('clientInfo.form.documentLabel', 'Identity document');
 
-  if (!editing) {
+  if (hasValue && !editingKnown) {
     return (
       <div className="space-y-1.5">
-        <LabelRow label={t('clientInfo.form.documentLabel', 'Identity document')} required />
+        <LabelRow label={label} required />
+        <p dir="auto" className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{typeLabel(documentType)} — {documentNumber}</p>
+      </div>
+    );
+  }
+
+  const showInput = (hasValue && editingKnown) || (!hasValue && added);
+
+  if (!showInput) {
+    return (
+      <div className="space-y-1.5">
+        <LabelRow label={label} required />
         <div
           className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl"
-          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}
+          style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border-subtle)' }}
         >
-          <span dir="auto" className="text-sm flex items-center gap-1.5 min-w-0 truncate" style={{ color: hasValue ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-            {hasValue && <Check size={13} className="shrink-0" style={{ color: 'var(--success)' }} />}
-            <span className="truncate">{hasValue ? `${typeLabel(documentType)} — ${documentNumber}` : t('clientInfo.notProvided', 'Not provided')}</span>
-          </span>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('clientInfo.notProvided', 'Not provided')}</span>
           <button
             type="button"
-            onClick={onStartEdit}
+            onClick={onAdd}
             className="text-xs font-semibold flex items-center gap-1 shrink-0"
             style={{ color: 'var(--brand-primary)' }}
           >
-            {hasValue ? <Pencil size={12} /> : <Plus size={12} />}
-            {hasValue ? t('clientInfo.edit', 'Edit') : t('clientInfo.add', 'Add')}
+            <Plus size={12} />
+            {t('clientInfo.add', 'Add')}
           </button>
         </div>
       </div>
@@ -868,9 +840,9 @@ function DocumentProgressiveField({
 
   return (
     <div className="space-y-1.5">
-      <LabelRow label={t('clientInfo.form.documentLabel', 'Identity document')} required />
+      <LabelRow label={label} required />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <select className="form-input" value={draftType} onChange={(e) => setDraftType(e.target.value)}>
+        <select className="form-input" value={documentType} onChange={(e) => onTypeChange(e.target.value)}>
           <option value="CIN">{t('clientInfo.documentTypes.cin', 'CIN')}</option>
           <option value="PASSPORT">{t('clientInfo.documentTypes.passport', 'Passport')}</option>
         </select>
@@ -878,27 +850,9 @@ function DocumentProgressiveField({
           dir="ltr"
           className="form-input text-start"
           placeholder={documentNumberLabel()}
-          value={draftNumber}
-          onChange={(e) => setDraftNumber(e.target.value)}
+          value={documentNumber}
+          onChange={(e) => onNumberChange(e.target.value)}
         />
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold border"
-          style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
-        >
-          {t('clientInfo.cancel', 'Cancel')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onSave(draftType, draftNumber)}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold"
-          style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #ffffff)' }}
-        >
-          {t('clientInfo.save', 'Save')}
-        </button>
       </div>
     </div>
   );
