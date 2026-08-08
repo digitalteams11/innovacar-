@@ -243,4 +243,67 @@ class InvoiceServiceBillingTest {
         assertThat(preview.getOutstandingBalance()).isEqualByComparingTo("0");
         assertThat(preview.isFullyPaid()).isTrue();
     }
+
+    // ── KPI: "collected" is real payments received in the period, never invoiced amount ──
+
+    @Test
+    void accountingSummaryCollectedComesFromRealPaymentDatesNotInvoiceIssueDate() {
+        LocalDate start = LocalDate.of(2026, 8, 1);
+        LocalDate end = LocalDate.of(2026, 8, 31);
+        when(invoiceRepository.findAllByTenantId(1L)).thenReturn(List.of());
+        when(paymentRepository.sumCollectedRentalRevenueBetween(
+                org.mockito.ArgumentMatchers.eq(1L), any(), any())).thenReturn(new BigDecimal("7500"));
+        when(contractExtensionRepository.findAllByTenantIdAndCreatedAtBetween(
+                org.mockito.ArgumentMatchers.eq(1L), any(), any())).thenReturn(List.of());
+
+        var summary = service.getAccountingSummary(start, end);
+
+        assertThat(summary.getTotalCollected()).isEqualByComparingTo("7500");
+        verify(paymentRepository).sumCollectedRentalRevenueBetween(1L, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
+    }
+
+    // ── cancelInvoice: never deletes, never re-applies to an already-terminal invoice ──
+
+    @Test
+    void cancelInvoiceRecordsReasonAndFlipsStatusToCancelled() {
+        Invoice invoice = Invoice.builder()
+                .id(55L).tenant(tenant).invoiceNumber("FAC-2026-000005")
+                .status(InvoiceStatus.ISSUED).amount(new BigDecimal("1200"))
+                .issueDate(LocalDate.now()).dueDate(LocalDate.now().plusDays(10))
+                .build();
+        when(invoiceRepository.findByIdAndTenantId(55L, 1L)).thenReturn(Optional.of(invoice));
+
+        InvoiceResponse response = service.cancelInvoice(55L, "Client no-show");
+
+        assertThat(response.getStatus()).isEqualTo(InvoiceStatus.CANCELLED);
+        assertThat(invoice.getCancellationReason()).isEqualTo("Client no-show");
+        assertThat(invoice.getCancelledAt()).isNotNull();
+    }
+
+    @Test
+    void cancelInvoiceRejectsAnAlreadyPaidInvoiceRefundInsteadOfCancel() {
+        Invoice invoice = Invoice.builder()
+                .id(56L).tenant(tenant).invoiceNumber("FAC-2026-000006")
+                .status(InvoiceStatus.PAID).amount(new BigDecimal("1200"))
+                .issueDate(LocalDate.now()).dueDate(LocalDate.now().plusDays(10))
+                .build();
+        when(invoiceRepository.findByIdAndTenantId(56L, 1L)).thenReturn(Optional.of(invoice));
+
+        assertThatThrownBy(() -> service.cancelInvoice(56L, "changed my mind"))
+                .isInstanceOf(IllegalStateException.class);
+        verify(invoiceRepository, org.mockito.Mockito.never()).save(any(Invoice.class));
+    }
+
+    @Test
+    void cancelInvoiceRejectsAnAlreadyCancelledInvoice() {
+        Invoice invoice = Invoice.builder()
+                .id(57L).tenant(tenant).invoiceNumber("FAC-2026-000007")
+                .status(InvoiceStatus.CANCELLED).amount(new BigDecimal("1200"))
+                .issueDate(LocalDate.now()).dueDate(LocalDate.now().plusDays(10))
+                .build();
+        when(invoiceRepository.findByIdAndTenantId(57L, 1L)).thenReturn(Optional.of(invoice));
+
+        assertThatThrownBy(() -> service.cancelInvoice(57L, "duplicate cancel"))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }

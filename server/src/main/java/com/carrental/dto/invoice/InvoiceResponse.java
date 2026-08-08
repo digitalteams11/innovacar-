@@ -51,6 +51,11 @@ public class InvoiceResponse {
     private LocalDateTime emailedAt;
     private String        emailedTo;
 
+    // ── Cancellation audit ───────────────────────────────────────────────────
+    private String        cancellationReason;
+    private String        cancelledBy;
+    private LocalDateTime cancelledAt;
+
     // ── Static factory ───────────────────────────────────────────────────────
 
     public static InvoiceResponse from(Invoice invoice) {
@@ -95,6 +100,9 @@ public class InvoiceResponse {
                 .pdfOutdated(invoice.isPdfOutdated())
                 .emailedAt(invoice.getEmailedAt())
                 .emailedTo(invoice.getEmailedTo())
+                .cancellationReason(invoice.getCancellationReason())
+                .cancelledBy(invoice.getCancelledBy())
+                .cancelledAt(invoice.getCancelledAt())
                 .build();
     }
 }

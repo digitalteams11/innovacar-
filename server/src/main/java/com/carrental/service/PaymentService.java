@@ -257,9 +257,23 @@ public class PaymentService {
                     .orElse(null);
         }
 
-        PaymentStatus status = determinePaymentStatus(contract, reservation, invoice, request.getAmount(), tenantId);
-
         PaymentType type = request.getType() != null ? request.getType() : PaymentType.RENTAL;
+
+        // Overpayment guard (spec: never silently accept a payment that pushes paid past
+        // total) — scoped to RENTAL payments only. Deposit/extra-charge/refund/subscription
+        // payments aren't capped by the contract's own totalPrice the same way, so they're
+        // deliberately excluded rather than blocked by a check that doesn't apply to them.
+        if (type == PaymentType.RENTAL) {
+            TotalAndCollected totals = resolveTotalAndCollected(contract, reservation, invoice, tenantId);
+            if (totals.total().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal newTotal = totals.collected().add(request.getAmount());
+                if (newTotal.compareTo(totals.total()) > 0) {
+                    throw new com.carrental.exception.PaidAmountExceedsTotalException(newTotal, totals.total());
+                }
+            }
+        }
+
+        PaymentStatus status = determinePaymentStatus(contract, reservation, invoice, request.getAmount(), tenantId);
 
         Payment payment = Payment.builder()
                 .paymentNumber(numberGeneratorService.generatePaymentNumber())
@@ -523,6 +537,22 @@ public class PaymentService {
 
     private PaymentStatus determinePaymentStatus(Contract contract, Reservation reservation, Invoice invoice,
                                                  BigDecimal paymentAmount, Long tenantId) {
+        TotalAndCollected totals = resolveTotalAndCollected(contract, reservation, invoice, tenantId);
+
+        if (totals.total().compareTo(BigDecimal.ZERO) <= 0) {
+            return PaymentStatus.PAID;
+        }
+
+        return totals.collected().add(paymentAmount).compareTo(totals.total()) >= 0
+                ? PaymentStatus.PAID
+                : PaymentStatus.PARTIALLY_PAID;
+    }
+
+    /** contract &gt; reservation &gt; invoice priority — same resolution order used everywhere
+     *  a payment's target "what's the total, what's already collected" is needed. */
+    private record TotalAndCollected(BigDecimal total, BigDecimal collected) {}
+
+    private TotalAndCollected resolveTotalAndCollected(Contract contract, Reservation reservation, Invoice invoice, Long tenantId) {
         BigDecimal total = BigDecimal.ZERO;
         BigDecimal alreadyCollected = BigDecimal.ZERO;
 
@@ -537,14 +567,7 @@ public class PaymentService {
             alreadyCollected = paymentRepository.sumCollectedAmountByTenantIdAndInvoiceId(tenantId, invoice.getId());
         }
 
-        if (alreadyCollected == null) alreadyCollected = BigDecimal.ZERO;
-        if (total.compareTo(BigDecimal.ZERO) <= 0) {
-            return PaymentStatus.PAID;
-        }
-
-        return alreadyCollected.add(paymentAmount).compareTo(total) >= 0
-                ? PaymentStatus.PAID
-                : PaymentStatus.PARTIALLY_PAID;
+        return new TotalAndCollected(total, alreadyCollected != null ? alreadyCollected : BigDecimal.ZERO);
     }
 
     @SafeVarargs

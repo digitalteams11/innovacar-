@@ -92,6 +92,22 @@ public class Invoice {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    // ── Cancellation audit ───────────────────────────────────────────────────
+    // Cancellation never deletes financial history — these columns record the
+    // reason for the cancellation itself (see InvoiceService#cancelInvoice).
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "cancelled_by", length = 255)
+    private String cancelledBy;
+
+    @Column(name = "cancelled_by_id")
+    private Long cancelledById;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Column(name = "pdf_generated_at")
     private LocalDateTime pdfGeneratedAt;
 

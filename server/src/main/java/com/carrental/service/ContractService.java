@@ -912,21 +912,49 @@ public class ContractService {
         );
     }
 
+    /**
+     * Records the contract's initial deposit/payment — but never a duplicate of money
+     * already recorded against the reservation being converted (e.g. a deposit taken at
+     * booking time, before this contract existed). Any of the reservation's own payments
+     * not yet linked to a contract are re-pointed to this one first (so they count toward
+     * {@code recalculateContractFinancials}'s sum-by-contract-id), and only the shortfall
+     * between the requested {@code paidAmount} and what's already linked is recorded as a
+     * new payment. See billing spec §2 "Never duplicate an existing payment when
+     * converting Reservation → Contract → Invoice."
+     */
     private void createInitialPaymentIfPresent(Contract contract, Reservation reservation, Client client, Vehicle vehicle,
                                                Tenant tenant, java.math.BigDecimal paidAmount,
                                                java.math.BigDecimal totalAmount, String requestedMethod) {
-        if (paidAmount == null || paidAmount.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+        java.math.BigDecimal alreadyLinked = java.math.BigDecimal.ZERO;
+        if (reservation != null && reservation.getId() != null) {
+            for (Payment existing : paymentRepository.findAllByTenantIdAndReservationIdOrderByPaymentDateDesc(
+                    tenant.getId(), reservation.getId())) {
+                if (existing.getContract() == null) {
+                    existing.setContract(contract);
+                    paymentRepository.save(existing);
+                }
+                java.math.BigDecimal refunded = existing.getRefundedAmount() != null ? existing.getRefundedAmount() : java.math.BigDecimal.ZERO;
+                alreadyLinked = alreadyLinked.add(existing.getAmount().subtract(refunded));
+            }
+        }
+
+        if (paidAmount == null) {
             return;
+        }
+        java.math.BigDecimal shortfall = paidAmount.subtract(alreadyLinked);
+        if (shortfall.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            return; // the reservation's existing payment(s) already cover the requested amount
         }
 
         PaymentMethod method = parsePaymentMethod(requestedMethod);
-        PaymentStatus status = paidAmount.compareTo(totalAmount) >= 0
+        java.math.BigDecimal totalCollected = alreadyLinked.add(shortfall);
+        PaymentStatus status = totalCollected.compareTo(totalAmount) >= 0
                 ? PaymentStatus.PAID
                 : PaymentStatus.PARTIALLY_PAID;
 
         Payment payment = Payment.builder()
                 .paymentNumber(numberGeneratorService.generatePaymentNumber())
-                .amount(paidAmount)
+                .amount(shortfall)
                 .paymentDate(LocalDateTime.now())
                 .paymentMethod(method)
                 .status(status)

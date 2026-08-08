@@ -463,6 +463,26 @@ export default function Invoices() {
     }
   };
 
+  const cancelInvoice = async (invoice: Invoice) => {
+    if (invoice.status === 'CANCELLED' || invoice.status === 'REFUNDED') return;
+    const reason = await promptText({
+      title: t('invoices.cancelConfirmTitle', 'Cancel this invoice?'),
+      description: t('invoices.cancelConfirmBody', { number: invoice.invoiceNumber, defaultValue: `Cancel invoice ${invoice.invoiceNumber}? This does not delete payment history.` }),
+      placeholder: t('invoices.cancelReasonPlaceholder', 'Reason (optional)'),
+      confirmLabel: t('invoices.confirmCancel', 'Cancel invoice'),
+      cancelLabel: t('actions.cancel', 'Cancel'),
+      required: false,
+    });
+    if (reason === null) return; // dialog dismissed — stay as-is, not an error
+    try {
+      await api.post(`/invoices/${invoice.id}/cancel`, { reason });
+      fetchInvoices();
+      showToast(t('invoices.cancelSuccess', 'Invoice cancelled.'), 'success');
+    } catch (err: any) {
+      showToast(err?.userMessage || t('invoices.cancelFailed', 'Unable to cancel this invoice.'), 'error');
+    }
+  };
+
   const STATUS_BADGE_CONFIG: Record<string, { className: string; icon: any }> = {
     PAID: { className: 'bg-success-50 text-success-500', icon: CheckCircle2 },
     PARTIALLY_PAID: { className: 'bg-success-50 text-success-500', icon: CheckCircle2 },
@@ -710,6 +730,9 @@ export default function Invoices() {
                         <ActionMenu
                           ariaLabel={t('invoices.actions')}
                           items={[
+                            ...(invoice.status !== 'CANCELLED' && invoice.status !== 'REFUNDED'
+                              ? [{ label: t('invoices.cancelInvoiceAction', 'Cancel invoice'), icon: <Ban size={15} />, onClick: () => cancelInvoice(invoice), danger: true }]
+                              : []),
                             { label: t('common.delete', 'Delete'), icon: <Trash2 size={15} />, onClick: () => deleteInvoice(invoice.id), danger: true },
                           ]}
                         />
@@ -783,6 +806,9 @@ export default function Invoices() {
                           <button onClick={() => markAsPaid(invoice.id)} className="px-3 py-1.5 bg-success-50 text-success-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-success-500 hover:text-white transition-all">{t('invoices.pay')}</button>
                         )}
                         <button onClick={() => openEdit(invoice)} className="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"><FileText size={17} /></button>
+                        {invoice.status !== 'CANCELLED' && invoice.status !== 'REFUNDED' && (
+                          <button onClick={() => cancelInvoice(invoice)} aria-label={t('invoices.cancelInvoiceAction', 'Cancel invoice')} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"><Ban size={17} /></button>
+                        )}
                         <button onClick={() => deleteInvoice(invoice.id)} className="p-2 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all"><Trash2 size={17} /></button>
                       </div>
                     </td>

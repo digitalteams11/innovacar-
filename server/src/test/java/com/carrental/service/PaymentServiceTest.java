@@ -44,6 +44,7 @@ class PaymentServiceTest {
     @Mock private VehicleRepository vehicleRepository;
     @Mock private TenantRepository tenantRepository;
     @Mock private NotificationService notificationService;
+    @Mock private NumberGeneratorService numberGeneratorService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -204,6 +205,79 @@ class PaymentServiceTest {
 
         assertThat(response.getId()).isEqualTo(PAYMENT_ID);
         verify(paymentRepository, never()).save(any());
+    }
+
+    // ── recordPayment: overpayment guard ────────────────────────────────────────
+
+    @Test
+    void recordPayment_rejectsRentalPaymentThatWouldExceedContractTotal() {
+        Tenant tenant = Tenant.builder().id(TENANT_ID).build();
+        com.carrental.entity.Contract contract = com.carrental.entity.Contract.builder()
+                .id(700L).tenant(tenant).totalPrice(new BigDecimal("3000.00")).build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(contractRepository.findByIdAndTenantId(700L, TENANT_ID)).thenReturn(Optional.of(contract));
+        when(paymentRepository.sumCollectedAmountByTenantIdAndContractId(TENANT_ID, 700L))
+                .thenReturn(new BigDecimal("2999.00"));
+
+        RecordPaymentRequest request = new RecordPaymentRequest();
+        request.setAmount(new BigDecimal("5.00")); // 2999 + 5 = 3004 > 3000 total
+        request.setContractId(700L);
+
+        assertThatThrownBy(() -> paymentService.recordPayment(request))
+                .isInstanceOf(com.carrental.exception.PaidAmountExceedsTotalException.class);
+
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void recordPayment_allowsRentalPaymentThatExactlyCoversRemainingBalance() {
+        Tenant tenant = Tenant.builder().id(TENANT_ID).build();
+        com.carrental.entity.Contract contract = com.carrental.entity.Contract.builder()
+                .id(701L).tenant(tenant).totalPrice(new BigDecimal("3000.00")).build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(contractRepository.findByIdAndTenantId(701L, TENANT_ID)).thenReturn(Optional.of(contract));
+        when(paymentRepository.sumCollectedAmountByTenantIdAndContractId(TENANT_ID, 701L))
+                .thenReturn(new BigDecimal("2000.00"));
+        when(numberGeneratorService.generatePaymentNumber()).thenReturn("PAY-2026-TEST0001");
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(invoiceRepository.findAllByTenantIdAndContractId(TENANT_ID, 701L)).thenReturn(java.util.List.of());
+
+        RecordPaymentRequest request = new RecordPaymentRequest();
+        request.setAmount(new BigDecimal("1000.00")); // exactly the remaining balance
+        request.setContractId(701L);
+
+        PaymentResponse response = paymentService.recordPayment(request);
+
+        assertThat(response.getStatus()).isEqualTo(PaymentStatus.PAID);
+        verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    void recordPayment_overpaymentGuardDoesNotApplyToNonRentalPaymentTypes() {
+        // A DEPOSIT/caution payment is not revenue capped by the contract's rental total —
+        // e.g. a 3000 MAD deposit on a 1500 MAD rental is a normal, valid case.
+        Tenant tenant = Tenant.builder().id(TENANT_ID).build();
+        com.carrental.entity.Contract contract = com.carrental.entity.Contract.builder()
+                .id(702L).tenant(tenant).totalPrice(new BigDecimal("1500.00")).build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(contractRepository.findByIdAndTenantId(702L, TENANT_ID)).thenReturn(Optional.of(contract));
+        when(numberGeneratorService.generatePaymentNumber()).thenReturn("PAY-2026-TEST0002");
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(invoiceRepository.findAllByTenantIdAndContractId(TENANT_ID, 702L)).thenReturn(java.util.List.of());
+
+        RecordPaymentRequest request = new RecordPaymentRequest();
+        request.setAmount(new BigDecimal("3000.00"));
+        request.setContractId(702L);
+        request.setType(PaymentType.DEPOSIT_PAYMENT);
+
+        // Must not throw despite 3000 > contract total of 1500 — the guard is scoped to RENTAL only.
+        paymentService.recordPayment(request);
+
+        verify(paymentRepository).save(any(Payment.class));
+        // Called by determinePaymentStatus + recalculateContractFinancials (both run for
+        // every payment type) but NOT a third time by the overpayment guard, which is
+        // skipped for this type — i.e. no exception was thrown despite 3000 > 1500.
+        verify(paymentRepository, times(2)).sumCollectedAmountByTenantIdAndContractId(TENANT_ID, 702L);
     }
 
     // ── updateInvoiceStatus: contract-linked invoices read the contract's own paidAmount ──

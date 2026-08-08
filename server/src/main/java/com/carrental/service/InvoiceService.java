@@ -106,7 +106,6 @@ public class InvoiceService {
                 .toList();
 
         BigDecimal totalInvoiced = BigDecimal.ZERO;
-        BigDecimal totalCollected = BigDecimal.ZERO;
         BigDecimal totalOutstanding = BigDecimal.ZERO;
         BigDecimal totalOverdue = BigDecimal.ZERO;
         BigDecimal totalPartiallyPaid = BigDecimal.ZERO;
@@ -120,7 +119,6 @@ public class InvoiceService {
             BigDecimal remaining = amount.subtract(collected).max(BigDecimal.ZERO);
 
             totalInvoiced = totalInvoiced.add(amount);
-            totalCollected = totalCollected.add(collected);
             if (invoice.getContract() != null) contractIds.add(invoice.getContract().getId());
 
             switch (invoice.getStatus()) {
@@ -138,6 +136,15 @@ public class InvoiceService {
                 case PAID -> { /* fully settled — nothing outstanding */ }
             }
         }
+
+        // "Collected" is real cash received in this period — a sum of Payment.paymentDate,
+        // never derived from which invoices happen to have been issued in the period (that
+        // conflates "invoiced" with "collected", the exact confusion the KPI spec forbids —
+        // a client can pay in a later month for an invoice issued earlier, and a payment
+        // collected this month can settle an invoice issued last month).
+        BigDecimal totalCollected = paymentRepository.sumCollectedRentalRevenueBetween(
+                tenantId, start.atStartOfDay(), end.plusDays(1).atStartOfDay());
+        if (totalCollected == null) totalCollected = BigDecimal.ZERO;
 
         BigDecimal extensionRevenue = contractExtensionRepository
                 .findAllByTenantIdAndCreatedAtBetween(tenantId, start.atStartOfDay(), end.plusDays(1).atStartOfDay())
@@ -757,6 +764,61 @@ public class InvoiceService {
         log.info("Marked invoice [id={}] as PAID in tenant [{}]",
                 id, tenantId);
         return toResponseWithFinancials(saved);
+    }
+
+    /**
+     * Cancels an invoice — never a delete (financial history is preserved, see class
+     * javadoc pattern). A PAID invoice must be refunded instead (see PaymentService#refundPayment) —
+     * cancellation is for an invoice that was never actually settled, not a reversal of
+     * money already collected. Already-CANCELLED/REFUNDED is a no-op error, not silently
+     * re-applied, so a stale double-click surfaces rather than overwriting the original
+     * cancellation's reason/actor.
+     *
+     * @throws ResourceNotFoundException if the invoice is not found in this tenant
+     */
+    @Transactional
+    public InvoiceResponse cancelInvoice(Long id, String reason) {
+        Invoice invoice = fetchInvoiceInTenant(id);
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new IllegalStateException("This invoice is already cancelled.");
+        }
+        if (invoice.getStatus() == InvoiceStatus.REFUNDED) {
+            throw new IllegalStateException("This invoice has already been refunded.");
+        }
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new IllegalStateException(
+                    "A fully paid invoice cannot be cancelled directly — refund the underlying payment(s) instead.");
+        }
+        invoice.setStatus(InvoiceStatus.CANCELLED);
+        invoice.setCancellationReason(reason);
+        invoice.setCancelledBy(currentUserLabel());
+        invoice.setCancelledById(currentUserId());
+        invoice.setCancelledAt(LocalDateTime.now());
+        Invoice saved = invoiceRepository.save(invoice);
+
+        log.info("[INVOICE_CANCEL] invoiceId={} number={} tenantId={} reason={}",
+                id, saved.getInvoiceNumber(), TenantContext.getCurrentTenantId(), reason);
+        return toResponseWithFinancials(saved);
+    }
+
+    /** Same best-effort actor pattern as ContractService#getCurrentUser / PaymentService#getCurrentUserLabel. */
+    private String currentUserLabel() {
+        try {
+            return org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getName();
+        } catch (Exception e) {
+            return "system";
+        }
+    }
+
+    private Long currentUserId() {
+        try {
+            var principal = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getPrincipal();
+            return principal instanceof com.carrental.entity.User u ? u.getId() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

@@ -158,6 +158,22 @@ public class InvoiceController {
         return ResponseEntity.ok(invoiceService.markAsPaid(id));
     }
 
+    // ── POST /api/invoices/{id}/cancel ───────────────────────────────────────
+
+    /**
+     * Cancels an invoice (never deletes it — see InvoiceService#cancelInvoice).
+     * Refused for PAID/already-CANCELLED/REFUNDED invoices; the caller sees the
+     * precise reason via the standard IllegalStateException -> 409 mapping.
+     */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("@rolePermissionService.has('MANAGE_INVOICES')")
+    public ResponseEntity<InvoiceResponse> cancelInvoice(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(invoiceService.cancelInvoice(id, reason));
+    }
+
     // ── DELETE /api/invoices/{id} ────────────────────────────────────────────
 
     /**
