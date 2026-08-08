@@ -70,7 +70,7 @@ export default function ForgotPassword() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   className={inputCls}
-                  placeholder={t('login.emailPlaceholder', 'name@email.com')}
+                  placeholder={t('login.emailPlaceholder', 'name@example.com')}
                   autoComplete="email"
                   inputMode="email"
                   required

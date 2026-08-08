@@ -308,7 +308,7 @@ export default function Register() {
                   type="email"
                   value={email}
                   onChange={setEmail}
-                  placeholder={t('login.emailPlaceholder', 'name@email.com')}
+                  placeholder={t('login.emailPlaceholder', 'name@example.com')}
                   autoComplete="email"
                   inputMode="email"
                   required

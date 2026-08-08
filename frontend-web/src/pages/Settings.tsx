@@ -520,7 +520,7 @@ export default function Settings() {
                   type="email"
                   value={agency.email}
                   onChange={(e) => handleAgencyChange('email', e.target.value)}
-                  placeholder={t('settings.agencyEmailPlaceholder', 'name@email.com')}
+                  placeholder={t('settings.agencyEmailPlaceholder', 'name@example.com')}
                   className="w-full ps-11 pe-4 py-2.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-xl text-sm font-normal text-[#1e293b] focus:outline-none focus:ring-2 ring-brand-100 focus:bg-white focus:border-brand-300 transition-all"
                 />
               </div>

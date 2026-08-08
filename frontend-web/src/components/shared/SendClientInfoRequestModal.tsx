@@ -229,7 +229,7 @@ export default function SendClientInfoRequestModal({
                 className="w-full px-4 py-2.5 glass-input text-sm text-[#1e293b] dark:text-white"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('clientInfoAdmin.form.emailPlaceholder', 'name@email.com')}
+                placeholder={t('clientInfoAdmin.form.emailPlaceholder', 'name@example.com')}
               />
               {errors.phone && <p className="mt-1 text-xs text-danger-500">{errors.phone}</p>}
             </div>
