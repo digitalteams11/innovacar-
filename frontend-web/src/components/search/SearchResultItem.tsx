@@ -1,13 +1,17 @@
 import {
+  AlertTriangle,
+  BarChart,
   Calendar,
   Car,
   CreditCard,
   FileText,
   MapPin,
   Plus,
+  Receipt,
   Settings,
   User,
   Users,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -23,6 +27,11 @@ const iconMap: Record<string, LucideIcon> = {
   plus: Plus,
   gps: MapPin,
   settings: Settings,
+  receipt: Receipt,
+  wrench: Wrench,
+  'map-pin': MapPin,
+  'alert-triangle': AlertTriangle,
+  'bar-chart': BarChart,
 };
 
 export function SearchResultItem({

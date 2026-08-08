@@ -204,7 +204,10 @@ export default function Invoices() {
   const filteredData = data.filter((i) => {
     const matchesTab = activeTab === 'All' || i.status === activeTab;
     const q = searchQuery.toLowerCase();
-    return matchesTab && ((i.clientName || '').toLowerCase().includes(q) || i.invoiceNumber?.toLowerCase().includes(q));
+    return matchesTab && (
+      !q || [i.clientName, i.invoiceNumber, i.status, String(i.amount ?? '')]
+        .some((value) => String(value ?? '').toLowerCase().includes(q))
+    );
   });
 
   const totalPaid = data.filter((i) => i.status === 'PAID').reduce((sum, i) => sum + i.amount, 0);

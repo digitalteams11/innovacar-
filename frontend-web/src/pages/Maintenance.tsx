@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { resolveApiErrorMessage } from '../i18n/apiError';
 import ResponsiveDataView from '../components/shared/ResponsiveDataView';
+import { SearchInput } from '../components/SearchInput';
 import { translateVehicleStatus } from '../utils/statusLabels';
 import { useInlineAction } from '../hooks/useInlineAction';
 import { logDevError, toFriendlyError } from '../lib/errorMessages';
@@ -82,6 +83,15 @@ export default function Maintenance() {
   // instead of just closing the modal.
   const [preselectedVehicle, setPreselectedVehicle] = useState<any | null>(null);
   const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredRows = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [
+      r.title, r.vehicle, r.plate, r.serviceProvider, r.status, r.description, String(r.id ?? ''),
+    ].some((value) => String(value ?? '').toLowerCase().includes(q)));
+  }, [rows, searchQuery]);
 
   const stats = useMemo(() => {
     const scheduled  = rows.filter((r) => r.status === 'SCHEDULED').length;
@@ -332,6 +342,13 @@ export default function Maintenance() {
         </button>
       </div>
 
+      <SearchInput
+        className="w-full sm:w-80"
+        placeholder={t('maintenance.searchPlaceholder', 'Search by vehicle, plate, type, or status...')}
+        value={searchQuery}
+        onChange={setSearchQuery}
+      />
+
       {/* Repair banner — shown when vehicles are in MAINTENANCE status without a work order */}
       {orphanCount > 0 && (
         <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
@@ -388,16 +405,18 @@ export default function Maintenance() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="animate-spin text-brand-500" size={28} /></div>
-      ) : rows.length === 0 ? (
+      ) : filteredRows.length === 0 ? (
         <div className="rounded-lg border border-[#e8e6e1] bg-white py-16 text-center">
-          <p className="text-sm font-semibold text-slate-600">{t('maintenance.empty.title')}</p>
+          <p className="text-sm font-semibold text-slate-600">
+            {searchQuery.trim() ? t('maintenance.noSearchResults', 'No maintenance records match your search.') : t('maintenance.empty.title')}
+          </p>
           <p className="mt-1 text-sm text-slate-400">{t('maintenance.empty.subtitle')}</p>
         </div>
       ) : (
         <ResponsiveDataView
           mobile={
             <div className="space-y-3">
-              {rows.map((row) => (
+              {filteredRows.map((row) => (
                 <div key={row.id} className="rounded-lg border border-[#e8e6e1] bg-white p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -467,7 +486,7 @@ export default function Maintenance() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e8e6e1]">
-            {rows.map((row) => (
+            {filteredRows.map((row) => (
               <tr key={row.id} className="text-sm">
                 <td className="p-3 font-medium">
                   {row.vehicle}

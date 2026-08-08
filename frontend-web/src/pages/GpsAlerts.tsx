@@ -9,6 +9,7 @@ import {
   Zap, BellOff,
 } from 'lucide-react';
 import { GlassPageHeader } from '../components/GlassPageHeader';
+import { SearchInput } from '../components/SearchInput';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ export default function GpsAlerts() {
   const [markingAll, setMarkingAll] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [readFilter, setReadFilter] = useState<'ALL' | 'UNREAD'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const fetchAlerts = useCallback(async (manual = false) => {
@@ -126,6 +128,12 @@ export default function GpsAlerts() {
   const filtered = alerts.filter(a => {
     if (typeFilter !== 'ALL' && a.alertType !== typeFilter) return false;
     if (readFilter === 'UNREAD' && a.read) return false;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      const cfg = ALERT_CONFIG[a.alertType];
+      const haystack = [a.message, a.vehicleName, a.severity, cfg?.label, a.alertType, String(a.id)];
+      if (!haystack.some(value => String(value ?? '').toLowerCase().includes(q))) return false;
+    }
     return true;
   });
 
@@ -194,7 +202,13 @@ export default function GpsAlerts() {
       </div>
 
       {/* Filters */}
-      <div className="data-surface p-3">
+      <div className="data-surface p-3 space-y-2">
+        <SearchInput
+          className="w-full sm:w-80"
+          placeholder={t('gpsAlerts.searchPlaceholder', 'Search by vehicle, message, or type...')}
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
         <div className="flex flex-wrap gap-2 items-center">
           {/* Read filter */}
           <div className="flex bg-slate-100 rounded-lg p-0.5 shrink-0">

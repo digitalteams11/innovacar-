@@ -1,4 +1,16 @@
-export type SearchResultType = 'ACTION' | 'VEHICLE' | 'CLIENT' | 'RESERVATION' | 'CONTRACT' | 'EMPLOYEE' | 'PAYMENT';
+export type SearchResultType =
+  | 'ACTION'
+  | 'VEHICLE'
+  | 'CLIENT'
+  | 'RESERVATION'
+  | 'CONTRACT'
+  | 'EMPLOYEE'
+  | 'PAYMENT'
+  | 'INVOICE'
+  | 'MAINTENANCE'
+  | 'GPS_DEVICE'
+  | 'GPS_ALERT'
+  | 'REPORT';
 
 export interface GlobalSearchResult {
   id: string;

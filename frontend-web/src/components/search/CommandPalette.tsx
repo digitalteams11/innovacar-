@@ -16,6 +16,11 @@ const sectionLabelKeys: Record<SearchResultType, string> = {
   CONTRACT: 'nav.contracts',
   EMPLOYEE: 'nav.employees',
   PAYMENT: 'nav.payments',
+  INVOICE: 'nav.invoices',
+  MAINTENANCE: 'nav.maintenance',
+  GPS_DEVICE: 'nav.gps',
+  GPS_ALERT: 'nav.gpsAlerts',
+  REPORT: 'nav.reports',
 };
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {

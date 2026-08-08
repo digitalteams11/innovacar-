@@ -61,6 +61,9 @@
     "automationCenter": "AI & Automation",
     "desktopApp": "Desktop App"
   },
+  "gpsAlerts": {
+    "searchPlaceholder": "Search by vehicle, message, or type..."
+  },
   "assistant": {
     "openMenu": "Open assistant menu",
     "ariaExpanded": "Assistant menu",
@@ -3468,6 +3471,8 @@
     "title": "Vehicle Maintenance",
     "subtitle": "Work orders, service alerts, cost summary and fleet health",
     "newWorkOrder": "New Work Order",
+    "searchPlaceholder": "Search by vehicle, plate, type, or status...",
+    "noSearchResults": "No maintenance records match your search.",
     "repairBanner_one": "{{count}} vehicle is marked as Maintenance without a linked work order.",
     "repairBanner_other": "{{count}} vehicles are marked as Maintenance without a linked work order.",
     "repairBanner": "{{count}} vehicles are marked as Maintenance without a linked work order.",

@@ -61,6 +61,9 @@
     "automationCenter": "IA & Automatisation",
     "desktopApp": "Application Bureau"
   },
+  "gpsAlerts": {
+    "searchPlaceholder": "Rechercher par véhicule, message ou type..."
+  },
   "assistant": {
     "openMenu": "Ouvrir le menu assistant",
     "ariaExpanded": "Menu assistant",
@@ -3468,6 +3471,8 @@
     "title": "Entretien des véhicules",
     "subtitle": "Ordres d'entretien, alertes de service, résumé des coûts et santé du parc",
     "newWorkOrder": "Nouvel ordre d'entretien",
+    "searchPlaceholder": "Rechercher par véhicule, plaque, type ou statut...",
+    "noSearchResults": "Aucun ordre d'entretien ne correspond à votre recherche.",
     "repairBanner_one": "{{count}} véhicule est marqué en entretien sans ordre associé.",
     "repairBanner_other": "{{count}} véhicules sont marqués en entretien sans ordre associé.",
     "repairBanner": "{{count}} véhicules sont marqués en entretien sans ordre associé.",

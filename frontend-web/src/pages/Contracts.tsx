@@ -487,8 +487,8 @@ export default function Contracts() {
     }
     const q = searchQuery.toLowerCase();
     return matchesTab && (
-      c.clientFullName?.toLowerCase().includes(q) ||
-      c.contractNumber?.toLowerCase().includes(q)
+      !q || [c.clientFullName, c.contractNumber, c.vehicleBrand, c.vehicleModel, c.clientPhone, c.clientEmail]
+        .some((value) => value?.toLowerCase().includes(q))
     );
   });
 

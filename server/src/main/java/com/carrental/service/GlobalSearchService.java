@@ -5,14 +5,24 @@ import com.carrental.dto.search.SearchResultDto;
 import com.carrental.entity.Client;
 import com.carrental.entity.Contract;
 import com.carrental.entity.Employee;
+import com.carrental.entity.GpsAlert;
+import com.carrental.entity.GpsDevice;
+import com.carrental.entity.Invoice;
 import com.carrental.entity.Payment;
+import com.carrental.entity.Report;
 import com.carrental.entity.Reservation;
 import com.carrental.entity.Vehicle;
+import com.carrental.entity.VehicleMaintenance;
 import com.carrental.repository.ClientRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.EmployeeRepository;
+import com.carrental.repository.GpsAlertRepository;
+import com.carrental.repository.GpsDeviceRepository;
+import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PaymentRepository;
+import com.carrental.repository.ReportRepository;
 import com.carrental.repository.ReservationRepository;
+import com.carrental.repository.VehicleMaintenanceRepository;
 import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +53,11 @@ public class GlobalSearchService {
     private final ContractRepository contractRepository;
     private final EmployeeRepository employeeRepository;
     private final PaymentRepository paymentRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final VehicleMaintenanceRepository vehicleMaintenanceRepository;
+    private final GpsDeviceRepository gpsDeviceRepository;
+    private final GpsAlertRepository gpsAlertRepository;
+    private final ReportRepository reportRepository;
     private final RolePermissionService rolePermissionService;
 
     @Transactional(readOnly = true)
@@ -65,6 +80,11 @@ public class GlobalSearchService {
         if (can("CONTRACT_VIEW")) results.addAll(searchContracts(tenantId, query));
         if (can("EMPLOYEE_VIEW")) results.addAll(searchEmployees(tenantId, query));
         if (can("PAYMENT_VIEW")) results.addAll(searchPayments(tenantId, query));
+        if (can("INVOICE_VIEW")) results.addAll(searchInvoices(tenantId, query));
+        if (can("MAINTENANCE_VIEW")) results.addAll(searchMaintenance(tenantId, query));
+        if (can("GPS_VIEW")) results.addAll(searchGpsDevices(tenantId, query));
+        if (can("GPS_ALERTS_VIEW")) results.addAll(searchGpsAlerts(tenantId, query));
+        if (can("REPORT_VIEW")) results.addAll(searchReports(tenantId, query));
 
         List<SearchResultDto> sorted = results.stream()
                 .sorted(Comparator.comparingInt(SearchResultDto::score).reversed()
@@ -194,6 +214,98 @@ public class GlobalSearchService {
         String title = firstNonBlank(payment.getPaymentNumber(), "Payment " + amount);
         String subtitle = joinParts(contractNumber, amount, status);
         return result("payment", "PAYMENT", payment.getId(), title, subtitle, status, "/payments", "credit-card", score);
+    }
+
+    private List<SearchResultDto> searchInvoices(Long tenantId, String query) {
+        return invoiceRepository.findAllByTenantId(tenantId).stream()
+                .map(invoice -> invoiceResult(invoice, query))
+                .filter(Objects::nonNull)
+                .limit(CATEGORY_LIMIT)
+                .toList();
+    }
+
+    private SearchResultDto invoiceResult(Invoice invoice, String query) {
+        String amount = formatAmount(invoice.getAmount());
+        String status = enumName(invoice.getStatus());
+        String contractNumber = invoice.getContract() == null ? null : invoice.getContract().getContractNumber();
+        int score = score(query, invoice.getInvoiceNumber(), invoice.getClientName(), contractNumber, amount, status);
+        if (score == 0) return null;
+        String title = firstNonBlank(invoice.getInvoiceNumber(), "Invoice #" + invoice.getId());
+        String subtitle = joinParts(invoice.getClientName(), amount, status);
+        return result("invoice", "INVOICE", invoice.getId(), title, subtitle, status, "/invoices", "receipt", score);
+    }
+
+    private List<SearchResultDto> searchMaintenance(Long tenantId, String query) {
+        return vehicleMaintenanceRepository.findAllByTenantIdOrderByCreatedAtDesc(tenantId).stream()
+                .map(maintenance -> maintenanceResult(maintenance, query))
+                .filter(Objects::nonNull)
+                .limit(CATEGORY_LIMIT)
+                .toList();
+    }
+
+    private SearchResultDto maintenanceResult(VehicleMaintenance maintenance, String query) {
+        String vehicleName = maintenance.getVehicle() == null ? null : maintenance.getVehicle().getMarque();
+        String plate = maintenance.getVehicle() == null ? null : maintenance.getVehicle().getPlate();
+        String status = enumName(maintenance.getStatus());
+        int score = score(query, maintenance.getTitle(), maintenance.getServiceProvider(), vehicleName, plate, status);
+        if (score == 0) return null;
+        String title = firstNonBlank(maintenance.getTitle(), "Maintenance #" + maintenance.getId());
+        String subtitle = joinParts(vehicleName, plate, status);
+        return result("maintenance", "MAINTENANCE", maintenance.getId(), title, subtitle, status, "/maintenance", "wrench", score);
+    }
+
+    private List<SearchResultDto> searchGpsDevices(Long tenantId, String query) {
+        return gpsDeviceRepository.findAllByTenantId(tenantId).stream()
+                .map(device -> gpsDeviceResult(device, query))
+                .filter(Objects::nonNull)
+                .limit(CATEGORY_LIMIT)
+                .toList();
+    }
+
+    private SearchResultDto gpsDeviceResult(GpsDevice device, String query) {
+        int score = score(query, device.getName(), device.getPlateNumber(), device.getImei(),
+                device.getProviderDeviceId(), device.getStatus());
+        if (score == 0) return null;
+        String title = firstNonBlank(device.getName(), device.getPlateNumber(), "GPS Device #" + device.getId());
+        String subtitle = joinParts(device.getPlateNumber(), device.getStatus());
+        return result("gps-device", "GPS_DEVICE", device.getId(), title, subtitle, device.getStatus(), "/gps-tracking", "map-pin", score);
+    }
+
+    private List<SearchResultDto> searchGpsAlerts(Long tenantId, String query) {
+        return gpsAlertRepository.findAllByTenantIdOrderByCreatedAtDesc(tenantId).stream()
+                .map(alert -> gpsAlertResult(alert, query))
+                .filter(Objects::nonNull)
+                .limit(CATEGORY_LIMIT)
+                .toList();
+    }
+
+    private SearchResultDto gpsAlertResult(GpsAlert alert, String query) {
+        String type = enumName(alert.getAlertType());
+        int score = score(query, alert.getVehicleName(), alert.getMessage(), type, alert.getSeverity());
+        if (score == 0) return null;
+        String title = firstNonBlank(alert.getVehicleName(), "GPS Alert #" + alert.getId());
+        String subtitle = joinParts(type, alert.getSeverity(), alert.getMessage());
+        return result("gps-alert", "GPS_ALERT", alert.getId(), title, subtitle, alert.getSeverity(), "/gps-alerts", "alert-triangle", score);
+    }
+
+    private List<SearchResultDto> searchReports(Long tenantId, String query) {
+        return reportRepository.findAllByTenantIdOrderByPeriodStartDesc(tenantId).stream()
+                .map(report -> reportResult(report, query))
+                .filter(Objects::nonNull)
+                .limit(CATEGORY_LIMIT)
+                .toList();
+    }
+
+    private SearchResultDto reportResult(Report report, String query) {
+        String type = enumName(report.getReportType());
+        String status = enumName(report.getStatus());
+        String periodStart = report.getPeriodStart() == null ? null : report.getPeriodStart().format(DATE_FORMAT);
+        String periodEnd = report.getPeriodEnd() == null ? null : report.getPeriodEnd().format(DATE_FORMAT);
+        int score = score(query, type, status, periodStart, periodEnd);
+        if (score == 0) return null;
+        String title = firstNonBlank(type, "Report #" + report.getId()) + " Report";
+        String subtitle = joinParts(periodStart, periodEnd, status);
+        return result("report", "REPORT", report.getId(), title, subtitle, status, "/reports", "bar-chart", score);
     }
 
     private SearchResultDto result(String idPrefix, String type, Long entityId, String title, String subtitle,
