@@ -1302,6 +1302,11 @@
   "clientInfo": {
     "pageTitle": "استمارة معلومات العميل",
     "edit": "تعديل",
+    "add": "إضافة",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "editInformation": "تعديل المعلومات",
+    "notProvided": "غير متوفر",
     "header": {
       "subtitle": "استمارة معلومات العميل"
     },
@@ -1331,6 +1336,7 @@
       "nationality": "الجنسية",
       "companyName": "الشركة (اختياري)",
       "documentType": "نوع الوثيقة",
+      "documentLabel": "وثيقة الهوية",
       "cinNumber": "رقم البطاقة الوطنية",
       "passportNumber": "رقم جواز السفر",
       "residencePermitNumber": "رقم بطاقة الإقامة",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock, Pencil, Check } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock, Pencil, Check, Plus, PenLine } from 'lucide-react';
 import api from '../api/axios';
 import { resolveMediaUrl } from '../utils/mediaUrl';
 import { PUBLIC_APP_URL } from '../lib/publicUrl';
@@ -95,8 +95,8 @@ export default function PublicClientInformation() {
   const [logoFailed, setLogoFailed] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
-  // Progressive disclosure: fields the client explicitly chose to edit — everything else
-  // known is shown read-only/confirmed. See isFieldKnown/startEditing below.
+  // Display-first / edit-on-demand: fields the client explicitly opened for editing.
+  // Everything else renders as a read-only row (see startEditing/stopEditing below).
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const [wasAlreadySubmitted, setWasAlreadySubmitted] = useState(false);
@@ -193,12 +193,27 @@ export default function PublicClientInformation() {
       : t('clientInfo.form.cinNumber', 'CIN number')
   );
 
-  // Progressive disclosure: a field renders as an already-provided, read-only confirmation
-  // (with an Edit action) when the agency already has it on file and the client hasn't
-  // clicked Edit — otherwise it renders as a normal editable input (missing, or being edited).
-  const isFieldKnown = (key: string) =>
-    Boolean(view?.hasKnownClient) && !(view?.missingFields || []).includes(key) && !editingFields.has(key);
+  // Display-first / edit-on-demand: every field defaults to a read-only row (its value,
+  // or "Not provided" when empty) with an Edit/Add action — never a bare input by
+  // default, known or missing. Clicking Edit/Add reveals an input scoped to that one
+  // field, with its own Cancel/Save; Save commits the draft into `form` and returns to
+  // display mode, Cancel discards the draft and returns to display mode unchanged.
   const startEditing = (key: string) => setEditingFields((prev) => new Set(prev).add(key));
+  const stopEditing = (key: string) => setEditingFields((prev) => {
+    const next = new Set(prev);
+    next.delete(key);
+    return next;
+  });
+  const saveField = (key: keyof typeof emptyForm, value: string) => {
+    update(key, value);
+    stopEditing(key as string);
+  };
+
+  const ALL_FIELD_KEYS = [
+    'fullName', 'phone', 'secondaryPhone', 'email', 'birthDate', 'gender', 'nationality',
+    'companyName', 'documentNumber', 'driverLicenseNumber', 'address',
+  ];
+  const editAllFields = () => setEditingFields(new Set(ALL_FIELD_KEYS));
 
   const submit = async () => {
     setValidationError(null);
@@ -385,78 +400,125 @@ export default function PublicClientInformation() {
         </div>
 
         {/* Personal information */}
-        <Section title={t('clientInfo.sections.personal', 'Personal information')}>
-          <ProgressiveField fieldKey="fullName" label={t('clientInfo.form.fullName', 'Full name')} required
-            isKnown={isFieldKnown('fullName')} knownDisplay={form.fullName} onEdit={() => startEditing('fullName')}>
-            <input className="form-input" value={form.fullName} onChange={(e) => update('fullName', e.target.value)} />
-          </ProgressiveField>
+        <Section
+          title={t('clientInfo.sections.personal', 'Personal information')}
+          action={<EditAllButton onClick={editAllFields} />}
+        >
+          <ProgressiveField
+            label={t('clientInfo.form.fullName', 'Full name')} required
+            value={form.fullName}
+            editing={editingFields.has('fullName')}
+            onStartEdit={() => startEditing('fullName')}
+            onCancel={() => stopEditing('fullName')}
+            onSave={(v) => saveField('fullName', v)}
+            renderInput={(draft, setDraft) => <input className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ProgressiveField fieldKey="phone" label={t('clientInfo.form.phone', 'Primary phone')} required
-              isKnown={isFieldKnown('phone')} knownDisplay={form.phone} onEdit={() => startEditing('phone')}>
-              <input dir="ltr" className="form-input text-start" value={form.phone} onChange={(e) => update('phone', e.target.value)} />
-            </ProgressiveField>
-            <ProgressiveField fieldKey="secondaryPhone" label={t('clientInfo.form.secondaryPhone', 'Secondary phone')}
-              isKnown={isFieldKnown('secondaryPhone')} knownDisplay={form.secondaryPhone} onEdit={() => startEditing('secondaryPhone')}>
-              <input dir="ltr" className="form-input text-start" value={form.secondaryPhone} onChange={(e) => update('secondaryPhone', e.target.value)} />
-            </ProgressiveField>
+            <ProgressiveField
+              label={t('clientInfo.form.phone', 'Primary phone')} required
+              value={form.phone}
+              editing={editingFields.has('phone')}
+              onStartEdit={() => startEditing('phone')}
+              onCancel={() => stopEditing('phone')}
+              onSave={(v) => saveField('phone', v)}
+              renderInput={(draft, setDraft) => <input dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            />
+            <ProgressiveField
+              label={t('clientInfo.form.secondaryPhone', 'Secondary phone')}
+              value={form.secondaryPhone}
+              editing={editingFields.has('secondaryPhone')}
+              onStartEdit={() => startEditing('secondaryPhone')}
+              onCancel={() => stopEditing('secondaryPhone')}
+              onSave={(v) => saveField('secondaryPhone', v)}
+              renderInput={(draft, setDraft) => <input dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            />
           </div>
-          <ProgressiveField fieldKey="email" label={t('clientInfo.form.email', 'Email')}
-            isKnown={isFieldKnown('email')} knownDisplay={form.email} onEdit={() => startEditing('email')}>
-            <input dir="ltr" type="email" className="form-input text-start" value={form.email} onChange={(e) => update('email', e.target.value)} />
-          </ProgressiveField>
+          <ProgressiveField
+            label={t('clientInfo.form.email', 'Email')}
+            value={form.email}
+            editing={editingFields.has('email')}
+            onStartEdit={() => startEditing('email')}
+            onCancel={() => stopEditing('email')}
+            onSave={(v) => saveField('email', v)}
+            renderInput={(draft, setDraft) => <input dir="ltr" type="email" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ProgressiveField fieldKey="birthDate" label={t('clientInfo.form.birthDate', 'Date of birth')}
-              isKnown={isFieldKnown('birthDate')} knownDisplay={form.birthDate} onEdit={() => startEditing('birthDate')}>
-              <input type="date" dir="ltr" className="form-input text-start" value={form.birthDate} onChange={(e) => update('birthDate', e.target.value)} />
-            </ProgressiveField>
-            <ProgressiveField fieldKey="gender" label={t('clientInfo.form.gender', 'Gender')}
-              isKnown={isFieldKnown('gender')}
-              knownDisplay={form.gender === 'MALE' ? t('clientInfo.form.genderMale', 'Male') : form.gender === 'FEMALE' ? t('clientInfo.form.genderFemale', 'Female') : form.gender}
-              onEdit={() => startEditing('gender')}>
-              <select className="form-input" value={form.gender} onChange={(e) => update('gender', e.target.value)}>
-                <option value="">{t('clientInfo.form.genderUnspecified', '—')}</option>
-                <option value="MALE">{t('clientInfo.form.genderMale', 'Male')}</option>
-                <option value="FEMALE">{t('clientInfo.form.genderFemale', 'Female')}</option>
-              </select>
-            </ProgressiveField>
+            <ProgressiveField
+              label={t('clientInfo.form.birthDate', 'Date of birth')}
+              value={form.birthDate}
+              editing={editingFields.has('birthDate')}
+              onStartEdit={() => startEditing('birthDate')}
+              onCancel={() => stopEditing('birthDate')}
+              onSave={(v) => saveField('birthDate', v)}
+              renderInput={(draft, setDraft) => <input type="date" dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            />
+            <ProgressiveField
+              label={t('clientInfo.form.gender', 'Gender')}
+              value={form.gender}
+              displayValue={form.gender === 'MALE' ? t('clientInfo.form.genderMale', 'Male') : form.gender === 'FEMALE' ? t('clientInfo.form.genderFemale', 'Female') : form.gender}
+              editing={editingFields.has('gender')}
+              onStartEdit={() => startEditing('gender')}
+              onCancel={() => stopEditing('gender')}
+              onSave={(v) => saveField('gender', v)}
+              renderInput={(draft, setDraft) => (
+                <select className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)}>
+                  <option value="">{t('clientInfo.form.genderUnspecified', '—')}</option>
+                  <option value="MALE">{t('clientInfo.form.genderMale', 'Male')}</option>
+                  <option value="FEMALE">{t('clientInfo.form.genderFemale', 'Female')}</option>
+                </select>
+              )}
+            />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ProgressiveField fieldKey="nationality" label={t('clientInfo.form.nationality', 'Nationality')} required
-              isKnown={isFieldKnown('nationality')} knownDisplay={form.nationality} onEdit={() => startEditing('nationality')}>
-              <input className="form-input" value={form.nationality} onChange={(e) => update('nationality', e.target.value)} />
-            </ProgressiveField>
-            <ProgressiveField fieldKey="companyName" label={t('clientInfo.form.companyName', 'Company')}
-              isKnown={isFieldKnown('companyName')} knownDisplay={form.companyName} onEdit={() => startEditing('companyName')}>
-              <input className="form-input" value={form.companyName} onChange={(e) => update('companyName', e.target.value)} />
-            </ProgressiveField>
+            <ProgressiveField
+              label={t('clientInfo.form.nationality', 'Nationality')} required
+              value={form.nationality}
+              editing={editingFields.has('nationality')}
+              onStartEdit={() => startEditing('nationality')}
+              onCancel={() => stopEditing('nationality')}
+              onSave={(v) => saveField('nationality', v)}
+              renderInput={(draft, setDraft) => <input className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            />
+            <ProgressiveField
+              label={t('clientInfo.form.companyName', 'Company')}
+              value={form.companyName}
+              editing={editingFields.has('companyName')}
+              onStartEdit={() => startEditing('companyName')}
+              onCancel={() => stopEditing('companyName')}
+              onSave={(v) => saveField('companyName', v)}
+              renderInput={(draft, setDraft) => <input className="form-input" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+            />
           </div>
         </Section>
 
         {/* Identity document */}
         <Section title={t('clientInfo.sections.document', 'Identity document')}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ProgressiveField fieldKey="documentNumber" label={t('clientInfo.form.documentType', 'Document type')} required
-              isKnown={isFieldKnown('documentNumber')}
-              knownDisplay={form.documentType === 'PASSPORT' ? t('clientInfo.documentTypes.passport', 'Passport') : t('clientInfo.documentTypes.cin', 'CIN')}
-              onEdit={() => startEditing('documentNumber')}>
-              <select className="form-input" value={form.documentType} onChange={(e) => update('documentType', e.target.value)}>
-                <option value="CIN">{t('clientInfo.documentTypes.cin', 'CIN')}</option>
-                <option value="PASSPORT">{t('clientInfo.documentTypes.passport', 'Passport')}</option>
-              </select>
-            </ProgressiveField>
-            <ProgressiveField fieldKey="documentNumber" label={documentNumberLabel()} required
-              isKnown={isFieldKnown('documentNumber')} knownDisplay={form.documentNumber} onEdit={() => startEditing('documentNumber')}>
-              <input dir="ltr" className="form-input text-start" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} />
-            </ProgressiveField>
-          </div>
+          <DocumentProgressiveField
+            documentType={form.documentType}
+            documentNumber={form.documentNumber}
+            editing={editingFields.has('documentNumber')}
+            onStartEdit={() => startEditing('documentNumber')}
+            onCancel={() => stopEditing('documentNumber')}
+            onSave={(type, number) => {
+              update('documentType', type);
+              update('documentNumber', number);
+              stopEditing('documentNumber');
+            }}
+            documentNumberLabel={documentNumberLabel}
+          />
         </Section>
 
         {/* Driving licence */}
         <Section title={t('clientInfo.sections.license', 'Driving licence')}>
-          <ProgressiveField fieldKey="driverLicenseNumber" label={t('clientInfo.form.licenseNumber', 'Driving licence number')}
-            isKnown={isFieldKnown('driverLicenseNumber')} knownDisplay={form.driverLicenseNumber} onEdit={() => startEditing('driverLicenseNumber')}>
-            <input dir="ltr" className="form-input text-start" value={form.driverLicenseNumber} onChange={(e) => update('driverLicenseNumber', e.target.value)} />
-          </ProgressiveField>
+          <ProgressiveField
+            label={t('clientInfo.form.licenseNumber', 'Driving licence number')}
+            value={form.driverLicenseNumber}
+            editing={editingFields.has('driverLicenseNumber')}
+            onStartEdit={() => startEditing('driverLicenseNumber')}
+            onCancel={() => stopEditing('driverLicenseNumber')}
+            onSave={(v) => saveField('driverLicenseNumber', v)}
+            renderInput={(draft, setDraft) => <input dir="ltr" className="form-input text-start" value={draft} onChange={(e) => setDraft(e.target.value)} />}
+          />
         </Section>
 
         {/* Address */}
@@ -521,16 +583,23 @@ export default function PublicClientInformation() {
               )}
             </Field>
           </div>
-          <ProgressiveField fieldKey="address" label={t('clientInfo.form.address', 'Address')} required
-            isKnown={isFieldKnown('address')} knownDisplay={form.address} onEdit={() => startEditing('address')}>
-            <textarea
-              className="form-input"
-              rows={3}
-              placeholder={t('clientInfo.form.addressPlaceholder', 'Street, district and additional address details')}
-              value={form.address}
-              onChange={(e) => update('address', e.target.value)}
-            />
-          </ProgressiveField>
+          <ProgressiveField
+            label={t('clientInfo.form.address', 'Address')} required
+            value={form.address}
+            editing={editingFields.has('address')}
+            onStartEdit={() => startEditing('address')}
+            onCancel={() => stopEditing('address')}
+            onSave={(v) => saveField('address', v)}
+            renderInput={(draft, setDraft) => (
+              <textarea
+                className="form-input"
+                rows={3}
+                placeholder={t('clientInfo.form.addressPlaceholder', 'Street, district and additional address details')}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+            )}
+          />
           <Field label={t('clientInfo.form.notes', 'Notes')}>
             <textarea
               className="form-input"
@@ -616,54 +685,219 @@ function LanguageSelector({ current, onChange, label }: { current: string; onCha
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl p-4 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-      <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{title}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{title}</h2>
+        {action}
+      </div>
       {children}
     </div>
   );
 }
 
+/** "Edit information" — the global action near the section header (spec) that puts
+ *  every field with a value into edit mode at once. Individual fields still have
+ *  their own Edit/Add action regardless. */
+function EditAllButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-xs font-semibold flex items-center gap-1 shrink-0"
+      style={{ color: 'var(--brand-primary)' }}
+    >
+      <PenLine size={12} />
+      {t('clientInfo.editInformation', 'Edit information')}
+    </button>
+  );
+}
+
+function LabelRow({ label, required }: { label: string; required?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+      {label}
+      {required ? (
+        <span aria-hidden="true" style={{ color: 'var(--danger)' }}> *</span>
+      ) : (
+        <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}> ({t('common.optional', 'optional')})</span>
+      )}
+    </span>
+  );
+}
+
 /**
- * Progressive disclosure: renders a read-only "already provided" confirmation
- * with an Edit action when the value is already known and the client hasn't
- * chosen to change it; otherwise renders the normal editable {@link Field}.
+ * Display-first / edit-on-demand field. DEFAULT state is always a read-only row —
+ * the field's value with an Edit action when it has one, or "Not provided" with an
+ * Add action when it doesn't — never a bare input, known or missing (spec: "Do NOT
+ * display an empty input by default"). Clicking Edit/Add reveals an input holding a
+ * local DRAFT, independent of the committed form value, with its own Cancel (discard
+ * the draft, return to display unchanged) and Save (commit the draft, return to
+ * display) — editing one field never puts any other field into edit mode.
  */
 function ProgressiveField({
-  label, required, isKnown, knownDisplay, onEdit, children,
+  label, required, value, displayValue, editing, onStartEdit, onCancel, onSave, renderInput,
 }: {
-  fieldKey: string;
   label: string;
   required?: boolean;
-  isKnown: boolean;
-  knownDisplay?: string;
-  onEdit: () => void;
-  children: React.ReactNode;
+  value: string;
+  /** How to render the value in display mode when it differs from the raw stored value (e.g. a translated gender label). */
+  displayValue?: string;
+  editing: boolean;
+  onStartEdit: () => void;
+  onCancel: () => void;
+  onSave: (newValue: string) => void;
+  renderInput: (draft: string, setDraft: (v: string) => void) => React.ReactNode;
 }) {
   const { t } = useTranslation();
-  if (!isKnown) {
-    return <Field label={label} required={required}>{children}</Field>;
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    if (editing) setDraft(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
+  const hasValue = value.trim().length > 0;
+
+  if (!editing) {
+    return (
+      <div className="space-y-1.5">
+        <LabelRow label={label} required={required} />
+        <div
+          className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl"
+          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}
+        >
+          <span dir="auto" className="text-sm flex items-center gap-1.5 min-w-0 truncate" style={{ color: hasValue ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+            {hasValue && <Check size={13} className="shrink-0" style={{ color: 'var(--success)' }} />}
+            <span className="truncate">{hasValue ? (displayValue || value) : t('clientInfo.notProvided', 'Not provided')}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className="text-xs font-semibold flex items-center gap-1 shrink-0"
+            style={{ color: 'var(--brand-primary)' }}
+          >
+            {hasValue ? <Pencil size={12} /> : <Plus size={12} />}
+            {hasValue ? t('clientInfo.edit', 'Edit') : t('clientInfo.add', 'Add')}
+          </button>
+        </div>
+      </div>
+    );
   }
+
   return (
     <div className="space-y-1.5">
-      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</span>
-      <div
-        className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl"
-        style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}
-      >
-        <span dir="auto" className="text-sm flex items-center gap-1.5 min-w-0 truncate" style={{ color: 'var(--text-secondary)' }}>
-          <Check size={13} className="shrink-0" style={{ color: 'var(--success)' }} />
-          <span className="truncate">{knownDisplay || '—'}</span>
-        </span>
+      <LabelRow label={label} required={required} />
+      {renderInput(draft, setDraft)}
+      <div className="flex gap-2">
         <button
           type="button"
-          onClick={onEdit}
-          className="text-xs font-semibold flex items-center gap-1 shrink-0"
-          style={{ color: 'var(--brand-primary)' }}
+          onClick={onCancel}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold border"
+          style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
         >
-          <Pencil size={12} />
-          {t('clientInfo.edit', 'Edit')}
+          {t('clientInfo.cancel', 'Cancel')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSave(draft)}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold"
+          style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #ffffff)' }}
+        >
+          {t('clientInfo.save', 'Save')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Document type + number are inherently paired (a type with no number is meaningless)
+ *  so they share one display row / one edit session, same Cancel/Save shell as
+ *  {@link ProgressiveField} but with a combined two-field draft. */
+function DocumentProgressiveField({
+  documentType, documentNumber, editing, onStartEdit, onCancel, onSave, documentNumberLabel,
+}: {
+  documentType: string;
+  documentNumber: string;
+  editing: boolean;
+  onStartEdit: () => void;
+  onCancel: () => void;
+  onSave: (type: string, number: string) => void;
+  documentNumberLabel: () => string;
+}) {
+  const { t } = useTranslation();
+  const [draftType, setDraftType] = useState(documentType);
+  const [draftNumber, setDraftNumber] = useState(documentNumber);
+
+  useEffect(() => {
+    if (editing) { setDraftType(documentType); setDraftNumber(documentNumber); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
+  const hasValue = documentNumber.trim().length > 0;
+  const typeLabel = (type: string) => (type === 'PASSPORT' ? t('clientInfo.documentTypes.passport', 'Passport') : t('clientInfo.documentTypes.cin', 'CIN'));
+
+  if (!editing) {
+    return (
+      <div className="space-y-1.5">
+        <LabelRow label={t('clientInfo.form.documentLabel', 'Identity document')} required />
+        <div
+          className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl"
+          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}
+        >
+          <span dir="auto" className="text-sm flex items-center gap-1.5 min-w-0 truncate" style={{ color: hasValue ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+            {hasValue && <Check size={13} className="shrink-0" style={{ color: 'var(--success)' }} />}
+            <span className="truncate">{hasValue ? `${typeLabel(documentType)} — ${documentNumber}` : t('clientInfo.notProvided', 'Not provided')}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className="text-xs font-semibold flex items-center gap-1 shrink-0"
+            style={{ color: 'var(--brand-primary)' }}
+          >
+            {hasValue ? <Pencil size={12} /> : <Plus size={12} />}
+            {hasValue ? t('clientInfo.edit', 'Edit') : t('clientInfo.add', 'Add')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <LabelRow label={t('clientInfo.form.documentLabel', 'Identity document')} required />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <select className="form-input" value={draftType} onChange={(e) => setDraftType(e.target.value)}>
+          <option value="CIN">{t('clientInfo.documentTypes.cin', 'CIN')}</option>
+          <option value="PASSPORT">{t('clientInfo.documentTypes.passport', 'Passport')}</option>
+        </select>
+        <input
+          dir="ltr"
+          className="form-input text-start"
+          placeholder={documentNumberLabel()}
+          value={draftNumber}
+          onChange={(e) => setDraftNumber(e.target.value)}
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold border"
+          style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          {t('clientInfo.cancel', 'Cancel')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSave(draftType, draftNumber)}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold"
+          style={{ background: 'var(--brand-primary)', color: 'var(--brand-primary-foreground, #ffffff)' }}
+        >
+          {t('clientInfo.save', 'Save')}
         </button>
       </div>
     </div>

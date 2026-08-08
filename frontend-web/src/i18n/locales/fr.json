@@ -1302,6 +1302,11 @@
   "clientInfo": {
     "pageTitle": "Formulaire d'informations client",
     "edit": "Modifier",
+    "add": "Ajouter",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "editInformation": "Modifier les informations",
+    "notProvided": "Non renseigné",
     "header": {
       "subtitle": "Formulaire d'informations client"
     },
@@ -1331,6 +1336,7 @@
       "nationality": "Nationalité",
       "companyName": "Société (optionnel)",
       "documentType": "Type de document",
+      "documentLabel": "Document d'identité",
       "cinNumber": "Numéro de CIN",
       "passportNumber": "Numéro de passeport",
       "residencePermitNumber": "Numéro de carte de séjour",

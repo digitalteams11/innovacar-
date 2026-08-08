@@ -1302,6 +1302,11 @@
   "clientInfo": {
     "pageTitle": "Client Information Form",
     "edit": "Edit",
+    "add": "Add",
+    "cancel": "Cancel",
+    "save": "Save",
+    "editInformation": "Edit information",
+    "notProvided": "Not provided",
     "header": {
       "subtitle": "Client Information Form"
     },
@@ -1331,6 +1336,7 @@
       "nationality": "Nationality",
       "companyName": "Company",
       "documentType": "Document type",
+      "documentLabel": "Identity document",
       "cinNumber": "CIN number",
       "passportNumber": "Passport number",
       "residencePermitNumber": "Residence permit number",
