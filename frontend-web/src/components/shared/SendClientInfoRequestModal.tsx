@@ -8,6 +8,7 @@ import { isValidMoroccanWhatsAppPhone, normalizePhoneForWhatsApp } from '../../l
 import Modal from '../Modal';
 import AnimatedStatusIcon from './AnimatedStatusIcon';
 import Tooltip from './Tooltip';
+import SmartClientSearch, { type SmartClientSearchValue } from './SmartClientSearch';
 import { cn } from '../../lib/utils';
 
 interface SendClientInfoRequestModalProps {
@@ -56,27 +57,46 @@ export default function SendClientInfoRequestModal({
   const [result, setResult] = useState<DeliveryResponse | null>(null);
   const [completeness, setCompleteness] = useState<{ availableFields: string[]; missingFields: string[] } | null>(null);
   const [completenessLoading, setCompletenessLoading] = useState(false);
+  // Only used when the caller opened the modal with no clientId of its own (e.g. the
+  // page-level "Send form to client" toolbar action, which has no client context at
+  // all) — lets the agency pick an EXISTING client from the same search used
+  // everywhere else in the app, instead of the modal silently defaulting to a blank,
+  // client-less form. When the caller already supplied clientId/initialName/etc,
+  // this picker is not shown and behavior is unchanged.
+  const [pickedClient, setPickedClient] = useState<Partial<SmartClientSearchValue>>({});
+  const effectiveClientId = clientId ?? pickedClient.clientId;
 
   // Agency-side "what's already known" preview — only meaningful when this request
-  // is for an existing client (clientId set); a brand-new client has no profile to
-  // check yet, so every field is genuinely being collected for the first time.
+  // is for an existing client (a clientId is known); a brand-new client has no
+  // profile to check yet, so every field is genuinely being collected for the first time.
   useEffect(() => {
-    if (!isOpen || !clientId) { setCompleteness(null); return; }
+    if (!isOpen || !effectiveClientId) { setCompleteness(null); return; }
     setCompletenessLoading(true);
-    api.get(`/client-information-requests/completeness/${clientId}`)
+    api.get(`/client-information-requests/completeness/${effectiveClientId}`)
       .then(({ data }) => setCompleteness(data))
       .catch(() => setCompleteness(null))
       .finally(() => setCompletenessLoading(false));
-  }, [isOpen, clientId]);
+  }, [isOpen, effectiveClientId]);
 
   const reset = () => {
     setStep(1);
     setTemporaryName(initialName || ''); setPhone(initialPhone || ''); setEmail(initialEmail || '');
     setEmailChannel(true); setWhatsappChannel(true);
     setErrors({}); setResult(null); setSendError(null);
+    setPickedClient({});
   };
 
   const handleClose = () => { reset(); onClose(); };
+
+  // Selecting an existing client loads and pre-fills its real stored values — the
+  // fields stay fully editable afterward (pre-filled is not read-only), and clicking
+  // a different client just re-fills them with the newly selected client's data.
+  const handleSelectExistingClient = (client: Partial<SmartClientSearchValue>) => {
+    setPickedClient(client);
+    setTemporaryName(client.clientFullName || '');
+    setPhone(client.clientPhone || '');
+    setEmail(client.clientEmail || '');
+  };
 
   const emailAvailable = email.trim().length > 0;
   const phoneAvailable = phone.trim().length > 0;
@@ -106,7 +126,7 @@ export default function SendClientInfoRequestModal({
     setSendError(null);
     try {
       const { data } = await api.post('/client-information-requests', {
-        clientId,
+        clientId: effectiveClientId,
         temporaryName: temporaryName.trim(),
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
@@ -210,9 +230,24 @@ export default function SendClientInfoRequestModal({
         ) : step === 1 ? (
           <div className="space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {t('clientInfoAdmin.form.intro', 'Enter the minimum information needed to contact the client. They will fill in the rest themselves.')}
+              {clientId
+                ? t('clientInfoAdmin.form.intro', 'Enter the minimum information needed to contact the client. They will fill in the rest themselves.')
+                : t('clientInfoAdmin.form.introNoClient', "Select the existing client to send this form to — their information will be loaded automatically. You can still correct it below before sending.")}
             </p>
-            {clientId && (
+            {/* Only shown when the caller opened the modal without already knowing which
+                client this is for (e.g. the Contracts page toolbar action) — reuses the
+                same client search used everywhere else in the app rather than a second,
+                duplicate lookup. Picking a client here loads and pre-fills their real
+                stored name/phone/email below; nothing is created, and the fields stay
+                editable afterward. */}
+            {!clientId && (
+              <SmartClientSearch
+                value={pickedClient}
+                onSelect={handleSelectExistingClient}
+                label={t('clientInfoAdmin.form.selectClient', 'Existing client')}
+              />
+            )}
+            {effectiveClientId && (
               <CompletenessSummary loading={completenessLoading} completeness={completeness} />
             )}
             <div>

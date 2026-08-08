@@ -1435,6 +1435,8 @@
     },
     "form": {
       "intro": "Saisissez les informations minimales pour contacter le client. Il complétera le reste lui-même.",
+      "introNoClient": "Sélectionnez le client existant à qui envoyer ce formulaire — ses informations seront chargées automatiquement. Vous pouvez toujours les corriger ci-dessous avant l'envoi.",
+      "selectClient": "Client existant",
       "name": "Nom du client",
       "phone": "Numéro de téléphone",
       "email": "Email",

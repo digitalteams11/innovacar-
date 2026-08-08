@@ -1435,6 +1435,8 @@
     },
     "form": {
       "intro": "Enter the minimum information needed to contact the client. They will fill in the rest themselves.",
+      "introNoClient": "Select the existing client to send this form to — their information will be loaded automatically. You can still correct it below before sending.",
+      "selectClient": "Existing client",
       "name": "Client name",
       "phone": "Phone number",
       "email": "Email",
