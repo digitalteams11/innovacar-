@@ -88,6 +88,26 @@ public class Payment {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    /** How much of {@link #amount} has been refunded so far — see PaymentService#refundPayment.
+     *  A partial refund leaves {@link #status} unchanged (still PAID/PARTIALLY_PAID) and only
+     *  this amount is excluded from "collected" sums; status flips to REFUNDED only once this
+     *  reaches {@link #amount} (a full refund). */
+    @Builder.Default
+    @Column(name = "refunded_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
+    /** Optional, unique per tenant when present — lets a caller retry a payment-recording
+     *  request safely (network retry, double-click) without creating a duplicate Payment row.
+     *  See PaymentService#recordPayment. */
+    @Column(name = "idempotency_key", length = 100)
+    private String idempotencyKey;
+
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
+
+    @Column(name = "created_by_id")
+    private Long createdById;
+
     // ── Multi-tenancy link ──────────────────────────────────────────────────
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

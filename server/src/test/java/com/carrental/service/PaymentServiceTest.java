@@ -1,15 +1,22 @@
 package com.carrental.service;
 
 import com.carrental.dto.payment.PaymentResponse;
+import com.carrental.dto.payment.RecordPaymentRequest;
 import com.carrental.entity.Payment;
 import com.carrental.entity.PaymentMethod;
 import com.carrental.entity.PaymentStatus;
 import com.carrental.entity.PaymentType;
 import com.carrental.entity.Reservation;
 import com.carrental.entity.Tenant;
+import com.carrental.exception.RefundExceedsAvailableAmountException;
 import com.carrental.exception.ResourceNotFoundException;
+import com.carrental.repository.ClientRepository;
+import com.carrental.repository.ContractRepository;
+import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.ReservationRepository;
+import com.carrental.repository.TenantRepository;
+import com.carrental.repository.VehicleRepository;
 import com.carrental.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +38,11 @@ class PaymentServiceTest {
 
     @Mock private PaymentRepository paymentRepository;
     @Mock private ReservationRepository reservationRepository;
+    @Mock private ContractRepository contractRepository;
+    @Mock private InvoiceRepository invoiceRepository;
+    @Mock private ClientRepository clientRepository;
+    @Mock private VehicleRepository vehicleRepository;
+    @Mock private TenantRepository tenantRepository;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -113,6 +125,83 @@ class PaymentServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already marked as paid");
                 
+        verify(paymentRepository, never()).save(any());
+    }
+
+    // ── refundPayment: partial refunds must be tracked, not discarded ──────────
+
+    @Test
+    void refundPayment_partialRefundKeepsStatusAndAccumulatesRefundedAmount() {
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setRefundedAmount(BigDecimal.ZERO);
+        when(paymentRepository.findByIdAndTenantId(PAYMENT_ID, TENANT_ID)).thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(i -> i.getArgument(0));
+        when(paymentRepository.sumCollectedAmountByTenantIdAndReservationId(TENANT_ID, RESERVATION_ID))
+                .thenReturn(new BigDecimal("100.00"));
+
+        PaymentResponse response = paymentService.refundPayment(PAYMENT_ID, new BigDecimal("50.00"), "Client cancelled 1 day");
+
+        assertThat(response.getStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(payment.getRefundedAmount()).isEqualByComparingTo("50.00");
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+    }
+
+    @Test
+    void refundPayment_fullRefundFlipsStatusToRefunded() {
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setRefundedAmount(BigDecimal.ZERO);
+        when(paymentRepository.findByIdAndTenantId(PAYMENT_ID, TENANT_ID)).thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(i -> i.getArgument(0));
+        when(paymentRepository.sumCollectedAmountByTenantIdAndReservationId(TENANT_ID, RESERVATION_ID))
+                .thenReturn(BigDecimal.ZERO);
+
+        PaymentResponse response = paymentService.refundPayment(PAYMENT_ID, new BigDecimal("150.00"), "Full cancellation");
+
+        assertThat(response.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(payment.getRefundedAmount()).isEqualByComparingTo("150.00");
+    }
+
+    @Test
+    void refundPayment_rejectsAmountExceedingWhatsLeftToRefund() {
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setRefundedAmount(new BigDecimal("100.00")); // only 50.00 left available
+        when(paymentRepository.findByIdAndTenantId(PAYMENT_ID, TENANT_ID)).thenReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.refundPayment(PAYMENT_ID, new BigDecimal("60.00"), "Too much"))
+                .isInstanceOf(RefundExceedsAvailableAmountException.class);
+
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void refundPayment_rejectsZeroOrNegativeAmount() {
+        payment.setStatus(PaymentStatus.PAID);
+        when(paymentRepository.findByIdAndTenantId(PAYMENT_ID, TENANT_ID)).thenReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.refundPayment(PAYMENT_ID, BigDecimal.ZERO, "Bad request"))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(paymentRepository, never()).save(any());
+    }
+
+    // ── recordPayment: idempotency ──────────────────────────────────────────────
+
+    @Test
+    void recordPayment_returnsExistingPaymentWhenIdempotencyKeyAlreadyUsed() {
+        Tenant tenant = Tenant.builder().id(TENANT_ID).build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenant));
+        when(paymentRepository.findByTenantIdAndIdempotencyKey(TENANT_ID, "retry-key-1"))
+                .thenReturn(Optional.of(payment));
+
+        RecordPaymentRequest request = new RecordPaymentRequest();
+        request.setAmount(new BigDecimal("150.00"));
+        request.setIdempotencyKey("retry-key-1");
+
+        PaymentResponse response = paymentService.recordPayment(request);
+
+        assertThat(response.getId()).isEqualTo(PAYMENT_ID);
         verify(paymentRepository, never()).save(any());
     }
 }

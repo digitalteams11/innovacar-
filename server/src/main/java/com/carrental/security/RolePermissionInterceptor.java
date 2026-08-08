@@ -41,7 +41,10 @@ public class RolePermissionInterceptor implements HandlerInterceptor {
             if (path.endsWith("/complete") || path.endsWith("/finalize")) return "CONTRACT_UPDATE";
             return action(method, "CONTRACT_VIEW", "CONTRACT_CREATE", "CONTRACT_UPDATE", "CONTRACT_DELETE");
         }
-        if (path.startsWith("/api/payments")) return "GET".equals(method) ? "PAYMENT_VIEW" : "PAYMENT_CREATE";
+        if (path.startsWith("/api/payments")) {
+            if (path.endsWith("/refund")) return "PAYMENT_REFUND";
+            return "GET".equals(method) ? "PAYMENT_VIEW" : "PAYMENT_CREATE";
+        }
         if (path.startsWith("/api/invoices")) return "GET".equals(method) ? "INVOICE_VIEW" : "INVOICE_EXPORT";
         if (path.startsWith("/api/deposits")) return "GET".equals(method) ? "VIEW_DEPOSITS" : "MANAGE_DEPOSITS";
         if (path.startsWith("/api/reports")) return "REPORT_VIEW";

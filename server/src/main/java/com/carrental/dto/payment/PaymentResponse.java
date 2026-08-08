@@ -41,6 +41,8 @@ public class PaymentResponse {
     private String notes;
     private Long tenantId;
     private LocalDateTime createdAt;
+    private BigDecimal refundedAmount;
+    private String createdBy;
 
     /** Convenience check — true when status is PAID. */
     public boolean isPaid() {
@@ -83,6 +85,8 @@ public class PaymentResponse {
                 .notes(payment.getNotes())
                 .tenantId(payment.getTenant() != null ? payment.getTenant().getId() : null)
                 .createdAt(payment.getCreatedAt())
+                .refundedAmount(payment.getRefundedAmount())
+                .createdBy(payment.getCreatedBy())
                 .build();
     }
 }

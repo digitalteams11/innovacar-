@@ -44,6 +44,7 @@ public class ContractService {
     private final DepositRepository depositRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
+    private final InvoiceRepository invoiceRepository;
     private final PdfService pdfService;
     private final NotificationService notificationService;
     private final SseService sseService;
@@ -1363,6 +1364,21 @@ public class ContractService {
 
         Long vehicleId = contract.getVehicle() != null ? contract.getVehicle().getId() : null;
         releaseVehicleAfterContractSafely(vehicleId, tenantId);
+
+        // Keep any invoice(s) linked to this contract in sync — previously a cancelled
+        // contract's invoice was left in whatever status it was already in (PENDING/
+        // ISSUED/OVERDUE), silently drifting from the contract it describes. A PAID or
+        // already-REFUNDED invoice is left untouched (money already settled must not be
+        // hidden by a status flip — that's what a refund is for, not cancellation).
+        for (Invoice linkedInvoice : invoiceRepository.findAllByTenantIdAndContractId(tenantId, contract.getId())) {
+            if (linkedInvoice.getStatus() == InvoiceStatus.PAID
+                    || linkedInvoice.getStatus() == InvoiceStatus.CANCELLED
+                    || linkedInvoice.getStatus() == InvoiceStatus.REFUNDED) {
+                continue;
+            }
+            linkedInvoice.setStatus(InvoiceStatus.CANCELLED);
+            invoiceRepository.save(linkedInvoice);
+        }
 
         Contract saved = contractRepository.save(contract);
         logAudit(saved, "CANCEL", "Contract cancelled by user", beforeStatus.name(), ContractStatus.CANCELLED.name());

@@ -33,6 +33,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     /** All invoices for a specific client within a tenant. */
     List<Invoice> findAllByTenantIdAndClientId(Long tenantId, Long clientId);
 
+    /** All invoices linked to a specific contract within a tenant — used to keep
+     *  invoice status in sync when the contract is cancelled (see ContractService#cancelContract). */
+    List<Invoice> findAllByTenantIdAndContractId(Long tenantId, Long contractId);
+
     /** Tenant-scoped lookup by invoice number. */
     Optional<Invoice> findByInvoiceNumberAndTenantId(String invoiceNumber, Long tenantId);
 

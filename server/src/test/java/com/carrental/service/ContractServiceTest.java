@@ -7,6 +7,8 @@ import com.carrental.dto.contract.UpdateContractRequest;
 import com.carrental.entity.Client;
 import com.carrental.entity.Contract;
 import com.carrental.entity.ContractStatus;
+import com.carrental.entity.Invoice;
+import com.carrental.entity.InvoiceStatus;
 import com.carrental.entity.Reservation;
 import com.carrental.entity.ReservationSource;
 import com.carrental.entity.ReservationStatus;
@@ -19,6 +21,7 @@ import com.carrental.repository.ContractAuditLogRepository;
 import com.carrental.repository.ContractDocumentRepository;
 import com.carrental.repository.ContractRepository;
 import com.carrental.repository.DepositRepository;
+import com.carrental.repository.InvoiceRepository;
 import com.carrental.repository.PaymentRepository;
 import com.carrental.repository.ReservationRepository;
 import com.carrental.repository.TenantRepository;
@@ -63,6 +66,7 @@ class ContractServiceTest {
     @Mock private ContractAuditLogRepository contractAuditLogRepository;
     @Mock private DepositRepository depositRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private InvoiceRepository invoiceRepository;
     @Mock private PaymentService paymentService;
     @Mock private PdfService pdfService;
     @Mock private NotificationService notificationService;
@@ -490,5 +494,32 @@ class ContractServiceTest {
         PublicContractResponse response = contractService.getPublicContract("tok-legacy");
 
         assertThat(response.getContractNumber()).isEqualTo("CTR-2026-00084");
+    }
+
+    // ── cancelContract: linked invoices must stay in sync, without hiding settled money ──
+
+    @Test
+    void cancelContract_cancelsUnsettledInvoiceButLeavesPaidInvoiceUntouched() {
+        Contract contract = Contract.builder()
+                .id(90L).contractNumber("CTR-2026-00090").tenant(tenant)
+                .status(ContractStatus.ACTIVE)
+                .build();
+        Invoice pendingInvoice = Invoice.builder()
+                .id(200L).tenant(tenant).contract(contract).status(InvoiceStatus.PENDING).build();
+        Invoice paidInvoice = Invoice.builder()
+                .id(201L).tenant(tenant).contract(contract).status(InvoiceStatus.PAID).build();
+
+        when(contractRepository.findByIdAndTenantId(90L, 1L)).thenReturn(Optional.of(contract));
+        when(invoiceRepository.findAllByTenantIdAndContractId(1L, 90L))
+                .thenReturn(java.util.List.of(pendingInvoice, paidInvoice));
+        when(contractRepository.save(any(Contract.class))).thenAnswer(i -> i.getArgument(0));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
+
+        contractService.cancelContract(90L);
+
+        assertThat(pendingInvoice.getStatus()).isEqualTo(InvoiceStatus.CANCELLED);
+        assertThat(paidInvoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
+        verify(invoiceRepository, times(1)).save(pendingInvoice);
+        verify(invoiceRepository, never()).save(paidInvoice);
     }
 }

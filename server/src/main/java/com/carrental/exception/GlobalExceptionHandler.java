@@ -323,6 +323,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(RefundExceedsAvailableAmountException.class)
+    public ResponseEntity<Map<String, Object>> handleRefundExceedsAvailable(RefundExceedsAvailableAmountException ex) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("requestedAmount", ex.getRequestedAmount());
+        data.put("availableAmount", ex.getAvailableAmount());
+        data.put("maxAllowed", ex.getAvailableAmount());
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("severity", "warning");
+        response.put("requestId", UUID.randomUUID().toString());
+        response.put("timestamp", Instant.now().toString());
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("error", HttpStatus.BAD_REQUEST.getReasonPhrase());
+        response.put("errorCode", "REFUND_EXCEEDS_AVAILABLE_AMOUNT");
+        response.put("message", ex.getMessage());
+        response.put("data", data);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(VehicleConflictException.class)
     public ResponseEntity<Map<String, Object>> handleVehicleConflict(VehicleConflictException ex) {
         Map<String, Object> data = new HashMap<>();

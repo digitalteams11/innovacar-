@@ -22,4 +22,9 @@ public class RecordPaymentRequest {
     private Long clientId;
     private Long vehicleId;
     private String notes;
+
+    /** Optional. When supplied and a payment already exists under this key for the
+     *  current tenant, the existing payment is returned instead of a duplicate being
+     *  recorded — see PaymentService#recordPayment. */
+    private String idempotencyKey;
 }

@@ -74,7 +74,7 @@ public class PaymentController {
     // ── POST /api/payments/{id}/refund ───────────────────────────────────────
 
     @PostMapping("/{id}/refund")
-    @PreAuthorize("@rolePermissionService.has('RECORD_PAYMENT')")
+    @PreAuthorize("@rolePermissionService.has('PAYMENT_REFUND')")
     public ResponseEntity<PaymentResponse> refundPayment(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {

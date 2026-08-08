@@ -190,6 +190,21 @@ public class PaymentService {
             throw new IllegalArgumentException("Payment amount must be greater than zero");
         }
 
+        // Idempotency: if the caller supplied a key and a payment already exists under it
+        // for this tenant, return that existing payment instead of recording a duplicate —
+        // safe for network retries / double-submits. Same unique-constraint-backed pattern
+        // as SubscriptionEvent#whopEventId; no key supplied means no dedupe check (existing
+        // callers that don't send one yet are unaffected).
+        String idempotencyKey = request.getIdempotencyKey();
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            var existing = paymentRepository.findByTenantIdAndIdempotencyKey(tenantId, idempotencyKey);
+            if (existing.isPresent()) {
+                log.info("[PAYMENT_IDEMPOTENT_REPLAY] tenantId={} idempotencyKey={} existingPaymentId={}",
+                        tenantId, idempotencyKey, existing.get().getId());
+                return PaymentResponse.from(existing.get());
+            }
+        }
+
         // Resolve linked entities
         Reservation reservation = null;
         Contract contract = null;
@@ -261,9 +276,27 @@ public class PaymentService {
                 .vehicle(vehicle)
                 .notes(request.getNotes())
                 .tenant(tenant)
+                .idempotencyKey(idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey : null)
+                .createdBy(getCurrentUserLabel())
+                .createdById(getCurrentUserId())
                 .build();
 
-        Payment saved = paymentRepository.save(payment);
+        Payment saved;
+        try {
+            saved = paymentRepository.save(payment);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // A concurrent request recorded the same idempotency key between our existence
+            // check and this insert (the unique index is the real guarantee, the check above
+            // is just the fast path) — re-fetch and return the winner instead of erroring.
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                Payment winner = paymentRepository.findByTenantIdAndIdempotencyKey(tenantId, idempotencyKey)
+                        .orElseThrow(() -> e);
+                log.info("[PAYMENT_IDEMPOTENT_RACE] tenantId={} idempotencyKey={} winningPaymentId={}",
+                        tenantId, idempotencyKey, winner.getId());
+                return PaymentResponse.from(winner);
+            }
+            throw e;
+        }
 
         syncRelatedBusinessState(saved);
 
@@ -285,13 +318,34 @@ public class PaymentService {
             throw new IllegalStateException("Only paid or partially paid payments can be refunded");
         }
 
-        payment.setStatus(PaymentStatus.REFUNDED);
-        payment.setNotes((payment.getNotes() != null ? payment.getNotes() + " | " : "") + "REFUND: " + reason);
+        BigDecimal alreadyRefunded = payment.getRefundedAmount() != null ? payment.getRefundedAmount() : BigDecimal.ZERO;
+        BigDecimal available = payment.getAmount().subtract(alreadyRefunded);
+
+        if (refundAmount == null || refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Refund amount must be greater than zero");
+        }
+        if (refundAmount.compareTo(available) > 0) {
+            throw new com.carrental.exception.RefundExceedsAvailableAmountException(refundAmount, available);
+        }
+
+        // Never discard the requested amount (the previous behaviour blindly flipped status
+        // to REFUNDED regardless of refundAmount) — accumulate it, and only treat the payment
+        // as fully REFUNDED once the running total reaches the original amount. A partial
+        // refund keeps the payment's existing status so it's still correctly counted as
+        // "collected" for the residual (amount - refundedAmount) by every sum query.
+        BigDecimal newRefundedTotal = alreadyRefunded.add(refundAmount);
+        payment.setRefundedAmount(newRefundedTotal);
+        if (newRefundedTotal.compareTo(payment.getAmount()) >= 0) {
+            payment.setStatus(PaymentStatus.REFUNDED);
+        }
+        payment.setNotes((payment.getNotes() != null ? payment.getNotes() + " | " : "")
+                + "REFUND: " + refundAmount + " — " + reason);
         Payment saved = paymentRepository.save(payment);
 
         syncRelatedBusinessState(saved);
 
-        log.info("Refunded payment [id={}] amount={} in tenant [{}]", paymentId, refundAmount, tenantId);
+        log.info("Refunded payment [id={}] amount={} (totalRefunded={}/{}) in tenant [{}]",
+                paymentId, refundAmount, newRefundedTotal, payment.getAmount(), tenantId);
         return PaymentResponse.from(saved);
     }
 
@@ -422,6 +476,26 @@ public class PaymentService {
             if (value != null) return value;
         }
         return null;
+    }
+
+    /** Same pattern as ContractService#getCurrentUser — best-effort actor label, never blocks the transaction. */
+    private String getCurrentUserLabel() {
+        try {
+            return org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getName();
+        } catch (Exception e) {
+            return "system";
+        }
+    }
+
+    private Long getCurrentUserId() {
+        try {
+            var principal = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getPrincipal();
+            return principal instanceof com.carrental.entity.User u ? u.getId() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String generatePaymentNumber() {
