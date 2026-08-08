@@ -1,6 +1,7 @@
 package com.carrental.service;
 
 import com.carrental.dto.invoice.InvoiceExportFilter;
+import com.carrental.exception.PdfGenerationException;
 import com.carrental.entity.Contract;
 import com.carrental.entity.Invoice;
 import com.carrental.entity.InvoiceStatus;
@@ -128,7 +129,7 @@ public class InvoicePdfService {
             return baos.toByteArray();
         } catch (Exception e) {
             log.error("[INVOICE_PDF_GENERATE] Failed for invoiceId={}", invoice.getId(), e);
-            throw new IllegalStateException("Unable to generate invoice PDF", e);
+            throw new PdfGenerationException("Unable to generate invoice PDF", e);
         }
     }
 
@@ -157,7 +158,7 @@ public class InvoicePdfService {
             return baos.toByteArray();
         } catch (Exception e) {
             log.error("[INVOICE_LIST_PDF_GENERATE] Failed for tenantId={}", tenant != null ? tenant.getId() : null, e);
-            throw new IllegalStateException("Unable to generate invoice list PDF", e);
+            throw new PdfGenerationException("Unable to generate invoice list PDF", e);
         }
     }
 

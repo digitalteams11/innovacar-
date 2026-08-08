@@ -183,6 +183,7 @@ export default function ContractDetails() {
   const [invoicePreview, setInvoicePreview] = useState<any>(null);
   const [invoicePreviewLoading, setInvoicePreviewLoading] = useState(false);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const submittingInvoiceRef = useRef(false);
   const [clientBalance, setClientBalance] = useState<any>(null);
   const [inspections, setInspections] = useState<any[]>([]);
   const [inspectionQr, setInspectionQr] = useState<any>(null);
@@ -286,7 +287,11 @@ export default function ContractDetails() {
   }, [contract?.id, contract?.totalPrice, contract?.paidAmount, fetchInvoicePreview]);
 
   const handleCreateInvoice = async () => {
-    if (!contract || creatingInvoice) return; // double-click guard
+    // Ref-based lock, not just the `creatingInvoice` state: two click events fired in the
+    // same tick both read the same pre-update state value, so a state-only guard can still
+    // let a true double-click through before React re-renders the disabled button.
+    if (!contract || submittingInvoiceRef.current) return;
+    submittingInvoiceRef.current = true;
     setCreatingInvoice(true);
     try {
       await api.post('/invoices', { contractId: contract.id });
@@ -294,7 +299,14 @@ export default function ContractDetails() {
       await fetchInvoicePreview(contract.id);
     } catch (err: any) {
       showToast(err?.userMessage || t('contractDetails.invoicing.createFailed'), 'error');
+      // The contract already has an active invoice (e.g. a raced double-submit lost to
+      // another request) — refresh the preview so the button immediately flips to
+      // "View invoice" instead of leaving a stale "Create invoice" button up.
+      if (err?.errorCode === 'INVOICE_ALREADY_EXISTS_FOR_CONTRACT') {
+        await fetchInvoicePreview(contract.id);
+      }
     } finally {
+      submittingInvoiceRef.current = false;
       setCreatingInvoice(false);
     }
   };

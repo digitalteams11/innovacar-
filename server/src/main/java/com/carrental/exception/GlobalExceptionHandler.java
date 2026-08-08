@@ -522,6 +522,16 @@ public class GlobalExceptionHandler {
                 && !offendingColumn.contains("payment")) {
             errorCode = "PAYMENT_REQUIRED_FIELD_MISSING";
             message = "Payment creation failed because required field 'paid' is missing.";
+        } else if ("uq_invoice_tenant_contract_active".equals(constraintName)) {
+            // See migration V100: at most one active (not CANCELLED/REFUNDED) invoice per
+            // contract. Hit when two requests race to create/sync a contract's invoice at
+            // the same time (e.g. a double-submitted "Generate Invoice" click) — the loser
+            // must see a clear, actionable message, never a generic "please try again"
+            // (see InvoiceService#syncInvoiceForContract, the only writer here — it already
+            // reuses an existing active invoice rather than inserting a second one, so this
+            // should only ever fire from a genuine concurrent race).
+            errorCode = "INVOICE_ALREADY_EXISTS_FOR_CONTRACT";
+            message = "An invoice already exists for this contract. Refresh the page to view it.";
         } else if (offendingColumn != null && offendingColumn.contains("contract_number")) {
             errorCode = "CONTRACT_NUMBER_EXISTS";
             message = "Contract number already exists.";
@@ -541,9 +551,15 @@ public class GlobalExceptionHandler {
             errorCode = "CLIENT_ALREADY_EXISTS";
             message = "Client already exists";
         } else if (constraintName != null) {
-            // Known constraint name but unrecognized column — report it clearly
+            // Known constraint name but unrecognized column — report it clearly in the logs
+            // (constraintName is still in the response `data` below for API/log correlation),
+            // but never inside the user-facing `message`: the frontend's isSafeBusinessMessage
+            // filter (axios.ts) rejects any message containing the word "constraint" as an
+            // internal-detail leak and silently replaces it with a generic fallback — so a
+            // message that says "constraint" is *never actually shown to the user* and must
+            // not be relied on to explain anything (see GlobalExceptionHandler audit).
             errorCode = "DATA_CONFLICT";
-            message = "This action conflicts with existing data. [constraint: " + constraintName + "]";
+            message = "This action conflicts with existing data.";
             log.error("Unhandled DB constraint [{}] — add a specific case to handleDataIntegrity()", constraintName);
         } else {
             errorCode = "DATA_CONFLICT";
@@ -654,6 +670,14 @@ public class GlobalExceptionHandler {
         return bodyWithCode(HttpStatus.SERVICE_UNAVAILABLE,
                 "The service is temporarily busy. Please try again in a moment.",
                 "error", "DATABASE_UNAVAILABLE");
+    }
+
+    @ExceptionHandler(PdfGenerationException.class)
+    public ResponseEntity<Map<String, Object>> handlePdfGeneration(PdfGenerationException ex) {
+        log.error("PDF generation failed", ex);
+        return bodyWithCode(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Unable to generate the PDF. Please try again or contact support if this keeps happening.",
+                "error", "PDF_GENERATION_FAILED");
     }
 
     @ExceptionHandler(UncheckedIOException.class)

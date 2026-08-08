@@ -144,6 +144,7 @@ export default function Invoices() {
   const [financialPreview, setFinancialPreview] = useState<FinancialPreview | null>(null);
   const [financialPreviewLoading, setFinancialPreviewLoading] = useState(false);
   const [creatingContractInvoice, setCreatingContractInvoice] = useState(false);
+  const submittingContractInvoiceRef = useRef(false);
   const [summary, setSummary] = useState<AccountingSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [period, setPeriod] = useState<PeriodKey>('THIS_MONTH');
@@ -361,7 +362,12 @@ export default function Invoices() {
         showToast(t('invoices.contractCancelledNote'), 'warning');
         return;
       }
-      if (creatingContractInvoice) return; // double-click guard
+      // Ref-based lock, not just the `creatingContractInvoice` state: two click events
+      // fired in the same tick both read the same pre-update state value, so a state-only
+      // guard can still let a true double-click through before React re-renders the
+      // disabled button. The ref is set synchronously, before any await.
+      if (submittingContractInvoiceRef.current) return;
+      submittingContractInvoiceRef.current = true;
       setCreatingContractInvoice(true);
       try {
         await api.post('/invoices', { contractId: selectedContract.id });
@@ -370,7 +376,16 @@ export default function Invoices() {
         fetchInvoices();
       } catch (err: any) {
         showToast((err as any).userMessage || t('invoices.saveFailed'), 'error');
+        // The contract already has an active invoice (e.g. a raced double-submit lost to
+        // another request) — refresh the preview so the modal immediately flips to
+        // "View existing invoice" instead of leaving a stale "Create" button up.
+        if (err?.errorCode === 'INVOICE_ALREADY_EXISTS_FOR_CONTRACT' && selectedContract) {
+          api.get(`/invoices/contract/${selectedContract.id}/financial-preview`)
+            .then(({ data }) => setFinancialPreview(data))
+            .catch(() => {});
+        }
       } finally {
+        submittingContractInvoiceRef.current = false;
         setCreatingContractInvoice(false);
       }
       return;
