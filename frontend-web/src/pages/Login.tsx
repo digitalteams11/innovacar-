@@ -604,6 +604,9 @@ export default function Login() {
                       <div>
                         <label className="block text-sm font-medium mb-2 ms-1" style={{ color: 'var(--text-primary)' }}>{t('login.email')}</label>
                         <GlassInput icon={Mail} type="email" value={email} onChange={setEmail} placeholder={t('login.emailPlaceholder')} autoComplete="username" inputMode="email" required />
+                        <p className="mt-1.5 ms-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {t('login.emailHelper')}
+                        </p>
                       </div>
 
                       <div>

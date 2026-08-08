@@ -109,7 +109,7 @@ export default function PublicContact() {
               value={form.requesterEmail}
               onChange={(e) => setForm({ ...form, requesterEmail: e.target.value })}
               className="w-full rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-2 text-sm"
-              placeholder="you@example.com"
+              placeholder="name@email.com"
             />
           </div>
           <div>

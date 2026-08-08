@@ -308,13 +308,13 @@ export default function Register() {
                   type="email"
                   value={email}
                   onChange={setEmail}
-                  placeholder={t('login.emailPlaceholder', 'you@example.com')}
+                  placeholder={t('login.emailPlaceholder', 'name@email.com')}
                   autoComplete="email"
                   inputMode="email"
                   required
                 />
                 <p className="mt-1.5 ms-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {t('login.emailHelper', 'You can use a personal or business email.')}
+                  {t('login.emailHelper', 'Use any valid personal or business email.')}
                 </p>
               </div>
 

@@ -679,6 +679,7 @@ export default function Clients() {
               <div>
                 <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">{t('clients.form.email')}</label>
                 <input type="email" value={form.email} onChange={(e) => updateFormField('email', e.target.value)}
+                  placeholder={t('clients.form.emailPlaceholder') as string}
                   className={inputClass('email')} />
               </div>
               <div>

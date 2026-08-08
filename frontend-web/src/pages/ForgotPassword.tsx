@@ -70,12 +70,15 @@ export default function ForgotPassword() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   className={inputCls}
-                  placeholder={t('login.emailPlaceholder', 'you@example.com')}
+                  placeholder={t('login.emailPlaceholder', 'name@email.com')}
                   autoComplete="email"
                   inputMode="email"
                   required
                 />
               </div>
+              <p className="mt-1.5 ms-1 text-xs text-slate-400">
+                {t('login.emailHelper', 'Use any valid personal or business email.')}
+              </p>
             </div>
             <button type="submit" disabled={loading} className={btnCls}>
               {loading ? <Loader2 size={20} className="animate-spin" /> : t('forgotPassword.sendCode', 'Send Code')}

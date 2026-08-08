@@ -126,7 +126,13 @@ export default function AddClientEmailModal({
               color: 'var(--text-primary)',
             }}
           />
-          {error && <p className="mt-1.5 text-xs font-medium text-rose-500">{error}</p>}
+          {error ? (
+            <p className="mt-1.5 text-xs font-medium text-rose-500">{error}</p>
+          ) : (
+            <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+              {t('contractEmail.modal.emailHelper')}
+            </p>
+          )}
         </div>
 
         <label className="flex items-center gap-2.5 text-sm" style={{ color: 'var(--text-primary)' }}>

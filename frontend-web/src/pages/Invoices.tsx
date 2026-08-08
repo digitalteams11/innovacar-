@@ -722,7 +722,7 @@ function InvoiceEmailButton({ invoice, lang, t, confirm, promptText, onSent }: I
       const entered = await promptText({
         title: t('invoices.emailConfirmTitle', 'Envoyer la facture par e-mail ?'),
         description: t('invoices.emailNoAddressOnFile', 'Aucune adresse e-mail connue pour ce client. Saisissez une adresse pour envoyer la facture.'),
-        placeholder: t('invoices.emailPlaceholder', 'client@exemple.com'),
+        placeholder: t('invoices.emailPlaceholder', 'name@email.com'),
         confirmLabel: t('invoices.sendEmail', 'Envoyer'),
         cancelLabel: t('actions.cancel', 'Cancel'),
         required: true,

@@ -113,7 +113,7 @@ export default function EditDriverContactModal({ contractId, driver, onClose, on
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={saving}
-              placeholder="driver@example.com"
+              placeholder={t('contracts.driverSignature.contactEdit.emailPlaceholder')}
               className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none ${errors.email ? 'border-danger-400 ring-2 ring-danger-100' : 'border-slate-200 focus:border-brand-400'}`}
             />
             {errors.email && <p className="text-xs text-danger-500">{errors.email}</p>}
