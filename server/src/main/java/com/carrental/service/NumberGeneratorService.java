@@ -2,7 +2,9 @@ package com.carrental.service;
 
 import com.carrental.entity.InvoiceNumberSequence;
 import com.carrental.repository.InvoiceNumberSequenceRepository;
+import com.carrental.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +18,13 @@ import java.util.UUID;
  * having its own (previously: three different payment-number generators and
  * one non-sequential invoice-number generator existed independently).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NumberGeneratorService {
 
     private final InvoiceNumberSequenceRepository invoiceNumberSequenceRepository;
+    private final InvoiceRepository invoiceRepository;
 
     /**
      * Sequential, per-tenant, per-year invoice number: {@code FAC-2026-000001}.
@@ -33,6 +37,16 @@ public class NumberGeneratorService {
      * the lock must be held until the invoice insert that follows this call
      * commits, otherwise a second request could allocate the same number
      * before the first invoice row exists.
+     *
+     * <p>Self-healing against drift between the counter and the actual table
+     * (e.g. a row inserted by another path, or restored from a backup taken
+     * mid-sequence): the counter alone is trusted first, but if the formatted
+     * number it produces already exists — same pattern as
+     * {@code ContractService#generateContractNumber} — the counter is advanced
+     * past it and retried, rather than repeatedly handing out an already-taken
+     * number and letting every caller hit the same unique-constraint 409
+     * forever (the failed insert rolls back the counter increment too, so
+     * without this check the drift never resolves itself).
      */
     @Transactional
     public String generateInvoiceNumber(Long tenantId) {
@@ -41,10 +55,18 @@ public class NumberGeneratorService {
         InvoiceNumberSequence seq = invoiceNumberSequenceRepository.lockForUpdate(tenantId, year)
                 .orElseThrow(() -> new IllegalStateException(
                         "Unable to allocate an invoice number sequence for tenant " + tenantId));
+
         long next = seq.getLastNumber() + 1;
+        String candidate = String.format("FAC-%d-%06d", year, next);
+        while (invoiceRepository.existsByInvoiceNumberAndTenantId(candidate, tenantId)) {
+            log.warn("[INVOICE_NUMBER_DRIFT] tenantId={} candidate={} already exists — advancing sequence past it", tenantId, candidate);
+            next++;
+            candidate = String.format("FAC-%d-%06d", year, next);
+        }
+
         seq.setLastNumber(next);
         invoiceNumberSequenceRepository.save(seq);
-        return String.format("FAC-%d-%06d", year, next);
+        return candidate;
     }
 
     /**

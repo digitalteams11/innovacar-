@@ -532,6 +532,13 @@ public class GlobalExceptionHandler {
             // should only ever fire from a genuine concurrent race).
             errorCode = "INVOICE_ALREADY_EXISTS_FOR_CONTRACT";
             message = "An invoice already exists for this contract. Refresh the page to view it.";
+        } else if (offendingColumn != null && offendingColumn.contains("invoice_number")) {
+            // Defense-in-depth — NumberGeneratorService#generateInvoiceNumber now self-heals
+            // against this by checking existence before returning a number, but a legacy
+            // manually-entered invoice_number (created before that generator existed) could
+            // still theoretically collide with a freshly generated one.
+            errorCode = "INVOICE_NUMBER_CONFLICT";
+            message = "Could not generate a unique invoice number. Please try again.";
         } else if (offendingColumn != null && offendingColumn.contains("contract_number")) {
             errorCode = "CONTRACT_NUMBER_EXISTS";
             message = "Contract number already exists.";

@@ -53,6 +53,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     /** Tenant-scoped lookup by invoice number. */
     Optional<Invoice> findByInvoiceNumberAndTenantId(String invoiceNumber, Long tenantId);
 
+    /** Existence check backing NumberGeneratorService's self-healing retry — see its javadoc. */
+    boolean existsByInvoiceNumberAndTenantId(String invoiceNumber, Long tenantId);
+
     /**
      * Dynamic-filter invoice export query, shared verbatim by both the PDF
      * and CSV export endpoints (see InvoiceService#exportFilteredInvoices) so
