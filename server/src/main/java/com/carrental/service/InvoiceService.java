@@ -60,6 +60,7 @@ public class InvoiceService {
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
     private final NumberGeneratorService numberGeneratorService;
+    private final InvoiceConflictRecoveryService invoiceConflictRecoveryService;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -401,8 +402,25 @@ public class InvoiceService {
             if (contract.getStatus() == ContractStatus.CANCELLED) {
                 throw new IllegalStateException("Cannot generate a normal invoice for a cancelled contract.");
             }
-            Invoice invoice = syncInvoiceForContract(contract);
-            return toResponseWithFinancials(invoice);
+            try {
+                Invoice invoice = syncInvoiceForContract(contract);
+                return toResponseWithFinancials(invoice);
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                // syncInvoiceForContract's own pre-check (findAllByTenantIdAndContractId,
+                // filtered to "active") already looks for an existing invoice before
+                // attempting to insert — this only fires when that check and the actual
+                // insert disagree: a genuine concurrent race (two requests both passed the
+                // pre-check before either committed), or a constraint the pre-check doesn't
+                // cover. Recover in a fresh transaction (see InvoiceConflictRecoveryService
+                // javadoc for why it can't just be a retry in this same transaction — this
+                // one is now aborted at the database level regardless of what Spring thinks
+                // its Java-level state is) rather than surfacing an error for a case that
+                // should just return the contract's real invoice.
+                log.warn("[INVOICE_CREATE_CONFLICT] tenantId={} contractId={} — pre-check found no active invoice but insert failed; attempting recovery",
+                        tenantId, contract.getId(), e);
+                return invoiceConflictRecoveryService.recoverActiveInvoiceForContract(tenantId, contract.getId())
+                        .orElseThrow(() -> e);
+            }
         }
 
         // Manual mode — the exceptional/ad-hoc case. Client and dates must be supplied;

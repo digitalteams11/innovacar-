@@ -51,6 +51,7 @@ class InvoiceServiceBillingTest {
     @Mock private PaymentRepository paymentRepository;
     @Mock private PaymentService paymentService;
     @Mock private NumberGeneratorService numberGeneratorService;
+    @Mock private InvoiceConflictRecoveryService invoiceConflictRecoveryService;
 
     private InvoiceService service;
     private Tenant tenant;
@@ -58,7 +59,8 @@ class InvoiceServiceBillingTest {
     @BeforeEach
     void setUp() {
         service = new InvoiceService(invoiceRepository, tenantRepository, clientRepository, contractRepository,
-                contractExtensionRepository, paymentRepository, paymentService, numberGeneratorService);
+                contractExtensionRepository, paymentRepository, paymentService, numberGeneratorService,
+                invoiceConflictRecoveryService);
         tenant = Tenant.builder().id(1L).name("Tenant A").build();
         TenantContext.setCurrentTenantId(1L);
         lenient().when(invoiceRepository.save(any(Invoice.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -174,6 +176,63 @@ class InvoiceServiceBillingTest {
         request.setContractId(10L);
 
         assertThatThrownBy(() -> service.createInvoice(request)).isInstanceOf(IllegalStateException.class);
+    }
+
+    // ── createInvoice: recovers from a race that beats the pre-check to the insert ──
+
+    @Test
+    void createInvoiceRecoversTheExistingInvoiceWhenInsertRacesPastThePreCheck() {
+        Contract contract = baseContract().build();
+        when(contractRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(contract));
+        // Pre-check (inside syncInvoiceForContract) finds nothing — another request won the race
+        // and committed between this pre-check and this request's own insert attempt.
+        when(invoiceRepository.findAllByTenantIdAndContractId(1L, 10L)).thenReturn(List.of());
+        when(contractExtensionRepository.findAllByTenantIdAndContractIdOrderByCreatedAtAsc(1L, 10L)).thenReturn(List.of());
+        when(numberGeneratorService.generateInvoiceNumber(1L)).thenReturn("FAC-2026-000020");
+        // The actual insert happens inside PaymentService#updateInvoiceStatus (mocked here as
+        // a collaborator) — simulate the race by having that call throw, same as it would in
+        // production when invoiceRepository.save() inside it hits the unique constraint.
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"))
+                .when(paymentService).updateInvoiceStatus(any(Invoice.class));
+
+        Invoice winnersInvoice = Invoice.builder()
+                .id(77L).invoiceNumber("FAC-2026-000019").tenant(tenant).contract(contract)
+                .status(InvoiceStatus.ISSUED).amount(new BigDecimal("3000"))
+                .issueDate(LocalDate.now()).dueDate(LocalDate.now())
+                .lines(new java.util.ArrayList<>())
+                .build();
+        when(invoiceConflictRecoveryService.recoverActiveInvoiceForContract(1L, 10L))
+                .thenReturn(java.util.Optional.of(InvoiceResponse.from(winnersInvoice, new BigDecimal("0"), new BigDecimal("3000"))));
+
+        CreateInvoiceRequest request = new CreateInvoiceRequest();
+        request.setContractId(10L);
+
+        InvoiceResponse response = service.createInvoice(request);
+
+        assertThat(response.getId()).isEqualTo(77L);
+        assertThat(response.getInvoiceNumber()).isEqualTo("FAC-2026-000019");
+    }
+
+    @Test
+    void createInvoiceRethrowsWhenRecoveryFindsNoInvoiceAtAll() {
+        // The DataIntegrityViolationException was NOT the contract-uniqueness constraint —
+        // recovery correctly finds nothing, so the original exception must surface, not a
+        // fabricated success.
+        Contract contract = baseContract().build();
+        when(contractRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(contract));
+        when(invoiceRepository.findAllByTenantIdAndContractId(1L, 10L)).thenReturn(List.of());
+        when(contractExtensionRepository.findAllByTenantIdAndContractIdOrderByCreatedAtAsc(1L, 10L)).thenReturn(List.of());
+        when(numberGeneratorService.generateInvoiceNumber(1L)).thenReturn("FAC-2026-000021");
+        org.springframework.dao.DataIntegrityViolationException original =
+                new org.springframework.dao.DataIntegrityViolationException("some other constraint");
+        org.mockito.Mockito.doThrow(original).when(paymentService).updateInvoiceStatus(any(Invoice.class));
+        when(invoiceConflictRecoveryService.recoverActiveInvoiceForContract(1L, 10L))
+                .thenReturn(java.util.Optional.empty());
+
+        CreateInvoiceRequest request = new CreateInvoiceRequest();
+        request.setContractId(10L);
+
+        assertThatThrownBy(() -> service.createInvoice(request)).isSameAs(original);
     }
 
     // ── Manual invoice: total is always computed server-side from lines ─────
