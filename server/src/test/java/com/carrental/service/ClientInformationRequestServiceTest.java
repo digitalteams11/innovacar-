@@ -12,6 +12,7 @@ import com.carrental.entity.Contract;
 import com.carrental.entity.DocumentType;
 import com.carrental.entity.Tenant;
 import com.carrental.exception.ClientInfoRequestException;
+import com.carrental.repository.AuditLogRepository;
 import com.carrental.repository.ClientIdentityDocumentRepository;
 import com.carrental.repository.ClientInformationRequestRepository;
 import com.carrental.repository.ClientRepository;
@@ -54,6 +55,7 @@ class ClientInformationRequestServiceTest {
     @Mock private TenantRepository tenantRepository;
     @Mock private NotificationService notificationService;
     @Mock private EmailService emailService;
+    @Mock private AuditLogRepository auditLogRepository;
 
     private ClientInformationRequestService service;
     private Tenant tenant;
@@ -66,7 +68,7 @@ class ClientInformationRequestServiceTest {
         service = new ClientInformationRequestService(
                 requestRepository, clientRepository, identityDocumentRepository,
                 contractRepository, tenantRepository, notificationService, objectMapper,
-                emailService);
+                emailService, auditLogRepository);
         ReflectionTestUtils.setField(service, "frontendUrl", "https://innovacar.app");
 
         lenient().when(emailService.sendClientInformationRequestEmail(any(), any(), any(), any(), any(), any()))
@@ -208,6 +210,106 @@ class ClientInformationRequestServiceTest {
                 eq(60L), eq(1L));
     }
 
+    // ── Progressive disclosure: getPublic() known/missing, submit() merge+validate ──
+
+    @Test
+    void getPublicReturnsKnownClientValuesAndOnlyGenuinelyMissingFields() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(70L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
+                .clientId(500L).expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        when(requestRepository.findByTokenHash(any())).thenReturn(Optional.of(r));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        Client known = Client.builder()
+                .id(500L).tenant(tenant)
+                .name("Mohamed Amddah").phone("+212600000000").cin("AB123456")
+                .build(); // email, nationality, birthDate, address, city, country, driverLicense all still missing
+        when(clientRepository.findByIdAndTenantId(500L, 1L)).thenReturn(Optional.of(known));
+
+        PublicClientInformationView view = service.getPublic("some-token");
+
+        assertThat(view.isHasKnownClient()).isTrue();
+        assertThat(view.getKnownFullName()).isEqualTo("Mohamed Amddah");
+        assertThat(view.getKnownPhone()).isEqualTo("+212600000000");
+        assertThat(view.getKnownDocumentType()).isEqualTo("CIN");
+        assertThat(view.getKnownDocumentNumber()).isEqualTo("AB123456");
+        assertThat(view.getMissingFields())
+                .contains("email", "nationality", "birthDate", "address", "city", "country", "driverLicenseNumber")
+                .doesNotContain("fullName", "phone", "documentNumber");
+    }
+
+    @Test
+    void getPublicTreatsEveryFieldAsMissingWhenNoClientIsLinked() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(71L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        when(requestRepository.findByTokenHash(any())).thenReturn(Optional.of(r));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PublicClientInformationView view = service.getPublic("some-token");
+
+        assertThat(view.isHasKnownClient()).isFalse();
+        assertThat(view.getMissingFields()).contains("fullName", "phone", "documentNumber");
+    }
+
+    @Test
+    void submitBackfillsBlankFieldsFromTheLinkedKnownClientAndAccepts() {
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(72L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
+                .clientId(501L).expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        when(requestRepository.findByTokenHash(any())).thenReturn(Optional.of(r));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        Client known = Client.builder()
+                .id(501L).tenant(tenant)
+                .name("Mohamed Amddah").phone("+212600000000").cin("AB123456")
+                .build();
+        when(clientRepository.findByIdAndTenantId(501L, 1L)).thenReturn(Optional.of(known));
+
+        // Client only fills in the genuinely missing field (email) — fullName/phone/document
+        // are left blank exactly as the progressive-disclosure form would send them.
+        ClientInformationSubmitRequest s = new ClientInformationSubmitRequest();
+        s.setEmail("mohamed@example.com");
+        s.setPrivacyAccepted(true);
+
+        service.submit("some-token", s);
+
+        assertThat(r.getSubmissionPayload())
+                .contains("Mohamed Amddah").contains("+212600000000").contains("AB123456").contains("mohamed@example.com");
+    }
+
+    @Test
+    void submitRejectsWhenRequiredFieldsAreMissingEvenAfterMerge() {
+        // No linked client, and the client-facing form left phone blank.
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(73L).tenantId(1L).status(ClientInfoRequestStatus.SENT)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        when(requestRepository.findByTokenHash(any())).thenReturn(Optional.of(r));
+
+        ClientInformationSubmitRequest s = validSubmission();
+        s.setPhone(null);
+
+        assertThatThrownBy(() -> service.submit("some-token", s))
+                .isInstanceOf(ClientInfoRequestException.class)
+                .extracting(e -> ((ClientInfoRequestException) e).getCode())
+                .isEqualTo("CLIENT_INFO_REQUIRED_FIELDS_MISSING");
+    }
+
+    @Test
+    void getClientCompletenessSplitsFieldsIntoAvailableAndMissing() {
+        Client client = Client.builder()
+                .id(502L).tenant(tenant).name("Mohamed Amddah").phone("+212600000000").email("mohamed@example.com")
+                .build();
+        when(clientRepository.findByIdAndTenantId(502L, 1L)).thenReturn(Optional.of(client));
+
+        var response = service.getClientCompleteness(502L);
+
+        assertThat(response.getAvailableFields()).contains("fullName", "phone", "email");
+        assertThat(response.getMissingFields()).contains("nationality", "documentNumber", "driverLicenseNumber");
+    }
+
     @Test
     void submissionWithoutPrivacyConsentIsRejected() {
         ClientInformationSubmitRequest s = validSubmission();
@@ -308,6 +410,9 @@ class ClientInformationRequestServiceTest {
 
     @Test
     void approvingWithLinkExistingDoesNotCreateANewClient() {
+        // Existing client already matches the submission exactly (including phone/document,
+        // which mergeFromKnownClient would have backfilled at submit time anyway) — no field
+        // actually changed, so approve() must not write to the client at all.
         ClientInformationRequest r = ClientInformationRequest.builder()
                 .id(11L).tenantId(1L).status(ClientInfoRequestStatus.SUBMITTED)
                 .expiresAt(LocalDateTime.now().plusHours(1))
@@ -316,7 +421,8 @@ class ClientInformationRequestServiceTest {
                          "documentNumber":"AB123456","privacyAccepted":true}""")
                 .build();
         when(requestRepository.findByIdAndTenantId(11L, 1L)).thenReturn(Optional.of(r));
-        Client existing = Client.builder().id(42L).tenant(tenant).name("Sara Client").build();
+        Client existing = Client.builder().id(42L).tenant(tenant)
+                .name("Sara Client").phone("+212600000000").cin("AB123456").build();
         when(clientRepository.findByIdAndTenantId(42L, 1L)).thenReturn(Optional.of(existing));
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -329,6 +435,38 @@ class ClientInformationRequestServiceTest {
         assertThat(response.getApprovedClientId()).isEqualTo(42L);
         verify(clientRepository, never()).save(any());
         verify(identityDocumentRepository, never()).save(any());
+        verify(auditLogRepository, never()).save(any());
+    }
+
+    @Test
+    void approvingWithLinkExistingAppliesFieldsTheClientActuallyChanged() {
+        // The existing client has no phone/email on file — the client provided both on the
+        // public form (progressive disclosure: only the missing fields were asked for).
+        // Approval must apply them to the linked client and write an audit entry, unlike the
+        // "nothing changed" case above.
+        ClientInformationRequest r = ClientInformationRequest.builder()
+                .id(13L).tenantId(1L).status(ClientInfoRequestStatus.SUBMITTED)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .submissionPayload("""
+                        {"fullName":"Sara Client","phone":"+212611111111","email":"sara@example.com",
+                         "documentType":"CIN","documentNumber":"AB123456","privacyAccepted":true}""")
+                .build();
+        when(requestRepository.findByIdAndTenantId(13L, 1L)).thenReturn(Optional.of(r));
+        Client existing = Client.builder().id(43L).tenant(tenant).name("Sara Client").cin("AB123456").build();
+        when(clientRepository.findByIdAndTenantId(43L, 1L)).thenReturn(Optional.of(existing));
+        when(clientRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ApproveClientInformationRequest approveReq = new ApproveClientInformationRequest();
+        approveReq.setAction(ApproveClientInformationRequest.Action.LINK_EXISTING);
+        approveReq.setExistingClientId(43L);
+
+        service.approve(13L, approveReq);
+
+        assertThat(existing.getPhone()).isEqualTo("+212611111111");
+        assertThat(existing.getEmail()).isEqualTo("sara@example.com");
+        verify(clientRepository).save(existing);
+        verify(auditLogRepository).save(any());
     }
 
     @Test

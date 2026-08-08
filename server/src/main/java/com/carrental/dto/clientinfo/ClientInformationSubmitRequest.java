@@ -2,7 +2,6 @@ package com.carrental.dto.clientinfo;
 
 import com.carrental.entity.DocumentType;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -13,14 +12,22 @@ import java.time.LocalDate;
  * contains ONLY client-owned fields — see spec section 17 ("contract data
  * ownership"): no price, deposit, vehicle, dates, status, or agency fields
  * exist here, so there is no field a client could submit to affect those.
+ *
+ * <p>No {@code @NotBlank}/{@code @NotNull} on fullName/phone/documentType/
+ * documentNumber: when this request is linked to an existing client who
+ * already has these on file (progressive disclosure — see
+ * PublicClientInformationView#missingFields), the client isn't forced to
+ * retype them, so the raw submission can legitimately omit them. Required-
+ * field presence is instead checked in
+ * ClientInformationRequestService#submit, against the MERGED value (submitted
+ * value, falling back to the linked client's existing value) — the one
+ * validation gate that actually knows what's already known.
  */
 @Data
 public class ClientInformationSubmitRequest {
 
     // ── Personal information ────────────────────────────────────────────
-    @NotBlank
     private String fullName;
-    @NotBlank
     private String phone;
     private String secondaryPhone;
     @Email
@@ -33,9 +40,7 @@ public class ClientInformationSubmitRequest {
     // Deliberately no issue/expiry dates: the client-facing form only ever
     // collects the document number itself — dates (if an agency needs them
     // at all) are captured later through the admin's own Client record.
-    @NotNull
     private DocumentType documentType;
-    @NotBlank
     private String documentNumber;
 
     // ── Address ──────────────────────────────────────────────────────────

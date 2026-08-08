@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Clock, Pencil, Check } from 'lucide-react';
 import api from '../api/axios';
 import { resolveMediaUrl } from '../utils/mediaUrl';
 import { PUBLIC_APP_URL } from '../lib/publicUrl';
@@ -21,6 +21,23 @@ interface PublicView {
   expiresAt?: string;
   alreadySubmitted?: boolean;
   defaultCountryCode?: string;
+  // Progressive disclosure — see PublicClientInformationView.java on the backend.
+  hasKnownClient?: boolean;
+  knownFullName?: string;
+  knownPhone?: string;
+  knownSecondaryPhone?: string;
+  knownEmail?: string;
+  knownGender?: string;
+  knownBirthDate?: string;
+  knownNationality?: string;
+  knownAddress?: string;
+  knownCity?: string;
+  knownCountry?: string;
+  knownDocumentType?: 'CIN' | 'PASSPORT';
+  knownDocumentNumber?: string;
+  knownDriverLicenseNumber?: string;
+  knownCompanyName?: string;
+  missingFields?: string[];
 }
 
 type DocumentType = 'CIN' | 'PASSPORT';
@@ -78,6 +95,9 @@ export default function PublicClientInformation() {
   const [logoFailed, setLogoFailed] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  // Progressive disclosure: fields the client explicitly chose to edit — everything else
+  // known is shown read-only/confirmed. See isFieldKnown/startEditing below.
+  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const [wasAlreadySubmitted, setWasAlreadySubmitted] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -102,6 +122,26 @@ export default function PublicClientInformation() {
         i18n.changeLanguage(resolveInitialLanguage(data?.preferredLanguage));
         if (data?.defaultCountryCode && findCountry(data.defaultCountryCode)) {
           setForm((prev) => ({ ...prev, countryCode: data.defaultCountryCode }));
+        }
+        // Pre-fill from what the agency already has on file — the client never sees an
+        // empty field for information that's already known (see PublicView javadoc).
+        if (data?.hasKnownClient) {
+          setForm((prev) => ({
+            ...prev,
+            fullName: data.knownFullName || prev.fullName,
+            phone: data.knownPhone || prev.phone,
+            secondaryPhone: data.knownSecondaryPhone || prev.secondaryPhone,
+            email: data.knownEmail || prev.email,
+            gender: data.knownGender || prev.gender,
+            birthDate: data.knownBirthDate || prev.birthDate,
+            nationality: data.knownNationality || prev.nationality,
+            address: data.knownAddress || prev.address,
+            city: data.knownCity || prev.city,
+            documentType: (data.knownDocumentType as DocumentType) || prev.documentType,
+            documentNumber: data.knownDocumentNumber || prev.documentNumber,
+            driverLicenseNumber: data.knownDriverLicenseNumber || prev.driverLicenseNumber,
+            companyName: data.knownCompanyName || prev.companyName,
+          }));
         }
         if (data?.alreadySubmitted) { setSubmitted(true); setWasAlreadySubmitted(true); }
       })
@@ -152,6 +192,13 @@ export default function PublicClientInformation() {
       ? t('clientInfo.form.passportNumber', 'Passport number')
       : t('clientInfo.form.cinNumber', 'CIN number')
   );
+
+  // Progressive disclosure: a field renders as an already-provided, read-only confirmation
+  // (with an Edit action) when the agency already has it on file and the client hasn't
+  // clicked Edit — otherwise it renders as a normal editable input (missing, or being edited).
+  const isFieldKnown = (key: string) =>
+    Boolean(view?.hasKnownClient) && !(view?.missingFields || []).includes(key) && !editingFields.has(key);
+  const startEditing = (key: string) => setEditingFields((prev) => new Set(prev).add(key));
 
   const submit = async () => {
     setValidationError(null);
@@ -339,62 +386,77 @@ export default function PublicClientInformation() {
 
         {/* Personal information */}
         <Section title={t('clientInfo.sections.personal', 'Personal information')}>
-          <Field label={t('clientInfo.form.fullName', 'Full name')} required>
+          <ProgressiveField fieldKey="fullName" label={t('clientInfo.form.fullName', 'Full name')} required
+            isKnown={isFieldKnown('fullName')} knownDisplay={form.fullName} onEdit={() => startEditing('fullName')}>
             <input className="form-input" value={form.fullName} onChange={(e) => update('fullName', e.target.value)} />
-          </Field>
+          </ProgressiveField>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label={t('clientInfo.form.phone', 'Primary phone')} required>
+            <ProgressiveField fieldKey="phone" label={t('clientInfo.form.phone', 'Primary phone')} required
+              isKnown={isFieldKnown('phone')} knownDisplay={form.phone} onEdit={() => startEditing('phone')}>
               <input dir="ltr" className="form-input text-start" value={form.phone} onChange={(e) => update('phone', e.target.value)} />
-            </Field>
-            <Field label={t('clientInfo.form.secondaryPhone', 'Secondary phone')}>
+            </ProgressiveField>
+            <ProgressiveField fieldKey="secondaryPhone" label={t('clientInfo.form.secondaryPhone', 'Secondary phone')}
+              isKnown={isFieldKnown('secondaryPhone')} knownDisplay={form.secondaryPhone} onEdit={() => startEditing('secondaryPhone')}>
               <input dir="ltr" className="form-input text-start" value={form.secondaryPhone} onChange={(e) => update('secondaryPhone', e.target.value)} />
-            </Field>
+            </ProgressiveField>
           </div>
-          <Field label={t('clientInfo.form.email', 'Email')}>
+          <ProgressiveField fieldKey="email" label={t('clientInfo.form.email', 'Email')}
+            isKnown={isFieldKnown('email')} knownDisplay={form.email} onEdit={() => startEditing('email')}>
             <input dir="ltr" type="email" className="form-input text-start" value={form.email} onChange={(e) => update('email', e.target.value)} />
-          </Field>
+          </ProgressiveField>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label={t('clientInfo.form.birthDate', 'Date of birth')}>
+            <ProgressiveField fieldKey="birthDate" label={t('clientInfo.form.birthDate', 'Date of birth')}
+              isKnown={isFieldKnown('birthDate')} knownDisplay={form.birthDate} onEdit={() => startEditing('birthDate')}>
               <input type="date" dir="ltr" className="form-input text-start" value={form.birthDate} onChange={(e) => update('birthDate', e.target.value)} />
-            </Field>
-            <Field label={t('clientInfo.form.gender', 'Gender')}>
+            </ProgressiveField>
+            <ProgressiveField fieldKey="gender" label={t('clientInfo.form.gender', 'Gender')}
+              isKnown={isFieldKnown('gender')}
+              knownDisplay={form.gender === 'MALE' ? t('clientInfo.form.genderMale', 'Male') : form.gender === 'FEMALE' ? t('clientInfo.form.genderFemale', 'Female') : form.gender}
+              onEdit={() => startEditing('gender')}>
               <select className="form-input" value={form.gender} onChange={(e) => update('gender', e.target.value)}>
                 <option value="">{t('clientInfo.form.genderUnspecified', '—')}</option>
                 <option value="MALE">{t('clientInfo.form.genderMale', 'Male')}</option>
                 <option value="FEMALE">{t('clientInfo.form.genderFemale', 'Female')}</option>
               </select>
-            </Field>
+            </ProgressiveField>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label={t('clientInfo.form.nationality', 'Nationality')} required>
+            <ProgressiveField fieldKey="nationality" label={t('clientInfo.form.nationality', 'Nationality')} required
+              isKnown={isFieldKnown('nationality')} knownDisplay={form.nationality} onEdit={() => startEditing('nationality')}>
               <input className="form-input" value={form.nationality} onChange={(e) => update('nationality', e.target.value)} />
-            </Field>
-            <Field label={t('clientInfo.form.companyName', 'Company')}>
+            </ProgressiveField>
+            <ProgressiveField fieldKey="companyName" label={t('clientInfo.form.companyName', 'Company')}
+              isKnown={isFieldKnown('companyName')} knownDisplay={form.companyName} onEdit={() => startEditing('companyName')}>
               <input className="form-input" value={form.companyName} onChange={(e) => update('companyName', e.target.value)} />
-            </Field>
+            </ProgressiveField>
           </div>
         </Section>
 
         {/* Identity document */}
         <Section title={t('clientInfo.sections.document', 'Identity document')}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label={t('clientInfo.form.documentType', 'Document type')} required>
+            <ProgressiveField fieldKey="documentNumber" label={t('clientInfo.form.documentType', 'Document type')} required
+              isKnown={isFieldKnown('documentNumber')}
+              knownDisplay={form.documentType === 'PASSPORT' ? t('clientInfo.documentTypes.passport', 'Passport') : t('clientInfo.documentTypes.cin', 'CIN')}
+              onEdit={() => startEditing('documentNumber')}>
               <select className="form-input" value={form.documentType} onChange={(e) => update('documentType', e.target.value)}>
                 <option value="CIN">{t('clientInfo.documentTypes.cin', 'CIN')}</option>
                 <option value="PASSPORT">{t('clientInfo.documentTypes.passport', 'Passport')}</option>
               </select>
-            </Field>
-            <Field label={documentNumberLabel()} required>
+            </ProgressiveField>
+            <ProgressiveField fieldKey="documentNumber" label={documentNumberLabel()} required
+              isKnown={isFieldKnown('documentNumber')} knownDisplay={form.documentNumber} onEdit={() => startEditing('documentNumber')}>
               <input dir="ltr" className="form-input text-start" value={form.documentNumber} onChange={(e) => update('documentNumber', e.target.value)} />
-            </Field>
+            </ProgressiveField>
           </div>
         </Section>
 
         {/* Driving licence */}
         <Section title={t('clientInfo.sections.license', 'Driving licence')}>
-          <Field label={t('clientInfo.form.licenseNumber', 'Driving licence number')}>
+          <ProgressiveField fieldKey="driverLicenseNumber" label={t('clientInfo.form.licenseNumber', 'Driving licence number')}
+            isKnown={isFieldKnown('driverLicenseNumber')} knownDisplay={form.driverLicenseNumber} onEdit={() => startEditing('driverLicenseNumber')}>
             <input dir="ltr" className="form-input text-start" value={form.driverLicenseNumber} onChange={(e) => update('driverLicenseNumber', e.target.value)} />
-          </Field>
+          </ProgressiveField>
         </Section>
 
         {/* Address */}
@@ -459,7 +521,8 @@ export default function PublicClientInformation() {
               )}
             </Field>
           </div>
-          <Field label={t('clientInfo.form.address', 'Address')} required>
+          <ProgressiveField fieldKey="address" label={t('clientInfo.form.address', 'Address')} required
+            isKnown={isFieldKnown('address')} knownDisplay={form.address} onEdit={() => startEditing('address')}>
             <textarea
               className="form-input"
               rows={3}
@@ -467,7 +530,7 @@ export default function PublicClientInformation() {
               value={form.address}
               onChange={(e) => update('address', e.target.value)}
             />
-          </Field>
+          </ProgressiveField>
           <Field label={t('clientInfo.form.notes', 'Notes')}>
             <textarea
               className="form-input"
@@ -558,6 +621,51 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="rounded-2xl p-4 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
       <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{title}</h2>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Progressive disclosure: renders a read-only "already provided" confirmation
+ * with an Edit action when the value is already known and the client hasn't
+ * chosen to change it; otherwise renders the normal editable {@link Field}.
+ */
+function ProgressiveField({
+  label, required, isKnown, knownDisplay, onEdit, children,
+}: {
+  fieldKey: string;
+  label: string;
+  required?: boolean;
+  isKnown: boolean;
+  knownDisplay?: string;
+  onEdit: () => void;
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  if (!isKnown) {
+    return <Field label={label} required={required}>{children}</Field>;
+  }
+  return (
+    <div className="space-y-1.5">
+      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</span>
+      <div
+        className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl"
+        style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}
+      >
+        <span dir="auto" className="text-sm flex items-center gap-1.5 min-w-0 truncate" style={{ color: 'var(--text-secondary)' }}>
+          <Check size={13} className="shrink-0" style={{ color: 'var(--success)' }} />
+          <span className="truncate">{knownDisplay || '—'}</span>
+        </span>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="text-xs font-semibold flex items-center gap-1 shrink-0"
+          style={{ color: 'var(--brand-primary)' }}
+        >
+          <Pencil size={12} />
+          {t('clientInfo.edit', 'Edit')}
+        </button>
+      </div>
     </div>
   );
 }

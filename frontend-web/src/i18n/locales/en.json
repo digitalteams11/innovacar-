@@ -1301,6 +1301,7 @@
   },
   "clientInfo": {
     "pageTitle": "Client Information Form",
+    "edit": "Edit",
     "header": {
       "subtitle": "Client Information Form"
     },
@@ -1384,6 +1385,23 @@
     "subtitle": "Review and approve client self-fill submissions before they are linked to a contract.",
     "submittedAt": "Submitted on",
     "sendToClient": "Send form to client",
+    "completenessTitle": "Already on file for this client",
+    "missing": "missing",
+    "fields": {
+      "fullName": "Full name",
+      "phone": "Phone",
+      "secondaryPhone": "Secondary phone",
+      "email": "Email",
+      "gender": "Gender",
+      "birthDate": "Date of birth",
+      "nationality": "Nationality",
+      "address": "Address",
+      "city": "City",
+      "country": "Country",
+      "documentNumber": "Identity document",
+      "driverLicenseNumber": "Driving licence",
+      "companyName": "Company"
+    },
     "generateLink": "Generate secure link",
     "linkReady": "Share this secure link with the client. It expires in 48 hours.",
     "linkCopied": "Link copied to clipboard.",

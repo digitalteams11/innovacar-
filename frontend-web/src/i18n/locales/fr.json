@@ -1301,6 +1301,7 @@
   },
   "clientInfo": {
     "pageTitle": "Formulaire d'informations client",
+    "edit": "Modifier",
     "header": {
       "subtitle": "Formulaire d'informations client"
     },
@@ -1384,6 +1385,23 @@
     "subtitle": "Vérifiez et approuvez les soumissions des clients avant de les lier à un contrat.",
     "submittedAt": "Envoyé le",
     "sendToClient": "Envoyer le formulaire au client",
+    "completenessTitle": "Déjà enregistré pour ce client",
+    "missing": "manquant",
+    "fields": {
+      "fullName": "Nom complet",
+      "phone": "Téléphone",
+      "secondaryPhone": "Téléphone secondaire",
+      "email": "E-mail",
+      "gender": "Genre",
+      "birthDate": "Date de naissance",
+      "nationality": "Nationalité",
+      "address": "Adresse",
+      "city": "Ville",
+      "country": "Pays",
+      "documentNumber": "Document d'identité",
+      "driverLicenseNumber": "Permis de conduire",
+      "companyName": "Société"
+    },
     "generateLink": "Générer le lien sécurisé",
     "linkReady": "Partagez ce lien sécurisé avec le client. Il expire dans 48 heures.",
     "linkCopied": "Lien copié dans le presse-papiers.",

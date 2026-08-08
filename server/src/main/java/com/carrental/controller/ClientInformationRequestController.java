@@ -72,4 +72,11 @@ public class ClientInformationRequestController {
     public ResponseEntity<ClientInformationRequestResponse> deliveryStatus(@PathVariable Long id) {
         return ResponseEntity.ok(service.deliveryStatus(id));
     }
+
+    // ── Agency-side "what's already known" preview before sending ───────────
+
+    @GetMapping("/completeness/{clientId}")
+    public ResponseEntity<com.carrental.dto.clientinfo.ClientCompletenessResponse> completeness(@PathVariable Long clientId) {
+        return ResponseEntity.ok(service.getClientCompleteness(clientId));
+    }
 }

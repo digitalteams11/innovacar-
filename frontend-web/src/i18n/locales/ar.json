@@ -1301,6 +1301,7 @@
   },
   "clientInfo": {
     "pageTitle": "استمارة معلومات العميل",
+    "edit": "تعديل",
     "header": {
       "subtitle": "استمارة معلومات العميل"
     },
@@ -1384,6 +1385,23 @@
     "subtitle": "راجع واعتمد استمارات العملاء قبل ربطها بعقد.",
     "submittedAt": "تاريخ الإرسال",
     "sendToClient": "إرسال الاستمارة إلى العميل",
+    "completenessTitle": "متوفر بالفعل لهذا العميل",
+    "missing": "مفقود",
+    "fields": {
+      "fullName": "الاسم الكامل",
+      "phone": "الهاتف",
+      "secondaryPhone": "الهاتف الثانوي",
+      "email": "البريد الإلكتروني",
+      "gender": "الجنس",
+      "birthDate": "تاريخ الميلاد",
+      "nationality": "الجنسية",
+      "address": "العنوان",
+      "city": "المدينة",
+      "country": "البلد",
+      "documentNumber": "وثيقة الهوية",
+      "driverLicenseNumber": "رخصة القيادة",
+      "companyName": "الشركة"
+    },
     "generateLink": "إنشاء رابط آمن",
     "linkReady": "شارك هذا الرابط الآمن مع العميل. تنتهي صلاحيته خلال 48 ساعة.",
     "linkCopied": "تم نسخ الرابط.",

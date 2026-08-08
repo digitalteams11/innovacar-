@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, ExternalLink, Loader2, Mail, MessageCircle, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw } from 'lucide-react';
 import api from '../../api/axios';
@@ -54,6 +54,20 @@ export default function SendClientInfoRequestModal({
   const [sendError, setSendError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<'EMAIL' | 'WHATSAPP' | null>(null);
   const [result, setResult] = useState<DeliveryResponse | null>(null);
+  const [completeness, setCompleteness] = useState<{ availableFields: string[]; missingFields: string[] } | null>(null);
+  const [completenessLoading, setCompletenessLoading] = useState(false);
+
+  // Agency-side "what's already known" preview — only meaningful when this request
+  // is for an existing client (clientId set); a brand-new client has no profile to
+  // check yet, so every field is genuinely being collected for the first time.
+  useEffect(() => {
+    if (!isOpen || !clientId) { setCompleteness(null); return; }
+    setCompletenessLoading(true);
+    api.get(`/client-information-requests/completeness/${clientId}`)
+      .then(({ data }) => setCompleteness(data))
+      .catch(() => setCompleteness(null))
+      .finally(() => setCompletenessLoading(false));
+  }, [isOpen, clientId]);
 
   const reset = () => {
     setStep(1);
@@ -198,6 +212,9 @@ export default function SendClientInfoRequestModal({
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('clientInfoAdmin.form.intro', 'Enter the minimum information needed to contact the client. They will fill in the rest themselves.')}
             </p>
+            {clientId && (
+              <CompletenessSummary loading={completenessLoading} completeness={completeness} />
+            )}
             <div>
               <label className="block text-sm font-medium text-[#1e293b] dark:text-slate-200 mb-2">
                 {t('clientInfoAdmin.form.name', 'Client name')} *
@@ -271,6 +288,68 @@ export default function SendClientInfoRequestModal({
         )}
       </div>
     </Modal>
+  );
+}
+
+/** Field keys mirror ClientInformationSubmitRequest's property names (see the backend DTO). */
+const FIELD_LABEL_KEYS: Record<string, string> = {
+  fullName: 'clientInfoAdmin.fields.fullName',
+  phone: 'clientInfoAdmin.fields.phone',
+  secondaryPhone: 'clientInfoAdmin.fields.secondaryPhone',
+  email: 'clientInfoAdmin.fields.email',
+  gender: 'clientInfoAdmin.fields.gender',
+  birthDate: 'clientInfoAdmin.fields.birthDate',
+  nationality: 'clientInfoAdmin.fields.nationality',
+  address: 'clientInfoAdmin.fields.address',
+  city: 'clientInfoAdmin.fields.city',
+  country: 'clientInfoAdmin.fields.country',
+  documentNumber: 'clientInfoAdmin.fields.documentNumber',
+  driverLicenseNumber: 'clientInfoAdmin.fields.driverLicenseNumber',
+  companyName: 'clientInfoAdmin.fields.companyName',
+};
+const FIELD_LABEL_FALLBACKS: Record<string, string> = {
+  fullName: 'Full name', phone: 'Phone', secondaryPhone: 'Secondary phone', email: 'Email',
+  gender: 'Gender', birthDate: 'Date of birth', nationality: 'Nationality', address: 'Address',
+  city: 'City', country: 'Country', documentNumber: 'Identity document', driverLicenseNumber: 'Driving licence',
+  companyName: 'Company',
+};
+
+/** "✓ Full name available / ⚠ Date of birth missing" preview shown before sending — see
+ *  ClientInformationRequestService#getClientCompleteness on the backend. */
+function CompletenessSummary({
+  loading, completeness,
+}: {
+  loading: boolean;
+  completeness: { availableFields: string[]; missingFields: string[] } | null;
+}) {
+  const { t } = useTranslation();
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-slate-400 p-3">
+        <Loader2 size={14} className="animate-spin" /> {t('common.loading', 'Loading...')}
+      </div>
+    );
+  }
+  if (!completeness) return null;
+  const fieldLabel = (key: string) => t(FIELD_LABEL_KEYS[key] || key, FIELD_LABEL_FALLBACKS[key] || key);
+  return (
+    <div className="rounded-xl border border-[var(--border-subtle)] p-3 space-y-1.5">
+      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+        {t('clientInfoAdmin.completenessTitle', 'Already on file for this client')}
+      </p>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {completeness.availableFields.map((field) => (
+          <span key={field} className="flex items-center gap-1 text-xs text-success-600">
+            <CheckCircle2 size={12} /> {fieldLabel(field)}
+          </span>
+        ))}
+        {completeness.missingFields.map((field) => (
+          <span key={field} className="flex items-center gap-1 text-xs text-amber-600">
+            <AlertTriangle size={12} /> {fieldLabel(field)} {t('clientInfoAdmin.missing', 'missing')}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
