@@ -273,6 +273,23 @@ public class Contract {
     @Column(name = "invoice_number", length = 50)
     private String invoiceNumber;
 
+    // ── Cancellation audit ───────────────────────────────────────────────────
+    // Cancellation never deletes financial history (payments/invoices stay put —
+    // see ContractService#cancelContract); these columns record the reason for
+    // the cancellation itself, not the money.
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "cancelled_by", length = 255)
+    private String cancelledBy;
+
+    @Column(name = "cancelled_by_id")
+    private Long cancelledById;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     // ── Fuel ─────────────────────────────────────────────────────────────────
     // Mileage was deliberately removed from the contract module (V67) — the
     // Moroccan rental contract this app generates no longer requires or

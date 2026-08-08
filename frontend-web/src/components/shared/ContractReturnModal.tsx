@@ -16,6 +16,12 @@ interface ContractReturnModalProps {
   fuelLevelStart?: string;
   /** Optional: mileage recorded at departure for comparison */
   mileageStart?: number;
+  /** Contract total BEFORE this return's fees — used for the pre-validation recap only;
+   *  the authoritative recalculation always happens server-side (see ContractService#processReturnInspection). */
+  baseTotal?: number;
+  /** Already collected on this contract — used for the recap's "remaining to pay" estimate. */
+  paidAmount?: number;
+  currency?: string;
 }
 
 const FUEL_LEVELS = ['EMPTY', 'QUARTER', 'HALF', 'THREE_QUARTERS', 'FULL'];
@@ -45,6 +51,7 @@ function fuelIndex(level?: string): number {
  */
 export default function ContractReturnModal({
   isOpen, contractId, onClose, onSuccess, fuelLevelStart, mileageStart,
+  baseTotal, paidAmount, currency = 'MAD',
 }: ContractReturnModalProps) {
   const [fuelLevelEnd, setFuelLevelEnd] = useState('FULL');
   const [mileageEnd, setMileageEnd] = useState('');
@@ -59,6 +66,13 @@ export default function ContractReturnModal({
   const mileageDriven = mileageStart && mileageEnd
     ? parseInt(mileageEnd) - mileageStart
     : null;
+
+  // Pre-validation estimate only — the real total/remaining are always
+  // recalculated server-side (ContractService#processReturnInspection +
+  // InvoiceService#syncInvoiceForContract) once "Confirm Return" is clicked.
+  const hasRecap = baseTotal != null;
+  const estimatedTotal = (baseTotal ?? 0) + extraFuelFee + damageFee;
+  const estimatedRemaining = Math.max(estimatedTotal - (paidAmount ?? 0), 0);
 
   const submitAction = useInlineAction(async () => {
     await api.post(`/contracts/${contractId}/return-inspection`, {
@@ -216,6 +230,46 @@ export default function ContractReturnModal({
             ))}
           </div>
         </div>
+
+        {/* Financial recap — shown before validation so nothing is signed off blind */}
+        {hasRecap && (
+          <div className="rounded-2xl p-4 space-y-2 border" style={{ background: 'var(--bg-hover)', borderColor: 'var(--border-subtle)' }}>
+            <div className="flex items-center gap-2 mb-1" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-xs font-bold uppercase tracking-wider">Récapitulatif</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-muted)' }}>Location</span>
+              <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(baseTotal ?? 0).toLocaleString()} {currency}</span>
+            </div>
+            {extraFuelFee > 0 && (
+              <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400">
+                <span>Carburant</span>
+                <span className="font-medium">+ {extraFuelFee.toLocaleString()} {currency}</span>
+              </div>
+            )}
+            {damageFee > 0 && (
+              <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400">
+                <span>Dommages</span>
+                <span className="font-medium">+ {damageFee.toLocaleString()} {currency}</span>
+              </div>
+            )}
+            <div className="h-px my-2" style={{ background: 'var(--border-subtle)' }} />
+            <div className="flex justify-between text-sm">
+              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>TOTAL</span>
+              <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{estimatedTotal.toLocaleString()} {currency}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-muted)' }}>Déjà payé</span>
+              <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(paidAmount ?? 0).toLocaleString()} {currency}</span>
+            </div>
+            <div className="flex justify-between text-base pt-1">
+              <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Reste à payer</span>
+              <span className={cn('font-black', estimatedRemaining > 0 ? 'text-danger-600' : 'text-success-600')}>
+                {estimatedRemaining.toLocaleString()} {currency}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

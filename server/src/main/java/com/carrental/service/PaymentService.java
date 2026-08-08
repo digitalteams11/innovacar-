@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Year;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.Comparator;
@@ -24,7 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +42,7 @@ public class PaymentService {
     private final VehicleRepository vehicleRepository;
     private final TenantRepository tenantRepository;
     private final NotificationService notificationService;
+    private final NumberGeneratorService numberGeneratorService;
 
     // ── READ ─────────────────────────────────────────────────────────────────
 
@@ -263,7 +262,7 @@ public class PaymentService {
         PaymentType type = request.getType() != null ? request.getType() : PaymentType.RENTAL;
 
         Payment payment = Payment.builder()
-                .paymentNumber(generatePaymentNumber())
+                .paymentNumber(numberGeneratorService.generatePaymentNumber())
                 .amount(request.getAmount())
                 .paymentDate(LocalDateTime.now())
                 .paymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.CASH)
@@ -576,9 +575,4 @@ public class PaymentService {
         }
     }
 
-    private String generatePaymentNumber() {
-        return String.format("PAY-%s-%s",
-                Year.now().getValue(),
-                UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
-    }
 }

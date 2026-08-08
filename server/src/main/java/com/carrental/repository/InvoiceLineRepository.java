@@ -1,0 +1,15 @@
+package com.carrental.repository;
+
+import com.carrental.entity.InvoiceLine;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface InvoiceLineRepository extends JpaRepository<InvoiceLine, Long> {
+
+    List<InvoiceLine> findAllByInvoiceIdOrderBySortOrderAsc(Long invoiceId);
+
+    void deleteAllByInvoiceId(Long invoiceId);
+}

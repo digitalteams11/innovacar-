@@ -32,11 +32,70 @@ interface Invoice {
   dueDate: string;
   amount: number;
   status: string;
+  sourceType?: 'CONTRACT_LINKED' | 'MANUAL';
+  paidAmount?: number;
+  remainingAmount?: number;
   /** Local-only, populated after a successful send in this session — the
    *  GET /invoices list endpoint does not currently return these fields
    *  (see report), so this is never hydrated from the server on load. */
   emailedAt?: string;
   emailedTo?: string;
+}
+
+interface FinancialPreview {
+  contractId: number;
+  contractNumber: string;
+  clientName: string;
+  vehicleLabel: string;
+  rentalStart: string;
+  rentalEnd: string;
+  rentalDays: number;
+  contractTotal: number;
+  alreadyPaid: number;
+  previouslyInvoiced: number;
+  outstandingBalance: number;
+  newInvoiceTotal: number;
+  contractCancelled: boolean;
+  fullyPaid: boolean;
+  hasActiveInvoice: boolean;
+  activeInvoiceId: number | null;
+  activeInvoiceNumber: string | null;
+  activeInvoiceStatus: string | null;
+}
+
+interface AccountingSummary {
+  month: string;
+  totalInvoiced: number;
+  totalCollected: number;
+  totalOutstanding: number;
+  totalOverdue: number;
+  totalPartiallyPaid: number;
+  totalCancelled: number;
+  totalRefunded: number;
+  invoiceCount: number;
+  contractCount: number;
+  rentalRevenue: number;
+  extensionRevenue: number;
+}
+
+type PeriodKey = 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'CUSTOM';
+
+function periodRange(period: PeriodKey, customFrom: string, customTo: string): { dateFrom: string; dateTo: string } | null {
+  const now = new Date();
+  const iso = (d: Date) => d.toISOString().split('T')[0];
+  if (period === 'THIS_MONTH') {
+    return { dateFrom: iso(new Date(now.getFullYear(), now.getMonth(), 1)), dateTo: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
+  }
+  if (period === 'LAST_MONTH') {
+    return { dateFrom: iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)), dateTo: iso(new Date(now.getFullYear(), now.getMonth(), 0)) };
+  }
+  if (period === 'THIS_YEAR') {
+    return { dateFrom: iso(new Date(now.getFullYear(), 0, 1)), dateTo: iso(new Date(now.getFullYear(), 11, 31)) };
+  }
+  if (period === 'CUSTOM' && customFrom && customTo) {
+    return { dateFrom: customFrom, dateTo: customTo };
+  }
+  return null;
 }
 
 /** Maps the app's i18n language to the backend's supported PDF languages. */
@@ -82,6 +141,14 @@ export default function Invoices() {
   const [exporting, setExporting] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [previewDownloading, setPreviewDownloading] = useState(false);
+  const [financialPreview, setFinancialPreview] = useState<FinancialPreview | null>(null);
+  const [financialPreviewLoading, setFinancialPreviewLoading] = useState(false);
+  const [creatingContractInvoice, setCreatingContractInvoice] = useState(false);
+  const [summary, setSummary] = useState<AccountingSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [period, setPeriod] = useState<PeriodKey>('THIS_MONTH');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
 
   const { showToast } = useToast();
   const confirm = useConfirm();
@@ -96,6 +163,18 @@ export default function Invoices() {
   const canEmailSend = hasPermission('INVOICE_EMAIL_SEND');
 
   useEffect(() => { fetchInvoices(); }, []);
+
+  useEffect(() => {
+    const range = periodRange(period, customFrom, customTo);
+    if (!range) return; // CUSTOM selected but dates not both filled yet
+    let cancelled = false;
+    setSummaryLoading(true);
+    api.get('/invoices/monthly-summary', { params: range })
+      .then(({ data }) => { if (!cancelled) setSummary(data); })
+      .catch(() => { if (!cancelled) setSummary(null); })
+      .finally(() => { if (!cancelled) setSummaryLoading(false); });
+    return () => { cancelled = true; };
+  }, [period, customFrom, customTo]);
 
   const fetchInvoices = async () => {
     try {
@@ -236,6 +315,7 @@ export default function Invoices() {
     setForm({ invoiceNumber: '', issueDate: new Date().toISOString().split('T')[0], dueDate: '', amount: '' });
     setCreateMode('CONTRACT');
     setSelectedContract(null);
+    setFinancialPreview(null);
     setContractSearch('');
     setIsModalOpen(true);
     if (contractOptions.length === 0) {
@@ -245,6 +325,21 @@ export default function Invoices() {
         .finally(() => setContractsLoading(false));
     }
   };
+
+  // Server-computed financial summary for the selected contract — never derived
+  // from stale contract-list fields, so "Already Paid" / "Outstanding" always
+  // reflect the real payment ledger (see InvoiceService#getFinancialPreviewForContract).
+  useEffect(() => {
+    if (!selectedContract) { setFinancialPreview(null); return; }
+    let cancelled = false;
+    setFinancialPreviewLoading(true);
+    setFinancialPreview(null);
+    api.get(`/invoices/contract/${selectedContract.id}/financial-preview`)
+      .then(({ data }) => { if (!cancelled) setFinancialPreview(data); })
+      .catch(() => { if (!cancelled) setFinancialPreview(null); })
+      .finally(() => { if (!cancelled) setFinancialPreviewLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedContract]);
 
   const openEdit = (invoice: Invoice) => {
     setEditingId(invoice.id);
@@ -262,6 +357,12 @@ export default function Invoices() {
         showToast(t('invoices.selectContractRequired', 'Sélectionnez un contrat.'), 'warning');
         return;
       }
+      if (financialPreview?.contractCancelled) {
+        showToast(t('invoices.contractCancelledNote'), 'warning');
+        return;
+      }
+      if (creatingContractInvoice) return; // double-click guard
+      setCreatingContractInvoice(true);
       try {
         await api.post('/invoices', { contractId: selectedContract.id });
         showToast(t('toast.success', { action: t('invoices.invoiceCreatedAction') }));
@@ -269,13 +370,17 @@ export default function Invoices() {
         fetchInvoices();
       } catch (err: any) {
         showToast((err as any).userMessage || t('invoices.saveFailed'), 'error');
+      } finally {
+        setCreatingContractInvoice(false);
       }
       return;
     }
 
     const errors: Record<string, string> = {};
     if (!clientData.clientId) errors.client = t('invoices.validationErrors.clientRequired');
-    if (!form.invoiceNumber.trim()) errors.invoiceNumber = t('invoices.validationErrors.invoiceNumberRequired');
+    // Invoice number is only ever editable on an existing invoice — a new manual invoice
+    // always gets a backend-generated sequential number (see NumberGeneratorService).
+    if (editingId !== null && !form.invoiceNumber.trim()) errors.invoiceNumber = t('invoices.validationErrors.invoiceNumberRequired');
     if (!form.issueDate) errors.issueDate = t('invoices.validationErrors.issueDateRequired');
     if (!form.dueDate) errors.dueDate = t('invoices.validationErrors.dueDateRequired');
     if (!form.amount.trim()) errors.amount = t('invoices.validationErrors.amountRequired');
@@ -286,11 +391,13 @@ export default function Invoices() {
     }
     try {
       const payload: any = {
-        invoiceNumber: form.invoiceNumber,
         issueDate: form.issueDate,
         dueDate: form.dueDate,
         amount: Number(form.amount),
       };
+      if (editingId !== null) {
+        payload.invoiceNumber = form.invoiceNumber;
+      }
       if (clientData.clientId) {
         payload.clientId = clientData.clientId;
       }
@@ -479,6 +586,52 @@ export default function Invoices() {
         </div>
       </div>
 
+      <div className="data-surface p-4 sm:p-5 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('invoices.summary.title')}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            {(['THIS_MONTH', 'LAST_MONTH', 'THIS_YEAR', 'CUSTOM'] as PeriodKey[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPeriod(key)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                  period === key ? 'bg-brand-500 text-white' : 'bg-[#f5f5f0] text-slate-500 hover:bg-brand-50')}
+              >
+                {t(`invoices.period.${key === 'THIS_MONTH' ? 'thisMonth' : key === 'LAST_MONTH' ? 'lastMonth' : key === 'THIS_YEAR' ? 'thisYear' : 'custom'}`)}
+              </button>
+            ))}
+            {period === 'CUSTOM' && (
+              <div className="flex items-center gap-2">
+                <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="px-2 py-1.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-lg text-xs" />
+                <span className="text-slate-400 text-xs">→</span>
+                <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="px-2 py-1.5 bg-[#f5f5f0] border border-[#e8e6e1] rounded-lg text-xs" />
+              </div>
+            )}
+          </div>
+        </div>
+        {summaryLoading ? (
+          <div className="flex items-center justify-center py-6"><Loader2 size={20} className="animate-spin text-brand-400" /></div>
+        ) : summary ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {[
+              { label: t('invoices.summary.invoiced'), value: summary.totalInvoiced, color: 'text-[#1e293b]' },
+              { label: t('invoices.summary.collected'), value: summary.totalCollected, color: 'text-success-500' },
+              { label: t('invoices.summary.outstanding'), value: summary.totalOutstanding, color: 'text-warning-500' },
+              { label: t('invoices.summary.overdue'), value: summary.totalOverdue, color: 'text-danger-500' },
+              { label: t('invoices.summary.refunded'), value: summary.totalRefunded, color: 'text-brand-500' },
+              { label: t('invoices.summary.cancelled'), value: summary.totalCancelled, color: 'text-slate-400' },
+              { label: t('invoices.summary.extensionRevenue'), value: summary.extensionRevenue, color: 'text-slate-500' },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl bg-[#f5f5f0]/60 p-3">
+                <p className="text-[10px] font-medium text-slate-400 mb-1 truncate">{item.label}</p>
+                <p className={cn('text-sm font-bold', item.color)}>{(item.value || 0).toLocaleString()} MAD</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <FilterChips options={tabs.map((tab) => ({ id: tab.key, label: tab.label }))} activeId={activeTab} onChange={setActiveTab} />
         <SearchInput className="w-full lg:w-[360px]" placeholder={t('invoices.searchPlaceholder')} value={searchQuery} onChange={setSearchQuery} />
@@ -651,7 +804,23 @@ export default function Invoices() {
         onClose={() => setIsModalOpen(false)}
         title={editingId ? t('invoices.editInvoice', 'Edit Invoice') : t('invoices.newInvoice')}
         footer={
-          <button onClick={saveInvoice} className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all">{editingId ? t('invoices.saveChanges', 'Save Changes') : t('invoices.newInvoice')}</button>
+          createMode === 'CONTRACT' && editingId === null && financialPreview?.hasActiveInvoice ? (
+            <button
+              onClick={() => { setIsModalOpen(false); setPreviewInvoice({ id: financialPreview.activeInvoiceId!, invoiceNumber: financialPreview.activeInvoiceNumber!, clientName: financialPreview.clientName, clientId: 0, issueDate: '', dueDate: '', amount: financialPreview.previouslyInvoiced, status: financialPreview.activeInvoiceStatus || 'ISSUED' }); }}
+              className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 active:scale-95 transition-all"
+            >
+              {t('invoices.viewExistingInvoice', { number: financialPreview.activeInvoiceNumber })}
+            </button>
+          ) : (
+            <button
+              onClick={saveInvoice}
+              disabled={creatingContractInvoice || (createMode === 'CONTRACT' && editingId === null && financialPreview?.contractCancelled)}
+              className="w-full py-2.5 bg-brand-500 text-white rounded-xl font-medium text-sm hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/10 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {creatingContractInvoice && <Loader2 size={16} className="animate-spin" />}
+              {editingId ? t('invoices.saveChanges', 'Save Changes') : t('invoices.newInvoice')}
+            </button>
+          )
         }
       >
         {editingId === null && (
@@ -711,14 +880,42 @@ export default function Invoices() {
               )}
             </div>
 
-            {selectedContract && (
-              <div className="p-4 bg-brand-50/50 rounded-xl border border-brand-100 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.client', 'Client')}</span><span className="font-medium">{selectedContract.clientName || selectedContract.clientFullName}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.vehicle', 'Vehicle')}</span><span className="font-medium">{selectedContract.vehicleBrand} {selectedContract.vehicleModel}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.rentalPeriod', 'Rental period')}</span><span className="font-medium">{selectedContract.startDate} → {selectedContract.endDate}</span></div>
-                <div className="flex justify-between border-t border-brand-100 pt-2"><span className="text-slate-500">{t('invoices.total', 'Total')}</span><span className="font-semibold">{selectedContract.totalPrice} MAD</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.paid', 'Paid')}</span><span className="font-medium">{selectedContract.paidAmount ?? 0} MAD</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">{t('invoices.remaining', 'Remaining')}</span><span className="font-medium">{selectedContract.remainingAmount ?? selectedContract.totalPrice} MAD</span></div>
+            {selectedContract && financialPreviewLoading && (
+              <div className="flex items-center justify-center gap-2 p-4 text-sm text-slate-400">
+                <Loader2 size={16} className="animate-spin" /> {t('invoices.loadingPreview')}
+              </div>
+            )}
+
+            {/* Server-computed — never a value derived from the (possibly stale) contract
+                list row, so "Already Paid"/"Outstanding" always match the real ledger. */}
+            {selectedContract && !financialPreviewLoading && financialPreview && (
+              <div className="space-y-3">
+                <div className="p-4 bg-brand-50/50 rounded-xl border border-brand-100 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-slate-500">{t('invoices.client', 'Client')}</span><span className="font-medium">{financialPreview.clientName}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">{t('invoices.vehicle', 'Vehicle')}</span><span className="font-medium">{financialPreview.vehicleLabel}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">{t('invoices.rentalPeriod', 'Rental period')}</span><span className="font-medium">{financialPreview.rentalStart} → {financialPreview.rentalEnd}</span></div>
+                  <div className="flex justify-between border-t border-brand-100 pt-2"><span className="text-slate-500">{t('invoices.contractTotal')}</span><span className="font-semibold">{financialPreview.contractTotal.toLocaleString()} MAD</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">{t('invoices.alreadyPaid')}</span><span className="font-medium text-success-600">{financialPreview.alreadyPaid.toLocaleString()} MAD</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">{t('invoices.previouslyInvoiced')}</span><span className="font-medium">{financialPreview.previouslyInvoiced.toLocaleString()} MAD</span></div>
+                  <div className="flex justify-between border-t border-brand-100 pt-2"><span className="text-slate-500 font-semibold">{t('invoices.outstandingBalance')}</span><span className={cn('font-bold', financialPreview.outstandingBalance > 0 ? 'text-danger-600' : 'text-success-600')}>{financialPreview.outstandingBalance.toLocaleString()} MAD</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">{t('invoices.newInvoiceTotal')}</span><span className="font-semibold">{financialPreview.newInvoiceTotal.toLocaleString()} MAD</span></div>
+                </div>
+
+                {financialPreview.contractCancelled && (
+                  <div className="flex items-start gap-2 p-3 bg-danger-50 border border-danger-100 rounded-xl text-xs text-danger-600">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" /> {t('invoices.contractCancelledNote')}
+                  </div>
+                )}
+                {!financialPreview.contractCancelled && financialPreview.hasActiveInvoice && (
+                  <div className="flex items-start gap-2 p-3 bg-warning-50 border border-warning-100 rounded-xl text-xs text-warning-700">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" /> {t('invoices.activeInvoiceExists')}
+                  </div>
+                )}
+                {!financialPreview.hasActiveInvoice && financialPreview.fullyPaid && (
+                  <div className="flex items-start gap-2 p-3 bg-success-50 border border-success-100 rounded-xl text-xs text-success-700">
+                    <CheckCircle2 size={14} className="shrink-0 mt-0.5" /> {t('invoices.fullyPaidNote')}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -731,7 +928,12 @@ export default function Invoices() {
                 <span className="text-brand-500 font-medium">{clientData.clientFullName}</span>
               </div>
             )}
-            <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.invoiceNumber', 'Invoice Number')} *</label><input type="text" value={form.invoiceNumber} onChange={(e) => updateFormField('invoiceNumber', e.target.value)} aria-invalid={Boolean(fieldErrors.invoiceNumber)} className={inputClass('invoiceNumber')} />{fieldError('invoiceNumber')}</div>
+            {/* Invoice number is only shown/editable once an invoice already exists — a new
+                manual invoice always gets a backend-generated sequential number (see
+                NumberGeneratorService), never typed in by the user (spec item 12). */}
+            {editingId !== null && (
+              <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.invoiceNumber', 'Invoice Number')} *</label><input type="text" value={form.invoiceNumber} onChange={(e) => updateFormField('invoiceNumber', e.target.value)} aria-invalid={Boolean(fieldErrors.invoiceNumber)} className={inputClass('invoiceNumber')} />{fieldError('invoiceNumber')}</div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.date')} *</label><input type="date" value={form.issueDate} onChange={(e) => updateFormField('issueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.issueDate)} className={inputClass('issueDate')} />{fieldError('issueDate')}</div>
               <div><label className="block text-sm font-medium text-[#1e293b] mb-2">{t('invoices.dueDate')} *</label><input type="date" value={form.dueDate} onChange={(e) => updateFormField('dueDate', e.target.value)} aria-invalid={Boolean(fieldErrors.dueDate)} className={inputClass('dueDate')} />{fieldError('dueDate')}</div>

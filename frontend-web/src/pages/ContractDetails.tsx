@@ -15,6 +15,7 @@ import SignaturePad from '../components/shared/SignaturePad';
 import QRCodeModal from '../components/shared/QRCodeModal';
 import VehicleInspection from '../components/shared/VehicleInspection';
 import ReturnInspectionModal from '../components/shared/ReturnInspectionModal';
+import ContractReturnModal from '../components/shared/ContractReturnModal';
 import InspectionGallery from '../components/InspectionGallery';
 import Modal from '../components/Modal';
 import AddClientEmailModal from '../components/shared/AddClientEmailModal';
@@ -177,7 +178,11 @@ export default function ContractDetails() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showOwnerSign, setShowOwnerSign] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showContractReturnModal, setShowContractReturnModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [invoicePreview, setInvoicePreview] = useState<any>(null);
+  const [invoicePreviewLoading, setInvoicePreviewLoading] = useState(false);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [clientBalance, setClientBalance] = useState<any>(null);
   const [inspections, setInspections] = useState<any[]>([]);
   const [inspectionQr, setInspectionQr] = useState<any>(null);
@@ -260,6 +265,39 @@ export default function ContractDetails() {
   }, [id]);
 
   useEffect(() => { fetchContract(); }, [id, fetchContract]);
+
+  // Server-computed billing summary (contract total / already paid / previously
+  // invoiced / outstanding) — never derived from local contract fields, so it
+  // always matches the real ledger (see InvoiceService#getFinancialPreviewForContract).
+  const fetchInvoicePreview = useCallback(async (contractId: number) => {
+    setInvoicePreviewLoading(true);
+    try {
+      const { data } = await api.get(`/invoices/contract/${contractId}/financial-preview`);
+      setInvoicePreview(data);
+    } catch {
+      setInvoicePreview(null);
+    } finally {
+      setInvoicePreviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (contract?.id) fetchInvoicePreview(contract.id);
+  }, [contract?.id, contract?.totalPrice, contract?.paidAmount, fetchInvoicePreview]);
+
+  const handleCreateInvoice = async () => {
+    if (!contract || creatingInvoice) return; // double-click guard
+    setCreatingInvoice(true);
+    try {
+      await api.post('/invoices', { contractId: contract.id });
+      showToast(t('contractDetails.invoicing.createSuccess'), 'success');
+      await fetchInvoicePreview(contract.id);
+    } catch (err: any) {
+      showToast(err?.userMessage || t('contractDetails.invoicing.createFailed'), 'error');
+    } finally {
+      setCreatingInvoice(false);
+    }
+  };
 
   const fetchDriverSignatures = useCallback(async () => {
     if (!id) return;
@@ -1379,6 +1417,56 @@ export default function ContractDetails() {
                   <InfoRow label={t('contractDetails.fields.paymentStatus')} value={contract.paymentStatus} />
                 </div>
               </div>
+
+              {/* ── Billing ─────────────────────────────────────────────────── */}
+              <div className="border-t border-[var(--border-subtle)] pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400">{t('contractDetails.invoicing.title')}</h3>
+                  {contract.status === 'ACTIVE' && (
+                    <button
+                      onClick={() => setShowContractReturnModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-bold hover:bg-amber-100 transition-all"
+                    >
+                      <RefreshCw size={13} /> {t('contractDetails.invoicing.startReturn')}
+                    </button>
+                  )}
+                </div>
+
+                {invoicePreviewLoading && (
+                  <div className="flex items-center gap-2 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <Loader2 size={16} className="animate-spin" /> {t('common.loading', 'Loading...')}
+                  </div>
+                )}
+
+                {!invoicePreviewLoading && invoicePreview && (
+                  <div className="space-y-3">
+                    {invoicePreview.hasActiveInvoice ? (
+                      <button
+                        onClick={() => navigate('/invoices')}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-500 text-white rounded-xl font-semibold text-sm hover:bg-brand-600 transition-all"
+                      >
+                        <FileText size={16} /> {t('contractDetails.invoicing.viewInvoice', { number: invoicePreview.activeInvoiceNumber })}
+                      </button>
+                    ) : invoicePreview.contractCancelled ? (
+                      <p className="text-xs text-danger-600">{t('invoices.contractCancelledNote')}</p>
+                    ) : (
+                      <button
+                        onClick={handleCreateInvoice}
+                        disabled={creatingInvoice}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-success-500 text-white rounded-xl font-semibold text-sm hover:bg-success-600 disabled:opacity-50 transition-all"
+                      >
+                        {creatingInvoice ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        {creatingInvoice ? t('contractDetails.invoicing.creating') : t('contractDetails.invoicing.createInvoice')}
+                      </button>
+                    )}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <InfoRow label={t('invoices.outstandingBalance')} value={`${(invoicePreview.outstandingBalance || 0).toLocaleString()} MAD`} />
+                      <InfoRow label={t('invoices.previouslyInvoiced')} value={`${(invoicePreview.previouslyInvoiced || 0).toLocaleString()} MAD`} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* ── Deposit / Guarantee (Caution) ────────────────────────────── */}
               <div className="border-t border-[var(--border-subtle)] pt-4">
                 <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">
@@ -1813,6 +1901,22 @@ export default function ContractDetails() {
           depositAmount={contract.deposit.amount || 0}
           contractId={contract.id}
           onSuccess={() => { fetchContract(); showToast(t('contractDetails.toasts.returnProcessed'), 'success'); }}
+        />
+      )}
+
+      {showContractReturnModal && contract && (
+        <ContractReturnModal
+          isOpen={showContractReturnModal}
+          contractId={contract.id}
+          fuelLevelStart={contract.fuelLevelStart}
+          baseTotal={contract.totalPrice}
+          paidAmount={contract.paidAmount}
+          onClose={() => setShowContractReturnModal(false)}
+          onSuccess={() => {
+            setShowContractReturnModal(false);
+            fetchContract();
+            showToast(t('contractDetails.invoicing.returnSuccess'), 'success');
+          }}
         />
       )}
 

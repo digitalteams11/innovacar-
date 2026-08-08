@@ -48,6 +48,7 @@ import java.util.Map;
 public class ContractController {
 
     private final ContractService      contractService;
+    private final com.carrental.service.InvoiceService invoiceService;
     private final ContractPurgeService contractPurgeService;
     private final PdfService           pdfService;
     private final VehicleRepository    vehicleRepository;
@@ -261,9 +262,12 @@ public class ContractController {
 
     @PostMapping("/contracts/{id}/cancel")
     @PreAuthorize("@rolePermissionService.has('DELETE_CONTRACT')")
-    public ResponseEntity<Map<String, Object>> cancelContract(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> cancelContract(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) {
         try {
-            Map<String, Object> result = contractService.cancelContract(id);
+            String reason = body != null ? body.get("reason") : null;
+            Map<String, Object> result = contractService.cancelContract(id, reason);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Contract cancelled.",
@@ -527,6 +531,15 @@ public class ContractController {
     @PreAuthorize("@rolePermissionService.has('CONTRACT_VIEW')")
     public ResponseEntity<List<com.carrental.dto.contract.ContractExtensionResponse>> getExtensions(@PathVariable Long id) {
         return ResponseEntity.ok(contractService.getExtensions(id));
+    }
+
+    // ── GET /api/contracts/{id}/financial-timeline ───────────────────────────
+
+    /** Chronological financial audit trail — creation, invoices, payments, extensions, cancellation. */
+    @GetMapping("/contracts/{id}/financial-timeline")
+    @PreAuthorize("@rolePermissionService.has('CONTRACT_VIEW')")
+    public ResponseEntity<List<com.carrental.dto.invoice.FinancialTimelineEventResponse>> getFinancialTimeline(@PathVariable Long id) {
+        return ResponseEntity.ok(invoiceService.getFinancialTimeline(id));
     }
 
     // ── POST /api/contracts/{id}/extend — "Prolonger la location" ───────────

@@ -49,6 +49,7 @@ public class ContractService {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceService invoiceService;
     private final ContractExtensionRepository contractExtensionRepository;
+    private final NumberGeneratorService numberGeneratorService;
     private final PdfService pdfService;
     private final NotificationService notificationService;
     private final SseService sseService;
@@ -924,7 +925,7 @@ public class ContractService {
                 : PaymentStatus.PARTIALLY_PAID;
 
         Payment payment = Payment.builder()
-                .paymentNumber("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .paymentNumber(numberGeneratorService.generatePaymentNumber())
                 .amount(paidAmount)
                 .paymentDate(LocalDateTime.now())
                 .paymentMethod(method)
@@ -1348,6 +1349,11 @@ public class ContractService {
 
     @Transactional
     public Map<String, Object> cancelContract(Long id) {
+        return cancelContract(id, null);
+    }
+
+    @Transactional
+    public Map<String, Object> cancelContract(Long id, String reason) {
         Long tenantId = TenantContext.getCurrentTenantId();
         Contract contract = fetchContractInTenant(id);
         if (contract.getStatus() == ContractStatus.COMPLETED) {
@@ -1358,6 +1364,10 @@ public class ContractService {
         }
         ContractStatus beforeStatus = contract.getStatus();
         contract.setStatus(ContractStatus.CANCELLED);
+        contract.setCancellationReason(reason);
+        contract.setCancelledBy(getCurrentUser());
+        contract.setCancelledById(getCurrentUserIdOrNull());
+        contract.setCancelledAt(LocalDateTime.now());
 
         // Cancel the linked reservation so it no longer blocks availability.
         Reservation linkedReservation = contract.getReservation();
@@ -1385,13 +1395,26 @@ public class ContractService {
         }
 
         Contract saved = contractRepository.save(contract);
-        logAudit(saved, "CANCEL", "Contract cancelled by user", beforeStatus.name(), ContractStatus.CANCELLED.name());
+        logAudit(saved, "CANCEL",
+                StringUtils.hasText(reason) ? "Contract cancelled: " + reason : "Contract cancelled by user",
+                beforeStatus.name(), ContractStatus.CANCELLED.name());
         log.info("[CONTRACT_ACTION] action=CANCEL contractId={} contractNumber={} tenantId={} beforeStatus={} afterStatus=CANCELLED deletedBefore=false deletedAfter=false",
                 id, saved.getContractNumber(), tenantId, beforeStatus);
+
+        // Money already paid is never deleted by cancellation — surface it so the caller
+        // can decide whether a refund is needed (see PaymentService#refundPayment, a
+        // separate explicit action, never automatic here).
+        java.math.BigDecimal paidAmount = saved.getPaidAmount() != null ? saved.getPaidAmount() : java.math.BigDecimal.ZERO;
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", saved.getId());
         result.put("contractNumber", saved.getContractNumber());
+        result.put("cancellationReason", saved.getCancellationReason());
+        result.put("cancelledBy", saved.getCancelledBy());
+        result.put("cancelledAt", saved.getCancelledAt());
+        result.put("originalAmount", saved.getTotalPrice());
+        result.put("paidAmount", paidAmount);
+        result.put("refundRequired", paidAmount.compareTo(java.math.BigDecimal.ZERO) > 0);
         result.put("contractStatus", ContractStatus.CANCELLED.name());
         result.put("deleted", false);
         return result;
@@ -1786,6 +1809,9 @@ public class ContractService {
         // contract (removed from the contract module entirely — see V67 migration);
         // it's only forwarded below to the vehicle's own fleet-mileage tracker, which
         // is a protected, separate concern from the rental contract/PDF.
+        java.math.BigDecimal previousFuelCharges = contract.getFuelCharges() != null ? contract.getFuelCharges() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal previousReturnFees = contract.getReturnFees() != null ? contract.getReturnFees() : java.math.BigDecimal.ZERO;
+
         if (req.getFuelLevelEnd() != null) contract.setFuelLevelEnd(req.getFuelLevelEnd());
         if (req.getConditionEndNote() != null) contract.setConditionEndNote(req.getConditionEndNote());
         if (req.getDamageEndNote() != null) contract.setDamageEndNote(req.getDamageEndNote());
@@ -1793,6 +1819,20 @@ public class ContractService {
         if (req.getDamageFee() != null) {
             java.math.BigDecimal existing = contract.getReturnFees() != null ? contract.getReturnFees() : java.math.BigDecimal.ZERO;
             contract.setReturnFees(existing.add(req.getDamageFee()));
+        }
+
+        // Return fees are billable — fold the *change* into the contract total so the
+        // final invoice reflects the real cost of the rental (previously these fields
+        // were saved on the contract but never flowed into totalPrice/the invoice at
+        // all, see billing-redesign audit). Only the delta is added, since fuelCharges
+        // is a replace and returnFees/damageFee is a cumulative add above.
+        java.math.BigDecimal newFuelCharges = contract.getFuelCharges() != null ? contract.getFuelCharges() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal newReturnFees = contract.getReturnFees() != null ? contract.getReturnFees() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal returnChargesDelta = newFuelCharges.subtract(previousFuelCharges)
+                .add(newReturnFees.subtract(previousReturnFees));
+        if (returnChargesDelta.compareTo(java.math.BigDecimal.ZERO) != 0) {
+            java.math.BigDecimal currentTotal = contract.getTotalPrice() != null ? contract.getTotalPrice() : java.math.BigDecimal.ZERO;
+            contract.setTotalPrice(currentTotal.add(returnChargesDelta).max(java.math.BigDecimal.ZERO));
         }
 
         contract.setStatus(ContractStatus.COMPLETED);
@@ -1810,6 +1850,14 @@ public class ContractService {
         }
 
         Contract saved = contractRepository.save(contract);
+
+        // The return may have changed totalPrice (fuel/damage/return fees, above) — bring
+        // paidAmount/remainingAmount and the contract's invoice back in line with it, the
+        // same way extendContract() already does for extension charges. Without this the
+        // final invoice would silently keep billing the pre-return amount.
+        paymentService.recalculateContractFinancials(saved);
+        invoiceService.syncInvoiceForContract(saved);
+
         // Recalculate from real blockers (not just a raw reservation-exists check) so an
         // expired reservation or active maintenance can never leave the vehicle stuck.
         // Must run after the contract's COMPLETED status is persisted, otherwise the
@@ -1829,6 +1877,9 @@ public class ContractService {
         result.put("fuelWarning", fuelLevelLower(fuelStart, req.getFuelLevelEnd()));
         result.put("extraFuelFee", req.getExtraFuelFee());
         result.put("damageFee", req.getDamageFee());
+        result.put("totalPrice", saved.getTotalPrice());
+        result.put("paidAmount", saved.getPaidAmount());
+        result.put("remainingAmount", saved.getRemainingAmount());
         return result;
     }
 

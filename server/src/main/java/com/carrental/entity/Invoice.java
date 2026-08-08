@@ -6,6 +6,8 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents an invoice within a tenant's business.
@@ -64,6 +66,31 @@ public class Invoice {
 
     @Column(name = "currency", length = 10)
     private String currency;
+
+    /** CONTRACT_LINKED (derived from a Contract, kept in sync) vs MANUAL (freely edited). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false, length = 20)
+    @Builder.Default
+    private InvoiceSourceType sourceType = InvoiceSourceType.MANUAL;
+
+    /** Sum of {@link #lines}' totals before discount/tax — kept for display; {@link #amount} remains the total. */
+    @Column(name = "subtotal_amount", precision = 12, scale = 2)
+    private BigDecimal subtotalAmount;
+
+    @Column(name = "discount_amount", precision = 12, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Column(name = "tax_amount", precision = 12, scale = 2)
+    private BigDecimal taxAmount;
+
+    /** Itemized breakdown — see InvoiceLine javadoc. Always in {@code sortOrder}. */
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("sortOrder ASC")
+    @Builder.Default
+    private List<InvoiceLine> lines = new ArrayList<>();
+
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
 
     @Column(name = "pdf_generated_at")
     private LocalDateTime pdfGeneratedAt;

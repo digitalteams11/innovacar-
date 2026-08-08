@@ -75,10 +75,21 @@ public class InvoiceController {
      * Monthly accounting rollup for the invoicing page. {@code month} is
      * {@code yyyy-MM}; defaults to the current month when omitted.
      */
+    /**
+     * {@code month=yyyy-MM} for a single month (back-compat), or
+     * {@code dateFrom}/{@code dateTo} for an arbitrary custom range (this
+     * month / last month / current year / custom — see Invoices page
+     * filters). When both are omitted, defaults to the current month.
+     */
     @GetMapping("/monthly-summary")
     @PreAuthorize("@rolePermissionService.has('INVOICE_VIEW')")
     public ResponseEntity<com.carrental.dto.invoice.MonthlyAccountingSummary> monthlySummary(
-            @RequestParam(required = false) String month) {
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo) {
+        if (dateFrom != null && dateTo != null) {
+            return ResponseEntity.ok(invoiceService.getAccountingSummary(dateFrom, dateTo));
+        }
         YearMonth target = StringUtils.hasText(month) ? YearMonth.parse(month) : YearMonth.now();
         return ResponseEntity.ok(invoiceService.getMonthlyAccountingSummary(target));
     }
@@ -92,6 +103,21 @@ public class InvoiceController {
     @GetMapping("/{id}")
     public ResponseEntity<InvoiceResponse> getInvoice(@PathVariable Long id) {
         return ResponseEntity.ok(invoiceService.getInvoiceById(id));
+    }
+
+    // ── GET /api/invoices/contract/{contractId}/financial-preview ───────────
+
+    /**
+     * Server-computed financial summary for the "New Invoice" modal's
+     * contract-linked mode — contract total, already paid, previously
+     * invoiced, outstanding balance — shown to the user BEFORE the invoice
+     * is created so an accidental double-bill is visible up front.
+     */
+    @GetMapping("/contract/{contractId}/financial-preview")
+    @PreAuthorize("@rolePermissionService.has('INVOICE_VIEW')")
+    public ResponseEntity<com.carrental.dto.invoice.InvoiceFinancialPreviewResponse> financialPreview(
+            @PathVariable Long contractId) {
+        return ResponseEntity.ok(invoiceService.getFinancialPreviewForContract(contractId));
     }
 
     // ── POST /api/invoices ───────────────────────────────────────────────────

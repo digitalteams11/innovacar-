@@ -54,6 +54,7 @@ class InvoiceServiceExportTest {
     @Mock private ContractExtensionRepository contractExtensionRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private PaymentService paymentService;
+    @Mock private NumberGeneratorService numberGeneratorService;
 
     private InvoiceService service;
     private Tenant tenantA;
@@ -61,7 +62,7 @@ class InvoiceServiceExportTest {
     @BeforeEach
     void setUp() {
         service = new InvoiceService(invoiceRepository, tenantRepository, clientRepository, contractRepository,
-                contractExtensionRepository, paymentRepository, paymentService);
+                contractExtensionRepository, paymentRepository, paymentService, numberGeneratorService);
         tenantA = Tenant.builder().id(1L).name("Tenant A").build();
     }
 
